@@ -1,9 +1,0 @@
-<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
-<DeltaFile FormatVersion="9.0.0">
-<MostRecent Version="0" Comment="" Date="2012/11/11" Time="15:05:45000" NL="\10" Encoding="text">
-<Insert>public class Board {
-
-}
-</Insert>
-</MostRecent>
-</DeltaFile>
