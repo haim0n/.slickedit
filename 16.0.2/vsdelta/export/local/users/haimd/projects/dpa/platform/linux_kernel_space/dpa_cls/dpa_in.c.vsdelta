@@ -1,0 +1,610 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="63" Comment="" Date="2012/06/21" Time="15:34:18000" NL="\10" Encoding="text">
+<Insert>#include &lt;mv_hal/neta/gbe/mvNeta.h&gt;
+#include &lt;mv_hal/neta/gbe/mvNetaRegs.h&gt;
+
+#include &lt;mv_drivers_lsp/mv_neta/net_dev/mv_netdev.h&gt;
+#include &lt;dpa_basic_types.h&gt;
+#include &lt;linux/ip.h&gt;
+#include &lt;linux/ipv6.h&gt;
+
+/* HAIM FIXME : move it to header file  */
+struct dpa_classify_info {
+	//layer2 header
+	struct {
+		uint8_t dmac[6];
+		uint8_t smac[6];
+		uint16_t vlan_tag;
+		uint16_t eth_type;
+		uint16_t pppoe_sid;
+	} l2;
+
+	//layer3 header
+	union {
+		struct iphdr iph;
+		struct ipv6hdr ip6h;
+	} l3;
+
+	//layer4 header
+	union {
+		struct {
+			uint16_t proto;
+			uint16_t sport;
+			uint16_t dport;
+		} hdr;
+	} l4;
+
+	uint32_t flow_type;
+};
+
+#define DPA_CLS_TBL_SZ 1024
+static struct dpa_classify_info dpa_cls_info;
+static struct dpa_classify_info dpa_cls_table[DPA_CLS_TBL_SZ];
+
+static inline int32_t fill_eth_type(uint16_t eth_type)
+{
+	if (eth_type == htons(ETH_P_8021Q) ||
+	    eth_type == htons(ETH_P_IP) ||
+	    eth_type == htons(ETH_P_IPV6)) {
+		dpa_cls_info.l2.eth_type = eth_type;
+		return 0;
+	} else {
+		return -EINVAL;
+	}
+}
+
+#define is8021Q(eth_type) (eth_type == htons(ETH_P_8021Q))
+#define isIP(eth_type) (eth_type == htons(ETH_P_IP)  || \
+			eth_type == htons(ETH_P_IPV6) || )
+int dpa_classify(struct eth_port *ep, struct neta_rx_desc *rx_desc,
+		 struct eth_pbuf *pkt)
+{
+	struct sk_buff *skb = pkt-&gt;pBuf;
+
+
+	struct vlan_hdr *vh = NULL;
+	struct ethhdr *eth = NULL;
+	struct iphdr *iph = NULL;
+	struct ipv6hdr *ip6h = NULL;
+	struct tcphdr *th = NULL;
+	struct udphdr *uh = NULL;
+
+	memset(&amp;dpa_cls_info, 0, sizeof(dpa_cls_info));
+
+	eth = (struct ethhdr *)skb-&gt;data;
+
+	if (fill_eth_type(eth-&gt;h_proto))
+		return -EINVAL;
+
+	memcpy(dpa_cls_info.dmac, eth-&gt;h_dest, ETH_ALEN);
+	memcpy(dpa_cls_info.smac, eth-&gt;h_source, ETH_ALEN);
+
+	if (is8021Q(eth-&gt;h_proto)) {
+		vh = (struct vlan_hdr *)(skb-&gt;data + ETH_HLEN);
+		dpa_cls_info.l2.vlan_tag = vh-&gt;h_vlan_TCI;
+		/* VLAN + IP */
+		dpa_cls_info.eth_type = vh-&gt;h_vlan_encapsulated_proto;
+	}
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:04:8000">
+<Copy StartSeek="0" EndSeek="809"/>
+<Insert>
+
+}
+</Insert>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:13:44000">
+<Copy StartSeek="0" EndSeek="597"/>
+<Copy StartSeek="625" EndSeek="666"/>
+<Insert>
+</Insert>
+<Copy StartSeek="730" EndSeek="904"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:19:27000">
+<Copy StartSeek="0" EndSeek="342"/>
+<Copy StartSeek="363" EndSeek="406"/>
+<Insert>		uint16_t eth_type;
+</Insert>
+<Copy StartSeek="409" EndSeek="903"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="906" EndSeek="908"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:30:43000">
+<Copy StartSeek="0" EndSeek="406"/>
+<Insert>		
+</Insert>
+<Copy StartSeek="406" EndSeek="905"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:30:44000">
+<Copy StartSeek="0" EndSeek="342"/>
+<Insert>		uint16_t eth_type;
+</Insert>
+<Copy StartSeek="342" EndSeek="363"/>
+<Copy StartSeek="387" EndSeek="908"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:31:5000">
+<Copy StartSeek="0" EndSeek="384"/>
+<Insert>		
+</Insert>
+<Copy StartSeek="384" EndSeek="905"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:31:6000">
+<Copy StartSeek="0" EndSeek="431"/>
+<Insert>	union l3 {
+</Insert>
+<Copy StartSeek="440" EndSeek="483"/>
+<Insert>	} u3;
+</Insert>
+<Copy StartSeek="490" EndSeek="902"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:32:33000">
+<Copy StartSeek="0" EndSeek="510"/>
+<Insert>	union l4 {
+</Insert>
+<Copy StartSeek="519" EndSeek="559"/>
+<Insert>	} u4;
+</Insert>
+<Copy StartSeek="566" EndSeek="899"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:32:38000">
+<Copy StartSeek="0" EndSeek="492"/>
+<Insert>
+</Insert>
+<Copy StartSeek="492" EndSeek="898"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:33:8000">
+<Copy StartSeek="0" EndSeek="566"/>
+<Insert>	uint32_t pkt_type;
+</Insert>
+<Copy StartSeek="587" EndSeek="899"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:34:23000">
+<Copy StartSeek="0" EndSeek="250"/>
+<Insert>struct dpa_classify_info {
+</Insert>
+<Copy StartSeek="273" EndSeek="895"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:34:38000">
+<Copy StartSeek="0" EndSeek="250"/>
+<Insert>struct dpa_flow_info {
+</Insert>
+<Copy StartSeek="277" EndSeek="899"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:34:43000">
+<Copy StartSeek="0" EndSeek="894"/>
+<Insert>	s
+</Insert>
+<Copy StartSeek="896" EndSeek="898"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:35:21000">
+<Copy StartSeek="0" EndSeek="894"/>
+<Insert>	
+}
+</Insert>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:18:29000">
+<Copy StartSeek="0" EndSeek="518"/>
+<Insert>		struct tcphdr th;
+</Insert>
+<Copy StartSeek="577" EndSeek="947"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:20:2000">
+<Copy StartSeek="0" EndSeek="529"/>
+<Insert>			__be16	source;
+			__be16	dest;
+</Insert>
+<Copy StartSeek="567" EndSeek="951"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:20:21000">
+<Copy StartSeek="0" EndSeek="567"/>
+<Insert>		}tcphdr th;
+</Insert>
+<Copy StartSeek="576" EndSeek="946"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:20:27000">
+<Copy StartSeek="0" EndSeek="567"/>
+<Insert>		} tcp;
+		struct udphdr uh;
+</Insert>
+<Copy StartSeek="574" EndSeek="924"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:20:54000">
+<Copy StartSeek="0" EndSeek="529"/>
+<Copy StartSeek="548" EndSeek="943"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:21:27000">
+<Copy StartSeek="0" EndSeek="548"/>
+<Insert>			uint16_t source;
+			uint16_t dest;
+</Insert>
+<Copy StartSeek="586" EndSeek="943"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:21:50000">
+<Copy StartSeek="0" EndSeek="890"/>
+<Copy StartSeek="1062" EndSeek="1101"/>
+<Insert>	if () {
+	}
+}
+</Insert>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:22:52000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>	PpeParseResult.eth_type = eth-&gt;h_proto;}
+</Insert>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:23:15000">
+<Copy StartSeek="0" EndSeek="490"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="491" EndSeek="758"/>
+<Copy StartSeek="912" EndSeek="980"/>
+<Insert>				struct eth_pbuf *pkt)
+</Insert>
+<Copy StartSeek="1005" EndSeek="1042"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="1043" EndSeek="1211"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="1212" EndSeek="1436"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:27:4000">
+<Copy StartSeek="0" EndSeek="653"/>
+<Insert>static struct dpa_classify_info dpa_cls;
+</Insert>
+<Copy StartSeek="699" EndSeek="1217"/>
+<Insert>	memset(&amp;dpa_cls, 0, sizeof(dpa_cls));
+</Insert>
+<Copy StartSeek="1266" EndSeek="3259"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:28:25000">
+<Copy StartSeek="0" EndSeek="839"/>
+<Insert>		PpeParseResult.vlan_tag = eth_type;
+</Insert>
+<Copy StartSeek="878" EndSeek="3260"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:28:45000">
+<Copy StartSeek="0" EndSeek="1453"/>
+<Insert>	if (is8021Q(PpeParseResult.eth_type) || isSpecialTag(PpeParseResult.eth_type)) {
+</Insert>
+<Copy StartSeek="1494" EndSeek="3219"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:30:54000">
+<Copy StartSeek="0" EndSeek="1494"/>
+<Insert>		PpeParseResult.vlan1_gap = VLAN_HLEN;
+		PpeParseResult.vlan_layer++;
+</Insert>
+<Copy StartSeek="1494" EndSeek="3148"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:31:18000">
+<Copy StartSeek="0" EndSeek="1544"/>
+<Insert>		PpeParseResult.vlan1 = vh-&gt;h_vlan_TCI;
+</Insert>
+<Copy StartSeek="1588" EndSeek="3151"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:31:34000">
+<Copy StartSeek="0" EndSeek="1303"/>
+<Insert>	memcpy(PpeParseResult.dmac, eth-&gt;h_dest, ETH_ALEN);
+	memcpy(PpeParseResult.smac, eth-&gt;h_source, ETH_ALEN);
+	PpeParseResult.eth_type = eth-&gt;h_proto;
+</Insert>
+<Copy StartSeek="1446" EndSeek="1447"/>
+<Insert>	if (is8021Q(PpeParseResult.eth_type)) {
+</Insert>
+<Copy StartSeek="1486" EndSeek="1536"/>
+<Insert>		PpeParseResult.vlan_tag = vh-&gt;h_vlan_TCI;
+</Insert>
+<Copy StartSeek="1578" EndSeek="1663"/>
+<Insert>			PpeParseResult.pppoe_gap = 8;
+			if (GetPppoeSid(skb, PpeParseResult.vlan1_gap,
+					&amp;PpeParseResult.pppoe_sid,
+					&amp;PpeParseResult.ppp_tag)) {
+</Insert>
+<Copy StartSeek="1803" EndSeek="1822"/>
+<Insert>			PpeParseResult.eth_type = vh-&gt;h_vlan_encapsulated_proto;
+</Insert>
+<Copy StartSeek="1880" EndSeek="2026"/>
+<Insert>			PpeParseResult.vlan2_gap = VLAN_HLEN;
+			PpeParseResult.vlan_layer++;
+</Insert>
+<Copy StartSeek="2095" EndSeek="2158"/>
+<Insert>			PpeParseResult.vlan2 = vh-&gt;h_vlan_TCI;
+</Insert>
+<Copy StartSeek="2198" EndSeek="2292"/>
+<Insert>				PpeParseResult.pppoe_gap = 8;
+</Insert>
+<Copy StartSeek="2324" EndSeek="2358"/>
+<Insert>				     (PpeParseResult.vlan1_gap + PpeParseResult.vlan2_gap),
+				     &amp;PpeParseResult.pppoe_sid, &amp;PpeParseResult.ppp_tag)) {
+</Insert>
+<Copy StartSeek="2478" EndSeek="2499"/>
+<Insert>				PpeParseResult.eth_type = vh-&gt;h_vlan_encapsulated_proto;
+</Insert>
+<Copy StartSeek="2558" EndSeek="2672"/>
+<Insert>				PpeParseResult.vlan_layer++;
+</Insert>
+<Copy StartSeek="2703" EndSeek="2859"/>
+<Insert>					PpeParseResult.vlan_layer++;
+</Insert>
+<Copy StartSeek="2891" EndSeek="2943"/>
+<Insert>				PpeParseResult.eth_type = vh-&gt;h_vlan_encapsulated_proto;
+</Insert>
+<Copy StartSeek="3002" EndSeek="3037"/>
+<Insert>			PpeParseResult.eth_type = vh-&gt;h_vlan_encapsulated_proto;
+</Insert>
+<Copy StartSeek="3095" EndSeek="3105"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:31:45000">
+<Copy StartSeek="0" EndSeek="1407"/>
+<Insert>	dpa_cls_info.eth_type = eth-&gt;h_proto;
+</Insert>
+<Copy StartSeek="1434" EndSeek="1435"/>
+<Insert>	if (is8021Q(dpa_cls_info.eth_type)) {
+</Insert>
+<Copy StartSeek="1465" EndSeek="3084"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:32:39000">
+<Copy StartSeek="0" EndSeek="1407"/>
+<Insert>	dpa_cls_info.eth_type = ;
+</Insert>
+<Copy StartSeek="1409" EndSeek="3059"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:32:42000">
+<Copy StartSeek="0" EndSeek="1410"/>
+<Copy StartSeek="1411" EndSeek="3060"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:33:32000">
+<Copy StartSeek="0" EndSeek="800"/>
+<Insert>	if (eth_type == htons(ETH_P_8021Q)) {
+</Insert>
+<Copy StartSeek="913" EndSeek="3134"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:34:54000">
+<Copy StartSeek="0" EndSeek="2587"/>
+<Insert>#if defined (CONFIG_HNAT_V2)
+			} else if (is8021Q(vh-&gt;h_vlan_encapsulated_proto)) {
+				/* VLAN + VLAN + VLAN */
+				dpa_cls_info.vlan_layer++;
+				vh = (struct vlan_hdr *)(skb-&gt;data + ETH_HLEN + VLAN_HLEN + VLAN_HLEN);
+
+				/* VLAN + VLAN + VLAN */
+				if (is8021Q(vh-&gt;h_vlan_encapsulated_proto)) {
+					dpa_cls_info.vlan_layer++;
+				}
+#endif
+			} else {
+				/* VLAN + VLAN + IP */
+				dpa_cls_info.eth_type = vh-&gt;h_vlan_encapsulated_proto;
+			}
+</Insert>
+<Copy StartSeek="2587" EndSeek="2685"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:36:36000">
+<Copy StartSeek="0" EndSeek="1629"/>
+<Insert>		if (ntohs(vh-&gt;h_vlan_encapsulated_proto) == ETH_P_PPP_SES) {
+			dpa_cls_info.pppoe_gap = 8;
+			if (GetPppoeSid(skb, dpa_cls_info.vlan1_gap,
+					&amp;dpa_cls_info.pppoe_sid,
+					&amp;dpa_cls_info.ppp_tag)) {
+				return 1;
+			}
+			dpa_cls_info.eth_type = vh-&gt;h_vlan_encapsulated_proto;
+			/* Double VLAN = VLAN + VLAN */
+		} else if ( is8021Q(vh-&gt;h_vlan_encapsulated_proto) || 
+			    isSpecialTag(vh-&gt;h_vlan_encapsulated_proto)) {
+			dpa_cls_info.vlan2_gap = VLAN_HLEN;
+			dpa_cls_info.vlan_layer++;
+			vh = (struct vlan_hdr *)(skb-&gt;data + ETH_HLEN + VLAN_HLEN);
+			dpa_cls_info.vlan2 = vh-&gt;h_vlan_TCI;
+
+			/* VLAN + VLAN + PPPoE */
+			if (ntohs(vh-&gt;h_vlan_encapsulated_proto) == ETH_P_PPP_SES) {
+				dpa_cls_info.pppoe_gap = 8;
+				if (GetPppoeSid
+				    (skb,
+				     (dpa_cls_info.vlan1_gap + dpa_cls_info.vlan2_gap),
+				     &amp;dpa_cls_info.pppoe_sid, &amp;dpa_cls_info.ppp_tag)) {
+					return 1;
+				}
+				dpa_cls_info.eth_type = vh-&gt;h_vlan_encapsulated_proto;
+		} else {
+</Insert>
+<Copy StartSeek="1639" EndSeek="1716"/>
+<Insert>		}
+</Insert>
+<Copy StartSeek="1719" EndSeek="1725"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:36:59000">
+<Copy StartSeek="0" EndSeek="1608"/>
+<Insert>		/* VLAN + PPPoE */
+</Insert>
+<Copy StartSeek="1608" EndSeek="1637"/>
+<Insert>			dpa_cls_info.eth_type = vh-&gt;h_vlan_encapsulated_proto;
+</Insert>
+<Copy StartSeek="1694" EndSeek="1703"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:37:10000">
+<Copy StartSeek="0" EndSeek="1618"/>
+<Insert>			/* VLAN + IP */
+</Insert>
+<Copy StartSeek="1636" EndSeek="1702"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:37:12000">
+<Copy StartSeek="0" EndSeek="1693"/>
+<Insert>		
+	}
+
+}
+</Insert>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:37:14000">
+<Copy StartSeek="0" EndSeek="1696"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:37:16000">
+<Copy StartSeek="0" EndSeek="1484"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1484" EndSeek="1697"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:37:22000">
+<Copy StartSeek="0" EndSeek="763"/>
+<Insert>int32_t is8021Q(uint16_t eth_type)
+</Insert>
+<Copy StartSeek="812" EndSeek="1711"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:37:55000">
+<Copy StartSeek="0" EndSeek="763"/>
+<Insert>static inline int32_t is8021Q(uint16_t eth_type)
+</Insert>
+<Copy StartSeek="816" EndSeek="1715"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:38:30000">
+<Copy StartSeek="0" EndSeek="763"/>
+<Insert>static inline int32_t is_eth_type(uint16_t eth_type)
+</Insert>
+<Copy StartSeek="818" EndSeek="1717"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:38:49000">
+<Copy StartSeek="0" EndSeek="972"/>
+<Insert>		return 1;
+	} else {
+</Insert>
+<Copy StartSeek="972" EndSeek="984"/>
+<Insert>	}
+}
+
+</Insert>
+<Copy StartSeek="1012" EndSeek="1504"/>
+<Copy StartSeek="1505" EndSeek="1718"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:39:22000">
+<Copy StartSeek="0" EndSeek="1504"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1539" EndSeek="1752"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:39:50000">
+<Copy StartSeek="0" EndSeek="1504"/>
+<Insert>	if (fill_eth_type(eth-&gt;h_proto);
+
+</Insert>
+<Copy StartSeek="1551" EndSeek="1764"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:40:13000">
+<Copy StartSeek="0" EndSeek="1538"/>
+<Insert>		return 1;
+</Insert>
+<Copy StartSeek="1556" EndSeek="1770"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:40:24000">
+<Copy StartSeek="0" EndSeek="1679"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1679" EndSeek="1769"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:40:57000">
+<Copy StartSeek="0" EndSeek="1011"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1070" EndSeek="1827"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:42:23000">
+<Copy StartSeek="0" EndSeek="1011"/>
+<Insert>#define is8021Q(eth_type) {eth_type == htons(ETH_P_8021Q)}
+</Insert>
+<Copy StartSeek="1070" EndSeek="1827"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:42:39000">
+<Copy StartSeek="0" EndSeek="1011"/>
+<Copy StartSeek="1012" EndSeek="1560"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="1561" EndSeek="1827"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:42:51000">
+<Copy StartSeek="0" EndSeek="1695"/>
+<Insert>		dpa_cls_info.vlan_tag = vh-&gt;h_vlan_TCI;
+</Insert>
+<Copy StartSeek="1740" EndSeek="1830"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:43:29000">
+<Copy StartSeek="0" EndSeek="585"/>
+<Insert>		} h;
+</Insert>
+<Copy StartSeek="594" EndSeek="1832"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:43:52000">
+<Copy StartSeek="0" EndSeek="996"/>
+<Insert>		return 1;
+</Insert>
+<Copy StartSeek="1014" EndSeek="1838"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:44:41000">
+<Copy StartSeek="0" EndSeek="1836"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:48:43000">
+<Copy StartSeek="0" EndSeek="1464"/>
+<Insert>	memcpy(dpa_cls_info.dmac, eth-&gt;h_dest, ETH_ALEN);
+	memcpy(dpa_cls_info.smac, eth-&gt;h_source, ETH_ALEN);
+
+
+</Insert>
+<Copy StartSeek="1465" EndSeek="1517"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1622" EndSeek="1839"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:50:6000">
+<Copy StartSeek="0" EndSeek="1517"/>
+<Copy StartSeek="1518" EndSeek="1840"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:50:8000">
+<Copy StartSeek="0" EndSeek="1837"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="12:51:36000">
+<Copy StartSeek="0" EndSeek="1837"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="14:17:35000">
+<Copy StartSeek="0" EndSeek="1837"/>
+<Insert>
+
+}
+</Insert>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="14:18:2000">
+<Copy StartSeek="0" EndSeek="1837"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="14:40:42000">
+<Copy StartSeek="0" EndSeek="1748"/>
+<Insert>	} else {
+</Insert>
+<Copy StartSeek="1748" EndSeek="1826"/>
+<Insert>
+
+
+}
+</Insert>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="15:14:29000">
+<Copy StartSeek="0" EndSeek="1079"/>
+<Copy StartSeek="1175" EndSeek="1924"/>
+</Delta>
+</DeltaFile>

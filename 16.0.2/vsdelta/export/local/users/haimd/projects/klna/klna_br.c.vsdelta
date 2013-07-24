@@ -1,0 +1,176 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="2" Comment="" Date="2013/04/24" Time="16:02:6000" NL="\10" Encoding="text">
+<Insert>#include &lt;linux/list.h&gt;
+#include &lt;linux/timer.h&gt;
+#include &lt;br_private.h&gt;
+#include "include/klna_br.h"
+
+#undef pr_fmt
+#define pr_fmt(fmt) "klna_br: " fmt
+
+/* sample rate of Linux br */
+#define KLNA_FDB_TO (5 *HZ)
+
+DEFINE_SPINLOCK(klna_fdb_lock);
+
+static struct timer_list klna_fdb_timer;
+static struct list_head klna_br_list = LIST_HEAD_INIT(klna_br_list);
+struct br_element {
+	struct list_head list;
+	struct net_bridge *br;
+};
+
+#define MAC_ADDR(mac) \
+	mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
+#ifndef MAC_FMT
+#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+#endif
+
+/* taken from br_fbd.c br_fdb_fillbuf() */
+static int klna_br_fdb_read(struct net_bridge *br)
+{
+	unsigned int i;
+	struct hlist_node *h;
+	struct net_bridge_fdb_entry *f;
+
+	pr_info("%s\n", __func__);
+	rcu_read_lock();
+	for (i = 0; i &lt; BR_HASH_SIZE; i++) {
+		hlist_for_each_entry_rcu(f, h, &amp;br-&gt;hash[i], hlist) {
+/*      		if (has_expired(br, f))
+				continue;
+
+			if (!f-&gt;is_static)
+				fe-&gt;ageing_timer_value = jiffies_to_clock_t(jiffies - f-&gt;ageing_timer);
+*/
+			pr_info("br %s fdb[%u]: " MAC_FMT ", port:%s, local:%u, "
+				"static:%u, timeout:%lu\n",
+			       br-&gt;dev-&gt;name, i, MAC_ADDR(f-&gt;addr.addr), f-&gt;dst-&gt;dev-&gt;name,
+			       f-&gt;is_local, f-&gt;is_static,
+			       f-&gt;is_static ? 0 : 
+				(jiffies_to_clock_t(jiffies - f-&gt;ageing_timer)));
+		}
+	}
+	rcu_read_unlock();
+
+	return i;
+}
+
+int klna_br_reg(struct net_bridge *br)
+{
+	struct list_head *p;
+	struct br_element *el = NULL;
+	int ret = 0;
+
+	pr_info("%s br %s\n", __func__,br-&gt;dev-&gt;name);
+	del_timer(&amp;klna_fdb_timer);
+	spin_lock_bh(&amp;klna_fdb_lock);
+	list_for_each(p, &amp;klna_br_list) {
+		el = list_entry(p, struct br_element, list);
+		if (el-&gt;br == br)
+			goto out;
+	}
+	el = kmalloc(sizeof(struct br_element), GFP_ATOMIC);
+	if (!el) {
+		pr_err("insufficient mm for br_element\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+	el-&gt;br = br;
+	INIT_LIST_HEAD(&amp;el-&gt;list);
+	list_add_tail(&amp;el-&gt;list, &amp;klna_br_list);
+out:
+	spin_unlock_bh(&amp;klna_fdb_lock);
+	if (!list_empty(&amp;klna_br_list))
+		mod_timer(&amp;klna_fdb_timer, jiffies + HZ);
+
+	return ret;
+}
+
+int klna_br_unreg(struct net_bridge *br)
+{
+	struct list_head *p, *tmp;
+	struct br_element *el = NULL;
+
+	pr_info("%s br %s\n", __func__,br-&gt;dev-&gt;name);
+	del_timer(&amp;klna_fdb_timer);
+	spin_lock_bh(&amp;klna_fdb_lock);
+	list_for_each_safe(p, tmp, &amp;klna_br_list) {
+		el = list_entry(p, struct br_element, list);
+		if (el-&gt;br == br) {
+			list_del(p);
+			el-&gt;br = NULL;
+			kfree(el);
+			break;
+		}
+	}
+	spin_unlock_bh(&amp;klna_fdb_lock);
+	if (!list_empty(&amp;klna_br_list))
+		mod_timer(&amp;klna_fdb_timer, jiffies + HZ);
+
+	return 0;
+}
+
+static void klna_fdb_timer_expired(unsigned long unused)
+{
+	struct list_head *p;
+	struct br_element *el = NULL;
+
+	spin_lock_bh(&amp;klna_fdb_lock);
+	list_for_each(p, &amp;klna_br_list) {
+		el = list_entry(p, struct br_element, list);
+		klna_br_fdb_read(el-&gt;br);
+	}
+	spin_unlock_bh(&amp;klna_fdb_lock);
+
+	mod_timer(&amp;klna_fdb_timer, jiffies + KLNA_FDB_TO);
+}
+
+int __init klna_br_fdb_init(void)
+{
+	pr_info("%s\n", __func__);
+
+	init_timer(&amp;klna_fdb_timer);
+	klna_fdb_timer.function = &amp;klna_fdb_timer_expired;
+	return 0;
+}
+
+void __exit klna_br_fdb_exit(void)
+{
+	struct list_head *p, *tmp;
+	struct br_element *el = NULL;
+
+	pr_info("%s\n", __func__);
+
+	del_timer(&amp;klna_fdb_timer);
+	spin_lock_bh(&amp;klna_fdb_lock);
+	list_for_each_safe(p, tmp, &amp;klna_br_list) {
+		el = list_entry(p, struct br_element, list);
+		list_del(p);
+		el-&gt;br = NULL;
+		kfree(el);
+	}
+	spin_unlock_bh(&amp;klna_fdb_lock);
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/04/24" Time="15:53:42000">
+<Copy StartSeek="0" EndSeek="882"/>
+<Insert>//      		if (has_expired(br, f))
+//      			continue;
+</Insert>
+<Copy StartSeek="930" EndSeek="931"/>
+<Insert>//      		if (!f-&gt;is_static)
+//      			fe-&gt;ageing_timer_value = jiffies_to_clock_t(jiffies - f-&gt;ageing_timer);
+
+</Insert>
+<Copy StartSeek="1033" EndSeek="3438"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/04/24" Time="16:02:3000">
+<Copy StartSeek="0" EndSeek="1032"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1032" EndSeek="3437"/>
+</Delta>
+</DeltaFile>

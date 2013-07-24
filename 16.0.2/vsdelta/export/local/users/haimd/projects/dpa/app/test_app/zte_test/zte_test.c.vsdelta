@@ -1,0 +1,680 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="52" Comment="" Date="2013/05/21" Time="11:14:10000" NL="\10" Encoding="text">
+<Insert>/*
+ * ip.c		"ip" utility frontend.
+ *
+ *		This program is free software; you can redistribute it and/or
+ *		modify it under the terms of the GNU General Public License
+ *		as published by the Free Software Foundation; either version
+ *		2 of the License, or (at your option) any later version.
+ *
+ * Authors:	Alexey Kuznetsov, &lt;kuznet@ms2.inr.ac.ru&gt;
+ */
+
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;syslog.h&gt;
+#include &lt;fcntl.h&gt;
+#include &lt;string.h&gt;
+#include &lt;errno.h&gt;
+
+#include &lt;zte_api_fast.h&gt;
+
+static void usage(void) __attribute__((noreturn));
+
+static void usage(void)
+{
+	printf("Usage: zte_test COMMAND OPTIONS \n"
+	       "where  COMMAND:= { add | del | clr | stat | is_use | init | shutdown }\n");
+	exit(-1);
+}
+
+static int do_help(int argc, char **argv)
+{
+	usage();
+}
+
+static const struct cmd {
+	const char *cmd;
+	int (*func)(int argc, char **argv);
+} cmds[] = {
+	{ "add", 	do_flow_add },
+	{ "del",	do_flow_del },
+	{ "clr",	do_flow_clr },
+	{ "stat",	do_flow_stat },
+	{ "is_use",	do_flow_is_use },
+	{ "init",	do_init },
+	{ "shutdown",	do_shutdown },
+	{ 0 }
+};
+
+static int do_cmd(const char *in_args, int argc, char **argv)
+{
+	const struct cmd *c;
+
+	for (c = cmds; c-&gt;cmd; ++c) {
+		if (strcmp(in_args, c-&gt;cmd) == 0) {
+			return (c-&gt;func(argc-1, argv+1));
+		}
+	}
+
+	usage();
+	return EXIT_FAILURE;
+}
+
+int main(int argc, char **argv)
+{
+	if (argc &lt;=1) {
+		usage();
+		return EXIT_FAILURE;
+	}
+
+//      while (argc &gt; 1) {
+//      	char *opt = argv[1];
+//      	if (strcmp(opt,"--") == 0) {
+//      		argc--; argv++;
+//      		break;
+//      	}
+//      	if (opt[0] != '-')
+//      		break;
+//      	if (opt[1] == '-')
+//      		opt++;
+//
+//      	else if (strcmp(opt, "-help") == 0) {
+//      		usage();
+//      	} else {
+//      		fprintf(stderr, "Option \"%s\" is unknown, try \"ip -help\".\n", opt);
+//      		exit(-1);
+//      	}
+//      	argc--;	argv++;
+//      }
+
+	return do_cmd(argv[1], argc-1, argv+1);
+}
+
+do_flow_add(int argc, char **argv)
+{
+	while (argc &gt; 1) {
+		char *opt = argv[1];
+		if (strcmp(opt,"--") == 0) {
+			argc--; argv++;
+			break;
+		}
+		if (opt[0] != '-')
+			break;
+		if (opt[1] == '-')
+			opt++;
+
+		else if (strcmp(opt, "-help") == 0) {
+			usage();
+		} else {
+			fprintf(stderr, "Option \"%s\" is unknown, try \"ip -help\".\n", opt);
+			exit(-1);
+		}
+		argc--;	argv++;
+	}
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/01/31" Time="11:11:29000">
+<Copy StartSeek="0" EndSeek="2024"/>
+<Insert>	{ "address", 	do_ipaddr },
+	{ "addrlabel",	do_ipaddrlabel },
+</Insert>
+<Copy StartSeek="2076" EndSeek="6569"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:11:57000">
+<Copy StartSeek="0" EndSeek="2076"/>
+<Insert>	{ "maddress",	do_multiaddr },
+</Insert>
+<Copy StartSeek="2102" EndSeek="6564"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:12:4000">
+<Copy StartSeek="0" EndSeek="2102"/>
+<Insert>	{ "route",	do_iproute },
+</Insert>
+<Copy StartSeek="2127" EndSeek="6563"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:12:10000">
+<Copy StartSeek="0" EndSeek="2127"/>
+<Insert>	{ "rule",	do_iprule },
+</Insert>
+<Copy StartSeek="2153" EndSeek="6565"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:12:18000">
+<Copy StartSeek="0" EndSeek="2153"/>
+<Insert>	{ "neighbor",	do_ipneigh },
+	{ "neighbour",	do_ipneigh },
+</Insert>
+<Copy StartSeek="2207" EndSeek="6560"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:12:34000">
+<Copy StartSeek="0" EndSeek="2024"/>
+<Insert>	{ "add", 	do_ipaddr },
+	{ "del",	do_ipaddrlabel },
+	{ "clr",	do_multiaddr },
+	{ "stat",	do_iproute },
+	{ "is_use",	do_iprule },
+</Insert>
+<Copy StartSeek="2158" EndSeek="6565"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:13:19000">
+<Copy StartSeek="0" EndSeek="2158"/>
+<Insert>	{ "init",	do_ipneigh },
+	{ "shutdown",	do_ipneigh },
+</Insert>
+<Copy StartSeek="2210" EndSeek="6563"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:13:27000">
+<Copy StartSeek="0" EndSeek="2210"/>
+<Insert>	{ "ntable",	do_ipntable },
+	{ "ntbl",	do_ipntable },
+	{ "link",	do_iplink },
+	{ "tunnel",	do_iptunnel },
+	{ "tunl",	do_iptunnel },
+	{ "tuntap",	do_iptuntap },
+	{ "tap",	do_iptuntap },
+	{ "monitor",	do_ipmonitor },
+	{ "xfrm",	do_xfrm },
+	{ "mroute",	do_multiroute },
+	{ "mrule",	do_multirule },
+	{ "netns",	do_netns },
+	{ "help",	do_help },
+	{ "moo",	do_moo }, 
+</Insert>
+<Copy StartSeek="2210" EndSeek="6201"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:13:34000">
+<Copy StartSeek="0" EndSeek="2420"/>
+<Insert>	fprintf(stderr, "Object \"%s\" is unknown, try \"ip help\".\n", argv0);
+</Insert>
+<Copy StartSeek="2490" EndSeek="6198"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:14:18000">
+<Copy StartSeek="0" EndSeek="2515"/>
+<Insert>static int batch(const char *name)
+{
+	char *line = NULL;
+	size_t len = 0;
+	int ret = EXIT_SUCCESS;
+
+	if (name &amp;&amp; strcmp(name, "-") != 0) {
+		if (freopen(name, "r", stdin) == NULL) {
+			fprintf(stderr, "Cannot open file \"%s\" for reading: %s\n",
+				name, strerror(errno));
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (rtnl_open(&amp;rth, 0) &lt; 0) {
+		fprintf(stderr, "Cannot open rtnetlink\n");
+		return EXIT_FAILURE;
+	}
+
+	cmdlineno = 0;
+	while (getcmdline(&amp;line, &amp;len, stdin) != -1) {
+		char *largv[100];
+		int largc;
+
+		largc = makeargs(line, largv, 100);
+		if (largc == 0)
+			continue;	/* blank line */
+
+		if (do_cmd(largv[0], largc, largv)) {
+			fprintf(stderr, "Command failed %s:%d\n", name, cmdlineno);
+			ret = EXIT_FAILURE;
+			if (!force)
+				break;
+		}
+	}
+	if (line)
+		free(line);
+
+	rtnl_close(&amp;rth);
+	return ret;
+}
+
+
+</Insert>
+<Copy StartSeek="2515" EndSeek="4538"/>
+<Insert>		} else if (matches(opt, "-batch") == 0) {
+			argc--;
+			argv++;
+			if (argc &lt;= 1)
+				usage();
+			batch_file = argv[1];
+</Insert>
+<Copy StartSeek="4538" EndSeek="5260"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:25:48000">
+<Copy StartSeek="0" EndSeek="2337"/>
+<Insert>		if (matches(argv0, c-&gt;cmd) == 0) {
+</Insert>
+<Copy StartSeek="2373" EndSeek="5259"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:27:0000">
+<Copy StartSeek="0" EndSeek="2337"/>
+<Insert>		if (strcmp(argv0, c-&gt;cmd) == 0) {
+</Insert>
+<Copy StartSeek="2374" EndSeek="5260"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:27:6000">
+<Copy StartSeek="0" EndSeek="963"/>
+<Insert>"Usage: ip [ OPTIONS ] OBJECT { COMMAND | help }\n"
+</Insert>
+<Copy StartSeek="1021" EndSeek="5266"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:28:27000">
+<Copy StartSeek="0" EndSeek="828"/>
+<Insert>struct rtnl_handle rth = { .fd = -1 };
+
+</Insert>
+<Copy StartSeek="828" EndSeek="5226"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:28:37000">
+<Copy StartSeek="0" EndSeek="906"/>
+<Insert>	fprintf(stderr,
+"Usage: zte_test [ OPTIONS ] OBJECT { COMMAND | help }\n"
+</Insert>
+<Copy StartSeek="972" EndSeek="5217"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:29:14000">
+<Copy StartSeek="0" EndSeek="1616"/>
+<Insert>static int do_moo(int argc, char **argv)
+{
+	
+fprintf(stderr,
+"\n"
+" _ __ ___   ___   ___\n"
+"| '_ ` _ \\ / _ \\ / _ \\\n"
+"| | | | | | (_) | (_) |\n"
+"|_| |_| |_|\\___/ \\___/\n"
+"\n\n"
+"P.S. no real cows were harmed for this moo\n");
+	exit(1);
+}
+                       
+</Insert>
+<Copy StartSeek="1616" EndSeek="4946"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2013/05/16" Time="14:29:47000">
+<Copy StartSeek="0" EndSeek="1710"/>
+<Insert>	{ "add", 	do_flow_add },
+	{ "del",	do_flow_del },
+</Insert>
+<Copy StartSeek="1767" EndSeek="4952"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2013/05/19" Time="09:57:25000">
+<Copy StartSeek="0" EndSeek="1710"/>
+<Insert>	{ "add_uc", 	do_flow_add },
+	{ "del_uc",	do_flow_del },
+</Insert>
+<Copy StartSeek="1773" EndSeek="4958"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2013/05/19" Time="09:57:57000">
+<Copy StartSeek="0" EndSeek="1710"/>
+<Insert>	{ "add_uc", 	do_flow_uc_add },
+	{ "del_uc",	do_flow_uc_del },
+</Insert>
+<Copy StartSeek="1761" EndSeek="4946"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2013/05/19" Time="09:58:13000">
+<Copy StartSeek="0" EndSeek="606"/>
+<Insert>int preferred_family = AF_UNSPEC;
+int show_stats = 0;
+int show_details = 0;
+int resolve_hosts = 0;
+int oneline = 0;
+int timestamp = 0;
+char * _SL_ = NULL;
+char *batch_file = NULL;
+int force = 0;
+int max_flush_loops = 10;
+
+</Insert>
+<Copy StartSeek="606" EndSeek="4724"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:21:29000">
+<Copy StartSeek="0" EndSeek="750"/>
+<Insert>"       ip [ -force ] -batch filename\n"
+</Insert>
+<Copy StartSeek="797" EndSeek="4730"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:21:42000">
+<Copy StartSeek="0" EndSeek="684"/>
+<Insert>	printf("Usage: zte_test [ OPTIONS ] OBJECT { COMMAND | help }\n"
+</Insert>
+<Copy StartSeek="750" EndSeek="4730"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:30:42000">
+<Copy StartSeek="0" EndSeek="797"/>
+<Insert>"where  OBJECT := { link | addr | addrlabel | route | rule | neigh | ntable |\n"
+"                   tunnel | tuntap | maddr | mroute | mrule | monitor | xfrm |\n"
+"                   netns }\n"
+"       OPTIONS := { -V[ersion] | -s[tatistics] | -d[etails] | -r[esolve] |\n"
+"                    -f[amily] { inet | inet6 | ipx | dnet | link } |\n"
+"                    -l[oops] { maximum-addr-flush-attempts } |\n"
+"                    -o[neline] | -t[imestamp] | -b[atch] [filename] |\n"
+"                    -rc[vbuf] [size]}\n");
+</Insert>
+<Copy StartSeek="872" EndSeek="4273"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:31:35000">
+<Copy StartSeek="0" EndSeek="750"/>
+<Insert>"       zte_test [ -force ] -batch filename\n"
+"where  OBJECT := { add | del | clr | stat | is_use | init | shutdown\n");
+</Insert>
+<Copy StartSeek="888" EndSeek="4289"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:31:42000">
+<Copy StartSeek="0" EndSeek="805"/>
+<Insert>	       "where  OBJECT := { add | del | clr | stat | is_use | init | shutdown\n");
+</Insert>
+<Copy StartSeek="889" EndSeek="4290"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:32:44000">
+<Copy StartSeek="0" EndSeek="805"/>
+<Insert>	       "where  OBJECT := { add | del | clr | stat | is_use | init | shutdown\n}");
+</Insert>
+<Copy StartSeek="890" EndSeek="4291"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:32:53000">
+<Copy StartSeek="0" EndSeek="750"/>
+<Insert>	       "       zte_test [ -force ] -batch filename\n"
+</Insert>
+<Copy StartSeek="750" EndSeek="4236"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:33:5000">
+<Copy StartSeek="0" EndSeek="684"/>
+<Insert>	printf("Usage: zte_test OBJECT { COMMAND | help } [ OPTIONS ]\n"
+</Insert>
+<Copy StartSeek="729" EndSeek="4215"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:57:3000">
+<Copy StartSeek="0" EndSeek="729"/>
+<Insert>	       "where  OBJECT := { add | del | clr | stat | is_use | init | shutdown }\n");
+</Insert>
+<Copy StartSeek="814" EndSeek="4215"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:57:7000">
+<Copy StartSeek="0" EndSeek="1375"/>
+<Insert>	fprintf(stderr, "Object \"%s\" is unknown, try \"help\".\n", argv0);
+</Insert>
+<Copy StartSeek="1446" EndSeek="4216"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:57:12000">
+<Copy StartSeek="0" EndSeek="1329"/>
+<Insert>			return -(c-&gt;func(argc-1, argv+1));
+</Insert>
+<Copy StartSeek="1366" EndSeek="4215"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:57:34000">
+<Copy StartSeek="0" EndSeek="1292"/>
+<Insert>		if (matches(argv0, c-&gt;cmd) == 0) {
+</Insert>
+<Copy StartSeek="1328" EndSeek="4214"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:57:52000">
+<Copy StartSeek="0" EndSeek="453"/>
+<Insert>#include &lt;sys/socket.h&gt;
+#include &lt;netinet/in.h&gt;
+</Insert>
+<Copy StartSeek="453" EndSeek="4166"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:58:18000">
+<Copy StartSeek="0" EndSeek="493"/>
+<Insert>#include "SNAPSHOT.h"
+#include "utils.h"
+#include "ip_common.h"
+
+</Insert>
+<Copy StartSeek="493" EndSeek="4101"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:58:29000">
+<Copy StartSeek="0" EndSeek="493"/>
+<Copy StartSeek="520" EndSeek="4128"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="10:59:47000">
+<Copy StartSeek="0" EndSeek="1705"/>
+<Insert>		if (matches(opt, "-loops") == 0) {
+</Insert>
+<Copy StartSeek="1741" EndSeek="1851"/>
+<Insert>                } else if (matches(opt, "-family") == 0) {
+</Insert>
+<Copy StartSeek="1909" EndSeek="2796"/>
+<Insert>		} else if (matches(opt, "-stats") == 0 ||
+			   matches(opt, "-statistics") == 0) {
+</Insert>
+<Copy StartSeek="2880" EndSeek="2897"/>
+<Insert>		} else if (matches(opt, "-details") == 0) {
+</Insert>
+<Copy StartSeek="2942" EndSeek="2961"/>
+<Insert>		} else if (matches(opt, "-resolve") == 0) {
+</Insert>
+<Copy StartSeek="3006" EndSeek="3026"/>
+<Insert>		} else if (matches(opt, "-oneline") == 0) {
+</Insert>
+<Copy StartSeek="3071" EndSeek="3085"/>
+<Insert>		} else if (matches(opt, "-timestamp") == 0) {
+</Insert>
+<Copy StartSeek="3132" EndSeek="3154"/>
+<Insert>		} else if (matches(opt, "-numeric") == 0) {
+</Insert>
+<Copy StartSeek="3199" EndSeek="3231"/>
+<Insert>		} else if (matches(opt, "-Version") == 0) {
+</Insert>
+<Copy StartSeek="3276" EndSeek="3340"/>
+<Insert>		} else if (matches(opt, "-force") == 0) {
+</Insert>
+<Copy StartSeek="3383" EndSeek="3395"/>
+<Insert>		} else if (matches(opt, "-rcvbuf") == 0) {
+</Insert>
+<Copy StartSeek="3439" EndSeek="3659"/>
+<Insert>		} else if (matches(opt, "-help") == 0) {
+</Insert>
+<Copy StartSeek="3701" EndSeek="4115"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="11:20:27000">
+<Copy StartSeek="0" EndSeek="1090"/>
+<Insert>static int do_cmd(const char *argv0, int argc, char **argv)
+</Insert>
+<Copy StartSeek="1148" EndSeek="4113"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="11:21:17000">
+<Copy StartSeek="0" EndSeek="1090"/>
+<Insert>static int do_cmd(const char *cmd, int argc, char **argv)
+</Insert>
+<Copy StartSeek="1154" EndSeek="4119"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="11:21:37000">
+<Copy StartSeek="0" EndSeek="1210"/>
+<Insert>		if (strcmp(argv0, c-&gt;cmd) == 0) {
+</Insert>
+<Copy StartSeek="1250" EndSeek="4123"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="11:21:40000">
+<Copy StartSeek="0" EndSeek="1713"/>
+<Insert>		if (strcmp(opt, "-loops") == 0) {
+			argc--;
+			argv++;
+			if (argc &lt;= 1)
+				usage();
+                        max_flush_loops = atoi(argv[1]);
+                } else if (strcmp(opt, "-family") == 0) {
+			argc--;
+			argv++;
+			if (argc &lt;= 1)
+				usage();
+			if (strcmp(argv[1], "inet") == 0)
+				preferred_family = AF_INET;
+			else if (strcmp(argv[1], "inet6") == 0)
+				preferred_family = AF_INET6;
+			else if (strcmp(argv[1], "dnet") == 0)
+				preferred_family = AF_DECnet;
+			else if (strcmp(argv[1], "link") == 0)
+				preferred_family = AF_PACKET;
+			else if (strcmp(argv[1], "ipx") == 0)
+				preferred_family = AF_IPX;
+			else if (strcmp(argv[1], "help") == 0)
+				usage();
+			else
+				invarg(argv[1], "invalid protocol family");
+		} else if (strcmp(opt, "-4") == 0) {
+			preferred_family = AF_INET;
+		} else if (strcmp(opt, "-6") == 0) {
+			preferred_family = AF_INET6;
+		} else if (strcmp(opt, "-0") == 0) {
+			preferred_family = AF_PACKET;
+		} else if (strcmp(opt, "-I") == 0) {
+			preferred_family = AF_IPX;
+		} else if (strcmp(opt, "-D") == 0) {
+			preferred_family = AF_DECnet;
+		} else if (strcmp(opt, "-stats") == 0 ||
+			   strcmp(opt, "-statistics") == 0) {
+			++show_stats;
+		} else if (strcmp(opt, "-details") == 0) {
+			++show_details;
+		} else if (strcmp(opt, "-resolve") == 0) {
+			++resolve_hosts;
+		} else if (strcmp(opt, "-oneline") == 0) {
+			++oneline;
+		} else if (strcmp(opt, "-timestamp") == 0) {
+			++timestamp;
+#if 0
+		} else if (strcmp(opt, "-numeric") == 0) {
+			rtnl_names_numeric++;
+#endif
+		} else if (strcmp(opt, "-Version") == 0) {
+			printf("ip utility, iproute2-ss%s\n", SNAPSHOT);
+			exit(0);
+		} else if (strcmp(opt, "-force") == 0) {
+			++force;
+		} else if (strcmp(opt, "-rcvbuf") == 0) {
+			unsigned int size;
+
+			argc--;
+			argv++;
+			if (argc &lt;= 1)
+				usage();
+			if (get_unsigned(&amp;size, argv[1], 0)) {
+				fprintf(stderr, "Invalid rcvbuf size '%s'\n",
+					argv[1]);
+				exit(-1);
+			}
+			rcvbuf = size;
+</Insert>
+<Copy StartSeek="1716" EndSeek="1894"/>
+<Insert>	_SL_ = oneline ? "\\" : "\n" ;
+
+	if (batch_file)
+		return batch(batch_file);
+
+	if (rtnl_open(&amp;rth, 0) &lt; 0)
+		exit(1);
+
+</Insert>
+<Copy StartSeek="1894" EndSeek="2052"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="11:23:25000">
+<Copy StartSeek="0" EndSeek="1894"/>
+<Insert>	if (strlen(basename) &gt; 2)
+		return do_cmd(basename+2, argc, argv);
+
+</Insert>
+<Copy StartSeek="1894" EndSeek="1983"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="11:23:31000">
+<Copy StartSeek="0" EndSeek="1952"/>
+<Insert>	rtnl_close(&amp;rth);
+</Insert>
+<Copy StartSeek="1952" EndSeek="1964"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="11:23:36000">
+<Copy StartSeek="0" EndSeek="1716"/>
+<Insert>		} else if (strcmp(opt, "-help") == 0) {
+</Insert>
+<Copy StartSeek="1756" EndSeek="1962"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2013/05/20" Time="11:23:53000">
+<Copy StartSeek="0" EndSeek="1090"/>
+<Insert>static int do_cmd(const char *input_cmd, int argc, char **argv)
+</Insert>
+<Copy StartSeek="1152" EndSeek="1208"/>
+<Insert>		if (strcmp(input_cmd, c-&gt;cmd) == 0) {
+</Insert>
+<Copy StartSeek="1246" EndSeek="1958"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2013/05/21" Time="11:09:22000">
+<Copy StartSeek="0" EndSeek="1291"/>
+<Insert>	fprintf(stderr, "command \"%s\" is unknown, try \"help\".\n", argv0);
+</Insert>
+<Copy StartSeek="1301" EndSeek="1897"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2013/05/21" Time="11:10:11000">
+<Copy StartSeek="0" EndSeek="1360"/>
+<Insert>	char *basename;
+
+	basename = strrchr(argv[0], '/');
+	if (basename == NULL)
+		basename = argv[0];
+	else
+		basename++;
+
+</Insert>
+<Copy StartSeek="1360" EndSeek="1778"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2013/05/21" Time="11:10:33000">
+<Copy StartSeek="0" EndSeek="1360"/>
+<Copy StartSeek="1414" EndSeek="1832"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2013/05/21" Time="11:11:13000">
+<Copy StartSeek="0" EndSeek="1414"/>
+<Copy StartSeek="1415" EndSeek="1833"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2013/05/21" Time="11:11:16000">
+<Copy StartSeek="0" EndSeek="1415"/>
+<Insert>	while (argc &gt; 1) {
+		char *opt = argv[1];
+		if (strcmp(opt,"--") == 0) {
+			argc--; argv++;
+			break;
+		}
+		if (opt[0] != '-')
+			break;
+		if (opt[1] == '-')
+			opt++;
+		
+		else if (strcmp(opt, "-help") == 0) {
+			usage();
+		} else {
+			fprintf(stderr, "Option \"%s\" is unknown, try \"ip -help\".\n", opt);
+			exit(-1);
+		}
+		argc--;	argv++;
+	}
+</Insert>
+<Copy StartSeek="1888" EndSeek="1889"/>
+<Insert>	if (argc &gt; 1)
+		return do_cmd(argv[1], argc-1, argv+1);
+
+</Insert>
+<Copy StartSeek="1930" EndSeek="1942"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2013/05/21" Time="11:12:12000">
+<Copy StartSeek="0" EndSeek="1930"/>
+<Insert>	usage();
+}
+</Insert>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2013/05/21" Time="11:12:30000">
+<Copy StartSeek="0" EndSeek="1932"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2013/05/21" Time="11:13:18000">
+<Copy StartSeek="0" EndSeek="1970"/>
+<Insert>
+}
+</Insert>
+</Delta>
+</DeltaFile>

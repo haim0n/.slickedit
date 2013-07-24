@@ -1,0 +1,133 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="16" Comment="" Date="2012/11/22" Time="17:27:10000" NL="\10" Encoding="text">
+<Insert>#include &lt;dpa_types.h&gt;
+#include &lt;log/log.h&gt;
+#include &lt;util/string.h&gt;
+
+#include "dpa_cls.h"
+
+void dpa_mdf_l4_chg(eth_pkt_t *pkt)
+{
+	struct dpa_entry *dpe = (struct dpa_entry *)pkt-&gt;dpa_handle;
+	struct dpa_pri_key *mt = &amp;dpe-&gt;mod.mod_tuple;
+	dpa_l4_hdr_t *l4 = pkt-&gt;l4_hdr;
+	
+	l4-&gt;source= mt-&gt;sport;
+	l4-&gt;dest = mt-&gt;dport;
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="15:54:52000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpm_ipv4_mdfy(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="148" EndSeek="341"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="15:55:1000">
+<Copy StartSeek="0" EndSeek="275"/>
+<Insert>
+void dpm_ipv6_mdfy(struct dpa_entry *dpe, eth_pkt_t *pkt)
+{
+
+}
+
+
+</Insert>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="15:55:6000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpm_l4_mdfy(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="125" EndSeek="252"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="16:39:1000">
+<Copy StartSeek="0" EndSeek="161"/>
+<Copy StartSeek="224" EndSeek="315"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="16:39:38000">
+<Copy StartSeek="0" EndSeek="127"/>
+<Insert>	dpa_ip_hdr_t *iph = pkt-&gt;ip_hdr;
+</Insert>
+<Copy StartSeek="127" EndSeek="190"/>
+<Insert>	iph-&gt;saddr = dpe-&gt;mod.mod_tuple.sip;
+</Insert>
+<Copy StartSeek="228" EndSeek="266"/>
+<Insert>	iph-&gt;ttl--;
+}
+</Insert>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="16:40:57000">
+<Copy StartSeek="0" EndSeek="189"/>
+<Insert>
+</Insert>
+<Copy StartSeek="229" EndSeek="307"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="16:53:1000">
+<Copy StartSeek="0" EndSeek="189"/>
+<Copy StartSeek="278" EndSeek="396"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="09:43:32000">
+<Copy StartSeek="0" EndSeek="278"/>
+<Copy StartSeek="279" EndSeek="397"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="09:43:37000">
+<Copy StartSeek="0" EndSeek="319"/>
+<Insert>	iph-&gt;sport = dpe-&gt;mod.mod_tuple.sip;
+	iph-&gt;daddr = dpe-&gt;mod.mod_tuple.dip;
+</Insert>
+<Copy StartSeek="393" EndSeek="395"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="09:43:49000">
+<Copy StartSeek="0" EndSeek="211"/>
+<Insert>		(dpa_tcp_hdr_t *)((uint8_t *)pkt-&gt;ip_hdr +  dpe-&gt;mod.l4_offset);
+</Insert>
+<Copy StartSeek="277" EndSeek="278"/>
+<Copy StartSeek="279" EndSeek="395"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="09:46:15000">
+<Copy StartSeek="0" EndSeek="278"/>
+<Insert>
+</Insert>
+<Copy StartSeek="278" EndSeek="394"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="09:51:20000">
+<Copy StartSeek="0" EndSeek="189"/>
+<Insert>	dpa_tcp_hdr_t *th = 
+		(dpa_tcp_hdr_t *)((uint8_t *)pkt-&gt;ip_hdr + dpe-&gt;mod.l4_offset);
+
+	/* HAIM FIXME : IPv6 Next header ?? */
+	th-&gt;sport = dpe-&gt;mod.mod_tuple.sip;
+	th-&gt;daddr = dpe-&gt;mod.mod_tuple.dip;
+}
+</Insert>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="10:14:52000">
+<Copy StartSeek="0" EndSeek="189"/>
+<Copy StartSeek="236" EndSeek="269"/>
+<Insert>		
+	l4-&gt;sport = dpe-&gt;mod.mod_tuple.sip;
+	l4-&gt;dport = dpe-&gt;mod.mod_tuple.dip;
+</Insert>
+<Copy StartSeek="319" EndSeek="321"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="10:16:4000">
+<Copy StartSeek="0" EndSeek="271"/>
+<Insert>	l4-&gt;sport = mt-&gt;sport;
+	l4-&gt;dport = mt-&gt;dport;
+</Insert>
+<Copy StartSeek="318" EndSeek="320"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="10:22:54000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpm_l4_mdfy(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="129" EndSeek="324"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:25:41000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpa_mdf_l4_mdfy(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="128" EndSeek="323"/>
+</Delta>
+</DeltaFile>

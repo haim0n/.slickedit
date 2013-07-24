@@ -1,0 +1,751 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="51" Comment="" Date="2013/06/02" Time="13:12:31000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* dpa_mod.c
+*
+* DESCRIPTION:
+*     DPA module sources.
+* 
+*******************************************************************************/
+
+#include &lt;linux/module.h&gt;
+#include &lt;linux/moduleparam.h&gt;
+#include &lt;linux/interrupt.h&gt;
+#include &lt;linux/time.h&gt;
+#include &lt;linux/delay.h&gt;
+
+#include &lt;dpa_os.h&gt;
+#include &lt;dpa.h&gt;
+#include "../../mod/dpa/dpa_cls.h"
+#include "dev.h"
+#include "event.h"
+#include "proc_fs.h"
+
+#include &lt;eth/eth.h&gt;
+#include &lt;log/log.h&gt;
+#include &lt;xml/ezxml.h&gt;
+#include &lt;util/string.h&gt;
+#include &lt;util/mem.h&gt;
+#include &lt;util/queue.h&gt;
+#include &lt;util/timer.h&gt;
+
+
+#ifdef MODULE_LICENSE
+MODULE_LICENSE("MARVELL");
+#endif
+
+
+static char xml_string[] = "&lt;DPA&gt;\n"
+ "&lt;!-- Physical ports configuration --&gt;\n"
+ " &lt;Interfaces&gt;\n"
+ "  &lt;Port&gt;\n"
+ "    &lt;Id&gt;0&lt;/Id&gt;\n"
+ "    &lt;Mtu&gt;1500&lt;/Mtu&gt;\n"
+ "    &lt;Rx_Desc_Num&gt;128&lt;/Rx_Desc_Num&gt;\n"
+ "    &lt;Tx_Desc_Num&gt;256&lt;/Tx_Desc_Num&gt;\n"
+ "   &lt;/Port&gt;\n"
+ "  &lt;Port&gt;\n"
+ "    &lt;Id&gt;1&lt;/Id&gt;\n"
+ "    &lt;Mtu&gt;1500&lt;/Mtu&gt;\n"
+ "    &lt;Rx_Desc_Num&gt;128&lt;/Rx_Desc_Num&gt;\n"
+ "    &lt;Tx_Desc_Num&gt;256&lt;/Tx_Desc_Num&gt;\n"
+ "   &lt;/Port&gt;\n"
+ "  &lt;Port&gt;\n"
+ "    &lt;Id&gt;2&lt;/Id&gt;\n"
+ "    &lt;Mtu&gt;1500&lt;/Mtu&gt;\n"
+ "    &lt;Rx_Desc_Num&gt;128&lt;/Rx_Desc_Num&gt;\n"
+ "    &lt;Tx_Desc_Num&gt;256&lt;/Tx_Desc_Num&gt;\n"
+ "   &lt;/Port&gt;\n"
+ "   &lt;Port&gt;\n"
+ "     &lt;Id&gt;3&lt;/Id&gt;\n"
+ "     &lt;Mtu&gt;1500&lt;/Mtu&gt;\n"
+ "     &lt;Rx_Desc_Num&gt;128&lt;/Rx_Desc_Num&gt;\n"
+ "     &lt;Tx_Desc_Num&gt;256&lt;/Tx_Desc_Num&gt;\n"
+ "   &lt;/Port&gt;\n"
+ " &lt;/Interfaces&gt;\n"
+ "&lt;/DPA&gt;\n";
+
+
+
+static void __exit dpa_mod_exit(void) {
+  dpa_proc_fs_shutdown();
+  dpa_dev_shutdown();
+  dpa_event_shutdown();
+  dpa_shutdown();
+}
+module_exit(dpa_mod_exit);
+
+ 
+static int __init dpa_mod_init(void) {
+  printk(KERN_INFO "\nMarvell Data Processing Acceleration Engine.\n%s\n\n", dpa_get_version());
+
+  if (dpa_init(xml_string)) {
+      goto fail;
+  }
+
+  if (dpa_dev_init()) {
+      goto fail;
+  }
+
+  if (dpa_event_init()) {
+      goto fail;
+  }
+
+  if (dpa_proc_fs_init()) {
+      goto fail;
+  }
+
+  return 0;
+
+fail:
+  dpa_mod_exit();
+
+  return -1;
+}
+module_init(dpa_mod_init);
+
+/* gcc compatibility garbage */
+void __aeabi_unwind_cpp_pr0(void) {
+}
+
+void __aeabi_unwind_cpp_pr1(void) {
+}</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="20:00:45000">
+<Copy StartSeek="0" EndSeek="1923"/>
+<Copy StartSeek="1929" EndSeek="1993"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="2002" EndSeek="4556"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="13:12:48000">
+<Copy StartSeek="0" EndSeek="2222"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2228" EndSeek="2375"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="2384" EndSeek="4568"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="13:13:14000">
+<Copy StartSeek="0" EndSeek="2334"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2341" EndSeek="2381"/>
+<Insert>#endif
+</Insert>
+<Copy StartSeek="2382" EndSeek="4568"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="13:13:28000">
+<Copy StartSeek="0" EndSeek="2341"/>
+<Copy StartSeek="2351" EndSeek="4578"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="13:13:35000">
+<Copy StartSeek="0" EndSeek="2341"/>
+<Insert>return 0;
+</Insert>
+<Copy StartSeek="2353" EndSeek="4580"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="13:13:37000">
+<Copy StartSeek="0" EndSeek="1151"/>
+<Insert> "    &lt;Rx_Desc_Num&gt;8&lt;/Rx_Desc_Num&gt;\n"
+ "    &lt;Tx_Desc_Num&gt;16&lt;/Tx_Desc_Num&gt;\n"
+</Insert>
+<Copy StartSeek="1229" EndSeek="1307"/>
+<Insert> "     &lt;Rx_Desc_Num&gt;8&lt;/Rx_Desc_Num&gt;\n"
+ "     &lt;Tx_Desc_Num&gt;16&lt;/Tx_Desc_Num&gt;\n"
+</Insert>
+<Copy StartSeek="1387" EndSeek="1925"/>
+<Insert>#if 0
+</Insert>
+<Copy StartSeek="1925" EndSeek="1989"/>
+<Insert>#endif
+}
+</Insert>
+<Copy StartSeek="1991" EndSeek="2211"/>
+<Insert>#if 0
+</Insert>
+<Copy StartSeek="2212" EndSeek="2318"/>
+<Insert>#endif
+  return 0;
+</Insert>
+<Copy StartSeek="2319" EndSeek="2359"/>
+<Insert>
+}
+</Insert>
+<Copy StartSeek="2361" EndSeek="4545"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="20:48:23000">
+<Copy StartSeek="0" EndSeek="698"/>
+<Insert>
+</Insert>
+<Copy StartSeek="726" EndSeek="1178"/>
+<Insert> "    &lt;Rx_Desc_Num&gt;16&lt;/Rx_Desc_Num&gt;\n"
+ "    &lt;Tx_Desc_Num&gt;32&lt;/Tx_Desc_Num&gt;\n"
+</Insert>
+<Copy StartSeek="1258" EndSeek="1336"/>
+<Insert> "     &lt;Rx_Desc_Num&gt;16&lt;/Rx_Desc_Num&gt;\n"
+ "     &lt;Tx_Desc_Num&gt;32&lt;/Tx_Desc_Num&gt;\n"
+</Insert>
+<Copy StartSeek="1418" EndSeek="1916"/>
+<Insert>static void __exit dpa_mod_exit(void)
+{
+</Insert>
+<Copy StartSeek="2568" EndSeek="2632"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="2659" EndSeek="2689"/>
+<Insert>static int __init dpa_mod_init(void)
+{
+</Insert>
+<Copy StartSeek="2728" EndSeek="2825"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="2856" EndSeek="3057"/>
+<Insert>module_init(dpa_mod_init);
+
+
+
+
+
+
+#if 0
+inline void timer_enable(uint8_t timer, bool enable) {
+  uint32_t reg_timer_ctrl, reg_bridge_int;
+
+  /* Timer control and bridge interrupt register */ 
+  reg_timer_ctrl = DPA_REG_READ(TIMER_CTRL_REG);
+  reg_bridge_int = DPA_REG_READ(BRIDGE_INT_MASK_REG);
+  
+  printk(KERN_ERR"Enabling timer %d, curr reg_timer_ctrl = 0x%x, reg_bridge_int  = 0x%x", 
+         timer, reg_timer_ctrl, reg_bridge_int);
+
+  if (enable) {
+      reg_timer_ctrl |= TIMER_CTRL_EN_MASK(timer);
+      //reg_bridge_int |= BRIDGE_INT_TIMER_MASK(timer);
+  } else {
+      reg_timer_ctrl &amp;= ~TIMER_CTRL_EN_MASK(timer);
+      //reg_bridge_int &amp;= ~BRIDGE_INT_TIMER_MASK(timer);
+  }
+  DPA_REG_WRITE(TIMER_CTRL_REG, reg_timer_ctrl);
+  //DPA_REG_WRITE(BRIDGE_INT_MASK_REG, reg_bridge_int);
+}
+
+
+
+static uint32_t timer_duration, timer_num, timer_count = 0;
+
+irqreturn_t dpa_timer_isr(int irq, void* dev_id) {
+  uint32_t cause, cause_int;
+  (void) irq;
+  (void) dev_id;
+
+  /* Interrupt cause */
+  cause = DPA_REG_READ(BRIDGE_INT_CAUSE_REG);
+  cause_int = DPA_REG_READ(MV_IRQ_CAUSE_HIGH_REG);
+
+  printk(KERN_ERR "*** irq=%d TIMER, IRQ CAUSE = 0x%x, main cause = 0x%x\n", 
+         irq,cause, cause_int);
+
+  /* Handling timer 2 only */
+  if (cause &amp; BRIDGE_INT_TIMER2_MASK) {
+      cause &amp;= ~BRIDGE_INT_TIMER2_MASK;
+      
+      ++timer_count;
+
+      printk(KERN_ERR "+++ TIMER 2, count = %d\n", timer_count);
+
+      /* Clear timer interrupt cause */
+      DPA_REG_WRITE(BRIDGE_INT_CAUSE_REG, cause);
+      
+      timer_set_val(timer_num, timer_duration);
+
+      if (timer_count == 2) {
+          printk(KERN_ERR "+++ STOPPING TIMER 2\n");
+          timer_set_val(timer_num, 0);
+      }
+
+      return IRQ_HANDLED;
+  }
+
+  return IRQ_NONE;
+}
+
+uint32_t timer_init(uint8_t timer) {
+  uint32_t irq;
+
+  irq = TIMER_IRQ_NUM(timer);
+  
+  printk(KERN_ERR"Registering timer %d irq = %d", timer, irq);
+
+  return request_fiq(irq, dpa_timer_isr, 0, NULL, NULL);
+  //return request_irq(irq, dpa_timer_isr, 0, NULL, dpa_timer_isr);
+}
+
+
+uint32_t timer_shutdown(uint8_t timer) {
+  uint32_t irq;
+
+  irq = TIMER_IRQ_NUM(timer);
+
+  free_fiq(irq, NULL);
+  //free_irq(irq, dpa_timer_isr);
+
+  return 0;
+}
+#endif
+</Insert>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="17:27:1000">
+<Copy StartSeek="0" EndSeek="2252"/>
+<Insert>static void eth_mod_create_proc(void) {
+</Insert>
+<Copy StartSeek="2292" EndSeek="2826"/>
+<Insert>  eth_mod_create_proc();
+</Insert>
+<Copy StartSeek="2851" EndSeek="3083"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="17:27:7000">
+<Copy StartSeek="0" EndSeek="2409"/>
+<Insert>static void eth_mod_remove_proc(void) {
+</Insert>
+<Copy StartSeek="2449" EndSeek="2632"/>
+<Insert>  eth_mod_remove_proc();
+</Insert>
+<Copy StartSeek="2657" EndSeek="3083"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="17:27:13000">
+<Copy StartSeek="0" EndSeek="2406"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="2458" EndSeek="3132"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:16:54000">
+<Copy StartSeek="0" EndSeek="2251"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2528" EndSeek="3408"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:18:16000">
+<Copy StartSeek="0" EndSeek="2363"/>
+<Insert>	char mode;
+</Insert>
+<Copy StartSeek="2374" EndSeek="3407"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:18:32000">
+<Copy StartSeek="0" EndSeek="2393"/>
+<Insert>		if (get_user(mode, buffer))
+</Insert>
+<Copy StartSeek="2422" EndSeek="2441"/>
+<Insert>		if (mode &gt;= '0' &amp;&amp; mode &lt;= '5')
+			ai_usermode = mode - '0';
+</Insert>
+<Copy StartSeek="2500" EndSeek="3402"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:18:43000">
+<Copy StartSeek="0" EndSeek="2441"/>
+<Insert>		if (cmd &gt;= '0' &amp;&amp; cmd &lt;= '5')
+			ai_usercmd = cmd - '0';
+</Insert>
+<Copy StartSeek="2464" EndSeek="3366"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:19:22000">
+<Copy StartSeek="0" EndSeek="2459"/>
+<Insert>			;
+</Insert>
+<Copy StartSeek="2483" EndSeek="3385"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:19:34000">
+<Copy StartSeek="0" EndSeek="2251"/>
+<Insert>static int dpa_mod_cls_clr(struct file *file, const char __user *buffer,
+</Insert>
+<Copy StartSeek="2324" EndSeek="3385"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:19:45000">
+<Copy StartSeek="0" EndSeek="2441"/>
+<Insert>		if (cmd == '1')
+</Insert>
+<Copy StartSeek="2470" EndSeek="2494"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="2535" EndSeek="3434"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:20:21000">
+<Copy StartSeek="0" EndSeek="2708"/>
+<Insert>  create_proc_entry("dpe_clean",755, dpa_stats);
+</Insert>
+<Copy StartSeek="2755" EndSeek="3432"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:20:35000">
+<Copy StartSeek="0" EndSeek="2708"/>
+<Insert>  create_proc_entry("dpe_cls",755, dpa_stats);
+</Insert>
+<Copy StartSeek="2759" EndSeek="3436"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:20:52000">
+<Copy StartSeek="0" EndSeek="2708"/>
+<Insert>  create_proc_entry("dpe_cls_cmd",755, dpa_stats);
+</Insert>
+<Copy StartSeek="2755" EndSeek="3432"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:21:3000">
+<Copy StartSeek="0" EndSeek="2755"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="2801" EndSeek="3475"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:23:39000">
+<Copy StartSeek="0" EndSeek="2708"/>
+<Insert>  create_proc_entry("cls_cmd",755, dpa_stats);
+</Insert>
+<Copy StartSeek="2761" EndSeek="2804"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="2808" EndSeek="3482"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:24:5000">
+<Copy StartSeek="0" EndSeek="2762"/>
+<Insert>  res-&gt;write_proc = proc_alignment_write;
+
+}
+
+</Insert>
+<Copy StartSeek="2802" EndSeek="3476"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:24:38000">
+<Copy StartSeek="0" EndSeek="2883"/>
+<Copy StartSeek="2926" EndSeek="3519"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:27:34000">
+<Copy StartSeek="0" EndSeek="725"/>
+<Insert>
+</Insert>
+<Copy StartSeek="753" EndSeek="3546"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:29:10000">
+<Copy StartSeek="0" EndSeek="790"/>
+<Copy StartSeek="811" EndSeek="3567"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:29:51000">
+<Copy StartSeek="0" EndSeek="790"/>
+<Insert>#include &lt;dpa_cls.h&gt;
+</Insert>
+<Copy StartSeek="825" EndSeek="3581"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:30:42000">
+<Copy StartSeek="0" EndSeek="2656"/>
+<Copy StartSeek="2699" EndSeek="3624"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:31:7000">
+<Copy StartSeek="0" EndSeek="2656"/>
+<Insert>  static struct proc_dir_entry *dpa_stats;
+</Insert>
+<Copy StartSeek="2694" EndSeek="3619"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:31:10000">
+<Copy StartSeek="0" EndSeek="2808"/>
+<Insert>  res = create_proc_entry("cls_cmd",755, dpa_stats);
+</Insert>
+<Copy StartSeek="2861" EndSeek="3619"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:33:38000">
+<Copy StartSeek="0" EndSeek="2808"/>
+<Insert>  res = create_proc_entry("cls_cmd",455, dpa_stats);
+</Insert>
+<Copy StartSeek="2861" EndSeek="3619"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:33:42000">
+<Copy StartSeek="0" EndSeek="2808"/>
+<Insert>  res = create_proc_entry("cls_cmd",255, dpa_stats);
+</Insert>
+<Copy StartSeek="2861" EndSeek="3619"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/08/30" Time="18:33:51000">
+<Copy StartSeek="0" EndSeek="2520"/>
+<Insert>		case '1':
+</Insert>
+<Copy StartSeek="2532" EndSeek="3619"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/09/02" Time="10:32:28000">
+<Copy StartSeek="0" EndSeek="2313"/>
+<Insert>static int dpa_mod_cls_cmd(struct file *file, const char __user *buffer,
+</Insert>
+<Copy StartSeek="2382" EndSeek="2528"/>
+<Insert>			dpa_cls_cmd_clean();
+</Insert>
+<Copy StartSeek="2548" EndSeek="2800"/>
+<Insert>  res = create_proc_entry("cls_cmd",200, dpa_stats);
+</Insert>
+<Copy StartSeek="2849" EndSeek="2850"/>
+<Insert>  res-&gt;write_proc = dpa_mod_cls_cmd;
+</Insert>
+<Copy StartSeek="2883" EndSeek="2967"/>
+<Insert>  remove_proc_entry("cls_cmd", dpa_stats);
+</Insert>
+<Copy StartSeek="3006" EndSeek="3599"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/09/02" Time="10:33:41000">
+<Copy StartSeek="0" EndSeek="2516"/>
+<Insert>		case '0':
+</Insert>
+<Copy StartSeek="2528" EndSeek="3599"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/09/02" Time="10:36:14000">
+<Copy StartSeek="0" EndSeek="2516"/>
+<Insert>		case '1':
+</Insert>
+<Copy StartSeek="2528" EndSeek="3599"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/09/02" Time="10:36:23000">
+<Copy StartSeek="0" EndSeek="2313"/>
+<Insert>static int dpa_mod_cls(struct file *file, const char __user *buffer,
+</Insert>
+<Copy StartSeek="2386" EndSeek="2532"/>
+<Insert>			dpa_cls_clean();
+</Insert>
+<Copy StartSeek="2556" EndSeek="2858"/>
+<Insert>  res-&gt;write_proc = dpa_mod_cls;
+</Insert>
+<Copy StartSeek="2895" EndSeek="3611"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/09/02" Time="10:38:53000">
+<Copy StartSeek="0" EndSeek="2808"/>
+<Copy StartSeek="2882" EndSeek="2931"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2947" EndSeek="3068"/>
+<Copy StartSeek="3132" EndSeek="3171"/>
+<Copy StartSeek="3186" EndSeek="3779"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/09/02" Time="10:53:54000">
+<Copy StartSeek="0" EndSeek="2808"/>
+<Insert>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+  res = create_proc_entry("cls_cmd",200, dpa_stats);
+=======
+</Insert>
+<Copy StartSeek="2808" EndSeek="2857"/>
+<Insert>&gt;&gt;&gt;&gt;&gt;&gt;&gt; bugfix
+
+</Insert>
+<Copy StartSeek="2858" EndSeek="3690"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/09/02" Time="10:53:58000">
+<Copy StartSeek="0" EndSeek="2979"/>
+<Insert>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+  remove_proc_entry("cls_cmd", dpa_stats);
+=======
+</Insert>
+<Copy StartSeek="2979" EndSeek="3018"/>
+<Insert>&gt;&gt;&gt;&gt;&gt;&gt;&gt; bugfix
+</Insert>
+<Copy StartSeek="3018" EndSeek="3611"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/09/02" Time="10:54:7000">
+<Copy StartSeek="0" EndSeek="451"/>
+<Insert>*     DPA module sources. 
+</Insert>
+<Copy StartSeek="477" EndSeek="697"/>
+<Insert>#include &lt;linux/proc_fs.h&gt;
+#include &lt;linux/uaccess.h&gt;
+
+</Insert>
+<Copy StartSeek="698" EndSeek="806"/>
+<Insert>
+</Insert>
+<Copy StartSeek="828" EndSeek="1462"/>
+<Insert> " &lt;/Interfaces&gt;\n"  
+ " &lt;!-- Logging configuration --&gt;\n"
+ " &lt;Logging&gt;\n"
+ "   &lt;LogLevel&gt;6&lt;/LogLevel&gt;\n"
+ "   &lt;LogApi&gt;0&lt;/LogApi&gt;\n"
+ "   &lt;RemoteSysLog&gt;\n"
+ "    &lt;Address&gt;10.5.24.61&lt;/Address&gt;\n"
+ "    &lt;Port&gt;514&lt;/Port&gt;\n"
+ "    &lt;Status&gt;0&lt;/Status&gt;\n"
+ "   &lt;/RemoteSysLog&gt;\n"
+ "   &lt;PacketCapture&gt;\n"
+ "    &lt;Address&gt;10.5.24.61&lt;/Address&gt;\n"
+ "    &lt;Status&gt;0&lt;/Status&gt;\n"
+ "   &lt;/PacketCapture&gt;\n"
+ "   &lt;Local&gt;\n"
+ "    &lt;Status&gt;0&lt;/Status&gt;\n"
+ "   &lt;/Local&gt;\n"
+ " &lt;/Logging&gt;\n"
+</Insert>
+<Copy StartSeek="1482" EndSeek="1498"/>
+<Insert>static struct proc_dir_entry *dpa_stats;
+
+uint32_t dpa_cpu_cycles;
+uint32_t dpa_rx_pending;
+
+static int dpa_mod_stats_read(char *buffer, char **buffer_location, off_t offset,
+                            int buffer_length, int *zero, void *ptr)
+{
+  int n = sprintf(buffer, "%d / %d\n", dpa_cpu_cycles, dpa_rx_pending);
+
+  return n;
+}
+
+static int dpa_mod_cls_cmd(struct file *file, const char __user *buffer,
+				unsigned long count, void *data)
+{
+	char cmd;
+
+	if (count &gt; 0) {
+		if (get_user(cmd, buffer))
+			return -EFAULT;
+		switch (cmd) {
+		case '0':
+			dpa_cls_cmd_clean();
+			break;
+		default:
+			break;
+		}
+		
+	}
+	return count;
+}
+
+
+static void dpa_mod_create_proc(void) {
+  static struct proc_dir_entry *res;
+
+  dpa_stats = proc_mkdir("dpa", NULL);
+  create_proc_read_entry("stats", 0, dpa_stats, dpa_mod_stats_read, NULL);
+  res = create_proc_entry("cls",200, dpa_stats);
+
+  res-&gt;write_proc = dpa_mod_cls_cmd;
+}
+
+static void dpa_mod_remove_proc(void) {
+  remove_proc_entry("stats", dpa_stats);
+  remove_proc_entry("cls", dpa_stats);
+  remove_proc_entry("dpa", NULL);
+}
+
+
+</Insert>
+<Copy StartSeek="1498" EndSeek="1538"/>
+<Copy StartSeek="1564" EndSeek="1628"/>
+<Insert>  dpa_mod_remove_proc();
+}
+</Insert>
+<Copy StartSeek="1630" EndSeek="1796"/>
+<Insert>
+  dpa_mod_create_proc();
+    
+</Insert>
+<Copy StartSeek="1844" EndSeek="1990"/>
+<Copy StartSeek="2040" EndSeek="2077"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="2078" EndSeek="2091"/>
+<Insert>}
+module_init(dpa_mod_init);</Insert>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2013/02/17" Time="18:21:6000">
+<Copy StartSeek="0" EndSeek="1047"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1110" EndSeek="2298"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2013/02/17" Time="18:21:24000">
+<Copy StartSeek="0" EndSeek="1047"/>
+<Insert>int mv_eth_dpa_install(int port, mv_eth_dpa_params_t *params);
+</Insert>
+<Copy StartSeek="1047" EndSeek="1495"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1558" EndSeek="2297"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2013/02/17" Time="18:23:49000">
+<Copy StartSeek="0" EndSeek="1857"/>
+<Insert>  mv_eth_dpa_install(0,NULL);
+</Insert>
+<Copy StartSeek="1888" EndSeek="2298"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2013/02/17" Time="18:25:28000">
+<Copy StartSeek="0" EndSeek="1760"/>
+<Insert>  printk(KERN_INFO "\nMarvell Data Processing Acceleration Engine.\n%s\n\n", dpa_get_version());
+</Insert>
+<Copy StartSeek="1763" EndSeek="1812"/>
+<Copy StartSeek="1909" EndSeek="2301"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2013/02/17" Time="18:26:15000">
+<Copy StartSeek="0" EndSeek="1495"/>
+<Copy StartSeek="1525" EndSeek="2331"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2013/02/17" Time="18:29:52000">
+<Copy StartSeek="0" EndSeek="1495"/>
+<Insert>mv_eth_dpa_params_t *params;
+
+</Insert>
+<Copy StartSeek="1599" EndSeek="2405"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2013/02/17" Time="18:30:26000">
+<Copy StartSeek="0" EndSeek="1495"/>
+<Copy StartSeek="1649" EndSeek="2559"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2013/02/17" Time="18:30:55000">
+<Copy StartSeek="0" EndSeek="1047"/>
+<Copy StartSeek="1048" EndSeek="1181"/>
+<Insert> "    &lt;Mtu&gt;1500&lt;/Mtu&gt;\n"
+</Insert>
+<Copy StartSeek="1206" EndSeek="1317"/>
+<Insert> "     &lt;Id&gt;1&lt;/Id&gt;\n"
+</Insert>
+<Copy StartSeek="1338" EndSeek="1496"/>
+<Insert>typedef int (*dpa_tx_handler_t)(int port, struct sk_buff *skb);
+typedef int (*dpa_rx_handler_t)(int port, struct sk_buff *skb, uint32_t rx_desc_status);
+
+typedef struct {
+  dpa_tx_handler_t tx_handler;
+  dpa_rx_handler_t rx_handler;
+} mv_eth_dpa_params_t;
+
+
+int mv_eth_dpa_install(int port, mv_eth_dpa_params_t *params);
+
+</Insert>
+<Copy StartSeek="1498" EndSeek="1699"/>
+<Insert>  
+  mv_eth_dpa_install(0, NULL);
+  return 0;
+#if 0
+</Insert>
+<Copy StartSeek="1699" EndSeek="1796"/>
+<Copy StartSeek="1797" EndSeek="2044"/>
+<Insert>#endif
+}
+</Insert>
+<Copy StartSeek="2046" EndSeek="2182"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2013/04/21" Time="17:43:9000">
+<Copy StartSeek="0" EndSeek="1338"/>
+<Insert> "     &lt;Mtu&gt;1500&lt;/Mtu&gt;\n"
+</Insert>
+<Copy StartSeek="1364" EndSeek="2182"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2013/04/21" Time="17:45:27000">
+<Copy StartSeek="0" EndSeek="1181"/>
+<Insert> "    &lt;Mtu&gt;2000&lt;/Mtu&gt;\n"
+</Insert>
+<Copy StartSeek="1516" EndSeek="1627"/>
+<Insert> "     &lt;Id&gt;2&lt;/Id&gt;\n"
+ "     &lt;Mtu&gt;2000&lt;/Mtu&gt;\n"
+</Insert>
+<Copy StartSeek="1674" EndSeek="2492"/>
+</Delta>
+</DeltaFile>

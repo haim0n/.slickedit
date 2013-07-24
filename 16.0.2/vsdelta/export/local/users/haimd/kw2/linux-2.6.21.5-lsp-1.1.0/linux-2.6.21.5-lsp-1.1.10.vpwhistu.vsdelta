@@ -1,0 +1,1908 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="23" Comment="" Date="2012/04/24" Time="11:13:4000" NL="\10" Encoding="text">
+<Insert>[Global]
+CurrentProject=linux-2.6.21.5-lsp-1.1.10.vpj
+[ProjectDates]
+linux-2.6.21.5-lsp-1.1.10.vpj=20120418073627000
+[ActiveConfig]
+linux-2.6.21.5-lsp-1.1.10.vpj=Debug
+[State]
+SCREEN: 1680 1050 0 27 1678 966 0 0 N 0 0 0 0 1628 809 0
+CWD: ../linux-2.6.21.5-lsp-1.1.0
+BUFFER: BN="include/linux/if.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.3341 CL=21 LE=0 CX=20 CY=29 WI=5 BI=46 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv4/devinet.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4039 CL=60 LE=0 CX=59 CY=20 WI=5 BI=48 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/dev.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.25015 CL=21 LE=0 CX=20 CY=23 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/bridge/br_if.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6819 CL=1 LE=0 CX=0 CY=19 WI=5 BI=57 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="drivers/block/aoe/aoenet.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.498 CL=24 LE=0 CX=23 CY=22 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/Makefile"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Makefile	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=39 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="arch/avr32/kernel/kprobes.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1259 CL=78 LE=0 CX=77 CY=24 WI=5 BI=61 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.622 CL=27 LE=0 CX=26 CY=29 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna.bak/klna_evnt_mgr.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.225 CL=47 LE=0 CX=46 CY=13 WI=5 BI=52 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="kernel/kprobes.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=744 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.22542 CL=23 LE=0 CX=22 CY=23 WI=5 BI=58 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131817 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.10443 CL=19 LE=0 CX=18 CY=23 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/sock.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.22028 CL=52 LE=0 CX=51 CY=14 WI=5 BI=51 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/net/sock.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8082 CL=9 LE=0 CX=8 CY=22 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/linux/kallsyms.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1119 CL=1 LE=0 CX=0 CY=5 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/asm-arm/cacheflush.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11224 CL=1 LE=0 CX=0 CY=5 WI=5 BI=59 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=11 ",,,"
+BUFFER: BN="include/net/sock.h"
+VIEW: LN=.8082 CL=9 LE=0 CX=15 CY=22 WI=201 BI=17 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+BUFFER: BN="include/linux/kallsyms.h"
+VIEW: LN=.579 CL=1 LE=0 CX=7 CY=19 WI=67 BI=14 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="include/asm-arm/cacheflush.h"
+VIEW: LN=.11224 CL=2 LE=0 CX=8 CY=24 WI=195 BI=59 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=6 ",,,"
+BUFFER: BN="include/linux/if.h"
+VIEW: LN=.3341 CL=21 LE=0 CX=27 CY=29 WI=110 BI=46 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=12 ",,,"
+BUFFER: BN="net/ipv4/devinet.c"
+VIEW: LN=.4039 CL=60 LE=0 CX=66 CY=20 WI=97 BI=48 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=18 ",,,"
+BUFFER: BN="net/core/dev.c"
+VIEW: LN=.25015 CL=21 LE=0 CX=27 CY=23 WI=314 BI=25 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=30 ",,,"
+BUFFER: BN="net/bridge/br_if.c"
+VIEW: LN=.6819 CL=1 LE=0 CX=7 CY=19 WI=159 BI=57 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=29 ",,,"
+BUFFER: BN="drivers/block/aoe/aoenet.c"
+VIEW: LN=.498 CL=24 LE=0 CX=30 CY=22 WI=198 BI=36 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+BUFFER: BN="../../dpa/klna/Makefile"
+VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=179 BI=39 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="arch/avr32/kernel/kprobes.c"
+VIEW: LN=.1259 CL=78 LE=0 CX=84 CY=24 WI=297 BI=61 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=4 ",,,"
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+VIEW: LN=.622 CL=27 LE=0 CX=35 CY=29 WI=185 BI=27 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=7 ",,,"
+BUFFER: BN="../../dpa/klna.bak/klna_evnt_mgr.c"
+VIEW: LN=.225 CL=47 LE=0 CX=53 CY=13 WI=230 BI=52 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=26 ",,,"
+BUFFER: BN="kernel/kprobes.c"
+VIEW: LN=.22542 CL=23 LE=0 CX=31 CY=23 WI=187 BI=58 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+VIEW: LN=.10443 CL=19 LE=0 CX=27 CY=23 WI=205 BI=10 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=3 ",,,"
+BUFFER: BN="net/core/sock.c"
+VIEW: LN=.21851 CL=1 LE=0 CX=9 CY=7 WI=300 BI=51 HT=0 HN=0 HF=0 HC=4
+FILEHIST: 9
+include/linux/spinlock.h
+include/linux/kprobes.h
+kernel/kprobes.c
+../../dpa/klna/klna_nc.c
+include/linux/module.h
+net/core/sock.c
+drivers/net/pppoe.c
+kernel/kallsyms.c
+include/net/sock.h
+DEBUG: 0 0 0 0 3 0 gdb
+printf
+strcpy
+std::*
+DEBUG2: 0
+TBCLASS: 0 0
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="utf8" Date="2012/04/16" Time="16:38:12000">
+<Insert>[ActiveConfig]
+linux-2.6.21.5-lsp-1.1.10.vpj=,Debug
+</Insert>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:38:12000">
+<Copy StartSeek="0" EndSeek="78"/>
+<Insert>linux-2.6.21.5-lsp-1.1.10.vpj=,Debug
+</Insert>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:38:12000">
+<Copy StartSeek="54" EndSeek="168"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:38:12000">
+<Copy StartSeek="0" EndSeek="69"/>
+<Insert>linux-2.6.21.5-lsp-1.1.10.vpj=20120416133812000
+</Insert>
+<Copy StartSeek="117" EndSeek="168"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:38:22000">
+<Copy StartSeek="0" EndSeek="69"/>
+<Insert>linux-2.6.21.5-lsp-1.1.10.vpj=20120416133822000
+</Insert>
+<Copy StartSeek="117" EndSeek="168"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:47:20000">
+<Copy StartSeek="0" EndSeek="69"/>
+<Insert>linux-2.6.21.5-lsp-1.1.10.vpj=20120416134720000
+</Insert>
+<Copy StartSeek="117" EndSeek="168"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:47:40000">
+<Copy StartSeek="0" EndSeek="168"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:48:26000">
+<Copy StartSeek="0" EndSeek="628"/>
+<Insert>VIEW: LN=.1527 CL=60 LE=0 CX=68 CY=23 WI=102 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="699" EndSeek="1329"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:48:32000">
+<Copy StartSeek="0" EndSeek="266"/>
+<Copy StartSeek="824" EndSeek="862"/>
+<Copy StartSeek="2299" EndSeek="2472"/>
+<Insert>VIEW: LN=.1527 CL=60 LE=0 CX=59 CY=23 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=1 ",,,"
+</Insert>
+<Copy StartSeek="3240" EndSeek="3278"/>
+<Insert>VIEW: LN=.1527 CL=60 LE=0 CX=66 CY=23 WI=171 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3798" EndSeek="3810"/>
+<Insert>../linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/kernel.h
+../linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/sysctl.h
+../linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/version.h
+../linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/version.h
+../linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netfilter/nf_conntrack.h
+</Insert>
+<Copy StartSeek="3810" EndSeek="3840"/>
+<Insert>../../dpa/klna/klna_nl.c
+</Insert>
+<Copy StartSeek="3863" EndSeek="3888"/>
+<Insert>../linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netfilter/nf_conntrack_ecache.h
+</Insert>
+<Copy StartSeek="4030" EndSeek="4097"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="17:37:38000">
+<Copy StartSeek="0" EndSeek="266"/>
+<Insert>BUFFER: BN="../../dpa/klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.435 CL=69 LE=0 CX=68 CY=23 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/Makefile"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Makefile	HM=0 MF=32 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2057 CL=42 LE=0 CX=41 CY=42 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv4/netfilter/ip_conntrack_netlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.27025 CL=63 LE=0 CX=62 CY=7 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="266" EndSeek="316"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="487" EndSeek="612"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="783" EndSeek="851"/>
+<Copy StartSeek="1129" EndSeek="1163"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=232 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.57973 CL=15 LE=0 CX=14 CY=7 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/rtnetlink.c"
+</Insert>
+<Copy StartSeek="1163" EndSeek="1336"/>
+<Insert>VIEW: LN=.4677 CL=26 LE=0 CX=25 CY=31 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=6 ",,,"
+</Insert>
+<Copy StartSeek="2236" EndSeek="2291"/>
+<Insert>VIEW: LN=.27025 CL=63 LE=0 CX=69 CY=7 WI=199 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3104" EndSeek="3198"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=58 CY=8 WI=200 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3268" EndSeek="3369"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=25 CY=23 WI=198 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3439" EndSeek="3520"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=175 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3886" EndSeek="3968"/>
+<Insert>VIEW: LN=.2057 CL=42 LE=0 CX=50 CY=42 WI=100 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4038" EndSeek="4120"/>
+<Insert>VIEW: LN=.435 CL=69 LE=0 CX=77 CY=23 WI=182 BI=17 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+BUFFER: BN="net/core/neighbour.c"
+VIEW: LN=.57973 CL=17 LE=0 CX=25 CY=23 WI=81 BI=22 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=2 ",,,"
+BUFFER: BN="net/core/rtnetlink.c"
+VIEW: LN=.4522 CL=16 LE=0 CX=24 CY=23 WI=267 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4679" EndSeek="4691"/>
+<Insert>../../dpa/klna/klna_kcompat.h
+</Insert>
+<Copy StartSeek="4691" EndSeek="4763"/>
+<Insert>include/linux/rtnetlink.h
+../../dpa/klna/klna_nl.c
+net/core/neighbour.c
+</Insert>
+<Copy StartSeek="4763" EndSeek="4809"/>
+<Copy StartSeek="4916" EndSeek="4983"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/04/17" Time="11:27:4000">
+<Copy StartSeek="0" EndSeek="487"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=51 CY=8 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="555" EndSeek="783"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=18 CY=23 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="851" EndSeek="1062"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/neighbour.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.57973 CL=17 LE=0 CX=16 CY=23 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/rtnetlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4677 CL=1 LE=0 CX=0 CY=26 WI=5 BI=30 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1129" EndSeek="1167"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5993 CL=26 LE=0 CX=25 CY=23 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1407" EndSeek="1445"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7817 CL=49 LE=0 CX=48 CY=23 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1685" EndSeek="1740"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.27025 CL=63 LE=0 CX=62 CY=7 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1980" EndSeek="2019"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11702 CL=22 LE=0 CX=21 CY=36 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2258" EndSeek="2306"/>
+<Copy StartSeek="2580" EndSeek="2753"/>
+<Insert>VIEW: LN=.225 CL=60 LE=0 CX=59 CY=13 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3657" EndSeek="3751"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=58 CY=8 WI=182 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3821" EndSeek="3922"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=25 CY=23 WI=175 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3992" EndSeek="4073"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=199 BI=18 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+BUFFER: BN="net/core/neighbour.c"
+VIEW: LN=.57973 CL=17 LE=0 CX=25 CY=23 WI=184 BI=28 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="net/core/rtnetlink.c"
+VIEW: LN=.4677 CL=1 LE=0 CX=7 CY=26 WI=267 BI=30 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4142" EndSeek="4224"/>
+<Insert>VIEW: LN=.5993 CL=26 LE=0 CX=32 CY=23 WI=100 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4295" EndSeek="4377"/>
+<Insert>VIEW: LN=.7817 CL=49 LE=0 CX=57 CY=23 WI=198 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4448" EndSeek="4547"/>
+<Insert>VIEW: LN=.27025 CL=63 LE=0 CX=69 CY=7 WI=200 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4618" EndSeek="4702"/>
+<Insert>VIEW: LN=.11702 CL=22 LE=0 CX=28 CY=36 WI=145 BI=17 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=7 ",,,"
+</Insert>
+<Copy StartSeek="4818" EndSeek="4866"/>
+<Insert>VIEW: LN=.225 CL=60 LE=0 CX=68 CY=13 WI=290 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5541" EndSeek="5646"/>
+<Insert>net/netlink/af_netlink.c
+</Insert>
+<Copy StartSeek="5646" EndSeek="5753"/>
+<Copy StartSeek="5778" EndSeek="5845"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/04/17" Time="11:29:20000">
+<Copy StartSeek="0" EndSeek="266"/>
+<Copy StartSeek="1664" EndSeek="1714"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8018 CL=52 LE=0 CX=51 CY=8 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1953" EndSeek="2010"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.614 CL=19 LE=0 CX=18 CY=23 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/Makefile"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Makefile	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5993 CL=26 LE=0 CX=25 CY=23 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7817 CL=49 LE=0 CX=48 CY=23 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2249" EndSeek="2304"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.27025 CL=63 LE=0 CX=62 CY=7 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2544" EndSeek="2583"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.14005 CL=1 LE=0 CX=0 CY=5 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna.bak/klna_evnt_mgr.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.225 CL=60 LE=0 CX=59 CY=13 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/neighbour.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.57973 CL=25 LE=0 CX=24 CY=28 WI=5 BI=30 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2823" EndSeek="2857"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4677 CL=22 LE=0 CX=21 CY=26 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/netlink/af_netlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.35549 CL=28 LE=0 CX=27 CY=30 WI=5 BI=33 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3099" EndSeek="3134"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19211 CL=29 LE=0 CX=28 CY=30 WI=5 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5079" EndSeek="5173"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=58 CY=8 WI=184 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5243" EndSeek="5344"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=25 CY=23 WI=182 BI=18 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+BUFFER: BN="../../dpa/klna/Makefile"
+VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=101 BI=28 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+VIEW: LN=.5993 CL=26 LE=0 CX=32 CY=23 WI=198 BI=20 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=4 ",,,"
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+VIEW: LN=.7817 CL=49 LE=0 CX=55 CY=23 WI=288 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5414" EndSeek="5513"/>
+<Insert>VIEW: LN=.27025 CL=63 LE=0 CX=69 CY=7 WI=141 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5584" EndSeek="5668"/>
+<Insert>VIEW: LN=.11702 CL=22 LE=0 CX=28 CY=36 WI=100 BI=24 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=7 ",,,"
+BUFFER: BN="../../dpa/klna.bak/klna_evnt_mgr.c"
+VIEW: LN=.225 CL=60 LE=0 CX=68 CY=13 WI=287 BI=29 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+BUFFER: BN="net/core/neighbour.c"
+VIEW: LN=.57973 CL=25 LE=0 CX=33 CY=28 WI=199 BI=30 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5740" EndSeek="5818"/>
+<Insert>VIEW: LN=.4677 CL=22 LE=0 CX=30 CY=26 WI=267 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6040" EndSeek="6123"/>
+<Insert>VIEW: LN=.35549 CL=28 LE=0 CX=36 CY=30 WI=241 BI=33 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=13 ",,,"
+BUFFER: BN="include/net/netlink.h"
+VIEW: LN=.19211 CL=17 LE=0 CX=23 CY=27 WI=218 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7258" EndSeek="7270"/>
+<Insert>include/linux/kernel.h
+../../dpa/klna/klna_nc.c
+../../dpa/klna/Makefile
+net/core/rtnetlink.c
+../../dpa/klna/klna_nl.c
+net/core/neighbour.c
+../../dpa/klna.bak/klna_evnt_mgr.c
+</Insert>
+<Copy StartSeek="7270" EndSeek="7296"/>
+<Copy StartSeek="7318" EndSeek="7343"/>
+<Copy StartSeek="7467" EndSeek="7534"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/04/17" Time="14:21:26000">
+<Copy StartSeek="0" EndSeek="266"/>
+<Insert>BUFFER: BN="include/net/neighbour.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1162 CL=18 LE=0 CX=17 CY=22 WI=5 BI=32 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7817 CL=49 LE=0 CX=48 CY=23 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6407 CL=34 LE=0 CX=33 CY=28 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="266" EndSeek="483"/>
+<Insert>VIEW: LN=.12163 CL=21 LE=0 CX=20 CY=22 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="553" EndSeek="584"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.10218 CL=1 LE=0 CX=0 CY=13 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="823" EndSeek="1044"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=51 CY=8 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1112" EndSeek="1340"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=18 CY=23 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1408" EndSeek="1634"/>
+<Insert>VIEW: LN=.27025 CL=63 LE=0 CX=62 CY=7 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1703" EndSeek="1742"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.14005 CL=1 LE=0 CX=0 CY=5 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1983" EndSeek="2017"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4677 CL=23 LE=0 CX=22 CY=26 WI=5 BI=33 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2257" EndSeek="2292"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19211 CL=21 LE=0 CX=20 CY=27 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2533" EndSeek="2571"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19795 CL=1 LE=0 CX=0 CY=2 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2809" EndSeek="2857"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.225 CL=47 LE=0 CX=46 CY=13 WI=5 BI=30 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3096" EndSeek="3307"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv4/arp.c"
+</Insert>
+<Copy StartSeek="4240" EndSeek="4413"/>
+<Insert>VIEW: LN=.10780 CL=45 LE=0 CX=44 CY=7 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/neighbour.c"
+</Insert>
+<Copy StartSeek="5058" EndSeek="5234"/>
+<Insert>VIEW: LN=.25718 CL=61 LE=0 CX=60 CY=43 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6027" EndSeek="6116"/>
+<Insert>VIEW: LN=.12163 CL=21 LE=0 CX=27 CY=22 WI=248 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6188" EndSeek="6264"/>
+<Insert>VIEW: LN=.10218 CL=1 LE=0 CX=7 CY=13 WI=239 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6334" EndSeek="6428"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=58 CY=8 WI=218 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6498" EndSeek="6599"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=25 CY=23 WI=213 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6669" EndSeek="6768"/>
+<Insert>VIEW: LN=.27025 CL=63 LE=0 CX=69 CY=7 WI=267 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6839" EndSeek="6923"/>
+<Insert>VIEW: LN=.11702 CL=22 LE=0 CX=28 CY=36 WI=198 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6995" EndSeek="7073"/>
+<Insert>VIEW: LN=.4677 CL=23 LE=0 CX=29 CY=26 WI=76 BI=33 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7144" EndSeek="7224"/>
+<Insert>VIEW: LN=.19211 CL=21 LE=0 CX=27 CY=27 WI=237 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7296" EndSeek="7379"/>
+<Insert>VIEW: LN=.19795 CL=1 LE=0 CX=7 CY=2 WI=225 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7448" EndSeek="7540"/>
+<Insert>VIEW: LN=.225 CL=47 LE=0 CX=53 CY=13 WI=287 BI=30 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7610" EndSeek="7691"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=184 BI=20 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=17 ",,,"
+BUFFER: BN="net/ipv4/arp.c"
+VIEW: LN=.10855 CL=26 LE=0 CX=32 CY=34 WI=232 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7760" EndSeek="7842"/>
+<Insert>VIEW: LN=.7817 CL=49 LE=0 CX=55 CY=23 WI=199 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7913" EndSeek="7995"/>
+<Insert>VIEW: LN=.6407 CL=34 LE=0 CX=40 CY=28 WI=289 BI=25 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=16 ",,,"
+BUFFER: BN="include/net/neighbour.h"
+VIEW: LN=.1162 CL=18 LE=0 CX=24 CY=22 WI=253 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8358" EndSeek="8436"/>
+<Insert>VIEW: LN=.25652 CL=33 LE=0 CX=41 CY=41 WI=291 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8508" EndSeek="8520"/>
+<Insert>include/linux/rtnetlink.h
+include/net/netlink.h
+net/netlink/af_netlink.c
+net/core/rtnetlink.c
+</Insert>
+<Copy StartSeek="8520" EndSeek="8543"/>
+<Insert>net/ipv4/arp.c
+</Insert>
+<Copy StartSeek="8543" EndSeek="8587"/>
+<Copy StartSeek="8685" EndSeek="8773"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/04/17" Time="18:36:34000">
+<Copy StartSeek="0" EndSeek="310"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=1 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12163 CL=21 LE=0 CX=20 CY=22 WI=5 BI=30 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="550" EndSeek="752"/>
+<Insert>VIEW: LN=.10218 CL=1 LE=0 CX=0 CY=13 WI=5 BI=33 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="820" EndSeek="1041"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=51 CY=8 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1109" EndSeek="1337"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=18 CY=23 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv4/netfilter/ip_conntrack_netlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.27025 CL=63 LE=0 CX=62 CY=7 WI=5 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1405" EndSeek="1615"/>
+<Insert>VIEW: LN=.11702 CL=22 LE=0 CX=21 CY=36 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1685" EndSeek="1890"/>
+<Insert>VIEW: LN=.4677 CL=23 LE=0 CX=22 CY=26 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1959" EndSeek="2235"/>
+<Insert>BUFFER: BN="net/netlink/af_netlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19795 CL=1 LE=0 CX=0 CY=2 WI=5 BI=31 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2510" EndSeek="2558"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.225 CL=47 LE=0 CX=46 CY=13 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4460" EndSeek="4671"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=35 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4738" EndSeek="4776"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7638 CL=49 LE=0 CX=48 CY=23 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6407 CL=34 LE=0 CX=33 CY=28 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv6/ndisc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.43632 CL=42 LE=0 CX=41 CY=23 WI=5 BI=37 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/net/neighbour.h"
+</Insert>
+<Copy StartSeek="4776" EndSeek="4949"/>
+<Insert>VIEW: LN=.7517 CL=33 LE=0 CX=32 CY=7 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv6/addrconf.c"
+</Insert>
+<Copy StartSeek="5050" EndSeek="5223"/>
+<Insert>VIEW: LN=.9413 CL=38 LE=0 CX=37 CY=23 WI=5 BI=38 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv4/devinet.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=736 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4039 CL=60 LE=0 CX=59 CY=20 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv4/arp.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131688 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6342 CL=33 LE=0 CX=32 CY=31 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/neighbour.c"
+</Insert>
+<Copy StartSeek="5325" EndSeek="5498"/>
+<Insert>VIEW: LN=.1468 CL=13 LE=0 CX=12 CY=23 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=20 ",,,"
+BUFFER: BN="net/ipv6/ndisc.c"
+VIEW: LN=.43632 CL=42 LE=0 CX=48 CY=23 WI=226 BI=37 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=16 ",,,"
+BUFFER: BN="include/net/neighbour.h"
+VIEW: LN=.1162 CL=9 LE=0 CX=15 CY=22 WI=175 BI=21 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=19 ",,,"
+BUFFER: BN="net/ipv6/addrconf.c"
+VIEW: LN=.9413 CL=38 LE=0 CX=44 CY=23 WI=274 BI=38 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5568" EndSeek="5657"/>
+<Insert>VIEW: LN=.12163 CL=21 LE=0 CX=27 CY=22 WI=139 BI=30 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5727" EndSeek="5803"/>
+<Insert>VIEW: LN=.10218 CL=1 LE=0 CX=7 CY=13 WI=248 BI=33 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5872" EndSeek="5966"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=58 CY=8 WI=240 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6035" EndSeek="6136"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=25 CY=23 WI=253 BI=27 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=6 ",,,"
+BUFFER: BN="net/ipv4/netfilter/ip_conntrack_netlink.c"
+VIEW: LN=.27025 CL=63 LE=0 CX=69 CY=7 WI=232 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6205" EndSeek="6289"/>
+<Insert>VIEW: LN=.11702 CL=22 LE=0 CX=28 CY=36 WI=237 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6360" EndSeek="6438"/>
+<Insert>VIEW: LN=.4677 CL=23 LE=0 CX=29 CY=26 WI=239 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6508" EndSeek="6588"/>
+<Insert>VIEW: LN=.19211 CL=21 LE=0 CX=27 CY=27 WI=181 BI=16 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=10 ",,,"
+BUFFER: BN="net/netlink/af_netlink.c"
+VIEW: LN=.19795 CL=1 LE=0 CX=7 CY=2 WI=289 BI=31 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6807" EndSeek="6899"/>
+<Insert>VIEW: LN=.225 CL=47 LE=0 CX=53 CY=13 WI=225 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7868" EndSeek="7949"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=293 BI=35 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8018" EndSeek="8100"/>
+<Insert>VIEW: LN=.7638 CL=49 LE=0 CX=55 CY=23 WI=287 BI=24 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+VIEW: LN=.6407 CL=34 LE=0 CX=40 CY=28 WI=153 BI=18 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=12 ",,,"
+BUFFER: BN="net/ipv4/devinet.c"
+VIEW: LN=.4039 CL=60 LE=0 CX=68 CY=20 WI=299 BI=34 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=17 ",,,"
+BUFFER: BN="net/ipv4/arp.c"
+VIEW: LN=.6342 CL=33 LE=0 CX=39 CY=31 WI=267 BI=20 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=8 ",,,"
+BUFFER: BN="net/core/neighbour.c"
+VIEW: LN=.25652 CL=47 LE=0 CX=55 CY=22 WI=297 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8468" EndSeek="8480"/>
+<Insert>include/linux/skbuff.h
+net/core/netevent.c
+include/net/neighbour.h
+include/linux/inetdevice.h
+net/ipv6/addrconf.c
+net/ipv6/ndisc.c
+net/ipv4/devinet.c
+</Insert>
+<Copy StartSeek="8480" EndSeek="8495"/>
+<Copy StartSeek="8519" EndSeek="8540"/>
+<Copy StartSeek="8677" EndSeek="8744"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/04/18" Time="14:30:56000">
+<Copy StartSeek="0" EndSeek="69"/>
+<Insert>linux-2.6.21.5-lsp-1.1.10.vpj=20120416134740000
+</Insert>
+<Copy StartSeek="117" EndSeek="8744"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/04/18" Time="14:31:4000">
+<Copy StartSeek="0" EndSeek="266"/>
+<Copy StartSeek="568" EndSeek="612"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=1 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12163 CL=21 LE=0 CX=20 CY=22 WI=5 BI=4 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="852" EndSeek="883"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="1054" EndSeek="1172"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="1343" EndSeek="1468"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="1639" EndSeek="1746"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11702 CL=22 LE=0 CX=21 CY=36 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1987" EndSeek="2021"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4677 CL=23 LE=0 CX=22 CY=26 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2261" EndSeek="2296"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19211 CL=21 LE=0 CX=20 CY=27 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv6/addrconf.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9413 CL=38 LE=0 CX=37 CY=23 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2537" EndSeek="2585"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.225 CL=47 LE=0 CX=46 CY=13 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2824" EndSeek="2856"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4039 CL=60 LE=0 CX=59 CY=20 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3096" EndSeek="3134"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19795 CL=1 LE=0 CX=0 CY=2 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3372" EndSeek="3410"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4100 CL=23 LE=0 CX=22 CY=18 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3650" EndSeek="3687"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4538 CL=1 LE=0 CX=0 CY=5 WI=5 BI=23 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3927" EndSeek="3961"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131688 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.25862 CL=37 LE=0 CX=36 CY=43 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4202" EndSeek="4232"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.43632 CL=42 LE=0 CX=41 CY=23 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4473" EndSeek="4510"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Makefile	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4751" EndSeek="4789"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7263 CL=41 LE=0 CX=40 CY=19 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5029" EndSeek="5061"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.3341 CL=19 LE=0 CX=18 CY=28 WI=5 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5301" EndSeek="5334"/>
+<Copy StartSeek="5953" EndSeek="6126"/>
+<Insert>VIEW: LN=.24621 CL=44 LE=0 CX=43 CY=23 WI=5 BI=38 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6980" EndSeek="7069"/>
+<Insert>VIEW: LN=.12163 CL=21 LE=0 CX=27 CY=22 WI=73 BI=4 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7139" EndSeek="7215"/>
+<Insert>VIEW: LN=.10218 CL=1 LE=0 CX=7 CY=13 WI=75 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7284" EndSeek="7378"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=58 CY=8 WI=71 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7447" EndSeek="7548"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=25 CY=23 WI=86 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7617" EndSeek="7701"/>
+<Insert>VIEW: LN=.11702 CL=22 LE=0 CX=28 CY=36 WI=90 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7772" EndSeek="7850"/>
+<Insert>VIEW: LN=.4677 CL=23 LE=0 CX=29 CY=26 WI=92 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7920" EndSeek="8000"/>
+<Insert>VIEW: LN=.19211 CL=21 LE=0 CX=27 CY=27 WI=94 BI=16 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=19 ",,,"
+BUFFER: BN="net/ipv6/addrconf.c"
+VIEW: LN=.9413 CL=38 LE=0 CX=44 CY=23 WI=70 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8071" EndSeek="8163"/>
+<Insert>VIEW: LN=.225 CL=47 LE=0 CX=53 CY=13 WI=98 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8232" EndSeek="8309"/>
+<Insert>VIEW: LN=.4039 CL=60 LE=0 CX=66 CY=20 WI=106 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8379" EndSeek="8462"/>
+<Insert>VIEW: LN=.19795 CL=1 LE=0 CX=7 CY=2 WI=96 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8530" EndSeek="8612"/>
+<Insert>VIEW: LN=.4100 CL=23 LE=0 CX=31 CY=18 WI=104 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8682" EndSeek="8764"/>
+<Insert>VIEW: LN=.9559 CL=40 LE=0 CX=48 CY=20 WI=84 BI=23 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8834" EndSeek="8912"/>
+<Insert>VIEW: LN=.25862 CL=37 LE=0 CX=45 CY=43 WI=110 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8984" EndSeek="9059"/>
+<Insert>VIEW: LN=.43632 CL=42 LE=0 CX=48 CY=23 WI=81 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9131" EndSeek="9212"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=100 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9281" EndSeek="9363"/>
+<Insert>VIEW: LN=.7263 CL=41 LE=0 CX=49 CY=19 WI=102 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9434" EndSeek="9510"/>
+<Insert>VIEW: LN=.3341 CL=19 LE=0 CX=25 CY=28 WI=213 BI=37 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=17 ",,,"
+</Insert>
+<Copy StartSeek="9626" EndSeek="9659"/>
+<Insert>VIEW: LN=.24621 CL=44 LE=0 CX=52 CY=23 WI=254 BI=38 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="10446" EndSeek="10458"/>
+<Insert>net/ipv4/arp.c
+include/net/neighbour.h
+net/core/neighbour.c
+include/linux/notifier.h
+include/linux/kernel.h
+</Insert>
+<Copy StartSeek="10458" EndSeek="10547"/>
+<Copy StartSeek="10775" EndSeek="10842"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/04/18" Time="14:56:36000">
+<Copy StartSeek="0" EndSeek="266"/>
+<Copy StartSeek="540" EndSeek="600"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19019 CL=23 LE=0 CX=22 CY=25 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="840" EndSeek="884"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=1 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12163 CL=21 LE=0 CX=20 CY=22 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1125" EndSeek="1156"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="1327" EndSeek="1445"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="1616" EndSeek="1741"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="1912" EndSeek="2019"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="2192" EndSeek="2296"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="2467" EndSeek="2571"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="2742" EndSeek="2860"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="3031" EndSeek="3131"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="3304" EndSeek="3411"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="3584" EndSeek="3651"/>
+<Insert>BUFFER: BN="../../dpa/klna/klna_nc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4100 CL=23 LE=0 CX=22 CY=18 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3651" EndSeek="3688"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="3861" EndSeek="3964"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="4135" EndSeek="4235"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="4406" EndSeek="4513"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Makefile	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="4687" EndSeek="4754"/>
+<Insert>BUFFER: BN="../../dpa/klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7263 CL=41 LE=0 CX=40 CY=19 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/linux/if.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.3341 CL=19 LE=0 CX=18 CY=28 WI=5 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4754" EndSeek="4787"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.24621 CL=44 LE=0 CX=43 CY=23 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="nfp_list.txt"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=1 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Plain Text	HM=0 MF=131072 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.0 CL=1 LE=0 CX=0 CY=0 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../../../shared/linux/linux-2.6.35.9-lsp-1.0.2/arch/arm/plat-armada/mv_hal/neta/nfp/mvNfp.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.37657 CL=33 LE=0 CX=32 CY=24 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="arch/arm/plat-feroceon/mv_hal/neta/nfp/mvNfpCt.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.22265 CL=11 LE=0 CX=10 CY=23 WI=5 BI=35 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="arch/arm/plat-feroceon/mv_hal/neta/nfp/mvNfp.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.36710 CL=78 LE=0 CX=77 CY=8 WI=5 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6144" EndSeek="6249"/>
+<Insert>VIEW: LN=.19019 CL=23 LE=0 CX=29 CY=25 WI=151 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6321" EndSeek="6410"/>
+<Insert>VIEW: LN=.12163 CL=21 LE=0 CX=27 CY=22 WI=74 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6482" EndSeek="6558"/>
+<Insert>VIEW: LN=.10218 CL=1 LE=0 CX=7 CY=13 WI=76 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6628" EndSeek="6722"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=58 CY=8 WI=78 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6792" EndSeek="6893"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=25 CY=23 WI=80 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6963" EndSeek="7047"/>
+<Insert>VIEW: LN=.11702 CL=22 LE=0 CX=28 CY=36 WI=82 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7119" EndSeek="7197"/>
+<Insert>VIEW: LN=.4677 CL=23 LE=0 CX=29 CY=26 WI=84 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7268" EndSeek="7348"/>
+<Insert>VIEW: LN=.19211 CL=21 LE=0 CX=27 CY=27 WI=86 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7420" EndSeek="7512"/>
+<Insert>VIEW: LN=.225 CL=47 LE=0 CX=53 CY=13 WI=90 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7582" EndSeek="7659"/>
+<Insert>VIEW: LN=.4039 CL=60 LE=0 CX=66 CY=20 WI=92 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7729" EndSeek="7812"/>
+<Insert>VIEW: LN=.19795 CL=1 LE=0 CX=7 CY=2 WI=94 BI=19 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+VIEW: LN=.4100 CL=23 LE=0 CX=29 CY=18 WI=96 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7880" EndSeek="7962"/>
+<Insert>VIEW: LN=.9559 CL=40 LE=0 CX=46 CY=20 WI=98 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8032" EndSeek="8110"/>
+<Insert>VIEW: LN=.25862 CL=37 LE=0 CX=45 CY=43 WI=100 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8181" EndSeek="8256"/>
+<Insert>VIEW: LN=.43632 CL=42 LE=0 CX=48 CY=23 WI=102 BI=23 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8327" EndSeek="8408"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=104 BI=24 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=4 ",,,"
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+VIEW: LN=.7263 CL=41 LE=0 CX=49 CY=19 WI=106 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8476" EndSeek="8552"/>
+<Insert>VIEW: LN=.3341 CL=19 LE=0 CX=25 CY=28 WI=108 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8622" EndSeek="8700"/>
+<Insert>VIEW: LN=.24621 CL=44 LE=0 CX=50 CY=23 WI=110 BI=27 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=18 ",,,"
+BUFFER: BN="nfp_list.txt"
+VIEW: LN=.0 CL=1 LE=0 CX=0 CY=0 WI=178 BI=34 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=19 ",,,"
+BUFFER: BN="../../../../shared/linux/linux-2.6.35.9-lsp-1.0.2/arch/arm/plat-armada/mv_hal/neta/nfp/mvNfp.c"
+VIEW: LN=.37657 CL=33 LE=0 CX=41 CY=24 WI=88 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8764" EndSeek="8809"/>
+<Insert>BUFFER: BN="arch/arm/plat-feroceon/mv_hal/neta/nfp/mvNfpCt.c"
+VIEW: LN=.22265 CL=11 LE=0 CX=19 CY=23 WI=119 BI=35 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=22 ",,,"
+BUFFER: BN="arch/arm/plat-feroceon/mv_hal/neta/nfp/mvNfp.c"
+VIEW: LN=.36604 CL=32 LE=0 CX=38 CY=6 WI=231 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9375" EndSeek="9387"/>
+<Copy StartSeek="9555" EndSeek="9605"/>
+<Insert>include/linux/if.h
+drivers/net/pppoe.c
+nfp_list.txt
+../../../../shared/linux/linux-2.6.35.9-lsp-1.0.2/arch/arm/plat-armada/mv_hal/neta/nfp/mvNfp.c
+arch/arm/plat-feroceon/mv_hal/neta/nfp/mvNfpCt.c
+arch/arm/plat-feroceon/mv_hal/neta/nfp/mvNfp.c
+drivers/net/cxgb3/l2t.c
+</Insert>
+<Copy StartSeek="9605" EndSeek="9672"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/04/18" Time="16:49:56000">
+<Copy StartSeek="0" EndSeek="266"/>
+<Insert>BUFFER: BN="include/linux/if.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.3341 CL=21 LE=0 CX=20 CY=29 WI=5 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="266" EndSeek="326"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.29485 CL=1 LE=0 CX=0 CY=5 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="567" EndSeek="782"/>
+<Insert>VIEW: LN=.12163 CL=21 LE=0 CX=20 CY=22 WI=5 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="852" EndSeek="1054"/>
+<Insert>VIEW: LN=.10218 CL=1 LE=0 CX=0 CY=13 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1122" EndSeek="1343"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=51 CY=8 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1411" EndSeek="1639"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=18 CY=23 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1707" EndSeek="2194"/>
+<Insert>VIEW: LN=.4677 CL=23 LE=0 CX=22 CY=26 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2263" EndSeek="2469"/>
+<Insert>VIEW: LN=.19211 CL=21 LE=0 CX=20 CY=27 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna.bak/klna_evnt_mgr.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.225 CL=47 LE=0 CX=46 CY=13 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2539" EndSeek="2571"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4039 CL=60 LE=0 CX=59 CY=20 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2811" EndSeek="2849"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19795 CL=1 LE=0 CX=0 CY=2 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3087" EndSeek="3124"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9559 CL=40 LE=0 CX=39 CY=20 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3364" EndSeek="3569"/>
+<Insert>VIEW: LN=.25862 CL=37 LE=0 CX=36 CY=43 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3639" EndSeek="3840"/>
+<Insert>VIEW: LN=.43632 CL=42 LE=0 CX=41 CY=23 WI=5 BI=23 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3910" EndSeek="4121"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4460" EndSeek="4493"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.0 CL=1 LE=0 CX=0 CY=0 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4727" EndSeek="4768"/>
+<Copy StartSeek="5047" EndSeek="5220"/>
+<Insert>VIEW: LN=.75929 CL=43 LE=0 CX=42 CY=7 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/llc/llc_output.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1658 CL=23 LE=0 CX=22 CY=23 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5575" EndSeek="5786"/>
+<Insert>VIEW: LN=.6161 CL=38 LE=0 CX=37 CY=33 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131176 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.658 CL=74 LE=0 CX=73 CY=34 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5855" EndSeek="5960"/>
+<Insert>VIEW: LN=.19019 CL=23 LE=0 CX=29 CY=25 WI=179 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6032" EndSeek="6121"/>
+<Insert>VIEW: LN=.12163 CL=21 LE=0 CX=27 CY=22 WI=185 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6193" EndSeek="6269"/>
+<Insert>VIEW: LN=.10218 CL=1 LE=0 CX=7 CY=13 WI=161 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6339" EndSeek="6433"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=58 CY=8 WI=111 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6503" EndSeek="6604"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=25 CY=23 WI=109 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6674" EndSeek="6758"/>
+<Insert>VIEW: LN=.11702 CL=22 LE=0 CX=28 CY=36 WI=107 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6830" EndSeek="6908"/>
+<Insert>VIEW: LN=.4677 CL=23 LE=0 CX=29 CY=26 WI=105 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6979" EndSeek="7059"/>
+<Insert>VIEW: LN=.19211 CL=21 LE=0 CX=27 CY=27 WI=103 BI=15 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=7 ",,,"
+BUFFER: BN="../../dpa/klna.bak/klna_evnt_mgr.c"
+VIEW: LN=.225 CL=47 LE=0 CX=53 CY=13 WI=101 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7131" EndSeek="7208"/>
+<Insert>VIEW: LN=.4039 CL=60 LE=0 CX=66 CY=20 WI=99 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7279" EndSeek="7362"/>
+<Insert>VIEW: LN=.19795 CL=1 LE=0 CX=7 CY=2 WI=97 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7431" EndSeek="7513"/>
+<Insert>VIEW: LN=.9559 CL=40 LE=0 CX=46 CY=20 WI=93 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7583" EndSeek="7661"/>
+<Insert>VIEW: LN=.25862 CL=37 LE=0 CX=45 CY=43 WI=91 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7732" EndSeek="7807"/>
+<Insert>VIEW: LN=.43632 CL=42 LE=0 CX=48 CY=23 WI=89 BI=23 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7878" EndSeek="7959"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=87 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8028" EndSeek="8104"/>
+<Insert>VIEW: LN=.3341 CL=21 LE=0 CX=29 CY=29 WI=83 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8175" EndSeek="8253"/>
+<Insert>VIEW: LN=.0 CL=1 LE=0 CX=9 CY=0 WI=81 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8318" EndSeek="8404"/>
+<Insert>VIEW: LN=.75929 CL=46 LE=0 CX=54 CY=23 WI=268 BI=34 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=22 ",,,"
+BUFFER: BN="net/llc/llc_output.c"
+VIEW: LN=.1658 CL=23 LE=0 CX=31 CY=23 WI=192 BI=36 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+VIEW: LN=.6161 CL=38 LE=0 CX=46 CY=33 WI=95 BI=20 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=4 ",,,"
+</Insert>
+<Copy StartSeek="8520" EndSeek="8558"/>
+<Insert>VIEW: LN=.658 CL=74 LE=0 CX=82 CY=34 WI=85 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8942" EndSeek="9239"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/04/19" Time="11:55:14000">
+<Copy StartSeek="0" EndSeek="266"/>
+<Copy StartSeek="1112" EndSeek="1172"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="1343" EndSeek="1457"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=1 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12163 CL=21 LE=0 CX=20 CY=22 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1698" EndSeek="1729"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.10218 CL=1 LE=0 CX=0 CY=13 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1968" EndSeek="2018"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8018 CL=52 LE=0 CX=51 CY=8 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2257" EndSeek="2314"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.614 CL=19 LE=0 CX=18 CY=23 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2553" EndSeek="2592"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11702 CL=22 LE=0 CX=21 CY=36 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2833" EndSeek="2867"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4677 CL=23 LE=0 CX=22 CY=26 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3107" EndSeek="3142"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19211 CL=21 LE=0 CX=20 CY=27 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3383" EndSeek="3415"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4039 CL=60 LE=0 CX=59 CY=20 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3655" EndSeek="3693"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19795 CL=1 LE=0 CX=0 CY=2 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3931" EndSeek="3968"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9559 CL=40 LE=0 CX=39 CY=20 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4208" EndSeek="4242"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.25862 CL=37 LE=0 CX=36 CY=43 WI=5 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4483" EndSeek="4513"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.43632 CL=42 LE=0 CX=41 CY=23 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4754" EndSeek="4791"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Makefile	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5032" EndSeek="5064"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.3341 CL=21 LE=0 CX=20 CY=29 WI=5 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5304" EndSeek="5337"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.0 CL=1 LE=0 CX=0 CY=0 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="drivers/isdn/i4l/isdn_net.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.75929 CL=46 LE=0 CX=45 CY=23 WI=5 BI=39 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.650 CL=74 LE=0 CX=73 CY=31 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna.bak/klna_evnt_mgr.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.225 CL=47 LE=0 CX=46 CY=13 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5577" EndSeek="5615"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4939 CL=23 LE=0 CX=22 CY=28 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5857" EndSeek="5962"/>
+<Insert>VIEW: LN=.19019 CL=23 LE=0 CX=29 CY=25 WI=211 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6033" EndSeek="6122"/>
+<Insert>VIEW: LN=.12163 CL=21 LE=0 CX=27 CY=22 WI=192 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6193" EndSeek="6269"/>
+<Insert>VIEW: LN=.10218 CL=1 LE=0 CX=7 CY=13 WI=179 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6339" EndSeek="6433"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=58 CY=8 WI=185 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6503" EndSeek="6604"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=25 CY=23 WI=161 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6674" EndSeek="6758"/>
+<Insert>VIEW: LN=.11702 CL=22 LE=0 CX=28 CY=36 WI=111 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6830" EndSeek="6908"/>
+<Insert>VIEW: LN=.4677 CL=23 LE=0 CX=29 CY=26 WI=109 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6979" EndSeek="7059"/>
+<Insert>VIEW: LN=.19211 CL=21 LE=0 CX=27 CY=27 WI=107 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7131" EndSeek="7208"/>
+<Insert>VIEW: LN=.4039 CL=60 LE=0 CX=66 CY=20 WI=103 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7278" EndSeek="7361"/>
+<Insert>VIEW: LN=.19795 CL=1 LE=0 CX=7 CY=2 WI=101 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7430" EndSeek="7512"/>
+<Insert>VIEW: LN=.9559 CL=40 LE=0 CX=46 CY=20 WI=99 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7583" EndSeek="7661"/>
+<Insert>VIEW: LN=.25862 CL=37 LE=0 CX=45 CY=43 WI=97 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7733" EndSeek="7808"/>
+<Insert>VIEW: LN=.43632 CL=42 LE=0 CX=48 CY=23 WI=92 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7880" EndSeek="7961"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=198 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8030" EndSeek="8106"/>
+<Insert>VIEW: LN=.3341 CL=21 LE=0 CX=27 CY=29 WI=200 BI=41 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=17 ",,,"
+BUFFER: BN="drivers/net/pppoe.c"
+VIEW: LN=.0 CL=1 LE=0 CX=7 CY=0 WI=154 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8177" EndSeek="8263"/>
+<Insert>VIEW: LN=.75929 CL=46 LE=0 CX=52 CY=23 WI=155 BI=39 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8334" EndSeek="8416"/>
+<Insert>VIEW: LN=.650 CL=74 LE=0 CX=82 CY=31 WI=69 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8485" EndSeek="8577"/>
+<Insert>VIEW: LN=.225 CL=47 LE=0 CX=53 CY=13 WI=105 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8794" EndSeek="8876"/>
+<Insert>VIEW: LN=.4939 CL=23 LE=0 CX=29 CY=28 WI=187 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8947" EndSeek="9033"/>
+<Insert>drivers/net/pppoe.c
+</Insert>
+<Copy StartSeek="9033" EndSeek="9107"/>
+<Insert>../../dpa/klna/klna_nc.c
+</Insert>
+<Copy StartSeek="9107" EndSeek="9132"/>
+<Copy StartSeek="9177" EndSeek="9244"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/04/19" Time="11:58:3000">
+<Copy StartSeek="0" EndSeek="266"/>
+<Insert>BUFFER: BN="drivers/isdn/i4l/isdn_net.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.75929 CL=46 LE=0 CX=45 CY=23 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.650 CL=74 LE=0 CX=73 CY=31 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna.bak/klna_evnt_mgr.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.225 CL=47 LE=0 CX=46 CY=13 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="548" EndSeek="608"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19019 CL=23 LE=0 CX=22 CY=25 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="849" EndSeek="893"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=1 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12163 CL=21 LE=0 CX=20 CY=22 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1134" EndSeek="1165"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.10218 CL=1 LE=0 CX=0 CY=13 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1404" EndSeek="1454"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8018 CL=52 LE=0 CX=51 CY=8 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1693" EndSeek="1750"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.614 CL=19 LE=0 CX=18 CY=23 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1989" EndSeek="2028"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11702 CL=22 LE=0 CX=21 CY=36 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2269" EndSeek="2303"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4677 CL=23 LE=0 CX=22 CY=26 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2543" EndSeek="2578"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19211 CL=21 LE=0 CX=20 CY=27 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2819" EndSeek="2851"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4039 CL=60 LE=0 CX=59 CY=20 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3091" EndSeek="3129"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19795 CL=1 LE=0 CX=0 CY=2 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3367" EndSeek="3404"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9559 CL=40 LE=0 CX=39 CY=20 WI=5 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3644" EndSeek="3678"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.25862 CL=37 LE=0 CX=36 CY=43 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3919" EndSeek="3949"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.43632 CL=42 LE=0 CX=41 CY=23 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4190" EndSeek="4227"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Makefile	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4468" EndSeek="4500"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.3341 CL=21 LE=0 CX=20 CY=29 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="drivers/net/pppoe.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=736 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8354 CL=2 LE=0 CX=1 CY=41 WI=5 BI=39 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5586" EndSeek="5624"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4968 CL=36 LE=0 CX=35 CY=15 WI=5 BI=45 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6296" EndSeek="6401"/>
+<Insert>VIEW: LN=.19019 CL=23 LE=0 CX=29 CY=25 WI=88 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6472" EndSeek="6561"/>
+<Insert>VIEW: LN=.12163 CL=21 LE=0 CX=27 CY=22 WI=91 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6633" EndSeek="6709"/>
+<Insert>VIEW: LN=.10218 CL=1 LE=0 CX=7 CY=13 WI=188 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6779" EndSeek="6873"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=58 CY=8 WI=268 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6943" EndSeek="7044"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=25 CY=23 WI=151 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7114" EndSeek="7198"/>
+<Insert>VIEW: LN=.11702 CL=22 LE=0 CX=28 CY=36 WI=178 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7270" EndSeek="7348"/>
+<Insert>VIEW: LN=.4677 CL=23 LE=0 CX=29 CY=26 WI=119 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7419" EndSeek="7499"/>
+<Insert>VIEW: LN=.19211 CL=21 LE=0 CX=27 CY=27 WI=209 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7571" EndSeek="7648"/>
+<Insert>VIEW: LN=.4039 CL=60 LE=0 CX=66 CY=20 WI=80 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7719" EndSeek="7802"/>
+<Insert>VIEW: LN=.19795 CL=1 LE=0 CX=7 CY=2 WI=110 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7871" EndSeek="7953"/>
+<Insert>VIEW: LN=.9559 CL=40 LE=0 CX=46 CY=20 WI=108 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8024" EndSeek="8102"/>
+<Insert>VIEW: LN=.25862 CL=37 LE=0 CX=45 CY=43 WI=106 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8174" EndSeek="8249"/>
+<Insert>VIEW: LN=.43632 CL=42 LE=0 CX=48 CY=23 WI=104 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8321" EndSeek="8402"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=102 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8470" EndSeek="8546"/>
+<Insert>VIEW: LN=.3341 CL=21 LE=0 CX=27 CY=29 WI=100 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8616" EndSeek="8702"/>
+<Insert>VIEW: LN=.75929 CL=46 LE=0 CX=52 CY=23 WI=96 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8773" EndSeek="8855"/>
+<Insert>VIEW: LN=.650 CL=74 LE=0 CX=82 CY=31 WI=94 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8925" EndSeek="9017"/>
+<Insert>VIEW: LN=.225 CL=47 LE=0 CX=53 CY=13 WI=250 BI=25 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=17 ",,,"
+BUFFER: BN="drivers/net/pppoe.c"
+VIEW: LN=.8354 CL=2 LE=0 CX=10 CY=41 WI=98 BI=39 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=1 ",,,"
+</Insert>
+<Copy StartSeek="9131" EndSeek="9169"/>
+<Insert>VIEW: LN=.4968 CL=36 LE=0 CX=42 CY=15 WI=226 BI=45 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9383" EndSeek="9395"/>
+<Insert>include/config/pppoe.h
+include/linux/if_pppox.h
+include/linux/netdevice.h
+</Insert>
+<Copy StartSeek="9395" EndSeek="9494"/>
+<Insert>drivers/net/pppoe.c
+</Insert>
+<Copy StartSeek="9573" EndSeek="9598"/>
+<Copy StartSeek="9618" EndSeek="9685"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/04/19" Time="12:16:28000">
+<Copy StartSeek="0" EndSeek="266"/>
+<Copy StartSeek="532" EndSeek="571"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.50626 CL=18 LE=0 CX=17 CY=23 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="812" EndSeek="1043"/>
+<Insert>VIEW: LN=.19019 CL=23 LE=0 CX=22 CY=25 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1113" EndSeek="1328"/>
+<Insert>VIEW: LN=.12163 CL=21 LE=0 CX=20 CY=22 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1398" EndSeek="1600"/>
+<Insert>VIEW: LN=.10218 CL=1 LE=0 CX=0 CY=13 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1668" EndSeek="1718"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8018 CL=52 LE=0 CX=51 CY=8 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1959" EndSeek="2016"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.614 CL=19 LE=0 CX=18 CY=23 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2257" EndSeek="2467"/>
+<Insert>VIEW: LN=.11702 CL=22 LE=0 CX=21 CY=36 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2537" EndSeek="2571"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4677 CL=23 LE=0 CX=22 CY=26 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2813" EndSeek="3019"/>
+<Insert>VIEW: LN=.19211 CL=21 LE=0 CX=20 CY=27 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv4/devinet.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4039 CL=60 LE=0 CX=59 CY=20 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/netlink/af_netlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19795 CL=1 LE=0 CX=0 CY=2 WI=5 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3089" EndSeek="3297"/>
+<Insert>VIEW: LN=.9559 CL=40 LE=0 CX=39 CY=20 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3366" EndSeek="3571"/>
+<Insert>VIEW: LN=.25862 CL=37 LE=0 CX=36 CY=43 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3641" EndSeek="3671"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.43632 CL=42 LE=0 CX=41 CY=23 WI=5 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3914" EndSeek="4125"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6126" EndSeek="6329"/>
+<Insert>VIEW: LN=.3341 CL=21 LE=0 CX=20 CY=29 WI=5 BI=39 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6398" EndSeek="6610"/>
+<Insert>VIEW: LN=.75929 CL=46 LE=0 CX=45 CY=23 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.650 CL=74 LE=0 CX=73 CY=31 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6680" EndSeek="6899"/>
+<Insert>VIEW: LN=.225 CL=47 LE=0 CX=46 CY=13 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5051 CL=52 LE=0 CX=51 CY=9 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="drivers/net/pppoe.c"
+</Insert>
+<Copy StartSeek="6998" EndSeek="7171"/>
+<Insert>VIEW: LN=.6236 CL=34 LE=0 CX=33 CY=23 WI=5 BI=45 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7380" EndSeek="7464"/>
+<Insert>VIEW: LN=.50626 CL=18 LE=0 CX=24 CY=23 WI=286 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7536" EndSeek="7641"/>
+<Insert>VIEW: LN=.19019 CL=23 LE=0 CX=29 CY=25 WI=69 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7713" EndSeek="7802"/>
+<Insert>VIEW: LN=.12163 CL=21 LE=0 CX=27 CY=22 WI=248 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7874" EndSeek="7950"/>
+<Insert>VIEW: LN=.10218 CL=1 LE=0 CX=7 CY=13 WI=155 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8020" EndSeek="8114"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=58 CY=8 WI=192 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8184" EndSeek="8285"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=25 CY=23 WI=179 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8355" EndSeek="8439"/>
+<Insert>VIEW: LN=.11702 CL=22 LE=0 CX=28 CY=36 WI=185 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8511" EndSeek="8589"/>
+<Insert>VIEW: LN=.4677 CL=23 LE=0 CX=29 CY=26 WI=161 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8660" EndSeek="8740"/>
+<Insert>VIEW: LN=.19211 CL=21 LE=0 CX=27 CY=27 WI=111 BI=12 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=12 ",,,"
+BUFFER: BN="net/ipv4/devinet.c"
+VIEW: LN=.4039 CL=60 LE=0 CX=66 CY=20 WI=109 BI=14 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=10 ",,,"
+BUFFER: BN="net/netlink/af_netlink.c"
+VIEW: LN=.19795 CL=1 LE=0 CX=7 CY=2 WI=107 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8812" EndSeek="8894"/>
+<Insert>VIEW: LN=.9559 CL=40 LE=0 CX=46 CY=20 WI=105 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8964" EndSeek="9042"/>
+<Insert>VIEW: LN=.25862 CL=37 LE=0 CX=45 CY=43 WI=103 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9113" EndSeek="9188"/>
+<Insert>VIEW: LN=.43632 CL=42 LE=0 CX=48 CY=23 WI=101 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9259" EndSeek="9340"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=99 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="10463" EndSeek="10539"/>
+<Insert>VIEW: LN=.3341 CL=21 LE=0 CX=27 CY=29 WI=97 BI=39 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="10609" EndSeek="10695"/>
+<Insert>VIEW: LN=.75929 CL=46 LE=0 CX=52 CY=23 WI=92 BI=16 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=4 ",,,"
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+VIEW: LN=.650 CL=74 LE=0 CX=82 CY=31 WI=198 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="10767" EndSeek="10859"/>
+<Insert>VIEW: LN=.225 CL=47 LE=0 CX=53 CY=13 WI=200 BI=27 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+VIEW: LN=.5051 CL=52 LE=0 CX=60 CY=9 WI=87 BI=34 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=17 ",,,"
+BUFFER: BN="drivers/net/pppoe.c"
+VIEW: LN=.7610 CL=1 LE=0 CX=9 CY=0 WI=80 BI=45 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="11074" EndSeek="11086"/>
+<Insert>drivers/isdn/i4l/isdn_net.c
+net/llc/llc_output.c
+include/linux/notifier.h
+../../dpa/klna/klna_nl.c
+include/linux/if_pppox.h
+include/linux/ppp_channel.h
+drivers/net/ppp_generic.c
+../../dpa/klna/klna_nc.c
+</Insert>
+<Copy StartSeek="11129" EndSeek="11149"/>
+<Copy StartSeek="11318" EndSeek="11385"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/04/19" Time="13:13:2000">
+<Copy StartSeek="0" EndSeek="292"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.10675 CL=1 LE=0 CX=0 CY=5 WI=5 BI=47 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="533" EndSeek="572"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.50626 CL=18 LE=0 CX=17 CY=23 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="813" EndSeek="873"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19019 CL=23 LE=0 CX=22 CY=25 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1114" EndSeek="1158"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=1 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12163 CL=21 LE=0 CX=20 CY=22 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1399" EndSeek="1430"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.10218 CL=1 LE=0 CX=0 CY=13 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1669" EndSeek="1719"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8018 CL=52 LE=0 CX=51 CY=8 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1958" EndSeek="2015"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.614 CL=19 LE=0 CX=18 CY=23 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2254" EndSeek="2293"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11702 CL=22 LE=0 CX=21 CY=36 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2534" EndSeek="2568"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4677 CL=23 LE=0 CX=22 CY=26 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2808" EndSeek="2843"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19211 CL=21 LE=0 CX=20 CY=27 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3084" EndSeek="3121"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9559 CL=40 LE=0 CX=39 CY=20 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3361" EndSeek="3395"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.25862 CL=37 LE=0 CX=36 CY=43 WI=5 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3636" EndSeek="3666"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.43632 CL=42 LE=0 CX=41 CY=23 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3907" EndSeek="3944"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Makefile	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=39 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4185" EndSeek="4223"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.650 CL=74 LE=0 CX=73 CY=31 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4462" EndSeek="4500"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5051 CL=52 LE=0 CX=51 CY=9 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4739" EndSeek="4772"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=744 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.13742 CL=12 LE=0 CX=11 CY=23 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5013" EndSeek="5051"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19795 CL=1 LE=0 CX=0 CY=2 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5289" EndSeek="5500"/>
+<Insert>VIEW: LN=.506 CL=24 LE=0 CX=23 CY=22 WI=5 BI=49 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5568" EndSeek="5596"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.25015 CL=21 LE=0 CX=20 CY=23 WI=5 BI=42 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5837" EndSeek="5869"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4039 CL=60 LE=0 CX=59 CY=20 WI=5 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6109" EndSeek="6141"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.3341 CL=21 LE=0 CX=20 CY=29 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6381" EndSeek="6422"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.75929 CL=46 LE=0 CX=45 CY=23 WI=5 BI=45 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6663" EndSeek="6711"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.225 CL=47 LE=0 CX=46 CY=13 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6950" EndSeek="6981"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4187 CL=1 LE=0 CX=0 CY=5 WI=5 BI=48 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7218" EndSeek="7289"/>
+<Insert>VIEW: LN=.10765 CL=24 LE=0 CX=30 CY=32 WI=251 BI=47 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7361" EndSeek="7445"/>
+<Insert>VIEW: LN=.50626 CL=18 LE=0 CX=24 CY=23 WI=155 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7517" EndSeek="7622"/>
+<Insert>VIEW: LN=.19019 CL=23 LE=0 CX=29 CY=25 WI=192 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7694" EndSeek="7783"/>
+<Insert>VIEW: LN=.12163 CL=21 LE=0 CX=27 CY=22 WI=179 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7855" EndSeek="7931"/>
+<Insert>VIEW: LN=.10218 CL=1 LE=0 CX=7 CY=13 WI=185 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8001" EndSeek="8095"/>
+<Insert>VIEW: LN=.8018 CL=52 LE=0 CX=58 CY=8 WI=161 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8165" EndSeek="8266"/>
+<Insert>VIEW: LN=.614 CL=19 LE=0 CX=25 CY=23 WI=111 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8336" EndSeek="8420"/>
+<Insert>VIEW: LN=.11702 CL=22 LE=0 CX=28 CY=36 WI=109 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8492" EndSeek="8570"/>
+<Insert>VIEW: LN=.4677 CL=23 LE=0 CX=29 CY=26 WI=107 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8641" EndSeek="8721"/>
+<Insert>VIEW: LN=.19211 CL=21 LE=0 CX=27 CY=27 WI=105 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8793" EndSeek="8875"/>
+<Insert>VIEW: LN=.9559 CL=40 LE=0 CX=46 CY=20 WI=99 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8946" EndSeek="9024"/>
+<Insert>VIEW: LN=.25862 CL=37 LE=0 CX=45 CY=43 WI=97 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9096" EndSeek="9171"/>
+<Insert>VIEW: LN=.43632 CL=42 LE=0 CX=48 CY=23 WI=92 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9243" EndSeek="9324"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=198 BI=39 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9393" EndSeek="9475"/>
+<Insert>VIEW: LN=.650 CL=74 LE=0 CX=82 CY=31 WI=228 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9545" EndSeek="9627"/>
+<Insert>VIEW: LN=.5051 CL=52 LE=0 CX=58 CY=9 WI=121 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9697" EndSeek="9775"/>
+<Insert>VIEW: LN=.13742 CL=12 LE=0 CX=18 CY=23 WI=264 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9847" EndSeek="9930"/>
+<Insert>VIEW: LN=.19795 CL=1 LE=0 CX=7 CY=2 WI=101 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9999" EndSeek="10084"/>
+<Insert>VIEW: LN=.506 CL=24 LE=0 CX=32 CY=22 WI=205 BI=49 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="10154" EndSeek="10227"/>
+<Insert>VIEW: LN=.25015 CL=21 LE=0 CX=27 CY=23 WI=313 BI=42 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="10299" EndSeek="10376"/>
+<Insert>VIEW: LN=.4039 CL=60 LE=0 CX=66 CY=20 WI=103 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="10446" EndSeek="10522"/>
+<Insert>VIEW: LN=.3341 CL=21 LE=0 CX=27 CY=29 WI=87 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="10593" EndSeek="10679"/>
+<Insert>VIEW: LN=.75929 CL=46 LE=0 CX=52 CY=23 WI=116 BI=45 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="10751" EndSeek="10843"/>
+<Insert>VIEW: LN=.225 CL=47 LE=0 CX=53 CY=13 WI=277 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="10913" EndSeek="10989"/>
+<Insert>VIEW: LN=.4187 CL=1 LE=0 CX=9 CY=16 WI=199 BI=48 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="11058" EndSeek="11369"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/04/19" Time="16:18:27000">
+<Copy StartSeek="0" EndSeek="266"/>
+<Insert>BUFFER: BN="kernel/sys.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.10765 CL=24 LE=0 CX=23 CY=32 WI=5 BI=47 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="drivers/net/ppp_generic.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.50626 CL=18 LE=0 CX=17 CY=23 WI=5 BI=50 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="arch/arm/plat-feroceon/mv_hal/neta/nfp/mvNfp.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19019 CL=23 LE=0 CX=22 CY=25 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="/usr/include/linux/rtnetlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=1 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12163 CL=21 LE=0 CX=20 CY=22 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/skbuff.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.10218 CL=1 LE=0 CX=0 CY=13 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/netfilter/nf_conntrack_netlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8018 CL=52 LE=0 CX=51 CY=8 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/net/netfilter/nf_conntrack_ecache.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.614 CL=19 LE=0 CX=18 CY=23 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/linux/rtnetlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11702 CL=22 LE=0 CX=21 CY=36 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/rtnetlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4677 CL=23 LE=0 CX=22 CY=26 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/net/netlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19211 CL=21 LE=0 CX=20 CY=27 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/net/neighbour.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9559 CL=40 LE=0 CX=39 CY=20 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/neighbour.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.25862 CL=37 LE=0 CX=36 CY=43 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv6/ndisc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.43632 CL=42 LE=0 CX=41 CY=23 WI=5 BI=41 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/Makefile"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Makefile	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.650 CL=74 LE=0 CX=73 CY=31 WI=5 BI=39 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5051 CL=52 LE=0 CX=51 CY=9 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="drivers/net/pppoe.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.13742 CL=12 LE=0 CX=11 CY=23 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/netlink/af_netlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.19795 CL=1 LE=0 CX=0 CY=2 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="drivers/block/aoe/aoenet.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.498 CL=24 LE=0 CX=23 CY=22 WI=5 BI=49 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/dev.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.25015 CL=21 LE=0 CX=20 CY=23 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="538" EndSeek="570"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="741" EndSeek="810"/>
+<Insert>BUFFER: BN="include/linux/if.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.3341 CL=21 LE=0 CX=20 CY=29 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="drivers/isdn/i4l/isdn_net.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.75929 CL=46 LE=0 CX=45 CY=23 WI=5 BI=46 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2472" EndSeek="2520"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="2693" EndSeek="2761"/>
+<Insert>BUFFER: BN="kernel/kallsyms.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4187 CL=1 LE=0 CX=0 CY=5 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=22 ",,,"
+BUFFER: BN="kernel/sys.c"
+VIEW: LN=.10765 CL=24 LE=0 CX=30 CY=32 WI=264 BI=47 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=19 ",,,"
+BUFFER: BN="drivers/net/ppp_generic.c"
+VIEW: LN=.50626 CL=18 LE=0 CX=24 CY=23 WI=251 BI=50 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=23 ",,,"
+BUFFER: BN="arch/arm/plat-feroceon/mv_hal/neta/nfp/mvNfp.h"
+VIEW: LN=.19019 CL=23 LE=0 CX=29 CY=25 WI=199 BI=20 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=15 ",,,"
+BUFFER: BN="/usr/include/linux/rtnetlink.h"
+VIEW: LN=.12163 CL=21 LE=0 CX=27 CY=22 WI=277 BI=29 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=14 ",,,"
+BUFFER: BN="net/core/skbuff.c"
+VIEW: LN=.10218 CL=1 LE=0 CX=7 CY=13 WI=116 BI=15 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="net/netfilter/nf_conntrack_netlink.c"
+VIEW: LN=.8018 CL=52 LE=0 CX=58 CY=8 WI=123 BI=13 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=3 ",,,"
+BUFFER: BN="include/net/netfilter/nf_conntrack_ecache.h"
+VIEW: LN=.614 CL=19 LE=0 CX=25 CY=23 WI=228 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4421" EndSeek="4466"/>
+<Insert>BUFFER: BN="include/linux/rtnetlink.h"
+VIEW: LN=.11702 CL=22 LE=0 CX=28 CY=36 WI=155 BI=21 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="net/core/rtnetlink.c"
+VIEW: LN=.4677 CL=23 LE=0 CX=29 CY=26 WI=121 BI=11 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=13 ",,,"
+BUFFER: BN="include/net/netlink.h"
+VIEW: LN=.19211 CL=21 LE=0 CX=27 CY=27 WI=192 BI=12 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=16 ",,,"
+BUFFER: BN="include/net/neighbour.h"
+VIEW: LN=.9559 CL=40 LE=0 CX=46 CY=20 WI=179 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4568" EndSeek="4612"/>
+<Insert>BUFFER: BN="net/core/neighbour.c"
+VIEW: LN=.25862 CL=37 LE=0 CX=45 CY=43 WI=185 BI=18 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=20 ",,,"
+BUFFER: BN="net/ipv6/ndisc.c"
+VIEW: LN=.43632 CL=42 LE=0 CX=48 CY=23 WI=205 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5613" EndSeek="5694"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=161 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5919" EndSeek="6001"/>
+<Insert>VIEW: LN=.650 CL=74 LE=0 CX=82 CY=31 WI=111 BI=39 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+VIEW: LN=.5051 CL=52 LE=0 CX=58 CY=9 WI=109 BI=27 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=17 ",,,"
+BUFFER: BN="drivers/net/pppoe.c"
+VIEW: LN=.13742 CL=12 LE=0 CX=18 CY=23 WI=102 BI=10 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=10 ",,,"
+BUFFER: BN="net/netlink/af_netlink.c"
+VIEW: LN=.19795 CL=1 LE=0 CX=7 CY=2 WI=198 BI=34 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=29 ",,,"
+BUFFER: BN="drivers/block/aoe/aoenet.c"
+VIEW: LN=.498 CL=24 LE=0 CX=30 CY=22 WI=326 BI=49 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=18 ",,,"
+BUFFER: BN="net/core/dev.c"
+VIEW: LN=.25015 CL=21 LE=0 CX=27 CY=23 WI=279 BI=36 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=12 ",,,"
+BUFFER: BN="net/ipv4/devinet.c"
+VIEW: LN=.4039 CL=60 LE=0 CX=66 CY=20 WI=67 BI=48 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=6 ",,,"
+BUFFER: BN="include/linux/if.h"
+VIEW: LN=.3341 CL=21 LE=0 CX=27 CY=29 WI=182 BI=25 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=21 ",,,"
+BUFFER: BN="drivers/isdn/i4l/isdn_net.c"
+VIEW: LN=.75929 CL=46 LE=0 CX=52 CY=23 WI=104 BI=46 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6071" EndSeek="6163"/>
+<Insert>VIEW: LN=.225 CL=47 LE=0 CX=53 CY=13 WI=324 BI=52 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=25 ",,,"
+BUFFER: BN="kernel/kallsyms.c"
+VIEW: LN=.4187 CL=1 LE=0 CX=7 CY=16 WI=224 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6676" EndSeek="6688"/>
+<Insert>include/linux/kallsyms.h
+kernel/kallsyms.c
+</Insert>
+<Copy StartSeek="6818" EndSeek="6838"/>
+<Insert>drivers/net/arcnet/arc-rimi.c
+include/linux/moduleparam.h
+drivers/net/arcnet/com90io.c
+drivers/block/aoe/aoenet.c
+../../dpa/kallsyms/kallsyms.c
+arch/powerpc/xmon/xmon.c
+</Insert>
+<Copy StartSeek="6875" EndSeek="6942"/>
+</Delta>
+</DeltaFile>

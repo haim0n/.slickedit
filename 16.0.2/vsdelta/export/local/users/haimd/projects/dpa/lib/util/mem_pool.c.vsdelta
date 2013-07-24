@@ -1,0 +1,208 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1" Comment="" Date="2013/07/14" Time="11:19:1000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* mem_pool.c
+*
+* Description:
+*       Memory pool.
+*
+*/
+
+#include &lt;adp_os.h&gt;
+#include &lt;util/mem.h&gt;
+#include &lt;util/mem_pool.h&gt;
+
+
+//#define _MEM_POOL_THREAD_SAFE_
+
+struct mem_block_t;
+
+typedef struct mem_block mem_block_t;
+
+struct mem_block {
+  mem_block_t *next;
+#ifdef _MEM_POOL_THREAD_SAFE_
+  mem_block_t *prev;
+#endif
+}; 
+
+struct mem_pool {
+  mem_block_t *head;
+#ifdef _MEM_POOL_THREAD_SAFE_
+  mem_block_t *tail;
+#endif
+  uint32_t     block_size;
+  uint32_t     block_count;
+  uint32_t     alignment;
+  uint32_t     size;
+};
+
+mem_pool_t* mem_pool_create(uint32_t block_size, uint32_t block_count, uint32_t alignment) {
+
+  mem_pool_t  *mp;
+  mem_block_t *curr;
+#ifdef _MEM_POOL_THREAD_SAFE_
+  mem_block_t *prev;
+#endif
+  uint32_t     size;
+
+  /* Must hold the nodes themselves */
+  if (block_size &lt; sizeof(mem_block_t)) {
+      block_size = sizeof(mem_block_t);
+  }
+  
+  block_size = MEM_ALIGN_UP(block_size, alignment);
+  size = sizeof(mem_pool_t) + block_size * block_count + alignment;
+#ifdef _MEM_POOL_THREAD_SAFE_
+  /* Extra dummy node, the pool must never be empty */
+  size += block_size;
+#endif
+  
+  mp = (mem_pool_t*) ADP_MALLOC(size);
+  if (mp) {
+      mp-&gt;alignment = alignment;
+      mp-&gt;block_count = block_count;
+      mp-&gt;size = size;
+      mp-&gt;block_size = block_size;
+      mp-&gt;head = (mem_block_t*) MEM_ALIGN_UP((uint32_t)(mp + 1), alignment);
+    
+#ifdef _MEM_POOL_THREAD_SAFE_
+     for (curr = mp-&gt;head, prev = NULL; block_count--; curr = curr-&gt;next) {
+          curr-&gt;next = (mem_block_t*) ((char*)curr + block_size);
+          curr-&gt;prev = prev;
+          prev = curr;
+     }
+     curr-&gt;next = NULL;
+     curr-&gt;prev = prev;
+     mp-&gt;tail = curr;
+#else
+     for (curr = mp-&gt;head; --block_count; curr = curr-&gt;next) {
+         curr-&gt;next = (mem_block_t*) ((uint8_t*)curr + block_size);
+     }
+     curr-&gt;next = NULL;
+#endif
+  }
+  
+  return mp;
+}
+
+void *mem_pool_alloc(mem_pool_t *pool) {
+  mem_block_t* b;
+
+#ifdef _MEM_POOL_THREAD_SAFE_
+  if ((b = pool-&gt;tail) != pool-&gt;head) {
+      pool-&gt;tail = b-&gt;prev;
+      pool-&gt;tail-&gt;next = NULL;
+  }
+#else
+  if ((b = pool-&gt;head)) {
+      pool-&gt;head = b-&gt;next;
+  }
+#endif
+
+  return b;
+}
+
+
+void mem_pool_free(mem_pool_t *pool, void *mem) {
+#ifdef _MEM_POOL_THREAD_SAFE_
+    mem_block_t *b = (mem_block_t*) mem;
+    b-&gt;prev = NULL;
+    b-&gt;next = pool-&gt;head;
+    pool-&gt;head-&gt;prev = b;
+    pool-&gt;head = b;
+#else
+  ((mem_block_t*) mem)-&gt;next = pool-&gt;head;
+  pool-&gt;head = ((mem_block_t*) mem);
+#endif
+}
+
+void mem_pool_destroy(mem_pool_t *pool) {
+  if (pool) {
+      ADP_FREE(pool);
+  }
+}
+
+uint32_t mem_pool_get_block_size(mem_pool_t *pool) {
+  return pool-&gt;block_size;
+}
+
+uint32_t mem_pool_get_block_count(mem_pool_t *pool) {
+  return pool-&gt;block_count;
+}
+
+uint32_t mem_pool_get_alignment(mem_pool_t *pool) {
+  return pool-&gt;alignment;
+}
+
+uint32_t mem_pool_get_size(mem_pool_t *pool) {
+  return pool-&gt;size;
+}
+
+#ifdef _MEM_POOL_TEST_
+
+#define BLOCK_COUNT 157
+#define BLOCK_SIZE 5
+#define ALIGNMENT 32
+
+int mem_pool_test(void) {
+
+  mem_pool_t *pool;
+  void *mem[BLOCK_COUNT];
+  int i;
+
+  pool = mem_pool_create(BLOCK_SIZE, BLOCK_COUNT, ALIGNMENT);
+
+  for (i = 0; i &lt; BLOCK_COUNT; i++) {
+    mem[i] = mem_pool_alloc(pool);
+    if (!mem[i] || MEM_IS_NOT_ALIGN((int)mem[i], ALIGNMENT))
+      goto FAIL;
+  }
+
+  if (mem_pool_alloc(pool)) {
+    goto FAIL;
+  }
+
+  for (i = 0; i &lt; BLOCK_COUNT; i++) {
+    mem_pool_free(pool, mem[i]);
+  }
+
+  for (i = 0; i &lt; BLOCK_COUNT; i++) {
+    mem[i] = mem_pool_alloc(pool);
+    if (!mem[i] || MEM_IS_NOT_ALIGN((int)mem[i], ALIGNMENT))
+      goto FAIL;
+  }
+
+  mem_pool_destroy(pool);
+
+  return 0;
+
+FAIL:
+  mem_pool_destroy(pool);
+
+  return -1;
+
+#endif /*_MEM_POOL_TEST_ */
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/07/08" Time="19:12:25000">
+<Copy StartSeek="0" EndSeek="2097"/>
+<Insert> for (curr = mp-&gt;head; --block_count; curr = curr-&gt;next) {
+</Insert>
+<Copy StartSeek="2160" EndSeek="2228"/>
+<Insert>      }
+      curr-&gt;next = NULL;
+</Insert>
+<Copy StartSeek="2259" EndSeek="4075"/>
+</Delta>
+</DeltaFile>

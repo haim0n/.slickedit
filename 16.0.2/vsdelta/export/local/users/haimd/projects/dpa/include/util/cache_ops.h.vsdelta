@@ -1,0 +1,820 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="8" Comment="" Date="2012/10/17" Time="15:37:25000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* cache_ops.h
+*
+* Description:
+*     Cache related operations.
+*
+*/
+
+#ifndef _CACHE_OPS_H_
+#define _CACHE_OPS_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+#define __DPA_PLATFORM_FIQ__
+
+#define CPU_D_CACHE_LINE_SIZE 32
+#define CPU_I_CACHE_LINE_SIZE 32
+
+#define L1_ICACHE_WAY0_MASK 0x00000001
+#define L1_DCACHE_WAY0_MASK 0x00000001
+#define L2_ICACHE_WAY0_MASK 0x00000001
+#define L2_DCACHE_WAY0_MASK 0x01000000
+
+#define L1_DCACHE_LOCK_BITS_MASK 0xf
+#define L1_ICACHE_LOCK_BITS_MASK 0xf
+
+#define L2_DCACHE_LOCK_BITS_MASK 0xff000000
+#define L2_ICACHE_LOCK_BITS_MASK 0x000000ff
+
+#ifndef ASM_VOLATILE
+#define ASM_VOLATILE __asm__ volatile
+#endif
+
+/* atomic macros - if L2 is not expicitly mentioned, relates to L1 cache */
+
+#define ICACHE_INVALIDATE_SINGLE_ENTRY(addr)        ASM_VOLATILE("MCR p15, 0, %0, c7, c5, 1" :: "r" (addr))
+#define DCACHE_INVALIDATE_SINGLE_LINE(addr)         ASM_VOLATILE("MCR p15, 0, %0, c7, c6, 1" :: "r" (addr))
+#define DCACHE_CLEAN_SINGLE_LINE(addr)              ASM_VOLATILE("MCR p15, 0, %0, c7, c10,1" :: "r" (addr))
+#define DCACHE_CLEAN_INVALIDATE_SINGLE_LINE(addr)   ASM_VOLATILE("MCR p15, 0, %0, c7, c14,1" :: "r" (addr))
+#define DRAIN_WRITE_BUFFER(addr)                    ASM_VOLATILE("MCR p15, 0, %0, c7, c10,4" :: "r" (addr))
+#define INVALIDATE_L1CACHE_RANGE(base,top)          ASM_VOLATILE("MCR p15, 5 ,%0, c15, c14, 0\nMCR p15, 5 ,%1, c15, c14, 1" :: "r" (base), "r"(top) )
+#define INVALIDATE_L2CACHE_RANGE(base,top)          ASM_VOLATILE("MCR p15, 1 ,%0, c15, c11, 4\nMCR p15, 1 ,%1, c15, c11, 5" :: "r" (base), "r"(top) )
+#define INVALIDATE_L2CACHE_LINE(addr)               ASM_VOLATILE("MCR p15, 1, %0, c15, c11,1":: "r" (addr))
+#define CLEAN_L1CACHE_RANGE(base,top)               ASM_VOLATILE("MCR p15, 5 ,%0, c15, c13, 0\nMCR p15, 5 ,%1, c15, c13, 1" :: "r" (base), "r"(top) )
+#define CLEAN_L2CACHE_RANGE(base,top)               ASM_VOLATILE("MCR p15, 1 ,%0, c15, c9, 4\nMCR p15, 1 ,%1, c15, c9, 5" :: "r" (base), "r"(top) )
+#define CLEAN_INVALIDATE_L1CACHE_RANGE(base,top)    ASM_VOLATILE("MCR p15, 5 ,%0, c15, c15, 0\nMCR p15, 5 ,%1, c15, c15, 1" :: "r" (base), "r"(top) )
+#define CLEAN_L2CACHE_LINE(addr)                    ASM_VOLATILE("MCR p15, 1, %0, c15, c9,1":: "r" (addr))
+#define CLEAN_INVALIDATE_L2CACHE_LINE(addr)         ASM_VOLATILE("MCR p15, 1, %0, c15, c10,1":: "r" (addr))
+
+
+#define ICACHE_INVALIDATE_ALL \
+    do {\
+        uint32_t __dummy = 0;\
+        ASM_VOLATILE("MCR p15, 0, %0, c7, c5, 0"::"r"(__dummy));\
+    } while(0);
+
+#define DCACHE_INVALIDATE_ALL \
+    do {\
+        uint32_t __dummy = 0;\
+        ASM_VOLATILE("MCR p15, 0, %0, c7, c6, 0"::"r"(__dummy));\
+    } while(0);
+
+#ifndef __DPA_PLATFORM_FIQ__
+#define CLEAN_INVALIDATE_L2_CACHE \
+    do {\
+        unsigned long flags;\
+        uint32_t __dummy = 0;\
+        RAW_LOCAL_IRQ_FIQ_SAVE(flags);\
+        ASM_VOLATILE("MCR p15, 1, %0, c15, c9, 0\nMCR p15, 1, %1, c15, c11,0"::"r"(__dummy),"r"(__dummy));\
+        RAW_LOCAL_IRQ_RESTORE(flags);\
+    } while (0);
+#else
+#define CLEAN_INVALIDATE_L2_CACHE \
+    do {\
+        uint32_t __dummy = 0;\
+        ASM_VOLATILE("MCR p15, 1, %0, c15, c9, 0\nMCR p15, 1, %1, c15, c11,0"::"r"(__dummy),"r"(__dummy));\
+    } while (0);
+#endif    
+
+
+#define _LDR(ptr,x,offset) ASM_VOLATILE("ldr   %0,[%1,%2]" : "=r" (x): "r"(ptr), "i"(offset))
+#define _ADDI(x,y,value)   ASM_VOLATILE("add  %0,%1,%2" : "=r" (x): "r" (y), "i"(value))
+#define _PLD(ptr)          ASM_VOLATILE("pld  [%0]" :: "r" (ptr))
+//#define __PLD(ptr,offset)  ASM_VOLATILE("pld  [%0,%1]" :: "r" (ptr), "i"(offset))
+
+
+/*
+ * Save the current interrupt enable state &amp; disable IRQs
+ */
+
+#define RAW_LOCAL_IRQ_FIQ_SAVE(x)				\
+	({							\
+		unsigned long temp;				\
+		(void) (&amp;temp == &amp;x);				\
+	__asm__ __volatile__(					\
+	"mrs	%0, cpsr		@ local_irq_fiq_save\n"	\
+"	orr	%1, %0, #0xC0\n"				\
+"	msr	cpsr_c, %1"					\
+	: "=r" (x), "=r" (temp)					\
+	:							\
+	: "memory", "cc");					\
+	})
+
+
+/*
+ * restore saved IRQ &amp; FIQ state
+ */
+#define RAW_LOCAL_IRQ_RESTORE(x)				\
+	__asm__ __volatile__(					\
+	"msr	cpsr_c, %0		@ local_irq_restore\n"	\
+	:							\
+	: "r" (x)						\
+	: "memory", "cc")
+
+
+
+/*
+ *
+ * noinline is needed due to "tc_loop" tak
+ *
+noinline void dcache_clean_all(void) {
+    ASM_VOLATILE("tc_loop: MRC p15, 0, r15, c7, c10, 3\nBNE tc_loop"); 
+}
+*/
+
+/* Invalidate a contigous memory block with the size of a Single DCache Line
+   L1+L2 Cache, addr should be Cache line aligned ( for 32b line addr = addr &amp; ~0x1f)
+   This Macro does not (!) clean the cache, only invalidates it
+   */
+ static inline void dcache_l1_l2_invalidate_single_line(uint32_t addr) {
+
+    DCACHE_INVALIDATE_SINGLE_LINE(addr);
+    INVALIDATE_L2CACHE_LINE(addr);    
+
+}
+
+/* Invalidate a contigous memory block with the size of 2 DCache Lines
+   L1+L2 Cache, addr should be Cache line aligned
+   This Macro does not (!) clean the cache, only invalidates it
+   */
+ static inline void dcache_l1_l2_invalidate_double_line(uint32_t base) {
+
+    uint32_t top=base+CPU_D_CACHE_LINE_SIZE;
+    DCACHE_INVALIDATE_SINGLE_LINE(base);    
+    DCACHE_INVALIDATE_SINGLE_LINE(top);
+    INVALIDATE_L2CACHE_LINE(base);
+    INVALIDATE_L2CACHE_LINE(top);
+
+}
+
+/* Invalidate a contigous memory block with the size of &lt;size&gt; bytes
+   L1+L2 Cache, addr should be Cache line aligned
+   This Macro does not (!) clean the cache, only invalidates it
+   */
+ static inline void dcache_l1_l2_invalidate_multi_line(uint32_t base, uint32_t top) {
+
+#ifndef __DPA_PLATFORM_FIQ__
+    unsigned long flags;
+    RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+#endif
+
+    INVALIDATE_L1CACHE_RANGE(base,top);
+    INVALIDATE_L2CACHE_RANGE(base,top);
+
+#ifndef __DPA_PLATFORM_FIQ__
+    RAW_LOCAL_IRQ_RESTORE(flags);
+#endif
+
+}
+
+
+/* Clean &amp; Invalidate a contigous memory block with the size of a Single DCache Line
+   L1+L2 Cache, addr should be Cache line aligned ( for 32b line addr = addr &amp; ~0x1f)   
+   */
+ static inline void dcache_l1_l2_clean_invalidate_single_line(uint32_t addr) {
+    DCACHE_CLEAN_INVALIDATE_SINGLE_LINE(addr);
+    CLEAN_INVALIDATE_L2CACHE_LINE(addr);
+}
+
+/* Clean &amp; Invalidate a contigous memory block with the size of 2 DCache Lines
+   L1+L2 Cache, addr should be Cache line aligned
+   */
+ static inline void dcache_l1_l2_clean_invalidate_double_line(uint32_t base) {
+
+    uint32_t top=base+CPU_D_CACHE_LINE_SIZE;
+    DCACHE_CLEAN_INVALIDATE_SINGLE_LINE(base);
+    DCACHE_CLEAN_INVALIDATE_SINGLE_LINE(top);
+    CLEAN_INVALIDATE_L2CACHE_LINE(base);
+    CLEAN_INVALIDATE_L2CACHE_LINE(top);
+
+}
+
+/* Clean &amp; Invalidate a contigous memory block with the size of &lt;size&gt; bytes
+   L1+L2 Cache, addr should be Cache line aligned
+   */
+ static inline void dcache_l1_l2_clean_invalidate_multi_line(uint32_t base, uint32_t top) {
+
+#ifndef __DPA_PLATFORM_FIQ__
+    unsigned long flags;
+    RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+#endif
+
+    CLEAN_INVALIDATE_L1CACHE_RANGE(base,top);
+    CLEAN_L2CACHE_RANGE(base,top);
+    INVALIDATE_L2CACHE_RANGE(base,top);
+
+#ifndef __DPA_PLATFORM_FIQ__
+    RAW_LOCAL_IRQ_RESTORE(flags);
+#endif
+}
+
+/* Clean a contigous memory block with the size of a Single DCache Line
+   L1+L2 Cache, addr should be Cache line aligned ( for 32b line addr = addr &amp; ~0x1f)   
+   */
+ static inline void dcache_l1_l2_clean_single_line(uint32_t addr) {
+    DCACHE_CLEAN_SINGLE_LINE(addr);
+    CLEAN_L2CACHE_LINE(addr);
+}
+
+/* Clean  a contigous memory block with the size of 2 DCache Lines
+   L1+L2 Cache, addr should be Cache line aligned
+   */
+ static inline void dcache_l1_l2_clean_double_line(uint32_t base) {
+
+    uint32_t top=base+CPU_D_CACHE_LINE_SIZE;
+    DCACHE_CLEAN_SINGLE_LINE(base);
+    DCACHE_CLEAN_SINGLE_LINE(top);
+    CLEAN_L2CACHE_LINE(base);
+    CLEAN_L2CACHE_LINE(top);
+}
+
+/* Clean  a contigous memory block with the size of &lt;size&gt; bytes
+   L1+L2 Cache, addr should be Cache line aligned
+   */
+ static inline void dcache_l1_l2_clean_multi_line(uint32_t base, uint32_t top) {
+
+#ifndef __DPA_PLATFORM_FIQ__
+
+    unsigned long flags;
+    RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+#endif
+
+    CLEAN_L1CACHE_RANGE(base,top);
+    CLEAN_L2CACHE_RANGE(base,top);
+    
+#ifndef __DPA_PLATFORM_FIQ__
+    RAW_LOCAL_IRQ_RESTORE(flags);
+#endif
+
+}
+
+
+/* Drain the write buffer Both to L1 &amp; L2 (a.k.a. Flush)
+   This function will often be called after Clean &amp; Invalidate
+   */
+
+ static inline void dcache_l1_l2_drain_write_buffer(void) {
+    int32_t dummy = 0;
+    DRAIN_WRITE_BUFFER(dummy);
+}
+
+
+
+/*######################################################################################################### 
+ 
+  CACHE LOCKDOWN FUNCTIONS
+ 
+  notes:
+ 
+  L1 cannot lock all ways - if all ways 0-3 are locked. way 3 will be behave as if it is not locked (!!)
+ 
+ 
+  #######################################################################################################*/
+
+
+/* unlock operations
+   
+  */
+
+static inline void unlock_instruction_l1_cache(void) {
+
+    uint32_t val,way;
+
+    way = L1_ICACHE_LOCK_BITS_MASK;
+
+    ASM_VOLATILE("mrc p15, 0, %0, c9, c0, 1":"=r"(val)); //read val
+    val &amp;= ~way; //Clear L bit for all ways
+    ASM_VOLATILE("mcr p15, 0, %0, c9, c0, 1"::"r"(val)); //write lockdown register
+
+}
+
+
+static inline void unlock_instruction_l2_cache(void) {
+
+    uint32_t val,way;
+
+    way = L2_ICACHE_LOCK_BITS_MASK;   
+
+    ASM_VOLATILE("mrc p15, 1, %0, c15, c10, 7":"=r"(val)); //read
+    val &amp;= ~way; //Clear L bit for way 
+    ASM_VOLATILE("mcr p15, 1, %0, c15, c10, 7"::"r"(val)); //write lockdown register
+}
+
+
+
+/* Open instruction lockdown window in L1 cache
+
+   lockdown_reg - pointer to where lockdown-register value should be saved while window is open
+   way - which way in cache to use (0-3)
+   return value - flags (interrupts are disabled while window is opened)
+*/
+
+
+#ifndef __DPA_PLATFORM_FIQ__
+static inline unsigned long 
+#else
+static inline void
+#endif
+open_win_instruction_lock_l1_cache(uint32_t * lockdown_reg,uint32_t way) {
+
+    uint32_t val,old_val;
+#ifndef __DPA_PLATFORM_FIQ__
+    unsigned long flags;
+    RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+#endif
+
+    way = L1_ICACHE_WAY0_MASK &lt;&lt; way;   
+
+    ASM_VOLATILE("mrc p15, 0, %0, c9, c0, 1":"=r"(old_val)); //Save old value to restore after lockdown completes
+    val = old_val &amp; (~way); //Clear L bit for way 
+    val |=  ( L1_ICACHE_LOCK_BITS_MASK &amp; (~way) ); //Set L bits to 1 for other ways
+
+    *lockdown_reg = old_val;
+    ASM_VOLATILE("mcr p15, 0, %0, c9, c0, 1"::"r"(val)); //write lockdown register
+
+#ifndef __DPA_PLATFORM_FIQ__
+    return flags;
+#endif
+
+}
+
+/* Close instruction lockdown window in L1 cache
+
+   lockdown_reg - pointer to where lockdown-register value was saved
+   way - which way in cache is used
+   flags -  the value received when opend the window interrupts are disabled while window is opened
+*/
+
+static inline void close_win_instruction_lock_l1_cache(uint32_t * lockdown_reg,
+
+#ifndef __DPA_PLATFORM_FIQ__
+                                                unsigned long flags,
+#endif
+                                                uint32_t way) {
+
+    uint32_t val;
+    uint32_t old_val = *lockdown_reg;
+
+    way = L1_ICACHE_WAY0_MASK &lt;&lt; way;
+    val = old_val | way; //  lock way
+    ASM_VOLATILE("mcr p15, 0, %0, c9, c0, 1"::"r"(val)); // update 
+#ifndef __DPA_PLATFORM_FIQ__
+    RAW_LOCAL_IRQ_RESTORE(flags);
+#endif
+}
+
+
+
+
+/* Open instruction lockdown window in L2 cache
+
+   lockdown_reg - pointer to where lockdown-register value should be saved while window is open
+   way - which way in cache to use (0-3)
+   return value - flags (interrupts are disabled while window is opened)
+*/
+
+#ifndef __DPA_PLATFORM_FIQ__
+static inline unsigned long 
+#else
+static inline void
+#endif
+
+open_win_instruction_lock_l2_cache(uint32_t * lockdown_reg,uint32_t way) {
+
+    uint32_t val,old_val;
+
+#ifndef __DPA_PLATFORM_FIQ__
+    unsigned long flags;
+    RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+#endif
+
+    way = L2_ICACHE_WAY0_MASK &lt;&lt; way;   
+
+    ASM_VOLATILE("mrc p15, 1, %0, c15, c10, 7":"=r"(old_val)); //Save old value to restore after lockdown completes
+    val = old_val &amp; (~way); //Clear L bit for way 
+    val |=  ( L2_ICACHE_LOCK_BITS_MASK &amp; (~way) ); //Set L bits to 1 for other ways
+
+    *lockdown_reg = old_val;
+    ASM_VOLATILE("mcr p15, 1, %0, c15, c10, 7"::"r"(val)); //write lockdown register
+
+#ifndef __DPA_PLATFORM_FIQ__
+    return flags;
+#endif
+
+}
+
+/* Close instruction lockdown window in L2 cache
+
+   lockdown_reg - pointer to where lockdown-register value was saved
+   way - which way in cache is used
+   flags -  the value received when opend the window interrupts are disabled while window is opened
+*/
+
+static inline void close_win_instruction_lock_l2_cache(uint32_t * lockdown_reg, 
+#ifndef __DPA_PLATFORM_FIQ__
+                                                unsigned long flags,
+#endif
+                                                uint32_t way) {
+    uint32_t val;
+    uint32_t old_val = *lockdown_reg;
+
+    way = L2_ICACHE_WAY0_MASK &lt;&lt; way;
+    val = old_val | way; //  lock way
+    ASM_VOLATILE("mcr p15, 1, %0, c15, c10, 7"::"r"(val)); // update 
+
+#ifndef __DPA_PLATFORM_FIQ__
+    RAW_LOCAL_IRQ_RESTORE(flags);
+#endif
+
+}
+
+
+
+/* Open instruction+data lockdown window in L2 cache
+
+   lockdown_reg - pointer to where lockdown-register value should be saved while window is open
+   way - which way in cache to use (0-3)
+   return value - flags (interrupts are disabled while window is opened)
+*/
+
+#ifndef __DPA_PLATFORM_FIQ__
+static inline unsigned long
+#else
+static inline void
+#endif
+open_win_instruction_data_lock_l2_cache(uint32_t * lockdown_reg,uint32_t dway,uint32_t iway) {
+
+    uint32_t val,old_val,way;
+
+#ifndef __DPA_PLATFORM_FIQ__
+    unsigned long flags;
+    RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+#endif
+
+    iway = L2_ICACHE_WAY0_MASK &lt;&lt; iway;
+    dway = L2_DCACHE_WAY0_MASK &lt;&lt; dway;
+
+    way = iway | dway;
+
+    ASM_VOLATILE("mrc p15, 1, %0, c15, c10, 7":"=r"(old_val)); //Save old value to restore after lockdown completes
+    val = old_val &amp; (~way) ; //Clear L bit for way 
+    val |=  ( (L2_ICACHE_LOCK_BITS_MASK | L2_DCACHE_LOCK_BITS_MASK) &amp; (~way) ); //Set L bits to 1 for other ways
+
+    *lockdown_reg = old_val;
+    ASM_VOLATILE("mcr p15, 1, %0, c15, c10, 7"::"r"(val)); //write lockdown register
+
+#ifndef __DPA_PLATFORM_FIQ__
+    return flags;
+#endif
+
+}
+
+/* Close instruction+data lockdown window in L2 cache
+
+   lockdown_reg - pointer to where lockdown-register value was saved
+   way - which way in cache is used
+   flags -  the value received when opend the window interrupts are disabled while window is opened
+*/
+
+static inline void close_win_instruction_data_lock_l2_cache(uint32_t * lockdown_reg,
+#ifndef __DPA_PLATFORM_FIQ__
+                                                     unsigned long flags,
+#endif
+                                                     uint32_t dway, uint32_t iway) {
+
+    uint32_t val;
+    uint32_t old_val = *lockdown_reg;
+
+    iway = L2_ICACHE_WAY0_MASK &lt;&lt; iway;
+    dway = L2_DCACHE_WAY0_MASK &lt;&lt; dway;
+
+    val = old_val | iway | dway; //  lock ways
+    ASM_VOLATILE("mcr p15, 1, %0, c15, c10, 7"::"r"(val)); // update 
+
+#ifndef __DPA_PLATFORM_FIQ__
+    RAW_LOCAL_IRQ_RESTORE(flags);
+#endif
+}
+
+
+
+/* instruction lockdown in L1 cache
+   start - start address (inclusive)
+   end  - end address (exclusive)
+   way - which way in cache to use (0-3).
+ 
+   - locked instructions in the specified way may be unlocked
+   - instructions are cleand from cache prior to lockdown
+   - small part of locking procedure will be locked (possibly instead of code to be locked)
+     TODO: move locking procedure to uncached area
+   */
+
+
+static inline void instruction_lock_l1_cache(uint32_t start, uint32_t end,int32_t way) {
+
+    uint32_t val,old_val;
+
+#ifndef __DPA_PLATFORM_FIQ__
+    unsigned long flags;
+    RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+#endif
+    way = L1_ICACHE_WAY0_MASK &lt;&lt; way;
+    start &amp;= ~(CPU_I_CACHE_LINE_SIZE-1); // align
+
+    ASM_VOLATILE("mrc p15, 0, %0, c9, c0, 1":"=r"(old_val)); //Save old value to restore after lockdown completes
+    val = old_val &amp; (~way); //Clear L bit for way 
+    val |=  ( L1_ICACHE_LOCK_BITS_MASK &amp; (~way) ); //Set L bits to 1 for other ways
+
+    //printk("locking: lockdown register = 0x%x\n",val);
+    ASM_VOLATILE("mcr p15, 0, %0, c9, c0, 1"::"r"(val)); //write lockdown register
+
+    do {
+        ICACHE_INVALIDATE_SINGLE_ENTRY(start);
+        ASM_VOLATILE("mcr p15, 0, %0, c7, c13, 1"::"r"(start));
+        start+=CPU_I_CACHE_LINE_SIZE;
+    } while (start &lt; end);
+
+    
+    val = old_val | way; //  lock way
+    //printk("locking: lockdown register = 0x%x\n",val);
+    ASM_VOLATILE("mcr p15, 0, %0, c9, c0, 1"::"r"(val)); // update 
+#ifndef __DPA_PLATFORM_FIQ__
+    RAW_LOCAL_IRQ_RESTORE(flags);
+#endif
+}
+
+
+
+/* data lockdown in L1 cache
+   start - start address (inclusive)
+   end  - end address (exclusive)
+   way - which way in cache to use (0-3).
+ 
+   - locked data in the specified way may be unlocked
+   - data is cleand from cache prior to lockdown
+     TODO: move locking procedure to uncached area
+   */
+
+
+static inline void data_lock_l1_cache(uint32_t start, uint32_t end,int32_t way) {
+
+    uint32_t val,old_val;
+#ifndef __DPA_PLATFORM_FIQ__
+    unsigned long flags;
+    RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+#endif
+
+    way = L1_DCACHE_WAY0_MASK &lt;&lt; way;
+    start &amp;= ~(CPU_D_CACHE_LINE_SIZE-1); // align
+
+    ASM_VOLATILE("mrc p15, 0, %0, c9, c0, 0":"=r"(old_val)); //Save old value to restore after lockdown completes
+    val = old_val &amp; (~way); //Clear L bit for way 
+    val |=  (L1_DCACHE_LOCK_BITS_MASK &amp; (~way) ); //Set L bits to 1 for other ways
+
+    ASM_VOLATILE("mcr p15, 0, %0, c9, c0, 0"::"r"(val)); //write lockdown register
+    //printk("locking: lockdown register = 0x%x\n",val);
+
+    do {
+        DCACHE_CLEAN_INVALIDATE_SINGLE_LINE(start); 
+        _PLD(start);
+        start+=CPU_D_CACHE_LINE_SIZE;
+    } while (start &lt; end);
+
+    
+    val = old_val | way; //  lock way
+    ASM_VOLATILE("mcr p15, 0, %0, c9, c0, 0"::"r"(val)); // update 
+    //printk("locking: lockdown register = 0x%x\n",val);
+
+#ifndef __DPA_PLATFORM_FIQ__
+    RAW_LOCAL_IRQ_RESTORE(flags);
+#endif
+}
+
+
+
+/* instruction lockdown in L2 cache
+   start - start address (inclusive)
+   end  - end address (exclusive)
+   way - which way in cache to use (0-3).
+ 
+   - locked instructions in the specified way may be unlocked
+   - instructions are cleand from cache (L1+L2) prior to lockdown
+   - small part of locking procedure will be locked (possibly instead of code to be locked)
+     TODO: move locking procedure to uncached area
+   */
+
+
+static inline void instruction_lock_l2_cache(uint32_t start, uint32_t end,int32_t way) {
+
+    uint32_t val,old_val;
+#ifndef __DPA_PLATFORM_FIQ__
+    unsigned long flags;
+    RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+#endif
+
+    way = L2_ICACHE_WAY0_MASK &lt;&lt; way;
+    start &amp;= ~(CPU_I_CACHE_LINE_SIZE-1); // align
+
+    ASM_VOLATILE("mrc p15, 1, %0, c15, c10, 7":"=r"(old_val)); //Save old value to restore after lockdown completes
+    val = old_val &amp; (~way); //Clear L bit for way 
+    val |=  (L2_ICACHE_LOCK_BITS_MASK &amp; (~way)); //Set L bits to 1 for other ways
+
+    ASM_VOLATILE("mcr p15, 1, %0, c15, c10, 7"::"r"(val)); //write lockdown register
+
+    do {
+        ICACHE_INVALIDATE_SINGLE_ENTRY(start);
+        INVALIDATE_L2CACHE_LINE(start);
+        ASM_VOLATILE("mcr p15, 0, %0, c7, c13, 1"::"r"(start));
+        start+=CPU_I_CACHE_LINE_SIZE;
+    } while (start &lt; end);
+
+    
+    val = old_val | way; //  lock way
+    ASM_VOLATILE("mcr p15, 1, %0, c15, c10, 7"::"r"(val)); // update 
+
+#ifndef __DPA_PLATFORM_FIQ__
+    RAW_LOCAL_IRQ_RESTORE(flags);
+#endif
+}
+
+
+
+/* data lockdown in L2 cache
+   start - start address (inclusive)
+   end  - end address (exclusive)
+   way - which way in cache to use (0-3).
+ 
+   - locked data in the specified way may be unlocked
+   - data is cleand from cache (L1+L2) prior to lockdown
+   - small part of locking procedure will be locked (possibly instead of code to be locked)
+     TODO: move locking procedure to uncached area
+   */
+
+
+static inline void data_lock_l2_cache(uint32_t start, uint32_t end,int32_t way) {
+
+    uint32_t val,old_val;
+
+#ifndef __DPA_PLATFORM_FIQ__
+    unsigned long flags;
+    RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+#endif
+    way = L2_DCACHE_WAY0_MASK &lt;&lt; way;
+    start &amp;= ~(CPU_D_CACHE_LINE_SIZE-1); // align
+
+    ASM_VOLATILE("mrc p15, 1, %0, c15, c10, 7":"=r"(old_val)); //Save old value to restore after lockdown completes
+    val = old_val &amp; (~way); //Clear L bit for way 
+    val |=  (L2_DCACHE_LOCK_BITS_MASK &amp; (~way)); //Set L bits to 1 for other ways
+    //printk("locking: lockdown register = 0x%x\n",val);
+
+    ASM_VOLATILE("mcr p15, 1, %0, c15, c10, 7"::"r"(val)); //write lockdown register
+
+    do {
+        DCACHE_CLEAN_INVALIDATE_SINGLE_LINE(start); // L1 clean
+        CLEAN_INVALIDATE_L2CACHE_LINE(start);      // L2 clean
+        //ASM_VOLATILE("ldr %0, [%1, #0]":"=r"(val):"r"(start));
+        _PLD(start);
+        start+=CPU_D_CACHE_LINE_SIZE;
+    } while (start &lt; end);
+
+    val = old_val | way; //  lock way
+    ASM_VOLATILE("mcr p15, 1, %0, c15, c10, 7"::"r"(val)); // update 
+    //printk("locking: lockdown register = 0x%x\n",val);
+#ifndef __DPA_PLATFORM_FIQ__
+    RAW_LOCAL_IRQ_RESTORE(flags);
+#endif
+}
+
+
+
+
+// misc functions (not related to cache. TODO: find an appropriate place)
+
+/* wait a certain number of cycles
+   Caution !! This macro uses cpu counter #3 - don't use this macro in case you are using counter #3
+   accuracy ~20 cycles
+   */
+
+
+static inline void wait_cpu_cycles(uint32_t cycles) {
+
+    uint32_t val = 3;
+    cycles -= 20;
+    ASM_VOLATILE("mcr p15, 0, %0, c15, c12, #3": : "r" (val)); // configure
+    val = 0;
+    ASM_VOLATILE("mcr p15, 0, %0, c15, c13, #6": : "r" (val)); // reset lsb's of counter #3
+    
+    do  {
+        ASM_VOLATILE  ("mrc p15, 0, %0, c15, c13, 6" : "=r" (val)); // read lsb's of counter #3
+    } while (val &lt; cycles);
+
+}
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // _CACHE_OPS_H_
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/08/27" Time="12:49:30000">
+<Copy StartSeek="0" EndSeek="5864"/>
+<Copy StartSeek="5886" EndSeek="22197"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/10/04" Time="09:10:45000">
+<Copy StartSeek="0" EndSeek="6064"/>
+<Copy StartSeek="6086" EndSeek="22219"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/10/04" Time="09:10:49000">
+<Copy StartSeek="0" EndSeek="5864"/>
+<Insert>#error "DPA_PLATFORM"
+</Insert>
+<Copy StartSeek="5864" EndSeek="6042"/>
+<Insert>#error "DPA_PLATFORM"
+</Insert>
+<Copy StartSeek="6042" EndSeek="22175"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/10/04" Time="09:12:2000">
+<Copy StartSeek="0" EndSeek="7394"/>
+<Copy StartSeek="7710" EndSeek="22491"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:25:49000">
+<Copy StartSeek="0" EndSeek="6087"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6429" EndSeek="7735"/>
+<Insert>static inline void dcache_l1_l2_clean_invalidate_multi_line_fiq(uint32_t base, uint32_t top) {
+
+    unsigned long flags;
+    RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+
+    CLEAN_INVALIDATE_L1CACHE_RANGE(base,top);
+    CLEAN_L2CACHE_RANGE(base,top);
+    INVALIDATE_L2CACHE_RANGE(base,top);
+
+    RAW_LOCAL_IRQ_RESTORE(flags);
+}
+
+</Insert>
+<Copy StartSeek="7735" EndSeek="22516"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="10:49:32000">
+<Copy StartSeek="0" EndSeek="6177"/>
+<Insert>#ifndef __DPA_PLATFORM_FIQ__
+</Insert>
+<Copy StartSeek="6177" EndSeek="6237"/>
+<Insert>#endif
+
+</Insert>
+<Copy StartSeek="6238" EndSeek="6319"/>
+<Insert>#ifndef __DPA_PLATFORM_FIQ__
+</Insert>
+<Copy StartSeek="6320" EndSeek="6354"/>
+<Insert>#endif
+
+}
+
+</Insert>
+<Copy StartSeek="6358" EndSeek="22445"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="10:49:39000">
+<Copy StartSeek="0" EndSeek="6354"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="6357" EndSeek="22444"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="10:49:40000">
+<Copy StartSeek="0" EndSeek="6087"/>
+<Insert>static inline void dcache_l1_l2_invalidate_multi_line_fiq(uint32_t base, uint32_t top) {
+
+    unsigned long flags;
+    RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+
+    INVALIDATE_L1CACHE_RANGE(base,top);
+    INVALIDATE_L2CACHE_RANGE(base,top);
+
+
+    RAW_LOCAL_IRQ_RESTORE(flags);
+}
+
+</Insert>
+<Copy StartSeek="6088" EndSeek="22175"/>
+</Delta>
+</DeltaFile>

@@ -1,0 +1,120 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1" Comment="" Date="2012/01/03" Time="11:13:50000" NL="\10" Encoding="utf8">
+<Insert>=surround_with_while while (%\c) {
+                     %\m sur_text -indent%
+                     }
+=surround_with_try try {
+                   %\m sur_text -indent%
+                   }
+=surround_with_union union {
+                     %\m sur_text -indent%
+                     } %\c;
+=surround_with_catch catch (%\c) {
+                     %\m sur_text -indent%
+                     }
+=surround_with_do...while do {
+                          %\m sur_text -indent%
+                          } while (%\c);
+=surround_with_if if (%\c) {
+                  %\m sur_text -indent%
+                  }
+=surround_with_type_struct typedef struct %\c {
+                           %\m sur_text -indent%
+                           };
+=surround_with_default default:
+                       %\m sur_text -indent%
+=surround_with_case case %\c:
+                    %\m sur_text -indent%
+                    break;
+=surround_with_#ifdef %\m begin_line%#ifdef %\c
+                      %\m sur_text%
+                      %\m begin_line%#endif
+=surround_with_#ifndef %\m begin_line%#ifndef %\c
+                       %\m sur_text%
+                       %\m begin_line%#endif
+=surround_with_switch switch (%\c) {
+                      %\m sur_text%
+                      }
+=surround_with_if...else if (%\c) {
+                         %\m sur_text -indent%
+                         } else {
+                         %\m sur_text -indent%
+                         }
+=surround_with_#if %\m begin_line%#if %\c
+                   %\m sur_text%
+                   %\m begin_line%#endif
+=surround_with_struct struct {
+                      %\m sur_text -indent%
+                      } %\c;
+=surround_with_finally finally {
+                       %\m sur_text -indent%
+                       }
+=surround_with_type_union typdef union %\c {
+                          %\m sur_text -indent%
+                          };
+=surround_with_foreach foreach (%\c in ) {
+                       %\m sur_text -indent%
+                       }
+=surround_with_include_once(macro "Symbol"
+                            )
+ #ifndef %(macro)
+ #define %(macro)
+ %\m sur_text%
+ #endif // %(macro)
+=surround_with_#if %\m begin_line%#if %\c
+                   %\m sur_text%
+                   %\m begin_line%#endif
+=surround_with_#if...else %\m begin_line%#if %\c
+                          %\m sur_text%
+                          %\m begin_line%#else
+                          %\m sur_text%
+                          %\m begin_line%#endif
+=surround_with_braces {
+                  %\m sur_text -indent%
+                  }
+=surround_with_try...catch try {
+                           %\m sur_text -indent%
+                           } catch (%\c) {
+                           }
+=surround_with_try...catch...finally try {
+                                     %\m sur_text -indent%
+                                     } catch (%\c) {
+                                     } finally {
+                                     }
+=surround_with_try...finally try {
+                             %\m sur_text -indent%
+                             } finally {
+                             %\i%\c
+                             }
+=surround_with_for for (%\c) {
+                   %\m sur_text -indent%
+                   }
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="utf8" Date="2012/01/01" Time="16:34:55000">
+<Copy StartSeek="0" EndSeek="1894"/>
+<Insert>=surround_with_for for (%\c) {
+                   %\m sur_text -indent%
+                   }
+</Insert>
+<Copy StartSeek="1894" EndSeek="2151"/>
+<Insert>=surround_with_try...catch try {
+                           %\m sur_text -indent%
+                           } catch () {
+                           }
+=surround_with_try...catch...finally try {
+                                     %\m sur_text -indent%
+                                     } catch () {
+                                     } finally {
+                                     }
+</Insert>
+<Copy StartSeek="2151" EndSeek="2491"/>
+<Copy StartSeek="2972" EndSeek="3099"/>
+<Insert>                             }
+=surround_with_braces {
+                  %\m sur_text -indent%
+                  }
+</Insert>
+</Delta>
+</DeltaFile>

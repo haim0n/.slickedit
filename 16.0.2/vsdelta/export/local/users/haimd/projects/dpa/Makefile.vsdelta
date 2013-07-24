@@ -1,0 +1,287 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="28" Comment="" Date="2013/05/27" Time="15:16:11000" NL="\10" Encoding="text">
+<Insert>DPA_SDK_DIR=$(CURDIR)
+
+include makHdr.include
+
+J?=8
+ifneq ("$(J)","")
+JMAKE=$(MAKE) -j $(J)
+else
+JMAKE=$(MAKE)
+endif
+
+APP_DIR=$(CURDIR)/app
+TEST_DIR=$(CURDIR)/tests
+MOD_LIB_DIR=$(CURDIR)/mod
+MOD_TARGET=
+ifeq ($(MAKECMDGOALS),clean)
+MOD_TARGET=clean
+endif
+
+LIBDPA_O=$(OUTPUT_DIR)/libdpa.o
+LIBDPA_A=$(OUTPUT_DIR)/libdpa.a
+LIBDPA_O_UNOBFUSCATED=$(LIBDPA_O).bak
+LIBDPA_REDEFINES=$(OUTPUT_DIR)/redefines.txt
+LIBDPA_O_UNOBFUSCATE_API= include/zte/zte_api_fast.h include/util/string.h 
+LIBDPA_O_UNOBFUSCATE_API+= include/dpa.h include/dpa/dpa.h
+LIBDPA_O_UNOBFUSCATE_API_OUT_FILE= $(OUTPUT_DIR)/zte_dont_obfuscate.h
+
+CUSTOM_OBJECTS-y=
+CUSTOM_OBJECTS-n=
+CUSTOM_OBJECTS-=
+LIBDPA_SDK_OBJECTS=
+OBFUSCATE_LIBDPA=
+
+LIBDPA_SDK_OBJECTS+= $(MOD_LIB_DIR)/util/libutil.a
+LIBDPA_SDK_OBJECTS+= $(MOD_LIB_DIR)/dpa/libdpa.a
+LIBDPA_SDK_OBJECTS+= $(MOD_LIB_DIR)/xml/libxml.a
+LIBDPA_SDK_OBJECTS+=$(CUSTOM_OBJECTS-y) $(CUSTOM_OBJECTS-)
+
+
+ifeq ($(DPA_OBFUSCATE),y)
+OBFUSCATE_LIBDPA=libdpa_obfuscate
+endif
+
+.PHONY: app tests platform libdpa_sdk outputdir libdpa_sdk.o libdpa $(LIBDPA_SDK_OBJECTS) clean cleanup libdpa.o $(OBFUSCATE_LIBDPA)
+
+all: platform app
+
+app: 
+	$(MAKE) -C $(APP_DIR)
+
+platform:
+	$(MAKE) -C platform/$(DPA_PLATFORM)
+
+tests: libdpa.o
+	$(JMAKE) -C $(TEST_DIR)
+
+$(LIBDPA_SDK_OBJECTS):
+	@echo "------------------------------------------------------------------------------------"
+	@echo "Running make -C $(dir $@) $(MOD_TARGET)"
+	@echo "------------------------------------------------------------------------------------"
+	$(JMAKE) -r -C $(dir $@) $(MOD_TARGET)
+
+
+libdpa_sdk.o: libdpa.o
+libdpa_sdk: libdpa	
+
+libdpa: libdpa.o outputdir
+	$(AR) rcs $(OUTPUT_DIR)/$@.a $(OUTPUT_DIR)/libdpa.o 
+
+libdpa.o: $(LIBDPA_O) $(OBFUSCATE_LIBDPA)
+
+
+$(LIBDPA_O): $(LIBDPA_SDK_OBJECTS) outputdir
+	$(LD) -r $(patsubst %.a, %.o, $(LIBDPA_SDK_OBJECTS)) -o $@
+
+outputdir:
+	echo "OUTPUT DIR IS" $(OUTPUT_DIR)
+	mkdir -p $(OUTPUT_DIR)
+
+un_obfuscated_api:
+	$(foreach FILE, $(LIBDPA_O_UNOBFUSCATE_API), $(shell cat $(FILE) &gt;&gt; $(LIBDPA_O_UNOBFUSCATE_API_OUT_FILE)))
+	
+libdpa_obfuscate: $(LIBDPA_O) un_obfuscated_api
+	@echo "------------------------------------------------------------------------------------"
+	@echo "OBFUSCATING output/libdpa.o Backup written to $(LIBDPA_O_UNOBFUSCATED)"
+	@echo "------------------------------------------------------------------------------------"
+	
+	$(CURDIR)/tools/obfuscate.py -i output/libdpa.o -o output/libdpa.o -b $(LIBDPA_O_UNOBFUSCATED) -r $(LIBDPA_REDEFINES) -m $(CURDIR)/output/zte_dont_obfuscate.h
+
+
+clean_output: $(outputdir)
+	rm -f $(OUTPUT_DIR)/*
+	
+clean_app:
+	$(MAKE) -C $(APP_DIR) clean
+
+clean_platform:
+	$(MAKE) -C platform/$(DPA_PLATFORM) clean
+
+clean: $(LIBDPA_SDK_OBJECTS) clean_output clean_app clean_platform
+	@echo "------------------------------------------------------------------------------------"
+	@echo "CLEAN FINISHED"
+	@echo "------------------------------------------------------------------------------------"
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="10:32:4000">
+<Copy StartSeek="0" EndSeek="1995"/>
+<Insert>	$(CURDIR)/tools/obfuscate.py -i output/libdpa.o -o output/libdpa.o -b $(LIBDPA_O_UNOBFUSCATED) -r $(LIBDPA_REDEFINES) -m $(CURDIR)/include/dpa_api.h
+</Insert>
+<Copy StartSeek="2154" EndSeek="2653"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="11:18:56000">
+<Copy StartSeek="0" EndSeek="2156"/>
+<Insert>clean_output:
+	rm -f $(OUTPUT_DIR)/*.ko $(OUTPUT_DIR)/*.o $(OUTPUT_DIR)/*.so $(OUTPUT_DIR)/*.a $(OUTPUT_DIR)/*.bak
+</Insert>
+<Copy StartSeek="2213" EndSeek="2595"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="11:26:43000">
+<Copy StartSeek="0" EndSeek="2183"/>
+<Insert>	echo rm -f $(OUTPUT_DIR)/*.*
+</Insert>
+<Copy StartSeek="2208" EndSeek="2590"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="11:27:38000">
+<Copy StartSeek="0" EndSeek="1995"/>
+<Insert>	$(CURDIR)/tools/obfuscate.py -i output/libdpa.o -o output/libdpa.o -b $(LIBDPA_O_UNOBFUSCATED) -r $(LIBDPA_REDEFINES) -m $(CURDIR)/include/zte/zte_api_fast.h
+</Insert>
+<Copy StartSeek="2197" EndSeek="2633"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="11:34:57000">
+<Copy StartSeek="0" EndSeek="1995"/>
+<Insert>	$(CURDIR)/tools/obfuscate.py -i output/libdpa.o -o output/libdpa.o -b $(LIBDPA_O_UNOBFUSCATED) -r $(LIBDPA_REDEFINES) -m $(CURDIR)/include/zte/zte_api_fast.h -m -m $(CURDIR)/include/zte/zte_api_fast.h
+</Insert>
+<Copy StartSeek="2193" EndSeek="2629"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="11:35:0000">
+<Copy StartSeek="0" EndSeek="1995"/>
+<Insert>	$(CURDIR)/tools/obfuscate.py -i output/libdpa.o -o output/libdpa.o -b $(LIBDPA_O_UNOBFUSCATED) -r $(LIBDPA_REDEFINES) -m $(CURDIR)/include/zte/zte_api_fast.h -m -m $(CURDIR)/include/zte_api_fast.h
+</Insert>
+<Copy StartSeek="2154" EndSeek="2590"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="11:35:51000">
+<Copy StartSeek="0" EndSeek="1995"/>
+<Insert>	$(CURDIR)/tools/obfuscate.py -i output/libdpa.o -o output/libdpa.o -b $(LIBDPA_O_UNOBFUSCATED) -r $(LIBDPA_REDEFINES) -m $(CURDIR)/include/zte/zte_api_fast.h
+</Insert>
+<Copy StartSeek="2181" EndSeek="2617"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="11:46:11000">
+<Copy StartSeek="0" EndSeek="1995"/>
+<Insert>	$(CURDIR)/tools/obfuscate.py -i output/libdpa.o -o output/libdpa.o -b $(LIBDPA_O_UNOBFUSCATED) -r $(LIBDPA_REDEFINES) -m $(CURDIR)/include/zte/zte_api_fast.h -m $(CURDIR)/include/dpa.h
+</Insert>
+<Copy StartSeek="2154" EndSeek="2590"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="11:47:33000">
+<Copy StartSeek="0" EndSeek="1995"/>
+<Insert>	$(CURDIR)/tools/obfuscate.py -i output/libdpa.o -o output/libdpa.o -b $(LIBDPA_O_UNOBFUSCATED) -r $(LIBDPA_REDEFINES) -m $(CURDIR)/include/zte/zte_api_fast.h
+</Insert>
+<Copy StartSeek="2179" EndSeek="2615"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="14:08:3000">
+<Copy StartSeek="0" EndSeek="1995"/>
+<Insert>	$(CURDIR)/tools/obfuscate.py -i output/libdpa.o -o output/libdpa.o -b $(LIBDPA_O_UNOBFUSCATED) -r $(LIBDPA_REDEFINES) -m $(CURDIR)/include/zte/zte_api_fast.h $(CURDIR)/include/dpa.h 
+</Insert>
+<Copy StartSeek="2154" EndSeek="2590"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="14:18:14000">
+<Copy StartSeek="0" EndSeek="1995"/>
+<Insert>	$(CURDIR)/tools/obfuscate.py -i output/libdpa.o -o output/libdpa.o -b $(LIBDPA_O_UNOBFUSCATED) -r $(LIBDPA_REDEFINES) -m $(CURDIR)/include/zte/zte_api_fast.h
+</Insert>
+<Copy StartSeek="2181" EndSeek="2617"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="14:21:17000">
+<Copy StartSeek="0" EndSeek="1995"/>
+<Insert>	$(CURDIR)/tools/obfuscate.py -i output/libdpa.o -o output/libdpa.o -b $(LIBDPA_O_UNOBFUSCATED) -r $(LIBDPA_REDEFINES) -m $(CURDIR)/include/zte/zte_api_fast.h -m $(CURDIR)/include/dpa.h
+</Insert>
+<Copy StartSeek="2154" EndSeek="2590"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="14:22:2000">
+<Copy StartSeek="0" EndSeek="1995"/>
+<Insert>	$(CURDIR)/tools/obfuscate.py -i output/libdpa.o -o output/libdpa.o -b $(LIBDPA_O_UNOBFUSCATED) -r $(LIBDPA_REDEFINES) -m $(CURDIR)/include/zte/zte_api_fast.h
+</Insert>
+<Copy StartSeek="2155" EndSeek="2591"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="14:40:50000">
+<Copy StartSeek="0" EndSeek="1995"/>
+<Copy StartSeek="2111" EndSeek="2707"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="14:52:23000">
+<Copy StartSeek="0" EndSeek="1696"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1716" EndSeek="2726"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="14:53:5000">
+<Copy StartSeek="0" EndSeek="1716"/>
+<Copy StartSeek="1832" EndSeek="2130"/>
+<Insert>	cat include/zte/zte_api_fast.h include/dpa.h include/dpa/dpa.h include/util/string.h &gt; output/zte_dont_obfuscate.h
+</Insert>
+<Copy StartSeek="2132" EndSeek="2728"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="14:53:18000">
+<Copy StartSeek="0" EndSeek="1832"/>
+<Insert>libdpa_obfuscate: $(LIBDPA_O)
+</Insert>
+<Copy StartSeek="1881" EndSeek="2747"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="14:53:32000">
+<Copy StartSeek="0" EndSeek="1696"/>
+<Insert>dont_obfuscate_api:
+</Insert>
+<Copy StartSeek="1715" EndSeek="2746"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="14:54:0000">
+<Copy StartSeek="0" EndSeek="404"/>
+<Copy StartSeek="541" EndSeek="1833"/>
+<Copy StartSeek="1834" EndSeek="1969"/>
+<Copy StartSeek="1970" EndSeek="2885"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="15:05:27000">
+<Copy StartSeek="0" EndSeek="540"/>
+<Insert>
+</Insert>
+<Copy StartSeek="540" EndSeek="2884"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="15:05:29000">
+<Copy StartSeek="0" EndSeek="403"/>
+<Insert>
+</Insert>
+<Copy StartSeek="403" EndSeek="2883"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="15:05:34000">
+<Copy StartSeek="0" EndSeek="1831"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1947" EndSeek="1966"/>
+<Insert>	cat include/zte/zte_api_fast.h include/dpa.h include/dpa/dpa.h include/util/string.h &gt; output/zte_dont_obfuscate.h
+
+</Insert>
+<Copy StartSeek="2059" EndSeek="2974"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="15:11:23000">
+<Copy StartSeek="0" EndSeek="2058"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2058" EndSeek="2973"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="15:11:25000">
+<Copy StartSeek="0" EndSeek="2058"/>
+<Insert>libdpa_obfuscate: $(LIBDPA_O) dont_obfuscate_api
+</Insert>
+<Copy StartSeek="2106" EndSeek="2972"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="15:11:54000">
+<Copy StartSeek="0" EndSeek="538"/>
+<Insert>
+</Insert>
+<Copy StartSeek="599" EndSeek="3032"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="15:13:31000">
+<Copy StartSeek="0" EndSeek="538"/>
+<Insert>LIBDPA_O_UNOBFUSCATE_FILE= $(OUTPUT_DIR)/zte_dont_obfuscate
+</Insert>
+<Copy StartSeek="606" EndSeek="1899"/>
+<Insert>#cat include/zte/zte_api_fast.h include/dpa.h include/dpa/dpa.h include/util/string.h &gt; output/zte_dont_obfuscate.h
+</Insert>
+<Copy StartSeek="1899" EndSeek="1918"/>
+<Insert>	$(foreach FILE, $(LIBDPA_O_UNOBFUSCATE_API), $(shell cat $(FILE) &gt;&gt; $(output/testdump)))
+</Insert>
+<Copy StartSeek="2026" EndSeek="2942"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="15:14:38000">
+<Copy StartSeek="0" EndSeek="538"/>
+<Insert>LIBDPA_O_UNOBFUSCATE_API_OUT_FILE= $(OUTPUT_DIR)/zte_dont_obfuscate
+</Insert>
+<Copy StartSeek="608" EndSeek="2944"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="15:15:17000">
+<Copy StartSeek="0" EndSeek="2537"/>
+<Insert>	rm -f $(OUTPUT_DIR)/*.*
+</Insert>
+<Copy StartSeek="2560" EndSeek="2942"/>
+</Delta>
+</DeltaFile>

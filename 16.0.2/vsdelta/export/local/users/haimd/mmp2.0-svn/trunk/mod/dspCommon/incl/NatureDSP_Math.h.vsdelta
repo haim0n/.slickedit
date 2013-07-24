@@ -1,0 +1,750 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="0" Comment="" Date="2012/01/18" Time="17:28:35000" NL="\13\10" Encoding="text">
+<Insert>// ==========================================================
+//  IntegrIT Ltd. is willing to license this portion of  
+//  software to you only upon the condition that you accept  
+//  all of the terms contained in this software license   
+//  agreement. By downloading or installing this software, 
+//  you accept unconditionally the terms of the agreement. 
+//  See the full text of agreement at 
+//  http://www.integrit.ru/license/integrit_license.html
+//  Copyright, IntegrIT, 2006-2007
+// ==========================================================
+//  fixed point DSP library
+//  
+//  IntegrIT, 2006-2007
+// ==========================================================
+#ifndef NATUREDSP_MATH_H 
+#define NATUREDSP_MATH_H 
+#include "NatureDSP_types.h"
+
+#if defined(COMPILER_ANSI)
+/*======================================
+	 basic arithmetics
+======================================*/
+/* addition with saturation           */
+int16_t	S_add_ss (int16_t x,int16_t y);	// Q15+Q15-&gt;Q15 
+int32_t	L_add_ss (int16_t x,int16_t y);	// Q15+Q15-&gt;Q31
+int32_t	L_add_ll (int32_t x,int32_t y); // Q31+Q31-&gt;Q31 
+
+/* subtraction with saturation        */
+int16_t	S_sub_ss (int16_t x,int16_t y);	// Q15-Q15-&gt;Q15 
+int32_t	L_sub_ss (int16_t x,int16_t y);	// Q15-Q15-&gt;Q31
+int32_t	L_sub_ll (int32_t x,int32_t y);	// Q31-Q31-&gt;Q31
+
+/* negation                           */
+int16_t	S_neg_s (int16_t x);		// -Q15-&gt;Q15
+int32_t	L_neg_l (int32_t x);		// -Q31-&gt;Q31
+
+/* absolute value with saturation     */
+int16_t	S_abs_s (int16_t x);		// Q15-&gt;Q15
+int32_t	L_abs_l (int32_t x);		// Q31-&gt;Q31
+
+/* misc conversions                   */
+int16_t S_sature_l (int32_t x);		// saturation: Q16.15-&gt;Q15
+int16_t S_extract_l (int32_t x);	// Q31-&gt;Q15 (extract higher 16 bits)
+int32_t L_deposit_s  (int16_t x);	// Q15-&gt;Q31 (shift left by 16)
+
+/* rounding (adding a 0x8000) with 
+saturation                            */
+int32_t L_round_l (int32_t x);	// Q31-&gt;Q31 - add 0x8000 with saturation 
+int16_t S_round_l (int32_t x);	// Q31-&gt;Q15 - add 0x8000 with saturation and shift left by 16 
+
+/* getting exponent                   */
+int16_t S_exp_l (int32_t x);	// exp(Q31), return  0 if x==0
+int16_t S_exp_s (int16_t x);	// exp(Q15), return  0 if x==0
+int16_t S_exp0_l (int32_t x);	// exp(Q31), return 31 if x==0
+int16_t S_exp0_s (int16_t x);	// exp(Q15), return 15 if x==0
+
+/* shift with saturation              */
+int32_t L_shl_s (int16_t x,int16_t t);	// Qx-&gt;Q(x+t-16)
+int32_t L_shl_l (int32_t x,int16_t t);	// Qx-&gt;Q(x+t)
+int16_t S_shl_s (int16_t x,int16_t t);	// Qx-&gt;Q(x+t)
+int32_t L_shr_s (int16_t x,int16_t t);	// Qx-&gt;Q(x-t-16)
+int32_t L_shr_l (int32_t x,int16_t t);	// Qx-&gt;Q(x-t)
+int16_t S_shr_s (int16_t x,int16_t t);	// Qx-&gt;Q(x-t)
+
+/* fractional multiplication          */
+int32_t	L_mpy_ss (int16_t x, int16_t y);	// Q15xQ15-&gt;Q31
+int16_t	S_mpy_ss (int16_t x, int16_t y);	// Q15xQ15-&gt;Q15
+int32_t	L_mpy_ls (int32_t x, int16_t y);	// Q31xQ15-&gt;Q31
+int32_t	L_mpy_ll (int32_t x, int32_t y);	// Q31xQ31-&gt;Q31
+
+/* multiplication : no saturation and 
+ overflow control                     */
+int32_t	L_mul_ss (int16_t x, int16_t y);	
+int16_t	S_mul_ss (int16_t x, int16_t y);	
+int32_t	L_mul_ls (int32_t x, int16_t y);	
+int32_t	L_mul_ll (int32_t x, int32_t y);	
+
+/* MAC/MAS operations                 */
+int32_t	L_mac_ss (int32_t z, int16_t x, int16_t y);	// Q15xQ15-&gt;Q31
+int32_t	L_mac_ls (int32_t z, int32_t x, int16_t y);	// Q31xQ15-&gt;Q31
+int32_t	L_mac_ll (int32_t z, int32_t x, int32_t y);	// Q31xQ31-&gt;Q31
+int32_t	L_mas_ss (int32_t z, int16_t x, int16_t y);	// Q15xQ15-&gt;Q31
+int32_t	L_mas_ls (int32_t z, int32_t x, int16_t y);	// Q31xQ15-&gt;Q31
+int32_t	L_mas_ll (int32_t z, int32_t x, int32_t y);	// Q31xQ31-&gt;Q31
+
+/* fast fractional division with 
+saturation                            */
+int16_t S_div_ls (int32_t x,int16_t y);	// Q31/Q15 -&gt; Q15
+int16_t S_div_ll (int32_t x,int32_t y);	// Q31/Q31 -&gt; Q15
+int32_t L_div_ll (int32_t x,int32_t y);	// Q31/Q31 -&gt; Q16.15
+
+
+/*--------------------------------------------------------------------
+  Specific C6x and C64 commands
+--------------------------------------------------------------------*/
+/*
+The PACKH2 instruction takes the upper half-words from src1 and src2 
+and packs them both into dst. The upper half-word of src1 is placed in 
+the upper half-word of dst. The upper half-word of src2 is placed in 
+the lower half-word of dst
+*/
+uint32_t _PACKH2(uint32_t x,uint32_t y);
+
+/* 
+The PACK2 instruction takes the lower half-words from src1 and src2 
+and packs them both into dst. The lower half-word of src1 is placed in 
+the upper half-word of dst. The lower half-word of src2 is placed in 
+the lower half-word of dst. 
+*/
+uint32_t _PACK2(uint32_t x,uint32_t y);
+
+/* The PACKLH2 instruction takes the lower half-word from src1, and 
+the upper half-word from src2, and packs them both into dst. The lower 
+half-word of src1 is placed in the upper half-word of dst. The upper 
+half-word of src2 is placed in the lower half-word of dst. 
+*/
+uint32_t _PACKLH2(uint32_t x,uint32_t y);
+
+/* 
+The PACKHL2 instruction takes the upper half-word from src1 and the 
+lower half-word from src2 and packs them both into dst. The upper 
+half-word of src1 is placed in the upper half-word of dst. The lower 
+half-word of src2 is placed in the lower half-word of dst. 
+*/ 
+uint32_t _PACKHL2(uint32_t x,uint32_t y);
+
+/*
+The SPACK2 instruction takes two signed 32-bit quantities in src1 and src2
+ and saturates them to signed 16-bit quantities. The signed 16-bit results 
+ are then packed into a signed, packed 16-bit format and written to dst. 
+ Specifically, the saturated 16-bit signed value of src1 is written to the 
+ upper half word of dst, and the saturated 16-bit signed value of src2 is 
+ written to the lower half word of dst. 
+*/
+int32_t _SPACK2(int32_t val_hi, int32_t  val_lo);
+
+/*
+The msb(src1) operand is multiplied by the lsb(src2) operand. The result is 
+placed in dst. The source operands are signed by default. The S is needed 
+in the mnemonic to specify a signed operand when both signed and unsigned 
+operands are used.
+*/
+int32_t _MPYHL(int32_t val_hi, int32_t  val_lo);
+
+/*
+The lsb(src1) operand is multiplied by the msb(src2) operand. The result is 
+placed in dst. The source operands are signed by default. The S is needed 
+in the mnemonic to specify a signed operand when both signed and unsigned 
+operands are used.
+*/
+int32_t _MPYLH(int32_t val_lo, int32_t  val_hi);
+
+/*
+The DOTP2 instruction returns the dot-product between two pairs of signed, 
+packed 16-bit values. The values in src1 and src2 are treated as signed, 
+packed 16-bit quantities. The signed result is written either to a single 
+32-bit register, or sign-extended into a 64-bit register pair. 
+The product of the lower half-words of src1 and src2 is added to the product 
+of the upper half-words of src1 and src2. The result is then written to the dst. 
+*/
+int32_t  _DOTP2(int32_t val1, int32_t  val2);
+
+/*
+The DOTPRSU2 instruction returns the dot-product between two pairs of packed 
+16-bit values. This instruction takes the result of the dot-product and performs 
+an additional S_round_l and shift step. The values in src1 are treated as signed 
+packed 16-bit quantities, whereas the values in src2 are treated as unsigned 
+packed 16-bit quantities. The results are written to dst. 
+The product of the lower half-words of src1 and src2 is added to the product 
+of the upper half-words of src1 and src2. The value 2^15 is then added to this 
+sum, producing an intermediate 32-bit result. The intermediate result is signed 
+shifted right by 16, producing a rounded, shifted result that is sign extended 
+and placed in dst.
+*/
+int32_t  _DOTPRSU2(int32_t src1, uint32_t  src2);
+
+/*
+The DOTPNRUS2 pseudo-operation performs the dot-product between two pairs of 
+packed 16-bit values, where the second product is negated. This instruction 
+takes the result of the dot-product and performs an additional S_round_l and shift 
+step. The values in src1 are treated as signed, packed 16-bit quantities, 
+whereas the values in src2 are treated as unsigned, packed 16-bit quantities. 
+The results are written to dst. The assembler uses the DOTPNRSU2 src1, src2, 
+dst instruction to perform this task.
+
+The product of the lower half-words of src1 and src2 is subtracted from the 
+product of the upper half-words of src1 and src2. The value 2^15 is then 
+added to this sum, producing an intermediate 32-bit result. The intermediate 
+result is signed shifted right by 16, producing a rounded, shifted result 
+that is sign extended and placed in dst.
+*/
+int32_t  _DOTPNRSU2(int32_t src1, uint32_t  src2);
+
+/*
+The DOTPU4 instruction returns the dot-product between four sets of packed 
+8-bit values. The values in both src1 and src2 are treated as unsigned,
+8-bit packed data. The unsigned result is written into dst. 
+*/
+uint32_t _DOTPU4(uint32_t src1, uint32_t src2);
+
+/*
+The DOTPSU4 instruction returns the dot-product between four sets of packed 
+8-bit values. The values in src1 are treated as signed packed 8-bit 
+quantities, whereas the values in src2 are treated as unsigned 8-bit packed 
+data. The signed result is written into dst. For each pair of 8-bit quantities 
+in src1 and src2, the signed 8-bit value from src1 is multiplied with the 
+unsigned 8-bit value from src2. The four products are summed together, and the
+resulting dot product is written as a signed 32-bit result to dst. 
+*/
+int32_t _DOTPSU4(uint32_t src1, uint32_t src2);
+
+/*The DOTPN2 instruction returns the dot-product between two pairs of signed, 
+packed 16-bit values where the second product is negated. The values in 
+src1 and src2 are treated as signed, packed 16-bit quantities. The signed 
+result is written to a single 32-bit register.
+The product of the lower half-words of src1 and src2 is subtracted from 
+the product of the upper half-words of src1 and src2. The result is then 
+written to dst. 
+*/
+inline_  int32_t  _DOTPN2(int32_t val1, int32_t  val2);
+
+/*
+The AVG2 instruction performs an averaging operation on packed 16-bit data. 
+For each pair of signed 16-bit values found in src1 and src2, AVG2 
+calculates the average of the two values and returns a signed 16-bit 
+quantity in the corresponding position in the dst.
+*/
+int32_t  _AVG2(int32_t val1, int32_t  val2);
+
+/*
+  BITC4 - Bit Count, Packed 8-Bit  ('C64x)
+  The BITC4 instruction performs a bit-count operation on 8-bit quantities. 
+*/
+uint32_t _BITC4(uint32_t x);
+
+/*
+BITR - The BITR implements a bit-reversal. A bit-reversal function
+reverses the order of bits in a 32-bit word.
+*/
+uint32_t _BITR(uint32_t x);
+
+/*
+The field in src2, specified by csta and cstb, is extracted and sign-extended 
+to 32 bits. The extract is performed by a shift left followed by a signed shift 
+right. csta and cstb are the shift left amount and shift right amount, 
+respectively. This can be thought of in terms of the LSB and MSB of the field 
+to be extracted. Then csta = 31 - MSB of the field and cstb = csta + LSB of the 
+field. The shift left and shift right amounts may also be specified as the ten 
+LSBs of the src1 register with cstb being bits 0-4 and csta bits 5-9. Only the 
+ten LSBs are valid for the register version of the instruction. If any of the 
+22 MSBs are non-zero, the result is invalid.
+*/
+int32_t _EXT(int32_t src, uint16_t shift_left, uint16_t shift_right);
+
+/*
+The field in src2, specified by csta and cstb, is extracted and zero extended 
+to 32 bits. The extract is performed by a shift left followed by an unsigned 
+shift right. csta and cstb are the amounts to shift left and shift right, 
+respectively. This can be thought of in terms of the LSB and MSB of the field 
+to be extracted. Then csta = 31 - MSB of the field and cstb = csta + LSB of 
+the field. The shift left and shift right amounts may also be specified as the 
+ten LSBs of the src1 register with cstb being bits 0-4 and csta bits 5-9. Only 
+the ten LSBs are valid for the register version of the instruction. If any of 
+the 22 MSBs are non-zero, the result is invalid.
+*/
+inline_ int32_t _EXTU(int32_t src, uint16_t shift_left, uint16_t shift_right);
+
+/*
+The SADD2 instruction performs 2s-complement addition between signed, packed 
+16-bit quantities in src1 and src2. The results are placed in a signed, 
+packed 16-bit format into dst. For each pair of 16-bit quantities in src1 and 
+src2, the sum between the signed 16-bit value from src1 and the signed 16-bit 
+value from src2 is calculated and saturated to produce a signed 16-bit result. 
+The result is placed in the corresponding position in dst. 
+*/
+int32_t  _SADD2(int32_t src1, int32_t src2);
+
+/*
+The upper and lower halves of the src1 operand are added to the upper 
+and lower halves of the src2 operand. Any carry from the lower half 
+add does not affect the upper half add.
+*/
+int32_t  _ADD2(int32_t src1, int32_t src2);
+
+/*
+The upper and lower halves of src2 are subtracted from the upper 
+and lower halves of src1. Any borrow from the lower-half subtraction 
+does not affect the upper-half subtraction.
+*/
+int32_t  _SUB2(int32_t src1, int32_t src2);
+
+/*
+The MAX2 instruction performs a maximum operation on packed signed 
+16-bit values. For each pair of signed 16-bit values in src1 and src2, 
+MAX2 places the larger value in the corresponding position in dst. 
+*/
+int32_t _MAX2(int32_t src1, int32_t src2);
+
+/*
+The MIN2 instruction performs a minimum operation on packed, signed 
+16-bit values. For each pair of signed 16-bit values in src1 and src2, 
+MAX2 places the smaller value in the corresponding position in dst. 
+*/
+int32_t _MIN2(int32_t src1, int32_t src2);
+
+/*
+The SHR2 instruction performs an arithmetic shift right on signed, 
+packed 16-bit quantities. The values in src are treated as signed, 
+packed 16-bit quantities. The lower five bits of shift are 
+treated as the shift amount. The results are placed in a signed, 
+packed 16-bit format into result. For each signed 16-bit quantity in 
+src, the quantity is shifted right by the number of bits specified 
+in the lower five bits of shift. Bits 5 through 31 of shift
+are ignored and may be non-zero. The shifted quantity is sign-extended, 
+and placed in the corresponding position in result. Bits shifted out 
+of the least-significant bit of the signed 16-bit quantity are 
+discarded.
+*/
+int32_t  _SHR2(int32_t src, uint16_t shift);
+
+/*
+The SHRU2 instruction performs an arithmetic shift right on unsigned, 
+packed 16-bit quantities. The values in src2 are treated as unsigned, 
+packed 16-bit quantities. The lower five bits of src1 or ucst5 are 
+treated as the shift amount. The results are placed in an unsigned, 
+packed 16-bit format into dst. 
+For each unsigned 16-bit quantity in src, the quantity is shifted 
+right by the number of bits specified in the lower five bits of shift.
+Bits 5 through 31 of shift are ignored and may be non-zero. 
+The shifted quantity is zero-extended, and placed in the corresponding 
+position in result. Bits shifted out of the least-significant bit of 
+the signed 16-bit quantity are discarded.
+*/
+int32_t  _SHRU2(int32_t src, uint16_t shift);
+
+/*
+The MPY2 instruction performs two 16-bit by 16-bit multiplications 
+between two pairs of signed, packed 16-bit values. The values in src1 
+and src2 are treated as signed, packed 16-bit quantities. The 32-bit results 
+are written into a 64-bit register pair. 
+The product of the lower half-words of src1 and src2 is written to the even 
+destination register, dst_e. The product of the upper half-words of src1 
+and src2 is written to the odd destination register, dst_o. 
+*/
+tDoubleWord _MPY2(int32_t src1, int32_t src2);
+
+/*
+The SMPY2 instruction performs two 16-bit by 16-bit multiplies between two 
+pairs of signed packed 16-bit values, with an additional left-shift and 
+saturate. The values in src1 and src2 are treated as signed, packed 16-bit 
+quantities. The two 32-bit results are written into a 64-bit register pair. 
+The SMPY2 instruction produces two 16 x 16 products. Each product is shifted 
+left by one; and if the left-shifted result is equal to 0x80000000, the 
+output value is saturated to 0x7FFFFFFF. 
+
+The saturated product of the lower half-words of src1 and src2 is written 
+to the even destination register, dst_e. The saturated product of the upper 
+half-words of src1 and src2 is written to the odd destination register, dst_o. 
+*/
+tDoubleWord _SMPY2(int32_t src1, int32_t src2);
+
+/*
+The CMPGT2 instruction performs comparisons for greater than values on signed, 
+packed 16-bit data. Each signed 16-bit value in src1 is compared against 
+the corresponding signed 16-bit value in src2, returning a 1 if src1 is 
+greater than src2 or returning a 0 if it is not greater. The comparison results 
+are packed into the two least-significant bits of dst. The result for the lower 
+pair of values is placed in bit 0, and the results for the upper pair of values 
+are placed in bit 1. The remaining bits of dst are set to 0. 
+*/
+int32_t _CMPGT2(int32_t src1,int32_t src2);
+
+/*
+The CMPEQ2 instruction performs equality comparisons on packed 16-bit data. 
+Each 16-bit value in src1 is compared against the corresponding 16-bit value 
+in src2, returning either a 1 if equal or 0 if not equal. The equality results 
+are packed into the two least-significant bits of dst. The result for the 
+lower pair of values is placed in bit 0, and the results for the upper pair 
+of values are placed in bit 1. The remaining bits of dst are set to 0. 
+*/
+int32_t _CMPEQ2(int32_t src1,int32_t src2);
+
+/*
+Builds a new double register pair by
+reinterpreting two unsigneds, where
+src2 is the high (odd) register and src1
+is the low (even) register
+*/
+tDoubleWord  _ITOD(const int32_t Hi, const int32_t Lo);
+
+/*
+Returns the high (odd) register of a double register pair
+*/
+int32_t _HI(const tDoubleWord  dword);
+
+/*
+Returns the low (even) register of a double register pair
+*/
+int32_t _LO(const tDoubleWord  dword);
+
+/*
+The MPYSU4 instruction returns the product between four sets of 
+packed 8-bit values producing four signed 16-bit results. The four 
+signed 16-bit results are packed into a 64-bit register pair, 
+dst_o:dst_e. The values in src1 are treated as signed packed 8-bit 
+quantities, whereas the values in src2 are treated as unsigned 8-bit 
+packed data. 
+For each pair of 8-bit quantities in src1 and src2, the signed 8-bit 
+value from src1 is multiplied with the unsigned 8-bit value from src2. 
+The product of src1 byte 0 and src2 byte 0 is written to the lower 
+half of dst_e. The product of src1 byte 1 and src2 byte 1 is written 
+to the upper half of dst_e. The product of src1 byte 2 and src2 byte 
+2 is written to the lower half of dst_o. The product of src1 byte 3 
+and src2 byte 3 is written to the upper half of dst_o. 
+*/
+tDoubleWord _MPYSU4(int32_t src1, uint32_t src2);
+
+/*
+The MPYU4 instruction returns the product between four sets of packed 
+8-bit values producing four unsigned 16-bit results that are packed 
+into a 64-bit register pair, dst_o:dst_e. The values in both src1 and 
+src2 are treated as unsigned 8-bit packed data. 
+For each pair of 8-bit quantities in src1 and src2, the unsigned 8-bit 
+value from src1 is multiplied with the unsigned 8-bit value from src2. 
+The product of src1 byte 0 and src2 byte 0 is written to the lower half 
+of dst_e. The product of src1 byte 1 and src2 byte 1 is written to the 
+upper half of dst_e. The product of src1 byte 2 and src2 byte 2 is 
+written to the lower half of dst_o. The product of src1 byte 3 and src2 
+byte 3 is written to the upper half of dst_o. 
+*/
+tDoubleWord _MPYU4(int32_t src1, uint32_t src2);
+
+/*
+The UNPKLU4 instruction moves the two least significant bytes of src2 
+into the two low bytes of the two half-words of dst. 
+Specifically the upper byte in the lower half-word is placed in the 
+lower byte in the upper halfword, while the lower byte of the lower 
+half-word is kept in the lower byte of the lower half-word. 
+The src2 bytes are zero-extended when unpacked, filling the two high bytes 
+of the two half-words of dst with zeros. 
+*/
+uint32_t _UNPKLU4(uint32_t src);
+/*
+The UNPKHU4 instruction moves the two most significant bytes of src2 into 
+the two low bytes of the two half-words of dst. 
+Specifically the upper byte in the upper half-word is placed in the lower 
+byte in the upper halfword, while the lower byte of the upper half-word is 
+placed in the lower byte of the lower half-word. The src2 bytes are 
+zero-extended when unpacked, filling the two high bytes of the two half-words 
+of dst with zeros. 
+
+*/
+uint32_t _UNPKHU4(uint32_t src);
+
+/*
+The PACKL4 instruction moves the low bytes of the two half-words in 
+src1 and src2, and packs them into dst. The bytes from src1 will 
+be packed into the most significant bytes of dst, and the bytes from 
+src2 will be packed into the least significant bytes of dst. 
+Specifically, the low byte of the upper half-word of src1 is moved to 
+the upper byte of the upper half-word of dst. The low byte of the 
+lower half-word of src1 is moved to the lower byte of the upper 
+half-word of dst. The low byte of the upper half-word of src2 is 
+moved to the upper byte of the lower half-word of dst. The low byte 
+of the lower half-word of src2 is moved to the lower byte of the 
+lower half-word of dst. 
+*/
+uint32_t _PACKL4(uint32_t src1,uint32_t src2);
+
+/*
+The ADD4 instruction performs 2s-complement addition between packed 
+8-bit quantities. The values in src1 and src2 are treated as packed 
+8-bit data and the results are written in packed 8-bit format.
+For each pair of packed 8-bit values found in src1 and src2, the sum 
+between the 8-bit value from src1 and the 8-bit value from src2 is 
+calculated to produce an 8-bit result. The result is placed in the 
+corresponding positions in dst. No saturation is performed. The carry 
+from one 8-bit add does not affect the add of any other 8-bit add.
+*/
+int32_t _ADD4 (int32_t src1, int32_t src2);
+
+/*
+The SWAP4 instruction exchanges pairs of bytes within each half-word of 
+src2, placing the result in dst. The values in src2 are treated as 
+unsigned, packed 8-bit values.
+Specifically the upper byte in the upper half-word is placed in the lower 
+byte in the upper halfword, while the lower byte of the upper half-word 
+is placed in the upper byte of the upper half-word. Also the upper byte 
+in the lower half-word is placed in the lower byte of the lower half-word, 
+while the lower byte in the lower half-word is placed in the upper byte of 
+the lower half word.
+*/
+uint32_t _SWAP4 (uint32_t src);
+
+#elif defined(COMPILER_MSVC)
+#include "NatureDSP_baseopMSVC.h"
+#elif defined(COMPILER_C55)	
+#include "NatureDSP_baseopC55.h"
+#elif defined(COMPILER_C64)	
+#include "NatureDSP_baseopC64.h"
+#elif defined(COMPILER_GNU)	
+  #include "NatureDSP_baseopGCC.h"
+#elif defined(COMPILER_GNUARM)	
+  #include "NatureDSP_baseopGCCARM.h"
+#elif defined(COMPILER_ADSP_BLACKFIN)
+  #include "NatureDSP_baseopBlackfin.h"
+#elif defined(COMPILER_CEARM9E)
+#include "NatureDSP_baseopcearm9e.h"
+#elif defined (COMPILER_ARM)
+#include "NatureDSP_baseop_RVDS.h"
+#else
+#error Code for another platforms available upon request: support@integrit.ru
+#endif //defined(COMPILER_MSVC)
+//-------------------------------------
+// mathematics
+//-------------------------------------
+
+//--------------------------------------------------
+//   Square root: sqrt(x)
+//   Input precision: Q15 or Q31 
+//
+//	 Accuracy:	3e-5
+//--------------------------------------------------
+int16_t S_sqrt_s (int16_t x);	// square root from Q15 number
+int32_t L_sqrt_l (int32_t x);	// square root from Q31 number
+
+//--------------------------------------------------
+//    logarithms: log2(x), ln(x), log10(x)
+//
+//    x - Q0 argument
+//
+//    returns number in Q9 format or 0x8000 on 
+//    negative of zero argument
+//	  Accuracy:	1 LSB
+//--------------------------------------------------
+int16_t S_log2_l (int32_t x);
+int16_t S_log2_s (int16_t x);
+int16_t S_ln_l (int32_t x);
+int16_t S_ln_s (int16_t x);
+int16_t S_log10_l (int32_t x);
+int16_t S_log10_s (int16_t x);
+
+//--------------------------------------------------
+//    raising to a power: 2^x, x=[0,1)
+//
+//    x - Q15
+//    returns result in unsigned Q15 format
+//--------------------------------------------------
+uint16_t U_pow2_s  (int16_t x);
+
+//--------------------------------------------------
+//    raising to a power: 2^x
+//
+//    x - Q9 degree
+//
+//    returns number in Q16.15 format 
+//	  Accuracy: 
+//	  in range -32768...512 (0 to 1 in Q9) - not greater than 1 LSB
+//	  x:[512...8192] - relative accuracy 3e-5
+//	  x&gt;=8192        - result is saturated on 0x7FFFFFFF
+//--------------------------------------------------
+int32_t L_pow2_s  (int16_t x);
+
+//--------------------------------------------------
+//    raising to a power: exp(x)
+//
+//    x - Q9 degree
+//
+//    returns number in Q16.15 format 
+//	  Accuracy: 
+//	  in range -32768...0 - not greater than 1 LSB
+//	  x:[0...5678] - relative accuracy 4.6e-5
+//	  x&gt;5678       - result is saturated on 0x7FFFFFFF
+//--------------------------------------------------
+int32_t L_pow_s   (int16_t x);
+
+//--------------------------------------------------
+//    raising to a power: 10^x
+//
+//    x - Q9 degree
+//
+//    returns number in Q16.15 format 
+//	  Accuracy: 
+//	  in range -32768...0 - not greater than 1 LSB
+//	  x:[0...2466] - relative accuracy 3.9e-5
+//	  x&gt;2466       - result is saturated on 0x7FFFFFFF
+//--------------------------------------------------
+int32_t L_pow10_s (int16_t x);
+
+//--------------------------------------------------
+//    raising to a power: y^x
+//
+//    y - Q9 base
+//    x - Q9 degree
+//
+//    returns number in Q16.15 format 
+//	  Accuracy depends on the arguments: 
+//	  Examples:
+//	  y==5120 (10.0 in Q9)
+//		  x&lt;=0	   absolute accuracy 2
+//		  x&lt;=2466  relative accuracy 1.2e-3
+//		  x&gt;2466   saturation
+//	  y==50 (0,09765625 in Q9)
+//		  x&gt;=0	   absolute accuracy 3
+//		  x&gt;=-2441 relative accuracy 2.3e-3
+//		  x&lt;-2441  saturation
+//--------------------------------------------------
+int32_t L_pow_ss  (int16_t y, int16_t x);
+
+//------------------------------------------
+//  returns accurate sin(pi*x) or cos(pi*x)
+//  where x is in Q31 or Q15
+//  Returned value is in Q15
+//
+//  maximum error  6.1e-5
+//------------------------------------------
+int16_t S_sin_l (int32_t x);
+int16_t S_cos_l (int32_t x);
+int16_t S_sin_s (int16_t x);
+int16_t S_cos_s (int16_t x);
+int16_t S_sinFast_l (int32_t x);
+int16_t S_cosFast_l (int32_t x);
+int16_t S_sinFast_s (int16_t x);
+int16_t S_cosFast_s (int16_t x);
+
+//------------------------------------------
+//  tangent functions: tan(pi*x) where x is in Q15
+//  Returned value is in Q16.15 (saturation possible)
+//  maximum error:	
+//	absolute error 9.2e-5 when |x|&lt;=0x2000 || &gt;=0x6000
+//	relative error 1.4e-4 when 0x2000&lt;=|x|&lt;=0x6000
+//------------------------------------------
+int32_t L_tan_l (int32_t x);
+int32_t L_tan_s (int16_t x);
+//------------------------------------------
+//  tangent functions: cot(pi*x) where x is in Q15
+//  Returned value is in Q16.15 (saturation possible)
+//	absolute error 9.2e-5 when 0x2000&lt;=|x|&lt;=0x6000
+//	relative error 1.4e-4 when |x|&lt;=0x2000 || &gt;=0x6000
+//------------------------------------------
+int32_t L_cot_l (int32_t x);
+int32_t L_cot_s (int16_t x);
+
+//------------------------------------------
+// Calculates function atan2(y,x)/pi 
+//
+// returns result in Q15
+// if y==0 &amp;&amp; x==0 returns 0
+//
+// average error ~0.6, maximum error 1 of LSB
+//------------------------------------------
+int16_t S_atan2_ss (int16_t y, int16_t x);
+int16_t S_atan2_ll (int32_t y, int32_t x);
+
+//------------------------------------------
+// Function calculates sinc(x) function
+// x in Q16.15
+//
+// returns result in Q15
+// average error 1.5e-5, maximum error 5.3e-5 
+//------------------------------------------
+int16_t S_sinc_l (int32_t x);
+
+//------------------------------------------
+// Ceiling/flooring numbers in Q16.15 format
+// with saturation
+//
+// returns result in Q15
+//------------------------------------------
+int32_t L_ceil_l  (int32_t x);
+int32_t L_floor_l (int32_t x);
+
+//------------------------------------------
+// Convert number in Q16.15 to dB (20*log10(x))
+// returns result in 1/100 parts of dB
+// if result is negative or zero, returns -10000
+// Output range is between -9030 to 9600
+// accuracy: 0.02 dB
+//------------------------------------------
+int16_t S_dB_l (int32_t x);
+
+//------------------------------------------
+// Convert number dB (in 1/100 parts of dB) 
+// into the number in Q16.15 
+//
+// Accuracy: 1 LSB + 0.0015 dB
+//------------------------------------------
+int32_t L_dB_s (int16_t x);
+
+//-------------------------------------
+// mathematics: pipelined processing
+// All functions below are identical to
+// the same wiout prefix _, but their 
+// inputs and outputs are arrays of length N
+//
+//	NOTE: inputs and outputs can not 
+//  overlap due to the performance reasons 
+//	thus they have restrict modifier
+//-------------------------------------
+/* square roots */
+void _S_sqrt_s (const int16_t* restrict x, int16_t N, int16_t* restrict y);
+void _L_sqrt_l (const int32_t* restrict x, int16_t N, int32_t* restrict y);
+
+/* logarithms */
+void _S_log2_l  (const int32_t* restrict x, int16_t N, int16_t* restrict y);
+void _S_log2_s  (const int16_t* restrict x, int16_t N, int16_t* restrict y);
+void _S_ln_l    (const int32_t* restrict x, int16_t N, int16_t* restrict y);
+void _S_ln_s    (const int16_t* restrict x, int16_t N, int16_t* restrict y);
+void _S_log10_l (const int32_t* restrict x, int16_t N, int16_t* restrict y);
+void _S_log10_s (const int16_t* restrict x, int16_t N, int16_t* restrict y);
+
+/* raising to a power */
+void _U_pow2_s  (const int16_t* restrict x, int16_t N, uint16_t* restrict y);
+void _L_pow2_s  (const int16_t* restrict x, int16_t N, int32_t* restrict y);
+void _L_pow_s   (const int16_t* restrict x, int16_t N, int32_t* restrict y);
+void _L_pow10_s (const int16_t* restrict x, int16_t N, int32_t* restrict y);
+void _L_pow_ss  (const int16_t* restrict y, const int16_t* restrict x, int16_t N, int32_t* restrict z);
+
+/* accurate sin/cos */
+void _S_sin_l (const int32_t* restrict x, int16_t N, int16_t* restrict y);
+void _S_cos_l (const int32_t* restrict x, int16_t N, int16_t* restrict y);
+void _S_sin_s (const int16_t* restrict x, int16_t N, int16_t* restrict y);
+void _S_cos_s (const int16_t* restrict x, int16_t N, int16_t* restrict y);
+
+/* tangent functions */
+void _L_tan_l (const int32_t* restrict x, int16_t N, int32_t* restrict y);
+void _L_tan_s (const int16_t* restrict x, int16_t N, int32_t* restrict y);
+void _L_cot_l (const int32_t* restrict x, int16_t N, int32_t* restrict y);
+void _L_cot_s (const int16_t* restrict x, int16_t N, int32_t* restrict y);
+void _S_atan2_ss (const int16_t* restrict y, const int16_t* restrict x, int16_t N, int16_t* restrict z);
+void _S_atan2_ll (const int32_t* restrict y, const int32_t* restrict x, int16_t N, int16_t* restrict z);
+
+/* sinc(x) function */
+void _S_sinc_l (const int32_t* restrict x, int16_t N, int16_t* restrict y);
+
+/* Ceiling/flooring */
+void _L_ceil_l  (const int32_t* restrict x, int16_t N, int32_t* restrict y);
+void _L_floor_l (const int32_t* restrict x, int16_t N, int32_t* restrict y);
+
+/* convertion  to dB and back */
+void _S_dB_l (const int32_t* restrict x, int16_t N, int16_t* restrict y);
+void _L_dB_s (const int16_t* restrict x, int16_t N, int32_t* restrict y);
+
+#endif// NATUREDSP_MATH_H 
+</Insert>
+</MostRecent>
+</DeltaFile>

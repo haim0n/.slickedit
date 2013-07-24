@@ -1,0 +1,654 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="77" Comment="" Date="2012/04/01" Time="14:47:44000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2010, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* dpa_api.h
+*
+* Description:
+*       Marvell Data Path Acceleration Engine API
+*
+*/
+
+#ifndef _DPA_API_H_
+#define _DPA_API_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include &lt;dpa_types.h&gt;
+
+
+int32_t dpa_init(const uint8_t* dpa_config);
+int32_t dpa_shutdown(void);
+
+int32_t dpa_stats_get(dpa_stats_t* stats);
+int32_t dpa_stats_clear(void);
+
+int32_t dpa_log_level_set(dpa_log_unit_t id, int32_t log_level);
+
+/* enable/disable auto learning agent */
+int32_t dpa_auto_learn_set(bool en);
+
+/* bind/unbind dpa interface */
+int32_t dpa_if_add(uint8_t *if_name);
+int32_t dpa_if_del(uint8_t *if_name);
+
+#ifdef DPA_BRIDGE
+int32_t dpa_bridge_if_add(uint8_t *br_name, uint8_t *if_name);
+int32_t dpa_bridge_if_del(uint8_t *br_name, uint8_t *if_name);
+void dpa_bridge_flush(void);
+
+typedef enum {
+	DPA_BR_RULE_DROP	= 1,
+} DPA_BRIDGE_RULE_FLAGS;
+
+
+typedef struct dpa_bridge_rule {
+	uint8_t	da[MV_MAC_ADDR_SIZE]; 	/* destination mac address */
+	uint8_t	sa[MV_MAC_ADDR_SIZE]; 	/* source mac address */
+	uint16_t in_vid; 		/* input vlan id */
+	uint16_t out_vid; 		/* set to 0xffff if no vlan header present */
+	uint8_t out_vlan_prio; 		/* 3 bit field. IEEE 802.1p priority. If Set to 0xff, val is copied from input vlan header */
+	uint8_t iif_name[IFNAMSIZ];	/* input interface name. use it instead of iff field */
+	uint8_t oif_name[IFNAMSIZ];	/* output interface name use it instead of oif field */
+	DPA_BRIDGE_RULE_FLAGS flags; 	/* bit field */
+} dpa_bridge_rule_t;
+
+/* Add/Del bridging rule */
+int32_t dpa_bridge_rule_add(dpa_bridge_rule_t *rule);
+int32_t dpa_bridge_rule_del(dpa_bridge_rule_t *rule);
+#endif /* DPA_BRIDGE */
+
+#ifdef DPA_VLAN
+typedef enum {
+	DPA_VLAN_RX_TRANSPARENT                = 0,
+	DPA_VLAN_RX_DROP_UNTAGGED              = 1,
+	DPA_VLAN_RX_DROP_TAGGED                = 2,
+	DPA_VLAN_RX_DROP_UNKNOWN               = 3,
+	DPA_VLAN_RX_DROP_UNTAGGED_AND_UNKNOWN  = 4,
+} dpa_vlan_rx_mode;
+
+typedef enum {
+	DPA_VLAN_TX_TRANSPARENT = 0,
+	DPA_VLAN_TX_UNTAGGED    = 1,
+	DPA_VLAN_TX_TAGGED      = 2,
+} dpa_vlan_tx_mode;
+
+int32_t dpa_vlan_prio_set(uint8_t *if_name, uint8_t vprio);
+int32_t dpa_vlan_vid_set(uint8_t *if_name, uint16_t vid);
+int32_t dpa_vlan_rx_mode_set(uint8_t *if_name, dpa_vlan_rx_mode mode);
+int32_t dpa_vlan_tx_mode_set(uint8_t *if_name, dpa_vlan_tx_mode mode);
+#endif /* DPA_VLAN */
+
+#ifdef DPA_IPV4_FWD
+typedef struct dpa_arp_entry {
+	uint8_t l3_addr[MV_MAX_L3_ADDR_SIZE];
+	uint8_t mac[MV_MAC_ADDR_SIZE];
+	uint32_t family;
+} dpa_arp_entry_t;
+
+uint32_t dpa_arp_add(dpa_arp_entry_t *arp);
+uint32_t dpa_arp_del(dpa_arp_entry_t *arp);
+uint32_t dpa_arp_flush(void);
+
+typedef struct dpa_rt_rule {
+	uint8_t	dst_l3[MV_MAX_L3_ADDR_SIZE];
+	uint8_t	dst_l3_gw[MV_MAX_L3_ADDR_SIZE];
+	uint32_t dst_mask_len;
+	uint32_t family;
+	uint32_t mtu;
+	uint8_t oif_name[IFNAMSIZ];
+} dpa_rt_rule_t;
+
+uint32_t dpa_rt_rule_add(dpa_rt_rule_t *rule);
+uint32_t dpa_rt_rule_del(dpa_rt_rule_t *rule);
+uint32_t dpa_rt_rule_flush(void);
+#endif /* DPA_IPV4_FWD */
+
+#ifdef DPA_CONNTRACK
+typedef enum {
+	DPA_CT_RULE_FLAG_SNAT          = 0X1
+	DPA_CT_RULE_FLAG_DNAT          = 0X2,
+	DPA_CT_RULE_FLAG_DROP          = 0X4,
+	DPA_CT_RULE_FLAG_SET_DSCP      = 0X8,
+	DPA_CT_RULE_FLAG_SET_VLAN_PRIO = 0X10,
+	DPA_CT_RULE_FLAG_SET_VLAN_ID   = 0X20,
+	DPA_CT_RULE_FLAG_SET_TXQ       = 0X40,
+	DPA_CT_RULE_FLAG_SET_TXP       = 0X80,
+	DPA_CT_RULE_FLAG_SET_MH        = 0X100,
+} dpa_ct_rule_flags;
+
+typedef struct dpa_rule_ct_mod {
+	/* NAT ipv4 only */
+	uint32_t new_sip;
+	uint32_t new_dip;
+	uint16_t new_sport;
+	uint16_t new_dport;
+
+	uint8_t new_dscp;
+	uint8_t new_vlan_prio;
+	uint16_t new_vlan_id;
+	uint8_t new_txq;
+	uint8_t new_txp;
+	uint8_t new_mh;
+} dpa_rule_ct_mod_t;
+
+typedef struct dpa_rule_ct {
+	uint32_t family;
+	uint8_t srcL3[MV_MAX_L3_ADDR_SIZE];
+	uint8_t dstL3[MV_MAX_L3_ADDR_SIZE];
+	uint16_t proto;
+	uint16_t sport;
+	uint16_t dport;
+	dpa_ct_rule_flags flags;
+	dpa_rule_ct_mod_t mod_params;
+	uint32_t age;
+} dpa_rule_ct_t;
+
+dpa_ct_rule_add(dpa_rule_ct *rule);
+dpa_ct_rule_del(dpa_rule_ct *rule);
+dpa_ct_rule_flush(void);
+#endif /* DPA_CONNTRACK */
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _DPA_API_H_ */
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="12:11:28000">
+<Copy StartSeek="0" EndSeek="3593"/>
+<Copy StartSeek="3643" EndSeek="3855"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:22:4000">
+<Copy StartSeek="0" EndSeek="1294"/>
+<Copy StartSeek="1310" EndSeek="3871"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:41:4000">
+<Copy StartSeek="0" EndSeek="1294"/>
+<Insert>	uint16_t vlan;
+</Insert>
+<Copy StartSeek="1331" EndSeek="3892"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:42:8000">
+<Copy StartSeek="0" EndSeek="1331"/>
+<Copy StartSeek="1351" EndSeek="3912"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:46:49000">
+<Copy StartSeek="0" EndSeek="1312"/>
+<Insert>	uint16_t out_vid;
+</Insert>
+<Copy StartSeek="1334" EndSeek="3915"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:48:40000">
+<Copy StartSeek="0" EndSeek="1312"/>
+<Insert>	uint16_t out_vid:12;
+</Insert>
+<Copy StartSeek="1331" EndSeek="3912"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:48:43000">
+<Copy StartSeek="0" EndSeek="1331"/>
+<Insert>	uint16_t out_pvid;
+</Insert>
+<Copy StartSeek="1350" EndSeek="3911"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:52:57000">
+<Copy StartSeek="0" EndSeek="1331"/>
+<Insert>	uint8_t out_pvid;
+</Insert>
+<Copy StartSeek="1403" EndSeek="3964"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:54:30000">
+<Copy StartSeek="0" EndSeek="1331"/>
+<Insert>	uint8_t out_pcp; /* set to 0xff to copy "PCP from input vlan header */
+</Insert>
+<Copy StartSeek="1435" EndSeek="3996"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:55:49000">
+<Copy StartSeek="0" EndSeek="1232"/>
+<Insert>	uint8_t	da[MV_MAC_ADDR_SIZE];
+</Insert>
+<Copy StartSeek="1293" EndSeek="4026"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:56:26000">
+<Copy StartSeek="0" EndSeek="1293"/>
+<Insert>	uint8_t	sa[MV_MAC_ADDR_SIZE];
+</Insert>
+<Copy StartSeek="1349" EndSeek="4051"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:56:34000">
+<Copy StartSeek="0" EndSeek="1349"/>
+<Insert>	uint16_t in_vid;
+</Insert>
+<Copy StartSeek="1387" EndSeek="4071"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:56:51000">
+<Copy StartSeek="0" EndSeek="1232"/>
+<Insert>	uint8_t	da[MV_MAC_ADDR_SIZE]; /* destination mac address */
+	uint8_t	sa[MV_MAC_ADDR_SIZE]; /* source mac address */
+	uint16_t in_vid; /* input vlan id */
+	uint16_t out_vid;
+	uint8_t out_pcp; /* 3 bit field. IEEE 802.1p priority. Set 0xff to copy "PCP from input vlan header */
+</Insert>
+<Copy StartSeek="1564" EndSeek="4125"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:57:47000">
+<Copy StartSeek="0" EndSeek="1564"/>
+<Insert>	uint32_t iif;
+	uint32_t oif;
+</Insert>
+<Copy StartSeek="1649" EndSeek="4180"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:58:23000">
+<Copy StartSeek="0" EndSeek="1458"/>
+<Insert>	uint8_t out_pcp; 		/* 3 bit field. IEEE 802.1p priority. Set 0xff to copy "PCP from input vlan header */
+</Insert>
+<Copy StartSeek="1575" EndSeek="4191"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="17:00:25000">
+<Copy StartSeek="0" EndSeek="1458"/>
+<Insert>	uint8_t out_pcp; 		/* 3 bit field. IEEE 802.1p priority. Set to 0xff in order to copy val from input vlan header */
+</Insert>
+<Copy StartSeek="1573" EndSeek="4189"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="17:00:44000">
+<Copy StartSeek="0" EndSeek="1458"/>
+<Insert>	uint8_t out_pcp; 		/* 3 bit field. IEEE 802.1p priority. If Set to 0xff , val is copied from input vlan header */
+</Insert>
+<Copy StartSeek="1572" EndSeek="4188"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="17:00:50000">
+<Copy StartSeek="0" EndSeek="1657"/>
+<Copy StartSeek="1693" EndSeek="4224"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="17:01:45000">
+<Copy StartSeek="0" EndSeek="1657"/>
+<Insert>	char iif_name[];
+	char oif_name[];
+</Insert>
+<Copy StartSeek="1709" EndSeek="4240"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="17:25:4000">
+<Copy StartSeek="0" EndSeek="1657"/>
+<Insert>	char iif_name[IFNAMSIZ];
+	char oif_name[IFNAMSIZ];
+</Insert>
+<Copy StartSeek="1764" EndSeek="4295"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="17:25:23000">
+<Copy StartSeek="0" EndSeek="1657"/>
+<Insert>	char iif_name[IFNAMSIZ];	/* input interface name */
+	char oif_name[IFNAMSIZ];	/* output interface name */
+</Insert>
+<Copy StartSeek="1821" EndSeek="4352"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="17:25:56000">
+<Copy StartSeek="0" EndSeek="1572"/>
+<Insert>	uint32_t iif;			/* input interface id */
+	uint32_t oif;			/* output interface id */
+</Insert>
+<Copy StartSeek="1572" EndSeek="4267"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="17:29:27000">
+<Copy StartSeek="0" EndSeek="3675"/>
+<Copy StartSeek="3746" EndSeek="4338"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:09:57000">
+<Copy StartSeek="0" EndSeek="3708"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3841" EndSeek="4050"/>
+<Insert>#ifdef DPA_NAT /* ipv4 only */
+	uint32_t new_sip;
+	uint32_t new_dip;
+	uint16_t new_sport;
+	uint16_t new_dport;
+#endif /* DPA_NAT */
+</Insert>
+<Copy StartSeek="4050" EndSeek="4338"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:10:7000">
+<Copy StartSeek="0" EndSeek="3708"/>
+<Insert>#ifdef DPA_NAT /* ipv4 only */
+</Insert>
+<Copy StartSeek="3725" EndSeek="3805"/>
+<Insert>#endif /* DPA_NAT */
+</Insert>
+<Copy StartSeek="3820" EndSeek="4318"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:10:19000">
+<Copy StartSeek="0" EndSeek="3805"/>
+<Insert>	/* DPA_NAT */
+
+</Insert>
+<Copy StartSeek="3806" EndSeek="4303"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:10:23000">
+<Copy StartSeek="0" EndSeek="3708"/>
+<Insert>	/* ipv4 only */
+</Insert>
+<Copy StartSeek="3729" EndSeek="3810"/>
+<Copy StartSeek="3830" EndSeek="4327"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:11:27000">
+<Copy StartSeek="0" EndSeek="3829"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3854" EndSeek="4351"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:11:39000">
+<Copy StartSeek="0" EndSeek="1458"/>
+<Insert>	uint8_t out_pcp; 		/* 3 bit field. IEEE 802.1p priority. If Set to 0xff, val is copied from input vlan header */
+</Insert>
+<Copy StartSeek="1578" EndSeek="4357"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:11:55000">
+<Copy StartSeek="0" EndSeek="3859"/>
+<Insert>
+} typedef struct dpa_rule_ct_mod_t;
+
+</Insert>
+<Copy StartSeek="3900" EndSeek="4360"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:12:47000">
+<Copy StartSeek="0" EndSeek="4098"/>
+<Insert>	/* HAIM FIXME : add modification params here! */
+</Insert>
+<Copy StartSeek="4130" EndSeek="4342"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:13:11000">
+<Copy StartSeek="0" EndSeek="4098"/>
+<Insert>	dpa_rule_ct_mod_t mod_params''
+</Insert>
+<Copy StartSeek="4129" EndSeek="4341"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:13:14000">
+<Copy StartSeek="0" EndSeek="3877"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3896" EndSeek="4359"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:13:32000">
+<Copy StartSeek="0" EndSeek="3895"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3913" EndSeek="4376"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:13:38000">
+<Copy StartSeek="0" EndSeek="3912"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3912" EndSeek="4375"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:13:55000">
+<Copy StartSeek="0" EndSeek="3912"/>
+<Insert>} dpa_rule_ct_mod_t;
+</Insert>
+<Copy StartSeek="3928" EndSeek="4127"/>
+<Insert>	dpa_rule_ct_mod_t mod_params;
+</Insert>
+<Copy StartSeek="4153" EndSeek="4365"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:18:59000">
+<Copy StartSeek="0" EndSeek="3912"/>
+<Insert>} dpa_ct_mod_t;
+</Insert>
+<Copy StartSeek="3933" EndSeek="4132"/>
+<Insert>	dpa_ct_mod_t mod_params;
+</Insert>
+<Copy StartSeek="4163" EndSeek="4375"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:19:4000">
+<Copy StartSeek="0" EndSeek="2374"/>
+<Insert>int32_t dpa_vlan_pvid_set(int32_t if_index, uint16_t pvid);
+int32_t dpa_vlan_vid_set(int32_t if_index, uint16_t vid);
+int32_t dpa_vlan_rx_mode_set(int32_t if_index, dpa_vlan_rx_mode mode);
+int32_t dpa_vlan_tx_mode_set(int32_t if_index, dpa_vlan_tx_mode mode);
+</Insert>
+<Copy StartSeek="2622" EndSeek="4363"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:37:15000">
+<Copy StartSeek="0" EndSeek="2374"/>
+<Insert>int32_t dpa_vlan_pvid_set(char *if_name, uint16_t pvid);
+</Insert>
+<Copy StartSeek="2431" EndSeek="4363"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:38:25000">
+<Copy StartSeek="0" EndSeek="2374"/>
+<Insert>int32_t dpa_vlan_prio_set(char *if_name, uint8_t vprio);
+int32_t dpa_vlan_vid_set(char *if_name, uint16_t vid);
+int32_t dpa_vlan_rx_mode_set(char *if_name, dpa_vlan_rx_mode mode);
+int32_t dpa_vlan_tx_mode_set(char *if_name, dpa_vlan_tx_mode mode);
+</Insert>
+<Copy StartSeek="2634" EndSeek="4375"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:38:57000">
+<Copy StartSeek="0" EndSeek="990"/>
+<Insert>int32_t dpa_bridge_if_add(int32_t bridge, int32_t port);
+int32_t dpa_bridge_if_del(int32_t bridge, int32_t port);
+</Insert>
+<Copy StartSeek="1108" EndSeek="4379"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:40:52000">
+<Copy StartSeek="0" EndSeek="3107"/>
+<Copy StartSeek="3122" EndSeek="4394"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="09:23:7000">
+<Copy StartSeek="0" EndSeek="3024"/>
+<Insert>	uint32_t dst_mask_len;
+</Insert>
+<Copy StartSeek="3024" EndSeek="3065"/>
+<Copy StartSeek="3089" EndSeek="4394"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="09:23:38000">
+<Copy StartSeek="0" EndSeek="901"/>
+<Insert>int32_t dpa_if_add(uint32_t port);
+int32_t dpa_if_del(uint32_t port);
+</Insert>
+<Copy StartSeek="977" EndSeek="4400"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="09:27:48000">
+<Copy StartSeek="0" EndSeek="996"/>
+<Insert>int32_t dpa_bridge_if_add(uint8_t *br_name, int32_t port);
+int32_t dpa_bridge_if_del(uint8_t *br_name, int32_t port);
+</Insert>
+<Copy StartSeek="1122" EndSeek="4408"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="09:28:8000">
+<Copy StartSeek="0" EndSeek="836"/>
+<Insert>int32_t dpa_learn_set(bool en);
+</Insert>
+<Copy StartSeek="873" EndSeek="4413"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="09:30:29000">
+<Copy StartSeek="0" EndSeek="2731"/>
+<Insert>	uint8_t dst_l3[MV_MAX_L3_ADDR_SIZE];
+	uint8_t da_mac[MV_MAC_ADDR_SIZE];
+</Insert>
+<Copy StartSeek="2802" EndSeek="4411"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="11:01:27000">
+<Copy StartSeek="0" EndSeek="2820"/>
+<Insert>	uint32_t age;
+</Insert>
+<Copy StartSeek="2820" EndSeek="4396"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="11:03:12000">
+<Copy StartSeek="0" EndSeek="4396"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="13:14:6000">
+<Copy StartSeek="0" EndSeek="4396"/>
+<Insert>
+</Insert>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="13:14:17000">
+<Copy StartSeek="0" EndSeek="3837"/>
+<Copy StartSeek="3857" EndSeek="4416"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="14:15:6000">
+<Copy StartSeek="0" EndSeek="3837"/>
+<Insert>	uint16_t new_vlan;
+</Insert>
+<Copy StartSeek="3860" EndSeek="4419"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="14:15:36000">
+<Copy StartSeek="0" EndSeek="3837"/>
+<Insert>	uint16_t new_vlan_od;
+</Insert>
+<Copy StartSeek="3860" EndSeek="4419"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="14:15:37000">
+<Copy StartSeek="0" EndSeek="3837"/>
+<Insert>	uint16_t new_vlan_id;
+</Insert>
+<Copy StartSeek="3837" EndSeek="4396"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="14:15:48000">
+<Copy StartSeek="0" EndSeek="3880"/>
+<Copy StartSeek="3905" EndSeek="4421"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="14:20:21000">
+<Copy StartSeek="0" EndSeek="3880"/>
+<Insert>	uint16_t new_vlan_prio;
+</Insert>
+<Copy StartSeek="3903" EndSeek="4419"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="14:20:26000">
+<Copy StartSeek="0" EndSeek="3560"/>
+<Copy StartSeek="3600" EndSeek="4459"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="14:21:42000">
+<Copy StartSeek="0" EndSeek="3560"/>
+<Insert>	DPA_CT_RULE_FLAG_SET_VLAN_ID   = 0X10,
+	DPA_CT_RULE_FLAG_SET_TXQ       = 0X20,
+	DPA_CT_RULE_FLAG_SET_TXP       = 0X40,
+	DPA_CT_RULE_FLAG_SET_MH        = 0X80,
+</Insert>
+<Copy StartSeek="3721" EndSeek="4460"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="14:22:11000">
+<Copy StartSeek="0" EndSeek="1765"/>
+<Insert>	DPA_BRIDGE_RULE_FLAGS flags; /* bit field */
+</Insert>
+<Copy StartSeek="1812" EndSeek="4461"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="15:49:15000">
+<Copy StartSeek="0" EndSeek="906"/>
+<Insert>int32_t dpa_if_add(uint8_t *br_name);
+int32_t dpa_if_del(uint8_t *br_name);
+</Insert>
+<Copy StartSeek="982" EndSeek="4461"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="15:49:55000">
+<Copy StartSeek="0" EndSeek="4461"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="16:00:40000">
+<Copy StartSeek="0" EndSeek="4462"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="16:00:53000">
+<Copy StartSeek="0" EndSeek="4461"/>
+<Insert>
+
+</Insert>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="16:01:4000">
+<Copy StartSeek="0" EndSeek="686"/>
+<Insert>int32_t dpa_get_stats(dpa_stats_t* stats);
+</Insert>
+<Copy StartSeek="774" EndSeek="4506"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="16:48:35000">
+<Copy StartSeek="0" EndSeek="774"/>
+<Insert>int32_t dpa_set_log_level(dpa_log_unit_t id, int32_t log_level);
+</Insert>
+<Copy StartSeek="839" EndSeek="4506"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="16:48:41000">
+<Copy StartSeek="0" EndSeek="729"/>
+<Insert>int32_t dpa_stats_clear(dpa_stats_t* stats);
+</Insert>
+<Copy StartSeek="760" EndSeek="4492"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="16:49:42000">
+<Copy StartSeek="0" EndSeek="686"/>
+<Copy StartSeek="687" EndSeek="761"/>
+<Copy StartSeek="762" EndSeek="4494"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="16:49:47000">
+<Copy StartSeek="0" EndSeek="2962"/>
+<Copy StartSeek="3007" EndSeek="4539"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2012/03/28" Time="17:26:27000">
+<Copy StartSeek="0" EndSeek="2962"/>
+<Insert>uint32_t dpa_arp_find(dpa_arp_entry_t *arp);
+</Insert>
+<Copy StartSeek="2962" EndSeek="4494"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2012/03/28" Time="17:27:8000">
+<Copy StartSeek="0" EndSeek="939"/>
+<Insert>int32_t dpa_if_add(uint8_t *if_name);
+int32_t dpa_if_del(uint8_t *if_name);
+</Insert>
+<Copy StartSeek="1015" EndSeek="4494"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="10:59:37000">
+<Copy StartSeek="0" EndSeek="1034"/>
+<Insert>int32_t dpa_bridge_if_add(uint8_t *br_name, uint8_t *if_name);
+int32_t dpa_bridge_if_del(uint8_t *br_name, uint8_t *if_name);
+</Insert>
+<Copy StartSeek="1160" EndSeek="4494"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="10:59:49000">
+<Copy StartSeek="0" EndSeek="1034"/>
+<Insert>int32_t dpa_bridge_if_add(uint32_t br_name, uint8_t *if_name);
+int32_t dpa_bridge_if_del(uint32_t br_name, uint8_t *if_name);
+</Insert>
+<Copy StartSeek="1160" EndSeek="4494"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:00:1000">
+<Copy StartSeek="0" EndSeek="939"/>
+<Insert>int32_t dpa_if_add(uint32_t if_name);
+int32_t dpa_if_del(uint32_t if_name);
+</Insert>
+<Copy StartSeek="1015" EndSeek="1034"/>
+<Insert>int32_t dpa_bridge_if_add(uint32_t br_name, uint32_t if_name);
+int32_t dpa_bridge_if_del(uint32_t br_name, uint32_t if_name);
+</Insert>
+<Copy StartSeek="1160" EndSeek="4494"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:02:8000">
+<Copy StartSeek="0" EndSeek="3158"/>
+<Insert>	uint32_t flags;
+</Insert>
+<Copy StartSeek="3158" EndSeek="4477"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:02:44000">
+<Copy StartSeek="0" EndSeek="3158"/>
+<Insert>	uint32_t oif;
+</Insert>
+<Copy StartSeek="3188" EndSeek="4492"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="14:47:36000">
+<Copy StartSeek="0" EndSeek="3158"/>
+<Insert>	uint8_t oif_name[IFNAMSIZ];;
+</Insert>
+<Copy StartSeek="3187" EndSeek="4491"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="14:47:39000">
+<Copy StartSeek="0" EndSeek="1634"/>
+<Insert>	char iif_name[IFNAMSIZ];	/* input interface name. use it instead of iff field */
+	char oif_name[IFNAMSIZ];	/* output interface name use it instead of oif field */
+</Insert>
+<Copy StartSeek="1804" EndSeek="4497"/>
+</Delta>
+</DeltaFile>

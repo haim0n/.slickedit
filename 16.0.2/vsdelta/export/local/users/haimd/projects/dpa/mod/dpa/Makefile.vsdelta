@@ -1,0 +1,326 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="36" Comment="" Date="2012/11/22" Time="17:49:54000" NL="\10" Encoding="text">
+<Insert># Copyright (C) 2012, Marvell Technology Group Ltd.
+# All Rights Reserved.
+#
+# This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+# the contents of this file may not be disclosed to third parties, copied
+# or duplicated in any form, in whole or in part, without the prior
+# written permission of Marvell Technology Group.
+#
+# Makefile to build an individual module
+#
+#################################################
+# Make script filenames
+#################################################
+COMMON_MAKEFILE_HEADER = ../../makHdr.include
+COMMON_MAKEFILE_FOOTER = ../../makFtr.include
+THIS_MAKEFILE = Makefile
+
+#################################################
+# Include common makefile header
+#################################################
+include $(COMMON_MAKEFILE_HEADER)
+
+
+#################################################
+# Module to be built and its API header files
+#################################################
+MODULE = libdpa.a
+
+#################################################
+# Sources
+#
+# CSRC: list of C source files.
+# SSRC: list of Assembly source files.
+# List the source files explicitly or use wildcard
+# to list all source files in current folder.
+#################################################
+OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o \
+		config.o dpa_cls.o dpa_cls_mm.o dpa_mdf_vlan.o dpa_mdf_eth.o \
+		dpa_mdf_ip.o dpa_mdf_l4.o dpa_mdf.o)
+#################################################
+# Flags
+#################################################
+INC_FLAGS = $(COM_INCFLAGS)
+
+
+CFLAGS    = $(COM_CFLAGS) $(INC_FLAGS) -Werror
+
+ASFLAGS   = $(COM_ASFLAGS)\
+			$(INC_FLAGS)
+
+ARFLAGS   = $(COM_ARFLAGS)
+
+#################################################
+# Makefile targets
+#
+# it: the first and the default makefile target - the module library.
+#
+# install: copy the module library and API header files to its 
+#   application directory if its source code is non-releasable.
+#
+# depend: update the dependency file list.
+#
+# clean: remove the temporary files generated during build.
+#
+# dir_integrity: check whether the subfolders for 
+#   temporary files exit. If not, create them.
+#################################################
+.PHONY: it install depend clean dir_integrity force_version_rebuild 
+
+it: force_version_rebuild dir_integrity $(MODULE)
+
+force_version_rebuild:
+	touch version.c
+	touch dpa.c
+
+install: it $(INSTALL_MODULE)
+
+
+$(OBJECTS): $(THIS_MAKEFILE) $(COMMON_MAKEFILE_HEADER) $(COMMON_MAKEFILE_FOOTER)
+
+
+depend: local_depend
+
+clean: local_clean
+
+dir_integrity: check_local_obj_dir depend
+
+
+##################################################
+# Include common makefile footer
+# Nothing behind common makefile footer!
+#################################################
+include $(COMMON_MAKEFILE_FOOTER)
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="14:35:17000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o)
+</Insert>
+<Copy StartSeek="1358" EndSeek="2732"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="11:35:20000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o dpm_vlan.c)
+</Insert>
+<Copy StartSeek="1358" EndSeek="2732"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="11:35:22000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Copy StartSeek="1338" EndSeek="2825"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:11:34000">
+<Copy StartSeek="0" EndSeek="1338"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o dpm_vlan.o)
+</Insert>
+<Copy StartSeek="1417" EndSeek="2791"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:11:44000">
+<Copy StartSeek="0" EndSeek="1417"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1443" EndSeek="2816"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:12:52000">
+<Copy StartSeek="0" EndSeek="1338"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o)
+OBJECTS += $(DPA_CLS_OBJ)
+</Insert>
+<Copy StartSeek="1432" EndSeek="2805"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:14:22000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>DPA_CLS_OBJ = 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o)
+</Insert>
+<Copy StartSeek="1334" EndSeek="2801"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:14:42000">
+<Copy StartSeek="0" EndSeek="1334"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o) $(DPA_CLS_OBJ)
+</Insert>
+<Copy StartSeek="1424" EndSeek="2797"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:14:45000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>CLS_OBJ = 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o)
+</Insert>
+<Copy StartSeek="1343" EndSeek="2806"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="15:58:8000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>CLS_OBJ = 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o)
+</Insert>
+<Copy StartSeek="1361" EndSeek="2824"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:01:30000">
+<Copy StartSeek="0" EndSeek="1317"/>
+<Insert>		dpm_vlan.o dpm_ip.o dpm_l4.o dpm_mdfy.o )
+</Insert>
+<Copy StartSeek="1360" EndSeek="2823"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:01:32000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>CLS_OBJ = 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa_cls.o \dpa_cls_mm.o \ 
+		dpm_vlan.o dpm_ip.o dpm_l4.o dpm_mdfy.o)
+</Insert>
+<Copy StartSeek="1318" EndSeek="2781"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:02:27000">
+<Copy StartSeek="0" EndSeek="1318"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o) $(CLS_OBJ)
+</Insert>
+<Copy StartSeek="1409" EndSeek="2782"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:03:5000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>CLS_OBJ = dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o dpm_mdfy.o
+</Insert>
+<Copy StartSeek="1319" EndSeek="2783"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:03:34000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>CLS_OBJ = dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o  dpm_mdfy.o
+</Insert>
+<Copy StartSeek="1318" EndSeek="2782"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:03:36000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>CLS_OBJ = dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o dpm_mdfy.o
+OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o  $(CLS_OBJ))
+</Insert>
+<Copy StartSeek="1555" EndSeek="2928"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:06:17000">
+<Copy StartSeek="0" EndSeek="1413"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o dpm_mdfy.o)
+</Insert>
+<Copy StartSeek="1544" EndSeek="2917"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:08:43000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert># CLS_OBJ = dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o dpm_mdfy.o
+# OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o  $(CLS_OBJ))
+</Insert>
+<Copy StartSeek="1245" EndSeek="2749"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:16:51000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o)
+</Insert>
+<Copy StartSeek="1599" EndSeek="2972"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:18:5000">
+<Copy StartSeek="0" EndSeek="1545"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, %{CSRC})
+</Insert>
+<Copy StartSeek="1599" EndSeek="2972"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:19:28000">
+<Copy StartSeek="0" EndSeek="1545"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, %{COBJ})
+</Insert>
+<Copy StartSeek="1564" EndSeek="2937"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:20:47000">
+<Copy StartSeek="0" EndSeek="1413"/>
+<Insert>#OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o)
+OBJECTS	= 	$(COBJ)
+</Insert>
+<Copy StartSeek="1564" EndSeek="2937"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:22:41000">
+<Copy StartSeek="0" EndSeek="1413"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o)
+</Insert>
+<Copy StartSeek="1546" EndSeek="2939"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:23:8000">
+<Copy StartSeek="0" EndSeek="1484"/>
+<Insert>config.o dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o)
+#OBJECTS	= 	$(COBJ)
+</Insert>
+<Copy StartSeek="1552" EndSeek="2925"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:23:55000">
+<Copy StartSeek="0" EndSeek="1519"/>
+<Insert>	dpm_vlan.o dpm_ip.o dpm_l4.o \)
+</Insert>
+<Copy StartSeek="1561" EndSeek="2934"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:24:16000">
+<Copy StartSeek="0" EndSeek="1484"/>
+<Insert>	config.o dpa_cls.o dpa_cls_mm.o \
+	dpm_vlan.o dpm_ip.o dpm_l4.o dpm_mdfy.o)
+</Insert>
+<Copy StartSeek="1563" EndSeek="2936"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:24:25000">
+<Copy StartSeek="0" EndSeek="1413"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o \
+		config.o dpa_cls.o dpa_cls_mm.o \
+</Insert>
+<Copy StartSeek="1520" EndSeek="2936"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:24:49000">
+<Copy StartSeek="0" EndSeek="1413"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, \
+		dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o \
+</Insert>
+<Copy StartSeek="1516" EndSeek="2932"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:25:7000">
+<Copy StartSeek="0" EndSeek="1413"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o \
+		dpm_vlan.o dpm_ip.o dpm_l4.o dpm_mdfy.o)
+</Insert>
+<Copy StartSeek="1555" EndSeek="2928"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:25:16000">
+<Copy StartSeek="0" EndSeek="1413"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o dpm_mdfy.o)
+</Insert>
+<Copy StartSeek="1555" EndSeek="2928"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:34:11000">
+<Copy StartSeek="0" EndSeek="1413"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o dpm_mdfy.o dpm_vlan.o dpm_ip.o dpm_l4.o)
+</Insert>
+<Copy StartSeek="1555" EndSeek="2928"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:34:21000">
+<Copy StartSeek="0" EndSeek="1413"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o dpm_mdfy.o)
+</Insert>
+<Copy StartSeek="1544" EndSeek="2917"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:35:17000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert># CLS_OBJ = dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o dpm_mdfy.o
+# OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o  $(CLS_OBJ))
+OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o dpm_vlan.o dpm_ip.o dpm_l4.o)
+</Insert>
+<Copy StartSeek="1413" EndSeek="2786"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:25:42000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o dpa_mdf_vlan.o dpa_mdf_eth.o dpa_mdf_ip.o dpa_mdf_l4.o dpa_mdfy.o)
+</Insert>
+<Copy StartSeek="1412" EndSeek="2785"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:27:10000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o dpa_mdf_vlan.o dpa_mdf_eth.o dpa_mdf_ip.o dpa_mdf_l4.o dpa_chg.o)
+</Insert>
+<Copy StartSeek="1412" EndSeek="2785"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:37:24000">
+<Copy StartSeek="0" EndSeek="1245"/>
+<Insert>OBJECTS	= 	$(patsubst %, $(LOCAL_OBJ_DIR)/%, dpa.o version.o event.o config.o dpa_cls.o dpa_cls_mm.o dpa_mdf_vlan.o dpa_mdf_eth.o dpa_mdf_ip.o dpa_mdf_l4.o dpa_mdf.o)
+</Insert>
+<Copy StartSeek="1420" EndSeek="2793"/>
+</Delta>
+</DeltaFile>

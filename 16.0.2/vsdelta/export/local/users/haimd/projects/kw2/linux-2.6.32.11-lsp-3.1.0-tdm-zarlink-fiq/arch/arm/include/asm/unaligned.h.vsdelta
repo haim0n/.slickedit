@@ -1,0 +1,61 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="6" Comment="" Date="2012/08/13" Time="13:21:36000" NL="\10" Encoding="text">
+<Insert>#ifndef _ASM_ARM_UNALIGNED_H
+#define _ASM_ARM_UNALIGNED_H
+
+#include &lt;linux/unaligned/le_byteshift.h&gt;
+#include &lt;linux/unaligned/be_byteshift.h&gt;
+#include &lt;linux/unaligned/generic.h&gt;
+
+/*
+ * Select endianness
+ */
+#ifndef __ARMEB__
+#define get_unaligned	__get_unaligned_le
+#define put_unaligned	__put_unaligned_le
+#else
+#define get_unaligned	__get_unaligned_be
+#define put_unaligned	__put_unaligned_be
+#endif
+
+#endif /* _ASM_ARM_UNALIGNED_H */
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/08/09" Time="11:32:35000">
+<Copy StartSeek="0" EndSeek="404"/>
+<Insert>
+</Insert>
+<Copy StartSeek="427" EndSeek="461"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="11:01:56000">
+<Copy StartSeek="0" EndSeek="404"/>
+<Insert>unsigned long ai_word;
+</Insert>
+<Copy StartSeek="431" EndSeek="465"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="11:03:4000">
+<Copy StartSeek="0" EndSeek="404"/>
+<Insert>unsigned long get_ai_word;
+</Insert>
+<Copy StartSeek="437" EndSeek="471"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="11:03:39000">
+<Copy StartSeek="0" EndSeek="404"/>
+<Insert>unsigned long get_ai_word(void);
+</Insert>
+<Copy StartSeek="440" EndSeek="474"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="11:12:11000">
+<Copy StartSeek="0" EndSeek="404"/>
+<Insert>extern unsigned long ai_word(void);
+</Insert>
+<Copy StartSeek="434" EndSeek="468"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="11:12:38000">
+<Copy StartSeek="0" EndSeek="404"/>
+<Insert>extern unsigned long ai_word;
+</Insert>
+<Copy StartSeek="405" EndSeek="439"/>
+</Delta>
+</DeltaFile>

@@ -1,0 +1,582 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="74" Comment="" Date="2013/06/24" Time="14:03:38000" NL="\10" Encoding="text">
+<Insert>#include &lt;util/timer.h&gt;
+
+/* HAIM FIXME : API to implement in our own functions */
+typedef struct zte_l3_hardfast_rcqueue_cfg {
+	unsigned char rcqueue;
+	unsigned long rate_limit;
+} ZTE_L3_HARDFAST_RCQUEUE_CFG;
+
+int zte_api_fast_l3_set_rcqueue_cfg(ZTE_L3_HARDFAST_RCQUEUE_CFG *cfg);
+int zte_api_fast_l3_get_rcqueue_cfg(ZTE_L3_HARDFAST_RCQUEUE_CFG *cfg);
+
+
+typedef struct zte_l3_hardfast_ingress_policer_cfg {
+  unsigned short id;
+  unsigned char  port;
+  unsigned long  rate_limit;
+  unsigned short vid;
+  ZTE_NETFF_IP   src_ip;
+  ZTE_NETFF_IP   src_ip_mask;
+  unsigned short type;
+} ZTE_L3_HARDFAST_INGRESS_POLICER_CFG;
+
+int zte_api_fast_l3_set_ingress_policer_cfg(ZTE_L3_HARDFAST_INGRESS_POLICER_CFG *cfg);
+int zte_api_fast_l3_get_ingress_policer_cfg(ZTE_L3_HARDFAST_INGRESS_POLICER_CFG *cfg);
+
+/*******************************************************************************/
+
+struct dpa_policer {
+	unsigned long tokens;
+	unsigned long burst_size;
+	unsigned long fill_quanta; /* added toks at each tick */
+	int	      ais_active;
+};
+
+
+#define DPA_FLOW_GRP_POLICERS 	16
+#define DPA_PORT_POLICERS 	2
+
+struct dpa_policer flow_policers[DPA_FLOW_GRP_POLICERS];
+struct dpa_policer port_policers[DPA_PORT_POLICERS];
+
+/* HAIM FIXME : come up with a better name ? */
+int dpa_policer_do(void *rate_limit, unsigned long data_len)
+{
+	struct dpa_policer *drl = (struct dpa_policer *)rate_limit;
+
+	if (drl-&gt;tokens &gt;= data_len) {
+		drl-&gt;tokens -= data_len;
+		return 1;
+	}
+	return 0;
+}
+
+int dpa_policer_init(struct dpa_policer *drl)
+{
+	dpa_policer_timer_add(drl);
+}
+
+void fill_tokens(struct dpa_policer *drlt)
+{
+	drl-&gt;tokens += drl-&gt;fill_quanta;
+	if (drl-&gt;tokens &gt; drl-&gt;burst_size)
+		drl-&gt;tokens = drl-&gt;burst_size;
+}
+
+void timer_cb(void) 
+{
+	struct dpa_policer *policer;
+	for (i = 0; i &lt; DPA_FLOW_GRP_POLICERS; ++i) {
+		policer = &amp;flow_policers[i];
+		if (policer-&gt;is_active)
+			fill_tokens(policer);
+	}
+
+	for (i = 0; i &lt; DPA_PORT_POLICERS; ++i) {
+		policer = &amp;flow_policers[i];
+		if (policer-&gt;is_active)
+			fill_tokens(policer);
+	}
+}
+
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="09:42:32000"/>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:01:29000">
+<Copy StartSeek="0" EndSeek="128"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:05:57000">
+<Copy StartSeek="0" EndSeek="201"/>
+<Insert>
+</Insert>
+<Copy StartSeek="274" EndSeek="336"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:06:12000">
+<Copy StartSeek="0" EndSeek="130"/>
+<Copy StartSeek="185" EndSeek="391"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:06:26000">
+<Copy StartSeek="0" EndSeek="391"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:06:34000">
+<Copy StartSeek="0" EndSeek="391"/>
+<Insert>
+
+</Insert>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:07:2000">
+<Copy StartSeek="0" EndSeek="329"/>
+<Insert>int dpa_rcqueue_init(ZTE_L3_HARDFAST_RCQUEUE_CFG *cfg)
+</Insert>
+<Copy StartSeek="368" EndSeek="375"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:08:4000">
+<Copy StartSeek="0" EndSeek="329"/>
+<Insert>int dpa_rcqueue_init(dpa_rcqueue *cfg)
+</Insert>
+<Copy StartSeek="379" EndSeek="387"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:08:18000">
+<Copy StartSeek="0" EndSeek="385"/>
+<Insert>
+
+</Insert>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:08:54000">
+<Copy StartSeek="0" EndSeek="456"/>
+<Insert>
+
+</Insert>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:08:58000">
+<Copy StartSeek="0" EndSeek="385"/>
+<Insert>struct dpa_rcqueue *dpa_rcqueue_init(struct dpa_rcqueue *rcqueue)
+</Insert>
+<Copy StartSeek="435" EndSeek="440"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:11:4000">
+<Copy StartSeek="0" EndSeek="129"/>
+<Insert>
+</Insert>
+<Copy StartSeek="155" EndSeek="465"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:25:8000">
+<Copy StartSeek="0" EndSeek="129"/>
+<Insert>struct dpa_rcqueue {
+
+</Insert>
+<Copy StartSeek="196" EndSeek="455"/>
+<Insert>struct dpa_rcqueue *dpa_rcqueue_init(int rcqueue)
+</Insert>
+<Copy StartSeek="507" EndSeek="510"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:31:44000">
+<Copy StartSeek="0" EndSeek="196"/>
+<Copy StartSeek="219" EndSeek="556"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:32:9000">
+<Copy StartSeek="0" EndSeek="196"/>
+<Insert>	(void *)refill(void);
+</Insert>
+<Copy StartSeek="225" EndSeek="562"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:34:21000">
+<Copy StartSeek="0" EndSeek="196"/>
+<Insert>	(void *)fill_tokenss(void);
+</Insert>
+<Copy StartSeek="225" EndSeek="562"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:34:37000">
+<Copy StartSeek="0" EndSeek="196"/>
+<Insert>	void (*fill_tokenss)(void);
+</Insert>
+<Copy StartSeek="224" EndSeek="561"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:34:43000">
+<Copy StartSeek="0" EndSeek="196"/>
+<Insert>	void (*fill_tokens)(void);
+</Insert>
+<Copy StartSeek="236" EndSeek="573"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:35:7000">
+<Copy StartSeek="0" EndSeek="196"/>
+<Copy StartSeek="255" EndSeek="632"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:36:36000">
+<Copy StartSeek="0" EndSeek="196"/>
+<Insert>	unsigned long fill_quanta; /* added toks at  each tick */
+</Insert>
+<Copy StartSeek="254" EndSeek="631"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:36:37000">
+<Copy StartSeek="0" EndSeek="175"/>
+<Insert>	unsigned long rate;
+</Insert>
+<Copy StartSeek="202" EndSeek="637"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:36:53000">
+<Copy StartSeek="0" EndSeek="152"/>
+<Insert>	unsigned long tokens;
+</Insert>
+<Copy StartSeek="173" EndSeek="635"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:39:10000">
+<Copy StartSeek="0" EndSeek="152"/>
+<Insert>	unsigned in tokens;
+</Insert>
+<Copy StartSeek="175" EndSeek="637"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:41:28000">
+<Copy StartSeek="0" EndSeek="260"/>
+<Insert>	void (*fill_tokens)(void) fill_tokens;
+</Insert>
+<Copy StartSeek="260" EndSeek="597"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:44:56000">
+<Copy StartSeek="0" EndSeek="598"/>
+<Insert>void fill_tokens(struct dpa_ratelimit)
+</Insert>
+<Copy StartSeek="642" EndSeek="647"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:46:14000">
+<Copy StartSeek="0" EndSeek="598"/>
+<Insert>void fill_tokens(struct dpa_ratelimit *drl)
+</Insert>
+<Copy StartSeek="643" EndSeek="645"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:49:34000">
+<Copy StartSeek="0" EndSeek="750"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:49:50000">
+<Copy StartSeek="0" EndSeek="573"/>
+<Insert>
+</Insert>
+<Copy StartSeek="573" EndSeek="751"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:50:4000">
+<Copy StartSeek="0" EndSeek="573"/>
+<Insert>	tuner_add_policer()
+</Insert>
+<Copy StartSeek="595" EndSeek="752"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:50:6000">
+<Copy StartSeek="0" EndSeek="573"/>
+<Insert>	tuner_add_policer();
+</Insert>
+<Copy StartSeek="575" EndSeek="732"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:50:10000">
+<Copy StartSeek="0" EndSeek="462"/>
+<Insert>
+</Insert>
+<Copy StartSeek="462" EndSeek="731"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:51:16000">
+<Copy StartSeek="0" EndSeek="462"/>
+<Insert>int dpa_rcqueue_init(struct dpa_rcqueue *rcqueue)
+</Insert>
+<Copy StartSeek="514" EndSeek="733"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:52:51000">
+<Copy StartSeek="0" EndSeek="462"/>
+<Insert>int dpa_ratelimit_init(struct dpa_rcqueue *rcqueue)
+</Insert>
+<Copy StartSeek="500" EndSeek="719"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:53:1000">
+<Copy StartSeek="0" EndSeek="462"/>
+<Insert>int dpa_ratelimit_init(dpa_ratelimit)
+</Insert>
+<Copy StartSeek="516" EndSeek="735"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:53:6000">
+<Copy StartSeek="0" EndSeek="462"/>
+<Insert>int dpa_ratelimit_init(struct dpa_ratelimit *rcqueue)
+</Insert>
+<Copy StartSeek="512" EndSeek="731"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:53:22000">
+<Copy StartSeek="0" EndSeek="514"/>
+<Insert>
+</Insert>
+<Copy StartSeek="541" EndSeek="757"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:54:4000">
+<Copy StartSeek="0" EndSeek="514"/>
+<Insert>	timer_add_ratelimit(drl);
+</Insert>
+<Copy StartSeek="545" EndSeek="761"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:54:23000">
+<Copy StartSeek="0" EndSeek="260"/>
+<Copy StartSeek="289" EndSeek="790"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:55:9000">
+<Copy StartSeek="0" EndSeek="293"/>
+<Insert>/* HAIM FIXME : implement this in our own functions */
+</Insert>
+<Copy StartSeek="349" EndSeek="791"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:55:39000">
+<Copy StartSeek="0" EndSeek="293"/>
+<Insert>/* HAIM FIXME : implement those in our own functions */
+</Insert>
+<Copy StartSeek="350" EndSeek="792"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:55:48000">
+<Copy StartSeek="57" EndSeek="184"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="328" EndSeek="492"/>
+<Insert>/* HAIM FIXME : API to implement in our own functions */
+int zte_api_fast_l3_set_rcqueue_cfg(ZTE_L3_HARDFAST_RCQUEUE_CFG *cfg);
+int zte_api_fast_l3_get_rcqueue_cfg(ZTE_L3_HARDFAST_RCQUEUE_CFG *cfg);
+
+</Insert>
+<Copy StartSeek="493" EndSeek="792"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:55:57000">
+<Copy StartSeek="0" EndSeek="184"/>
+<Copy StartSeek="185" EndSeek="329"/>
+<Copy StartSeek="771" EndSeek="1235"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:56:50000">
+<Copy StartSeek="0" EndSeek="770"/>
+<Insert>
+</Insert>
+<Copy StartSeek="846" EndSeek="1310"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:56:57000">
+<Copy StartSeek="0" EndSeek="770"/>
+<Insert>/************************************************************************/
+</Insert>
+<Copy StartSeek="852" EndSeek="1317"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:57:6000">
+<Copy StartSeek="0" EndSeek="1104"/>
+<Insert>struct dpa_rcqueue *dpa_rcqueue_init(int rcqueue, )
+{
+	
+}
+
+</Insert>
+<Copy StartSeek="1104" EndSeek="1258"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:57:34000">
+<Copy StartSeek="0" EndSeek="1017"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1017" EndSeek="1258"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:57:48000">
+<Copy StartSeek="24" EndSeek="1282"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:58:28000">
+<Copy StartSeek="0" EndSeek="24"/>
+<Copy StartSeek="25" EndSeek="1283"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:58:44000">
+<Copy StartSeek="0" EndSeek="1094"/>
+<Copy StartSeek="1095" EndSeek="1284"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:29:0000">
+<Copy StartSeek="0" EndSeek="878"/>
+<Insert>struct dpa_ratelimit {
+</Insert>
+<Copy StartSeek="899" EndSeek="1007"/>
+<Insert>	struct dpa_ratelimit *next;
+</Insert>
+<Copy StartSeek="1034" EndSeek="1038"/>
+<Insert>int dpa_ratelimit_init(struct dpa_ratelimit *drl)
+</Insert>
+<Copy StartSeek="1084" EndSeek="1087"/>
+<Insert>	dpa_ratelimit_timer_add(drl);
+</Insert>
+<Copy StartSeek="1116" EndSeek="1119"/>
+<Insert>void fill_tokens(struct dpa_ratelimit *drlt)
+</Insert>
+<Copy StartSeek="1162" EndSeek="1272"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:31:18000">
+<Copy StartSeek="0" EndSeek="878"/>
+<Insert>struct dpa_policer {
+</Insert>
+<Copy StartSeek="901" EndSeek="1009"/>
+<Insert>	struct dpa_policer *next;
+</Insert>
+<Copy StartSeek="1038" EndSeek="1042"/>
+<Insert>int dpa_policer_init(struct dpa_policer *drl)
+</Insert>
+<Copy StartSeek="1092" EndSeek="1095"/>
+<Insert>	dpa_policer_timer_add(drl);
+</Insert>
+<Copy StartSeek="1126" EndSeek="1129"/>
+<Insert>void fill_tokens(struct dpa_policer *drlt)
+</Insert>
+<Copy StartSeek="1174" EndSeek="1284"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:31:25000">
+<Copy StartSeek="0" EndSeek="1042"/>
+<Copy StartSeek="1119" EndSeek="1361"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:36:4000">
+<Copy StartSeek="0" EndSeek="1042"/>
+<Insert>bool dpa_ratelimit_enqueue(void *rate_limit, unsigned) long data_size)
+</Insert>
+<Copy StartSeek="1115" EndSeek="1394"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:36:34000">
+<Copy StartSeek="0" EndSeek="1042"/>
+<Insert>bool dpa_ratelimit_enqueue(void *rate_limit, unsigned) long data_tokens)
+</Insert>
+<Copy StartSeek="1112" EndSeek="1391"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:36:41000">
+<Copy StartSeek="0" EndSeek="1114"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="1195" EndSeek="1468"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:37:28000">
+<Copy StartSeek="0" EndSeek="1179"/>
+<Insert>	if (d) {
+	}
+}
+
+</Insert>
+<Copy StartSeek="1257" EndSeek="1530"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:40:2000">
+<Copy StartSeek="0" EndSeek="1042"/>
+<Insert>bool dpa_ratelimit_enqueue(void *rate_limit, unsigned) long data_len)
+</Insert>
+<Copy StartSeek="1111" EndSeek="1237"/>
+<Insert>		return true;
+</Insert>
+<Copy StartSeek="1249" EndSeek="1526"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:40:22000">
+<Copy StartSeek="0" EndSeek="1252"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1264" EndSeek="1537"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:40:49000">
+<Copy StartSeek="0" EndSeek="1263"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1266" EndSeek="1539"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:40:52000">
+<Copy StartSeek="0" EndSeek="1178"/>
+<Copy StartSeek="1179" EndSeek="1540"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:41:4000">
+<Copy StartSeek="0" EndSeek="1042"/>
+<Insert>int dpa_ratelimit_enqueue(void *rate_limit, unsigned) long data_len)
+</Insert>
+<Copy StartSeek="1103" EndSeek="1532"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:41:58000">
+<Copy StartSeek="0" EndSeek="1042"/>
+<Insert>int dpa_ratelimit(void *rate_limit, unsigned) long data_len)
+</Insert>
+<Copy StartSeek="1107" EndSeek="1536"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:43:22000">
+<Copy StartSeek="0" EndSeek="1042"/>
+<Insert>int dpa_ratelimit_try(void *rate_limit, unsigned) long data_len)
+</Insert>
+<Copy StartSeek="1103" EndSeek="1532"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:43:41000">
+<Copy StartSeek="0" EndSeek="1042"/>
+<Insert>int dpa_ratelimit_(void *rate_limit, unsigned long data_len)
+</Insert>
+<Copy StartSeek="1107" EndSeek="1536"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:44:12000">
+<Copy StartSeek="0" EndSeek="1042"/>
+<Insert>int dpa_ratelimit_push(void *rate_limit, unsigned long data_len)
+</Insert>
+<Copy StartSeek="1105" EndSeek="1534"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:44:28000">
+<Copy StartSeek="0" EndSeek="1313"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1313" EndSeek="1533"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:44:35000">
+<Copy StartSeek="0" EndSeek="1042"/>
+<Copy StartSeek="1090" EndSeek="1581"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:44:56000">
+<Copy StartSeek="0" EndSeek="1548"/>
+<Insert>
+
+
+
+
+</Insert>
+<Copy StartSeek="1548" EndSeek="1576"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:51:41000">
+<Copy StartSeek="0" EndSeek="1009"/>
+<Insert>	struct dpa_ratelimit *next;
+</Insert>
+<Copy StartSeek="1032" EndSeek="1036"/>
+<Copy StartSeek="1061" EndSeek="1595"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:57:15000">
+<Copy StartSeek="0" EndSeek="1037"/>
+<Insert>struct dpa_ratelimit[]
+
+</Insert>
+<Copy StartSeek="1206" EndSeek="1740"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="13:59:59000">
+<Copy StartSeek="0" EndSeek="1037"/>
+<Insert>#define DPA_FLOW_POLICERS 16
+#define DPA_PORT_POLICERS 2
+</Insert>
+<Copy StartSeek="1100" EndSeek="1101"/>
+<Insert>struct dpa_ratelimit flow_policers[DPA_FLOW_POLICERS];
+</Insert>
+<Copy StartSeek="1161" EndSeek="1751"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="14:00:19000">
+<Copy StartSeek="0" EndSeek="1101"/>
+<Insert>struct dpa_ratelimit flow_policers[DPA_FLOW_GRP_POLICERS ];
+</Insert>
+<Copy StartSeek="1160" EndSeek="1750"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="14:00:20000">
+<Copy StartSeek="0" EndSeek="1745"/>
+<Insert>
+}
+
+
+</Insert>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="14:02:41000">
+<Copy StartSeek="0" EndSeek="878"/>
+<Insert>struct dpa_ratelimit {
+</Insert>
+<Copy StartSeek="899" EndSeek="1099"/>
+<Insert>struct dpa_ratelimit flow_policers[DPA_FLOW_GRP_POLICERS];
+struct dpa_ratelimit port_policers[DPA_PORT_POLICERS];
+</Insert>
+<Copy StartSeek="1209" EndSeek="1258"/>
+<Insert>int dpa_ratelimit_do(void *rate_limit, unsigned long data_len)
+</Insert>
+<Copy StartSeek="1319" EndSeek="1321"/>
+<Insert>	struct dpa_ratelimit *drl = (struct dpa_ratelimit *)rate_limit;
+</Insert>
+<Copy StartSeek="1382" EndSeek="1471"/>
+<Insert>int dpa_ratelimit_init(struct dpa_ratelimit *drl)
+</Insert>
+<Copy StartSeek="1517" EndSeek="1519"/>
+<Insert>	dpa_ratelimit_timer_add(drl);
+</Insert>
+<Copy StartSeek="1548" EndSeek="1551"/>
+<Insert>void fill_tokens(struct dpa_ratelimit *drlt)
+</Insert>
+<Copy StartSeek="1594" EndSeek="1725"/>
+<Insert>	struct dpa_ratelimit *policer;
+</Insert>
+<Copy StartSeek="1755" EndSeek="2020"/>
+</Delta>
+</DeltaFile>

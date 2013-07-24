@@ -1,0 +1,936 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="112" Comment="" Date="2012/05/31" Time="16:26:48000" NL="\10" Encoding="text">
+<Insert>#include &lt;linux/list.h&gt;
+#include &lt;linux/timer.h&gt;
+#include &lt;br_private.h&gt;
+#include "include/klna_br.h"
+
+#undef pr_fmt
+#define pr_fmt(fmt) "klna_br: " fmt
+
+/* sample rate of Linux br */
+#define KLNA_FDB_TO (5 *HZ)
+
+DEFINE_SPINLOCK(klna_fdb_lock);
+
+static struct timer_list klna_fdb_timer;
+static struct list_head klna_br_list = LIST_HEAD_INIT(klna_br_list);
+struct br_element {
+	struct list_head list;
+	struct net_bridge *br;
+};
+
+#define MAC_ADDR(mac) \
+	mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
+#ifndef MAC_FMT
+#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+#endif
+
+/* taken from br_fbd.c br_fdb_fillbuf() */
+static int klna_br_fdb_read(struct net_bridge *br)
+{
+	unsigned int i;
+	struct hlist_node *h;
+	struct net_bridge_fdb_entry *f;
+
+	pr_info("%s\n", __func__);
+	rcu_read_lock();
+	for (i = 0; i &lt; BR_HASH_SIZE; i++) {
+		hlist_for_each_entry_rcu(f, h, &amp;br-&gt;hash[i], hlist) {
+//      		if (has_expired(br, f))
+//      			continue;
+
+//      		if (!f-&gt;is_static)
+//      			fe-&gt;ageing_timer_value = jiffies_to_clock_t(jiffies - f-&gt;ageing_timer);
+
+			pr_info("br %s fdb[%u]: " MAC_FMT ", port:%s, local:%u, "
+				"static:%u, timeout:%lu\n",
+			       br-&gt;dev-&gt;name, i, MAC_ADDR(f-&gt;addr.addr),
+				f-&gt;dst-&gt;dev-&gt;name,
+				f-&gt;is_local, f-&gt;is_static,
+				f-&gt;is_static ? 0 :
+				(jiffies_to_clock_t(jiffies - f-&gt;ageing_timer)));
+		}
+	}
+	rcu_read_unlock();
+
+	return i;
+}
+
+int klna_br_reg(struct net_bridge *br)
+{
+	struct list_head *p;
+	struct br_element *el = NULL;
+	int ret = 0;
+
+	pr_info("%s br %s\n", __func__,br-&gt;dev-&gt;name);
+	del_timer(&amp;klna_fdb_timer);
+	spin_lock_bh(&amp;klna_fdb_lock);
+	list_for_each(p, &amp;klna_br_list) {
+		el = list_entry(p, struct br_element, list);
+		if (el-&gt;br == br)
+			goto out;
+	}
+	el = kmalloc(sizeof(struct br_element), GFP_ATOMIC);
+	if (!el) {
+		pr_err("insufficient mm for br_element\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+	el-&gt;br = br;
+	INIT_LIST_HEAD(&amp;el-&gt;list);
+	list_add_tail(&amp;el-&gt;list, &amp;klna_br_list);
+out:
+	spin_unlock_bh(&amp;klna_fdb_lock);
+	if (!list_empty(&amp;klna_br_list))
+		mod_timer(&amp;klna_fdb_timer, jiffies + HZ);
+
+	return ret;
+}
+
+int klna_br_unreg(struct net_bridge *br)
+{
+	struct list_head *p, *tmp;
+	struct br_element *el = NULL;
+
+	pr_info("%s br %s\n", __func__,br-&gt;dev-&gt;name);
+	del_timer(&amp;klna_fdb_timer);
+	spin_lock_bh(&amp;klna_fdb_lock);
+	list_for_each_safe(p, tmp, &amp;klna_br_list) {
+		el = list_entry(p, struct br_element, list);
+		if (el-&gt;br == br) {
+			list_del(p);
+			el-&gt;br = NULL;
+			kfree(el);
+			break;
+		}
+	}
+	spin_unlock_bh(&amp;klna_fdb_lock);
+	if (!list_empty(&amp;klna_br_list))
+		mod_timer(&amp;klna_fdb_timer, jiffies + HZ);
+
+	return 0;
+}
+
+static void klna_fdb_timer_expired(unsigned long unused)
+{
+	struct list_head *p;
+	struct br_element *el = NULL;
+
+	spin_lock_bh(&amp;klna_fdb_lock);
+	list_for_each(p, &amp;klna_br_list) {
+		el = list_entry(p, struct br_element, list);
+		klna_br_fdb_read(el-&gt;br);
+	}
+	spin_unlock_bh(&amp;klna_fdb_lock);
+
+	mod_timer(&amp;klna_fdb_timer, jiffies + KLNA_FDB_TO);
+}
+
+int __init klna_br_fdb_init(void)
+{
+	pr_info("%s\n", __func__);
+
+	init_timer(&amp;klna_fdb_timer);
+	klna_fdb_timer.function = &amp;klna_fdb_timer_expired;
+	return 0;
+}
+
+void __exit klna_br_fdb_exit(void)
+{
+	struct list_head *p, *tmp;
+	struct br_element *el = NULL;
+
+	pr_info("%s\n", __func__);
+
+	del_timer(&amp;klna_fdb_timer);
+	spin_lock_bh(&amp;klna_fdb_lock);
+	list_for_each_safe(p, tmp, &amp;klna_br_list) {
+		el = list_entry(p, struct br_element, list);
+		list_del(p);
+		el-&gt;br = NULL;
+		kfree(el);
+	}
+	spin_unlock_bh(&amp;klna_fdb_lock);
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:28:28000">
+<Copy StartSeek="24" EndSeek="49"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:28:48000">
+<Copy StartSeek="0" EndSeek="49"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:29:55000">
+<Copy StartSeek="0" EndSeek="49"/>
+<Insert>/* HAIM FIXME : add list of monitored bridges */
+</Insert>
+<Copy StartSeek="49" EndSeek="1442"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:29:57000">
+<Copy StartSeek="0" EndSeek="227"/>
+<Insert>
+</Insert>
+<Copy StartSeek="227" EndSeek="1441"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:30:1000">
+<Copy StartSeek="0" EndSeek="48"/>
+<Insert>
+</Insert>
+<Copy StartSeek="69" EndSeek="1461"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:30:10000">
+<Copy StartSeek="0" EndSeek="69"/>
+<Copy StartSeek="70" EndSeek="1462"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:30:14000">
+<Copy StartSeek="0" EndSeek="1119"/>
+<Copy StartSeek="1761" EndSeek="2104"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:31:11000">
+<Copy StartSeek="0" EndSeek="24"/>
+<Copy StartSeek="49" EndSeek="2129"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:35:6000">
+<Copy StartSeek="0" EndSeek="95"/>
+<Copy StartSeek="146" EndSeek="2180"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:35:28000">
+<Copy StartSeek="0" EndSeek="146"/>
+<Insert>static struct timer_list fdb_timer;
+</Insert>
+<Copy StartSeek="187" EndSeek="1305"/>
+<Insert>	del_timer(&amp;fdb_timer);
+</Insert>
+<Copy StartSeek="1334" EndSeek="1793"/>
+<Insert>	mod_timer(&amp;fdb_timer, jiffies + HZ);
+</Insert>
+<Copy StartSeek="1836" EndSeek="1852"/>
+<Insert>void fdb_timer_expired(unsigned long arg)
+</Insert>
+<Copy StartSeek="1899" EndSeek="2010"/>
+<Insert>	mod_timer(&amp;fdb_timer, jiffies + 5*HZ);
+</Insert>
+<Copy StartSeek="2055" EndSeek="2058"/>
+<Insert>static void __init init_fdb_timer(void)
+</Insert>
+<Copy StartSeek="2103" EndSeek="2105"/>
+<Insert>	init_timer(&amp;fdb_timer);
+	fdb_timer.expires = jiffies + HZ;
+	fdb_timer.function = &amp;fdb_timer_expired;
+</Insert>
+<Copy StartSeek="2227" EndSeek="2230"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:37:18000">
+<Copy StartSeek="0" EndSeek="2135"/>
+<Insert>	klna_fdb_timer.expires = jiffies + HZ;
+</Insert>
+<Copy StartSeek="2135" EndSeek="2190"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:37:47000">
+<Copy StartSeek="0" EndSeek="2058"/>
+<Insert>static void __init init_klna_fdb_timer(void)
+</Insert>
+<Copy StartSeek="2100" EndSeek="2187"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:38:4000">
+<Copy StartSeek="0" EndSeek="2186"/>
+<Insert>
+</Insert>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:38:37000">
+<Copy StartSeek="0" EndSeek="146"/>
+<Copy StartSeek="174" EndSeek="2038"/>
+<Insert>	mod_timer(&amp;klna_fdb_timer, jiffies + 5*HZ);
+</Insert>
+<Copy StartSeek="2090" EndSeek="2221"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:39:30000">
+<Copy StartSeek="0" EndSeek="146"/>
+<Copy StartSeek="185" EndSeek="213"/>
+<Copy StartSeek="214" EndSeek="2261"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:39:55000">
+<Copy StartSeek="0" EndSeek="146"/>
+<Insert>/* sample rate of the linux bridges */
+</Insert>
+<Copy StartSeek="181" EndSeek="2257"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:40:2000">
+<Copy StartSeek="0" EndSeek="146"/>
+<Insert>/* sample rate of Linux bridges */
+</Insert>
+<Copy StartSeek="176" EndSeek="2252"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:40:6000">
+<Copy StartSeek="0" EndSeek="1910"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1910" EndSeek="2251"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:41:25000">
+<Copy StartSeek="0" EndSeek="1524"/>
+<Insert>			el = (void *)~0UL;
+</Insert>
+<Copy StartSeek="1524" EndSeek="2229"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:42:32000">
+<Copy StartSeek="0" EndSeek="1524"/>
+<Copy StartSeek="1538" EndSeek="2243"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:42:40000">
+<Copy StartSeek="0" EndSeek="1555"/>
+<Insert>	if (el != NULL) {
+</Insert>
+<Copy StartSeek="1567" EndSeek="2236"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:42:57000">
+<Copy StartSeek="0" EndSeek="1524"/>
+<Insert>			el = NULL;
+</Insert>
+<Copy StartSeek="1546" EndSeek="1563"/>
+<Insert>	if (!el) {
+</Insert>
+<Copy StartSeek="1582" EndSeek="2251"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:43:30000">
+<Copy StartSeek="0" EndSeek="1563"/>
+<Insert>	if (el != NULL) {
+</Insert>
+<Copy StartSeek="1574" EndSeek="2243"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:43:36000">
+<Copy StartSeek="0" EndSeek="1844"/>
+<Insert>	mod_timer(&amp;klna_fdb_timer, jiffies + HZ);
+
+</Insert>
+<Copy StartSeek="1922" EndSeek="2277"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:46:57000">
+<Copy StartSeek="0" EndSeek="1502"/>
+<Insert>		if (el-&gt;br == br) {
+			el = (void *)~0UL;
+			break;
+		}
+	}
+</Insert>
+<Copy StartSeek="1538" EndSeek="1790"/>
+<Copy StartSeek="1795" EndSeek="2257"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:49:17000">
+<Copy StartSeek="0" EndSeek="1538"/>
+<Insert>	if (el) {
+		el = kmalloc(sizeof(struct br_element), GFP_ATOMIC);
+		if (!el) {
+			pr_err("insufficient mm for br_element\n");
+			return NOTIFY_BAD;
+		}
+		INIT_LIST_HEAD(el-&gt;list);
+		list_add_tail(el, &amp;klna_br_list);
+		pr_info("added br to list\n");
+	}
+out:
+</Insert>
+<Copy StartSeek="1775" EndSeek="2237"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:49:28000">
+<Copy StartSeek="0" EndSeek="1769"/>
+<Insert>	out:
+</Insert>
+<Copy StartSeek="1774" EndSeek="2236"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:49:30000">
+<Copy StartSeek="0" EndSeek="1895"/>
+<Copy StartSeek="2533" EndSeek="2874"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:49:54000">
+<Copy StartSeek="0" EndSeek="2140"/>
+<Insert>		if (el-&gt;br == br)
+			goto out;
+	}
+</Insert>
+<Copy StartSeek="2183" EndSeek="2881"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:50:18000">
+<Copy StartSeek="0" EndSeek="2002"/>
+<Copy StartSeek="2019" EndSeek="2898"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:50:34000">
+<Copy StartSeek="0" EndSeek="1364"/>
+<Copy StartSeek="1392" EndSeek="2030"/>
+<Insert>	pr_info("%s");
+</Insert>
+<Copy StartSeek="2058" EndSeek="2938"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:50:56000">
+<Copy StartSeek="0" EndSeek="2219"/>
+<Copy StartSeek="2236" EndSeek="2250"/>
+<Insert>		}
+	}
+</Insert>
+<Copy StartSeek="2261" EndSeek="2959"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:51:40000">
+<Copy StartSeek="0" EndSeek="2250"/>
+<Insert>			
+		}
+	}
+</Insert>
+<Copy StartSeek="2257" EndSeek="2955"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:51:44000">
+<Copy StartSeek="0" EndSeek="2257"/>
+<Insert>	el = kmalloc(sizeof(struct br_element), GFP_ATOMIC);
+	if (!el) {
+		pr_err("insufficient mm for br_element\n");
+		return NOTIFY_BAD;
+	}
+	INIT_LIST_HEAD(el-&gt;list);
+	list_add_tail(el, &amp;klna_br_list);
+	pr_info("added br to list\n");
+
+</Insert>
+<Copy StartSeek="2257" EndSeek="2724"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:52:46000">
+<Copy StartSeek="0" EndSeek="2383"/>
+<Insert>void klna_fdb_timer_expired(unsigned long arg)
+</Insert>
+<Copy StartSeek="2433" EndSeek="2727"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:55:37000">
+<Copy StartSeek="0" EndSeek="2383"/>
+<Insert>void klna_fdb_timer_expired(unsigned long unused)
+</Insert>
+<Copy StartSeek="2440" EndSeek="2734"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:55:43000">
+<Copy StartSeek="0" EndSeek="575"/>
+<Insert>int klna_br_fdb_read(struct net_bridge *br)
+</Insert>
+<Copy StartSeek="626" EndSeek="2741"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:55:51000">
+<Copy StartSeek="0" EndSeek="315"/>
+<Insert>struct br_element {
+</Insert>
+<Copy StartSeek="342" EndSeek="2748"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:55:56000">
+<Copy StartSeek="0" EndSeek="2456"/>
+<Insert>	struct net_bridge *br = (struct net_bridge *)arg;
+
+	if (!br) {
+		goto exit;
+	}
+</Insert>
+<Copy StartSeek="2456" EndSeek="2668"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:56:48000">
+<Copy StartSeek="0" EndSeek="2456"/>
+<Insert>	klna_br_fdb_read(br);
+</Insert>
+<Copy StartSeek="2684" EndSeek="2873"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:57:30000">
+<Copy StartSeek="0" EndSeek="2619"/>
+<Insert>		klna_br_fdb_read(el-&gt;);
+</Insert>
+<Copy StartSeek="2647" EndSeek="2875"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:57:38000">
+<Copy StartSeek="0" EndSeek="2650"/>
+<Insert>out:
+</Insert>
+<Copy StartSeek="2650" EndSeek="2870"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:57:52000">
+<Copy StartSeek="0" EndSeek="2679"/>
+<Insert>	
+exit:
+</Insert>
+<Copy StartSeek="2680" EndSeek="2863"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:57:57000">
+<Copy StartSeek="0" EndSeek="2863"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:58:24000">
+<Copy StartSeek="0" EndSeek="2735"/>
+<Insert>static void __init klna_br_fdb_init(void)
+</Insert>
+<Copy StartSeek="2776" EndSeek="2860"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="2874" EndSeek="3002"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:58:32000">
+<Copy StartSeek="0" EndSeek="2918"/>
+<Insert>	init_timer(&amp;klna_fdb_timer);
+</Insert>
+<Copy StartSeek="2947" EndSeek="3001"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:58:44000">
+<Copy StartSeek="0" EndSeek="2947"/>
+<Insert>	klna_fdb_timer.function = &amp;klna_fdb_timer_expired;
+}
+</Insert>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:58:46000">
+<Copy StartSeek="0" EndSeek="2778"/>
+<Copy StartSeek="2806" EndSeek="2946"/>
+<Copy StartSeek="3029" EndSeek="3058"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:59:32000">
+<Copy StartSeek="0" EndSeek="2806"/>
+<Copy StartSeek="2807" EndSeek="3264"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:59:34000">
+<Copy StartSeek="0" EndSeek="3168"/>
+<Insert>		if (el-&gt;br == br) {
+			list_del(el);
+			kfree(el);
+		}
+	}
+</Insert>
+<Copy StartSeek="3200" EndSeek="3236"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:59:55000">
+<Copy StartSeek="0" EndSeek="3168"/>
+<Insert>		list_del(el);
+</Insert>
+<Copy StartSeek="3183" EndSeek="3235"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:00:43000">
+<Copy StartSeek="0" EndSeek="1743"/>
+<Insert>	list_add_tail(el, &amp;klna_br_list);
+</Insert>
+<Copy StartSeek="1777" EndSeek="3234"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:01:22000">
+<Copy StartSeek="0" EndSeek="1743"/>
+<Insert>	list_add_tail(p, &amp;klna_br_list);
+</Insert>
+<Copy StartSeek="1784" EndSeek="3241"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:01:34000">
+<Copy StartSeek="0" EndSeek="2239"/>
+<Insert>			list_del(el);
+</Insert>
+<Copy StartSeek="2255" EndSeek="3240"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:01:43000">
+<Copy StartSeek="0" EndSeek="3204"/>
+<Insert>out:
+</Insert>
+<Copy StartSeek="3204" EndSeek="3235"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:02:3000">
+<Copy StartSeek="0" EndSeek="1580"/>
+<Insert>	el = kmalloc(sizeof(struct br_element), GFP_ATOMIC);
+</Insert>
+<Copy StartSeek="1655" EndSeek="3256"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:03:29000">
+<Copy StartSeek="0" EndSeek="1580"/>
+<Insert>	el = (struct br_element *)kmalloc(sizeof(struct br_element), GFP_ATOMIC);
+</Insert>
+<Copy StartSeek="1663" EndSeek="3264"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:03:39000">
+<Copy StartSeek="0" EndSeek="1721"/>
+<Insert>		return NOTIFY_BAD;
+</Insert>
+<Copy StartSeek="1741" EndSeek="3263"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:04:25000">
+<Copy StartSeek="0" EndSeek="1741"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="1756" EndSeek="3275"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:04:30000">
+<Copy StartSeek="0" EndSeek="1969"/>
+<Insert>	return 0;
+</Insert>
+<Copy StartSeek="1982" EndSeek="3277"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:04:34000">
+<Copy StartSeek="0" EndSeek="1377"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1400" EndSeek="3299"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:04:45000">
+<Copy StartSeek="0" EndSeek="1377"/>
+<Insert>	int ret = NOTIFY_OK;
+</Insert>
+<Copy StartSeek="1391" EndSeek="3291"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:04:50000">
+<Copy StartSeek="0" EndSeek="1735"/>
+<Insert>		ret = NOTIFY_BAD;
+</Insert>
+<Copy StartSeek="1752" EndSeek="3288"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:04:59000">
+<Copy StartSeek="0" EndSeek="205"/>
+<Copy StartSeek="238" EndSeek="1482"/>
+<Insert>	spin_lock_bh(&amp;klna_lock);
+</Insert>
+<Copy StartSeek="1513" EndSeek="1910"/>
+<Insert>	spin_unlock_bh(&amp;klna_lock);
+</Insert>
+<Copy StartSeek="1943" EndSeek="2202"/>
+<Insert>	spin_lock_bh(&amp;klna_lock);
+</Insert>
+<Copy StartSeek="2233" EndSeek="2379"/>
+<Insert>	spin_unlock_bh(&amp;klna_lock);
+</Insert>
+<Copy StartSeek="2412" EndSeek="2617"/>
+<Insert>	spin_lock_bh(&amp;klna_lock);
+</Insert>
+<Copy StartSeek="2648" EndSeek="2761"/>
+<Insert>	spin_unlock_bh(&amp;klna_lock);
+</Insert>
+<Copy StartSeek="2794" EndSeek="3174"/>
+<Insert>	spin_lock_bh(&amp;klna_lock);
+</Insert>
+<Copy StartSeek="3205" EndSeek="3318"/>
+<Insert>	spin_unlock_bh(&amp;klna_lock);
+</Insert>
+<Copy StartSeek="3351" EndSeek="3353"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:18:42000">
+<Copy StartSeek="0" EndSeek="2850"/>
+<Insert>static int __init klna_br_fdb_init(void)
+</Insert>
+<Copy StartSeek="2884" EndSeek="3011"/>
+<Insert>static void __exit klna_br_fdb_exit(void)
+</Insert>
+<Copy StartSeek="3046" EndSeek="3339"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:19:4000">
+<Copy StartSeek="0" EndSeek="348"/>
+<Insert>static struct br_element {
+</Insert>
+<Copy StartSeek="368" EndSeek="3332"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:19:51000">
+<Copy StartSeek="0" EndSeek="2360"/>
+<Insert>		}
+	}
+out:
+</Insert>
+<Copy StartSeek="2377" EndSeek="3337"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:20:20000">
+<Copy StartSeek="0" EndSeek="1797"/>
+<Insert>	INIT_LIST_HEAD(el-&gt;list);
+</Insert>
+<Copy StartSeek="1825" EndSeek="3338"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:21:0000">
+<Copy StartSeek="0" EndSeek="1825"/>
+<Insert>	list_add_tail(el-&gt;list, &amp;klna_br_list);
+</Insert>
+<Copy StartSeek="1867" EndSeek="3339"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:21:7000">
+<Copy StartSeek="0" EndSeek="1299"/>
+<Insert>static int klna_nc_br_reg(struct net_bridge *br)
+</Insert>
+<Copy StartSeek="1345" EndSeek="2029"/>
+<Insert>static int klna_nc_br_unreg(struct net_bridge *br)
+</Insert>
+<Copy StartSeek="2077" EndSeek="3333"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:22:16000">
+<Copy StartSeek="0" EndSeek="1299"/>
+<Insert>static int klna_br_reg(struct net_bridge *br)
+</Insert>
+<Copy StartSeek="1338" EndSeek="2022"/>
+<Insert>static int klna_br_unreg(struct net_bridge *br)
+</Insert>
+<Copy StartSeek="2063" EndSeek="3319"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:22:54000">
+<Copy StartSeek="0" EndSeek="73"/>
+<Insert>#include "klna_br.h"
+
+</Insert>
+<Copy StartSeek="104" EndSeek="3328"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:25:6000">
+<Copy StartSeek="0" EndSeek="73"/>
+<Insert>
+</Insert>
+<Copy StartSeek="73" EndSeek="3327"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:25:8000">
+<Copy StartSeek="0" EndSeek="743"/>
+<Copy StartSeek="771" EndSeek="3355"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:29:6000">
+<Copy StartSeek="0" EndSeek="2746"/>
+<Copy StartSeek="2813" EndSeek="3422"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:30:4000">
+<Copy StartSeek="0" EndSeek="2746"/>
+<Insert>		printk(KERN_ERR "(%s:%d) HAIM: el %p\n", __func__, __LINE__,el);
+</Insert>
+<Copy StartSeek="2827" EndSeek="3436"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:33:37000">
+<Copy StartSeek="0" EndSeek="1444"/>
+<Insert>	pr_info("%s\n", __func__);
+</Insert>
+<Copy StartSeek="1481" EndSeek="3445"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:52:44000">
+<Copy StartSeek="0" EndSeek="1832"/>
+<Copy StartSeek="1846" EndSeek="3459"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:54:53000">
+<Copy StartSeek="0" EndSeek="2387"/>
+<Copy StartSeek="2405" EndSeek="3477"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:55:7000">
+<Copy StartSeek="0" EndSeek="2178"/>
+<Insert>	pr_info("%s\n", __func__);
+</Insert>
+<Copy StartSeek="2216" EndSeek="3487"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:56:15000">
+<Copy StartSeek="0" EndSeek="3436"/>
+<Copy StartSeek="3453" EndSeek="3504"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="17:59:51000">
+<Copy StartSeek="0" EndSeek="3421"/>
+<Copy StartSeek="3504" EndSeek="3587"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:00:23000">
+<Copy StartSeek="0" EndSeek="2797"/>
+<Insert>		printk(KERN_ERR "(%s:%d) HAIM: el %p br %p\n", __func__, __LINE__,el, el-&gt;br);
+</Insert>
+<Copy StartSeek="2888" EndSeek="3431"/>
+<Insert>		printk(KERN_ERR "(%s:%d) HAIM: el %p, br %p\n", __func__, __LINE__, el, el-&gt;br);
+</Insert>
+<Copy StartSeek="3524" EndSeek="3607"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:00:31000">
+<Copy StartSeek="0" EndSeek="2797"/>
+<Insert>		printk(KERN_ERR "(%s:%d) HAIM: el %p br %p\n", 
+		       __func__, __LINE__,el, el-&gt;br);
+</Insert>
+<Copy StartSeek="2797" EndSeek="3516"/>
+</Delta>
+<Delta Version="84" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:01:21000">
+<Copy StartSeek="0" EndSeek="3340"/>
+<Insert>		printk(KERN_ERR "(%s:%d) HAIM: el %p, br %p\n", 
+		       __func__, __LINE__, el, el-&gt;br);
+</Insert>
+<Copy StartSeek="3499" EndSeek="3582"/>
+</Delta>
+<Delta Version="85" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:10:29000">
+<Copy StartSeek="0" EndSeek="3499"/>
+<Copy StartSeek="3552" EndSeek="3567"/>
+<Copy StartSeek="3620" EndSeek="3637"/>
+<Copy StartSeek="3690" EndSeek="3741"/>
+</Delta>
+<Delta Version="86" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:13:29000">
+<Copy StartSeek="0" EndSeek="3293"/>
+<Copy StartSeek="3346" EndSeek="3794"/>
+</Delta>
+<Delta Version="87" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:13:43000">
+<Copy StartSeek="0" EndSeek="3756"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="3812" EndSeek="3847"/>
+</Delta>
+<Delta Version="88" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:13:50000">
+<Copy StartSeek="0" EndSeek="3115"/>
+<Insert>	struct list_head *p;
+</Insert>
+<Copy StartSeek="3143" EndSeek="3264"/>
+<Insert>	list_for_each(p, &amp;klna_br_list) {
+</Insert>
+<Copy StartSeek="3304" EndSeek="3858"/>
+</Delta>
+<Delta Version="89" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:26:36000">
+<Copy StartSeek="0" EndSeek="3264"/>
+<Insert>	list_for_each_safe(p, &amp;klna_br_list) {
+</Insert>
+<Copy StartSeek="3309" EndSeek="3362"/>
+<Insert>		el = list_entry(p, struct br_element, list);
+</Insert>
+<Copy StartSeek="3412" EndSeek="3866"/>
+</Delta>
+<Delta Version="90" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:26:50000">
+<Copy StartSeek="0" EndSeek="3362"/>
+<Insert>		el = list_entry_sa(p, struct br_element, list);
+</Insert>
+<Copy StartSeek="3409" EndSeek="3863"/>
+</Delta>
+<Delta Version="91" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:27:27000">
+<Copy StartSeek="0" EndSeek="3409"/>
+<Insert>		printk(KERN_ERR "(%s:%d) HAIM: el %p, br %p "
+				"p %p p-&gt;next %p, p-&gt;prev %p\n", 
+		       __func__, __LINE__, el, el-&gt;br, 
+		       p, p-&gt;next, p-&gt;next);
+		printk(KERN_ERR "(%s:%d) \n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="3409" EndSeek="3424"/>
+<Insert>		printk(KERN_ERR "(%s:%d) \n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="3424" EndSeek="3441"/>
+<Insert>		printk(KERN_ERR "(%s:%d) \n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="3441" EndSeek="3454"/>
+<Insert>		printk(KERN_ERR "(%s:%d) \n", __func__, __LINE__);
+	}
+</Insert>
+<Copy StartSeek="3457" EndSeek="3492"/>
+</Delta>
+<Delta Version="92" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:30:53000">
+<Copy StartSeek="0" EndSeek="3309"/>
+<Insert>		printk(KERN_ERR "(%s:%d) \n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="3309" EndSeek="3439"/>
+</Delta>
+<Delta Version="93" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:30:57000">
+<Copy StartSeek="0" EndSeek="2277"/>
+<Insert>	list_for_each(p, &amp;klna_br_list) {
+</Insert>
+<Copy StartSeek="2317" EndSeek="3444"/>
+</Delta>
+<Delta Version="94" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:31:16000">
+<Copy StartSeek="0" EndSeek="2124"/>
+<Insert>	struct list_head *p;
+</Insert>
+<Copy StartSeek="2152" EndSeek="3450"/>
+</Delta>
+<Delta Version="95" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:31:19000">
+<Copy StartSeek="0" EndSeek="2283"/>
+<Insert>	list_for_each_safe(p, &amp;klna_br_list) {
+</Insert>
+<Copy StartSeek="2328" EndSeek="3455"/>
+</Delta>
+<Delta Version="96" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:31:23000">
+<Copy StartSeek="0" EndSeek="400"/>
+<Insert>	struct net_bridge *br; 
+</Insert>
+<Copy StartSeek="424" EndSeek="3454"/>
+</Delta>
+<Delta Version="97" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:35:30000">
+<Copy StartSeek="0" EndSeek="1106"/>
+<Insert>				"static:%u, timeout:%lu\n", 
+			       i, MAC_ADDR(f-&gt;addr.addr), f-&gt;dst-&gt;dev-&gt;name, 
+			       f-&gt;is_local, f-&gt;is_static, 
+</Insert>
+<Copy StartSeek="1231" EndSeek="3451"/>
+</Delta>
+<Delta Version="98" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:35:45000">
+<Copy StartSeek="0" EndSeek="1655"/>
+<Insert>	el = (struct br_element *)kmalloc(sizeof(struct br_element), 
+</Insert>
+<Copy StartSeek="1717" EndSeek="3450"/>
+</Delta>
+<Delta Version="99" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:35:58000">
+<Copy StartSeek="0" EndSeek="1655"/>
+<Insert>	el = (struct br_element *)kmalloc(sizeof(struct br_element),
+</Insert>
+<Copy StartSeek="1696" EndSeek="3429"/>
+</Delta>
+<Delta Version="100" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:51:23000">
+<Copy StartSeek="0" EndSeek="1655"/>
+<Insert>	el = kmalloc(sizeof(struct br_element),
+</Insert>
+<Copy StartSeek="1717" EndSeek="3450"/>
+</Delta>
+<Delta Version="101" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:51:39000">
+<Copy StartSeek="0" EndSeek="1655"/>
+<Insert>	el = (struct br_element *)kmalloc(sizeof(struct br_element),
+</Insert>
+<Copy StartSeek="1696" EndSeek="3429"/>
+</Delta>
+<Delta Version="102" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:51:47000">
+<Copy StartSeek="0" EndSeek="1655"/>
+<Insert>	el = kmalloc(sizeof(struct br_element),
+					  GFP_ATOMIC);
+</Insert>
+<Copy StartSeek="1709" EndSeek="3422"/>
+</Delta>
+<Delta Version="103" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="18:51:58000">
+<Copy StartSeek="0" EndSeek="1051"/>
+<Insert>			pr_info("fdb[%u]: " MAC_FMT ", port:%s, local:%u, "
+</Insert>
+<Copy StartSeek="1112" EndSeek="1144"/>
+<Insert>			       i, MAC_ADDR(f-&gt;addr.addr), f-&gt;dst-&gt;dev-&gt;name,
+</Insert>
+<Copy StartSeek="1215" EndSeek="3443"/>
+</Delta>
+<Delta Version="104" Comment="" NL="\10" Encoding="text" Date="2012/05/17" Time="08:45:8000">
+<Copy StartSeek="0" EndSeek="1252"/>
+<Insert>			       jiffies_to_clock_t(jiffies - f-&gt;ageing_timer));
+</Insert>
+<Copy StartSeek="1331" EndSeek="3464"/>
+</Delta>
+<Delta Version="105" Comment="" NL="\10" Encoding="text" Date="2012/05/17" Time="08:45:42000">
+<Copy StartSeek="0" EndSeek="1252"/>
+<Insert>			       f-&gt;is_static ? 0 : (jiffies_to_clock_t(jiffies - f-&gt;ageing_timer)));
+		}
+	}
+</Insert>
+<Copy StartSeek="1343" EndSeek="3469"/>
+</Delta>
+<Delta Version="106" Comment="" NL="\10" Encoding="text" Date="2012/05/17" Time="08:46:3000">
+<Copy StartSeek="0" EndSeek="1487"/>
+<Insert>	pr_info("%s br %p\n", __func__,br);
+</Insert>
+<Copy StartSeek="1535" EndSeek="3480"/>
+</Delta>
+<Delta Version="107" Comment="" NL="\10" Encoding="text" Date="2012/05/17" Time="08:47:4000">
+<Copy StartSeek="0" EndSeek="2209"/>
+<Insert>	pr_info("%s br %p\n", __func__, br);
+
+</Insert>
+<Copy StartSeek="2257" EndSeek="3489"/>
+</Delta>
+<Delta Version="108" Comment="" NL="\10" Encoding="text" Date="2012/05/17" Time="08:48:6000">
+<Copy StartSeek="0" EndSeek="1941"/>
+<Insert>	pr_info("added br to list\n");
+
+</Insert>
+<Copy StartSeek="1941" EndSeek="3456"/>
+</Delta>
+<Delta Version="109" Comment="" NL="\10" Encoding="text" Date="2012/05/17" Time="08:48:57000">
+<Copy StartSeek="0" EndSeek="1051"/>
+<Insert>			pr_info("br %s fdb[%u]: " MAC_FMT ", port:%s, local:%u, "
+</Insert>
+<Copy StartSeek="1111" EndSeek="1143"/>
+<Insert>			       br-&gt;dev-&gt;name, i, MAC_ADDR(f-&gt;addr.addr), f-&gt;dst-&gt;dev-&gt;name,
+			       f-&gt;is_local, f-&gt;is_static,
+			       f-&gt;is_static ? 0 : 
+</Insert>
+<Copy StartSeek="1274" EndSeek="3448"/>
+</Delta>
+<Delta Version="110" Comment="" NL="\10" Encoding="text" Date="2012/05/31" Time="16:23:22000">
+<Copy StartSeek="0" EndSeek="1051"/>
+<Insert>			pr_info("br %s fdb[%u]: " MAC_FMT ",port:%s, local:%u, "
+</Insert>
+<Copy StartSeek="1112" EndSeek="3449"/>
+</Delta>
+<Delta Version="111" Comment="" NL="\10" Encoding="text" Date="2012/05/31" Time="16:23:51000">
+<Copy StartSeek="0" EndSeek="1144"/>
+<Insert>			       br-&gt;dev-&gt;name, i, MAC_ADDR(f-&gt;addr.addr), 
+</Insert>
+<Copy StartSeek="1196" EndSeek="1250"/>
+<Insert>				f-&gt;is_static ? 0 : 
+</Insert>
+<Copy StartSeek="1273" EndSeek="3447"/>
+</Delta>
+</DeltaFile>

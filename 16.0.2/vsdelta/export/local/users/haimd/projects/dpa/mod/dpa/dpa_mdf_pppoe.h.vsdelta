@@ -1,0 +1,32 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="2" Comment="" Date="2013/06/16" Time="18:09:24000" NL="\10" Encoding="text">
+<Insert>#ifndef __DPA_MDF_PPOE_H__
+#define __DPA_MDF_PPOE_H__
+
+void dpa_mdf_ppoe_add(eth_pkt_t *pkt);
+void dpa_mdf_ppoe_del(eth_pkt_t *pkt);
+
+#endif /* __DPA_MDF_PPOE_H__ */
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/01/06" Time="10:33:37000">
+<Insert>#ifndef __DPA_MDF_VLAN_H__
+#define __DPA_MDF_VLAN_H__
+</Insert>
+<Copy StartSeek="54" EndSeek="55"/>
+<Insert>void dpa_mdf_vlan_chg(eth_pkt_t *pkt);
+void dpa_mdf_vlan_add(eth_pkt_t *pkt);
+void dpa_mdf_vlan_del(eth_pkt_t *pkt);
+</Insert>
+<Copy StartSeek="172" EndSeek="173"/>
+<Insert>#endif /* __DPA_MDF_VLAN_H__ */
+</Insert>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/01/06" Time="10:34:32000">
+<Copy StartSeek="0" EndSeek="55"/>
+<Insert>void dpa_mdf_ppoe_chg(eth_pkt_t *pkt);
+</Insert>
+<Copy StartSeek="55" EndSeek="166"/>
+</Delta>
+</DeltaFile>

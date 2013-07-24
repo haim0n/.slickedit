@@ -1,0 +1,176 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1" Comment="" Date="2013/07/04" Time="15:34:11000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+*
+* proc_fs.c
+*
+* DESCRIPTION:
+*   ADP proc fs handlers.
+*
+*******************************************************************************/
+
+#include &lt;linux/module.h&gt;
+#include &lt;linux/proc_fs.h&gt;
+#include &lt;linux/uaccess.h&gt;
+
+#include &lt;adp.h&gt;
+
+#define MODULE_NAME "adp"
+
+static struct proc_dir_entry *adp_proc_dir, *adp_proc_stats, *adp_proc_frwd;
+
+
+static int adp_proc_stats_read(char *buffer, char **buffer_location, off_t offset,
+                            int buffer_length, int *zero, void *ptr)
+{
+  adp_stats_t stats;
+  adp_eth_stats_t *eth;
+  int port, n;
+
+  if (adp_stats_get(&amp;stats)) {
+      n = sprintf(buffer, "Non available.\n");
+  } else {
+      /* Ethernet */
+      n = sprintf(buffer, "port\trx\ttx\trx_bts\ttx_bts\trx_err\ttx_err\trx_drp\ttx_drp\n");
+      for (port = 0; port &lt; ADP_ETH_MAX_PORT_NUM; port++) {
+           eth = &amp;stats.eth[port];
+           n += sprintf(buffer + n, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+                        port, eth-&gt;rx_pkts, eth-&gt;tx_pkts, eth-&gt;rx_bytes, eth-&gt;tx_bytes, 
+                        eth-&gt;rx_errors, eth-&gt;tx_errors, eth-&gt;rx_dropped, eth-&gt;tx_dropped);
+      }
+      /* ADP */
+      n += sprintf(buffer + n, "\ndrop\tforwd\tlcl_rx\tlcl_tx\n");
+      n += sprintf(buffer + n, "%d\t%d\t%d\t%d\n",
+                   stats.pkt.dropped_pkts, stats.pkt.fwd_pkts, stats.pkt.lcl_rx_pkts,
+                   stats.pkt.lcl_tx_pkts);
+  }
+
+  return n;
+}
+
+
+static int adp_proc_stats_write(struct file *file, const char __user *buffer,
+        unsigned long count, void *data)
+{
+  char cmd;
+
+  if (count &gt; 0) {
+    if (get_user(cmd, buffer))
+      return -EFAULT;
+    switch (cmd) {
+    case '0':
+      adp_stats_reset();
+      break;
+    default:
+      break;
+    }
+
+  }
+  return count;
+}
+
+
+static int adp_proc_frwd_write(struct file *file, const char __user *buffer,
+        unsigned long count, void *data)
+{
+  char cmd;
+
+  if (count &gt; 0) {
+    if (get_user(cmd, buffer))
+      return -EFAULT;
+    switch (cmd) {
+    case '0':
+      adp_table_flush();
+      break;
+    default:
+      break;
+    }
+
+  }
+  return count;
+}
+
+
+int adp_proc_fs_init(void) {
+  int err;
+
+  adp_proc_dir = proc_mkdir("adp", NULL);
+  if (adp_proc_dir == NULL) {
+      err = -ENOMEM;
+      goto no_adp;
+  }
+
+  /* Statistics */
+  adp_proc_stats = create_proc_entry("stats", 0666, adp_proc_dir);
+  if (adp_proc_stats == NULL) {
+      err = -ENOMEM;
+      goto no_stats;
+  }
+  adp_proc_stats-&gt;read_proc = adp_proc_stats_read;
+  adp_proc_stats-&gt;write_proc = adp_proc_stats_write;
+
+  /* Classifier */
+  adp_proc_frwd = create_proc_entry("frwd", 200, adp_proc_dir);
+  if (adp_proc_frwd == NULL) {
+      err = -ENOMEM;
+      goto no_frwd;
+  }
+  adp_proc_frwd-&gt;read_proc = NULL;
+  adp_proc_frwd-&gt;write_proc = adp_proc_frwd_write;
+
+  return 0;
+
+no_frwd:
+  remove_proc_entry("stats", adp_proc_dir);
+
+no_stats:
+  remove_proc_entry(MODULE_NAME, NULL);
+
+no_adp:
+  printk(KERN_ERR"Failed to init proc fs (%d)", err);
+
+  return err;
+}
+
+void adp_proc_fs_shutdown(void) {
+  remove_proc_entry("frwd", adp_proc_dir);
+  remove_proc_entry("stats", adp_proc_dir);
+  remove_proc_entry(MODULE_NAME, NULL);
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="18:27:14000">
+<Copy StartSeek="0" EndSeek="686"/>
+<Insert>static struct proc_dir_entry *adp_proc_dir, *adp_proc_stats, *adp_proc_cls;
+</Insert>
+<Copy StartSeek="763" EndSeek="2160"/>
+<Insert>static int adp_proc_cls_write(struct file *file, const char __user *buffer,
+</Insert>
+<Copy StartSeek="2237" EndSeek="2939"/>
+<Insert>  adp_proc_cls = create_proc_entry("cls", 200, adp_proc_dir);
+  if (adp_proc_cls == NULL) {
+</Insert>
+<Copy StartSeek="3034" EndSeek="3055"/>
+<Insert>      goto no_cls;
+</Insert>
+<Copy StartSeek="3075" EndSeek="3079"/>
+<Insert>  adp_proc_cls-&gt;read_proc = NULL;
+  adp_proc_cls-&gt;write_proc = adp_proc_cls_write;
+</Insert>
+<Copy StartSeek="3165" EndSeek="3179"/>
+<Insert>no_cls:
+</Insert>
+<Copy StartSeek="3188" EndSeek="3398"/>
+<Insert>  remove_proc_entry("cls", adp_proc_dir);
+</Insert>
+<Copy StartSeek="3441" EndSeek="3527"/>
+</Delta>
+</DeltaFile>

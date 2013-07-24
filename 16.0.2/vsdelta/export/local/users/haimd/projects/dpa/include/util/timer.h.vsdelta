@@ -1,0 +1,79 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="5" Comment="" Date="2013/06/25" Time="16:32:4000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* timer.h
+*
+* Description:
+*       Basic timer.
+*
+*/
+
+#ifndef _TIMER_H_
+#define _TIMER_H_
+
+#include &lt;dpa_types.h&gt;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
+#define DPA_CLK_PER_SEC 100
+
+typedef struct {
+  void (*handler)(void);
+  uint32_t period_ns;
+} timer_params_t;
+
+
+int32_t timer_create(timer_params_t *params);
+int32_t timer_destroy(void);
+void timer_start(void);
+void timer_stop(void);
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _TIMER_H_ */
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="09:20:34000">
+<Copy StartSeek="0" EndSeek="577"/>
+<Insert>
+</Insert>
+<Copy StartSeek="597" EndSeek="857"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:21:8000">
+<Copy StartSeek="0" EndSeek="577"/>
+<Copy StartSeek="578" EndSeek="858"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:21:47000">
+<Copy StartSeek="0" EndSeek="578"/>
+<Insert>#define DPA_HZ 100
+</Insert>
+<Copy StartSeek="606" EndSeek="867"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:22:31000">
+<Copy StartSeek="0" EndSeek="578"/>
+<Insert>#define DPA_CLK_PER_SEC 100
+</Insert>
+<Copy StartSeek="607" EndSeek="868"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="16:29:38000">
+<Copy StartSeek="0" EndSeek="578"/>
+<Insert>#define DPA_CLK_PER_SEC 1000
+</Insert>
+<Copy StartSeek="606" EndSeek="867"/>
+</Delta>
+</DeltaFile>

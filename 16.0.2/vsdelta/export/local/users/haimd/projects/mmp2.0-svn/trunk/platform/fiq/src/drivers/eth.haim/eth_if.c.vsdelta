@@ -1,0 +1,1463 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="54" Comment="" Date="2012/06/27" Time="10:06:42000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2010, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* DESCRIPTION:
+*       
+* 
+*******************************************************************************/
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/module.h&gt;
+#include &lt;linux/version.h&gt;
+
+#ifndef MV_CPU_LE
+  #define MV_CPU_LE
+#endif
+
+#include &lt;gbe/mvNeta.h&gt;
+#include &lt;gbe/mvNetaRegs.h&gt;
+
+#include &lt;gbe/mvEthRegs.h&gt;
+#include &lt;mv_neta/net_dev/mv_netdev.h&gt;
+
+#include "eth_if.h"
+#include &lt;log.h&gt;
+
+//#define NETA_RX_L3_INFO                     24
+//#define NETA_RX_L3_MASK                     (3 &lt;&lt; NETA_RX_L3_INFO)
+//#define NETA_RX_L3_UN                       (0 &lt;&lt; NETA_RX_L3_INFO)
+//#define NETA_RX_L3_IP6                      (1 &lt;&lt; NETA_RX_L3_INFO)
+//#define NETA_RX_L3_IP4           	        (2 &lt;&lt; NETA_RX_L3_INFO)
+//#define NETA_RX_L3_IP4_ERR            		(3 &lt;&lt; NETA_RX_L3_INFO)
+//
+//#define NETA_RX_L4_OFFS                     28
+//#define NETA_RX_L4_MASK                     (3 &lt;&lt; NETA_RX_L4_OFFS)
+//#define NETA_RX_L4_TCP                      (0 &lt;&lt; NETA_RX_L4_OFFS)
+//#define NETA_RX_L4_UDP                      (1 &lt;&lt; NETA_RX_L4_OFFS)
+//#define NETA_RX_L4_OTHER                    (2 &lt;&lt; NETA_RX_L4_OFFS)
+//
+///* Bits of "pncExtra" field */
+//#define NETA_RX_PNC_ENABLED_BIT             0
+//#define NETA_RX_PNC_ENABLED_MASK            (1 &lt;&lt; NETA_RX_PNC_ENABLED_BIT)
+//
+//#define NETA_RX_PNC_LOOPS_OFFS              1
+//#define NETA_RX_PNC_LOOPS_MASK              (0xF &lt;&lt; NETA_RX_PNC_LOOPS_OFFS)
+//
+//#define NETA_PNC_STATUS_OFFS                5
+//#define NETA_PNC_STATUS_MASK                (3 &lt;&lt; NETA_PNC_STATUS_OFFS)
+//
+//#define NETA_PNC_RI_EXTRA_OFFS              16
+//#define NETA_PNC_RI_EXTRA_MASK              (0xFFF &lt;&lt; NETA_PNC_RI_EXTRA_OFFS)
+
+
+//#define NETA_RX_IS_VLAN(pncInfo)           (pncInfo &amp; NETA_PNC_VLAN)
+#define NETA_RX_L3_IS_IP4(status)      (((status) &amp; NETA_RX_L3_MASK) == NETA_RX_L3_IP4)
+#define NETA_RX_L3_IS_IP4_ERR(status)  (((status) &amp; NETA_RX_L3_MASK) == NETA_RX_L3_IP4_ERR)
+#define NETA_RX_L3_IS_IP6(status)      (((status) &amp; NETA_RX_L3_MASK) == NETA_RX_L3_IP6)
+#define NETA_RX_L3_IS_UN(status)       (((status) &amp; NETA_RX_L3_MASK) == NETA_RX_L3_UN)
+
+/*HAIM : add those to eth_regs.h*/
+#define NETA_RX_L3_OFFSET(status)	((status) &amp; 0x3F)
+#define NETA_RX_L3_IPHLEN(status)	(((status) &gt;&gt; 8) &amp; 0x1F)
+#define NETA_RX_L3_IPV4_FRG(status)	((status) &gt;&gt; 31)
+
+#define NETA_RX_L4_IS_TCP(status)      (((status) &amp; NETA_RX_L4_MASK) == NETA_RX_L4_TCP)
+#define NETA_RX_L4_IS_UDP(status)      (((status) &amp; NETA_RX_L4_MASK) == NETA_RX_L4_UDP)
+#define NETA_RX_L4_IS_OTHER(status)    (((status) &amp; NETA_RX_L4_MASK) == NETA_RX_L4_OTHER)
+
+
+//#define ETH_DEBUG
+
+#define ETH_IF_ERROR(format, args...) MMP_LOG(3,format, ##args)
+#define ETH_IF_INFO(format, args...) MMP_LOG(6,format, ##args)
+
+#ifdef ETH_DEBUG
+  #define ETH_IF_DBG(format, args...) MMP_LOG(7,format, ##args)
+#else
+  #define ETH_IF_DBG(format, args...) 
+#endif
+
+
+#define ETH_HLEN 14
+
+/* Maximum number of ethernet interfaces */
+#define ETH_IF_MAX 3
+
+/* Number of Tx descriptors */
+#define ETH_IF_TX_DESC_NUM   512
+
+/* Number of Rx descriptors */
+#define ETH_IF_RX_DESC_NUM   128
+
+/* Number of buffers in Rx pool */
+#define ETH_IF_RX_POOL_SIZE  ETH_IF_RX_DESC_NUM 
+
+/* Default MTU */
+#define ETH_IF_MTU 1500
+
+/* Rx buffer size: MTU + 2(Marvell Header) + 4(VLAN) + 14(MAC hdr) + 4(CRC) */
+#define ETH_IF_RX_PKT_SIZE(mtu) \
+    MV_ALIGN_UP((mtu) + 2 + 4 + ETH_HLEN + 4, CPU_D_CACHE_LINE_SIZE)
+
+/* Buffer headroom size */
+#define ETH_IF_PKT_PAD 64
+
+/* Size of Rx buffer */
+#define ETH_IF_RX_BUF_SIZE(pkt_size)  ((pkt_size) + ETH_IF_PKT_PAD)
+
+/* Maximum time to wait for tramission complete on shutdown, mseconds */
+#define ETH_TX_COMPLETE_TIMEOUT 100
+
+/* Packet buffer */
+typedef struct {
+  MV_ULONG phys_addr;
+  MV_U8*   buf;
+  MV_U16   buf_size;
+} eth_if_pkt_t;
+
+/* Packet buffer pool */
+typedef struct {
+  eth_if_pkt_t* pkt; /* Points to array of packets */
+  int           size; /* Pool size */
+} eth_if_pkt_pool_t;
+
+
+/* Eth interface state */
+typedef struct
+{
+  bool              init; /* true if initialized */
+  eth_if_config_t   cfg; /* Configuration and status */
+  MV_NETA_TXQ_CTRL* txq_ctrl; /* Tx queue state */
+  MV_NETA_RXQ_CTRL* rxq_ctrl; /* Rx queue state */
+  eth_if_pkt_pool_t rx_pkt_pool; /* Rx buffers */
+  eth_if_stats_t    stats;
+} eth_if_t;
+
+/* Interface state. TODO Make array when needed */
+static eth_if_t eth_if_list[ETH_IF_MAX];
+
+/******************************* TODO: Ask Dima to move to mvNeta.h ************************/
+
+MV_STATUS mvNetaRxqBufSizeSet(int port, int rxq, int bufSize)
+{
+  MV_U32 regVal;
+
+  regVal = MV_REG_READ(NETA_RXQ_SIZE_REG(port, rxq));
+
+  regVal &amp;= ~NETA_RXQ_BUF_SIZE_MASK;
+  regVal |= ((bufSize &gt;&gt; 3) &lt;&lt; NETA_RXQ_BUF_SIZE_OFFS);
+
+  MV_REG_WRITE(NETA_RXQ_SIZE_REG(port, rxq), regVal);
+
+  return MV_OK;
+}
+
+MV_STATUS mvNetaRxqBmDisable(int port, int rxq)
+{
+  MV_U32 regVal;
+
+  regVal = MV_REG_READ(NETA_RXQ_CONFIG_REG(port, rxq));
+
+  regVal &amp;= ~NETA_RXQ_HW_BUF_ALLOC_MASK;
+
+  MV_REG_WRITE(NETA_RXQ_CONFIG_REG(port, rxq), regVal);
+
+  return MV_OK;
+}
+
+MV_STATUS mvNetaRxqOffsetSet(int port, int rxq, int offset)
+{
+  MV_U32 regVal;
+
+  regVal = MV_REG_READ(NETA_RXQ_CONFIG_REG(port, rxq));
+  regVal &amp;= ~NETA_RXQ_PACKET_OFFSET_ALL_MASK;
+
+  /* Offset is in */
+  regVal |= NETA_RXQ_PACKET_OFFSET_MASK(offset &gt;&gt; 3);
+
+  MV_REG_WRITE(NETA_RXQ_CONFIG_REG(port, rxq), regVal);
+
+  return MV_OK;
+}
+
+static void mvNetaDescrMemoryFree(MV_NETA_PORT_CTRL *pPortCtrl, MV_BUF_INFO *pDescBuf)
+{
+  if ((pDescBuf == NULL) || (pDescBuf-&gt;bufVirtPtr == NULL))
+    return;
+
+#ifdef ETH_DESCR_UNCACHED
+  mvOsIoUncachedFree(pPortCtrl-&gt;osHandle, pDescBuf-&gt;bufSize, pDescBuf-&gt;bufPhysAddr,
+         pDescBuf-&gt;bufVirtPtr, pDescBuf-&gt;memHandle);
+#else
+  mvOsIoCachedFree(pPortCtrl-&gt;osHandle, pDescBuf-&gt;bufSize, pDescBuf-&gt;bufPhysAddr,
+       pDescBuf-&gt;bufVirtPtr, pDescBuf-&gt;memHandle);
+#endif /* ETH_DESCR_UNCACHED */
+}
+
+static MV_U8 *mvNetaDescrMemoryAlloc(MV_NETA_PORT_CTRL *pPortCtrl, int descSize,
+           MV_ULONG *pPhysAddr, MV_U32 *memHandle)
+{
+  MV_U8 *pVirt;
+
+#ifdef ETH_DESCR_UNCACHED
+  pVirt = (MV_U8 *)mvOsIoUncachedMalloc(pPortCtrl-&gt;osHandle, descSize, pPhysAddr, memHandle);
+#else
+  pVirt = (MV_U8 *)mvOsIoCachedMalloc(pPortCtrl-&gt;osHandle, descSize, pPhysAddr, memHandle);
+#endif /* ETH_DESCR_UNCACHED */
+
+  if (pVirt)
+    memset(pVirt, 0, descSize);
+
+  return pVirt;
+}
+
+static void mvNetaDescRingReset(MV_NETA_QUEUE_CTRL *pQueueCtrl)
+{
+  int   descrNum = (pQueueCtrl-&gt;lastDesc + 1);
+  char  *pDesc = pQueueCtrl-&gt;pFirst;
+
+  if (pDesc == NULL)
+    return;
+
+  /* reset ring of descriptors */
+  memset(pDesc, 0, (descrNum * NETA_DESC_ALIGNED_SIZE));
+#ifndef ETH_DESCR_UNCACHED
+  mvOsCacheFlush(NULL, pDesc, (descrNum * NETA_DESC_ALIGNED_SIZE));
+#endif
+  pQueueCtrl-&gt;nextToProc = 0;
+}
+/******************************* TODO: Ask Dima to move to mvNeta.h ************************/
+
+/*** Misc routines ***/
+
+/* Flush Tx descriptors from cache to ram */
+static void eth_if_tx_desc_flush(struct neta_tx_desc *tx_desc)
+{
+#ifndef ETH_DESCR_UNCACHED
+#if defined(MV_CPU_BE)
+  mvNetaTxqDescSwap(tx_desc);
+#endif /* MV_CPU_BE */
+  mvOsCacheLineFlush(NULL, tx_desc);
+#endif /* ETH_DESCR_UNCACHED */
+}
+
+/* Destroy packet pool */
+static void eth_if_destroy_pkt_pool(eth_if_pkt_pool_t* pool) {
+  eth_if_pkt_t *pkt;
+  int i;
+
+  if (pool) {
+      for (i = 0; i &lt; pool-&gt;size; i++) {
+          pkt = &amp;pool-&gt;pkt[i];
+          if (pkt-&gt;buf) {
+              mvOsFree(pkt-&gt;buf);
+              pkt-&gt;buf = NULL;
+          }
+      }
+    
+      mvOsFree(pool-&gt;pkt);
+      pool-&gt;pkt = NULL;
+      pool-&gt;size = 0;
+  }
+}
+
+/* Create packet pool */
+static int eth_if_create_pkt_pool(eth_if_pkt_pool_t* pool, int pool_size, int buf_size) {
+  eth_if_pkt_t *pkt;
+  int i;
+  
+  if (pool == NULL) {
+      return -1;
+  }
+    
+  pool-&gt;size = 0;
+  
+  pool-&gt;pkt = (eth_if_pkt_t *) mvOsMalloc(pool_size * sizeof(eth_if_pkt_t));
+  if (pool-&gt;pkt == NULL) {
+      ETH_IF_ERROR("Can't alloc Rx pool, %d bytes", pool_size * sizeof(eth_if_pkt_t));
+
+      return -1;
+  }
+  pool-&gt;size = pool_size;
+  memset(pool-&gt;pkt, 0, sizeof(pool_size * sizeof(eth_if_pkt_t)));
+  
+  for (i = 0; i &lt; pool_size; i++) {
+       pkt = &amp;pool-&gt;pkt[i];       
+       pkt-&gt;buf = mvOsMalloc(buf_size); /* TODO DO we need it aligned? */       
+       if (pkt-&gt;buf == NULL) {
+           ETH_IF_ERROR("Can't allocate packet buffer for pool, %d bytes.", buf_size);
+           eth_if_destroy_pkt_pool(pool);
+
+           return -1;
+       }
+       memset(pkt-&gt;buf,0,buf_size);
+       pkt-&gt;buf_size = buf_size;
+       pkt-&gt;phys_addr = mvOsCacheInvalidate(NULL, pkt-&gt;buf, buf_size);
+  }
+
+  return 0;
+}
+
+static void eth_if_reset_stats(eth_if_t *eth_if) {
+  if (eth_if) {
+      memset(&amp;eth_if-&gt;stats, 0, sizeof(eth_if_stats_t));
+  }
+}
+
+/*** Queue management routines ***/
+
+/* Allocate and init Tx Queue */
+static MV_NETA_TXQ_CTRL* eth_if_txq_init(int port, int txp, int queue, int descr_num)
+{
+  MV_NETA_TXQ_CTRL *txq;
+  MV_NETA_QUEUE_CTRL *q;
+  int desc_size;
+  MV_NETA_PORT_CTRL dummy; 
+
+  memset(&amp;dummy, 0, sizeof(dummy));
+  
+  /* Allocate TxQ */
+  txq = mvOsMalloc(sizeof(MV_NETA_TXQ_CTRL));
+  if (txq == NULL) {
+      ETH_IF_ERROR("Failed to alloc %d bytes for Tx Queue!! ", sizeof(MV_NETA_TXQ_CTRL));
+      return NULL;
+  }
+  memset(txq, 0, sizeof(MV_NETA_TXQ_CTRL));
+  q = &amp;txq-&gt;queueCtrl;
+
+  /* Allocate memory for TX descriptors */
+  desc_size = ((descr_num * NETA_DESC_ALIGNED_SIZE) + CPU_D_CACHE_LINE_SIZE);
+  /* TODO Allow passing excplicitly osHandle as 1-st argument to mvNetaDescrMemoryAlloc
+     instead of MV_NETA_PORT_CTRL */ 
+  q-&gt;descBuf.bufVirtPtr =
+      mvNetaDescrMemoryAlloc(&amp;dummy, desc_size, &amp;q-&gt;descBuf.bufPhysAddr, &amp;q-&gt;descBuf.memHandle);
+  q-&gt;descBuf.bufSize = desc_size;
+
+  if (q-&gt;descBuf.bufVirtPtr == NULL) {
+      ETH_IF_ERROR("txQ=%d: Can't allocate %d bytes for %d TX descr", queue, desc_size, descr_num);
+      mvOsFree(txq);
+      return NULL;
+  }
+
+  /* Make sure descriptor address is cache line size aligned  */
+  q-&gt;pFirst = (char *)MV_ALIGN_UP((MV_ULONG) q-&gt;descBuf.bufVirtPtr, CPU_D_CACHE_LINE_SIZE);
+  q-&gt;lastDesc = (descr_num - 1);
+
+  mvNetaDescRingReset(q);
+  
+  /* Sync next descriptor with the one in HW */
+  q-&gt;nextToProc = MV_REG_READ(NETA_TXQ_INDEX_REG(port, txp, queue));
+
+  /* Set maximum bandwidth for enabled TXQs */
+#ifdef MV_ETH_WRR_NEW
+  MV_REG_WRITE(NETA_TXQ_TOKEN_CNTR_REG(port, txp, queue), NETA_TXQ_TOKEN_CNTR_MAX);
+#else
+  MV_REG_WRITE(ETH_TXQ_TOKEN_CFG_REG(port, txp, queue), 0x03ffffff);
+  MV_REG_WRITE(ETH_TXQ_TOKEN_COUNT_REG(port, txp, queue), 0x3fffffff);
+#endif /* MV_ETH_WRR_NEW */
+
+  /* Set Tx descriptors queue starting address */
+  MV_REG_WRITE(NETA_TXQ_BASE_ADDR_REG(port, txp, queue), netaDescVirtToPhys(q, q-&gt;pFirst));
+  MV_REG_WRITE(NETA_TXQ_SIZE_REG(port, txp, queue), NETA_TXQ_DESC_NUM_MASK(descr_num));
+
+  return txq;
+}
+
+/* Enable Tx queue */
+static int eth_if_enable_tx_queue(int port, int txp, int queue, bool enable)
+{
+  MV_U32 qMap = (1 &lt;&lt; queue);
+  
+  if (!enable) {
+      qMap = qMap &lt;&lt; ETH_TXQ_DISABLE_OFFSET;
+  }
+
+  MV_REG_WRITE(ETH_TX_QUEUE_COMMAND_REG(port, txp), qMap);
+
+  return 0;
+}
+
+
+/* Enable Rx queue */
+static int eth_if_enable_rx_queue(int port, int queue, bool enable)
+{
+  MV_U32 qMap = (1 &lt;&lt; queue);
+  
+  if (!enable) {
+      qMap = qMap &lt;&lt; ETH_RXQ_DISABLE_OFFSET;
+  }
+
+  MV_REG_WRITE(ETH_RX_QUEUE_COMMAND_REG(port), qMap);
+
+  return 0;
+}
+
+
+static int eth_if_txq_shutdown(MV_NETA_TXQ_CTRL *txq_ctrl, int port, int txp, int queue)
+{
+  MV_NETA_QUEUE_CTRL *q;
+  MV_NETA_PORT_CTRL  dummy;
+  MV_U32             pending, elapsed;
+  
+  if (txq_ctrl == NULL) {
+      return -1;
+  }
+  
+  memset(&amp;dummy, 0, sizeof(dummy));
+  q = &amp;txq_ctrl-&gt;queueCtrl;
+  
+  /* Wait for Tx complete */
+  elapsed = 0;
+  while (elapsed &lt; ETH_TX_COMPLETE_TIMEOUT &amp;&amp; 
+         (pending = mvNetaTxqPendDescNumGet(port, txp, queue))) {
+    elapsed += 1;
+    msleep(1);
+  }
+  
+  if (pending) {
+      ETH_IF_ERROR("Exceeded Tx complete timeout, %d decsriptors pending.",
+                   pending);
+  }
+      
+   /* Reset descriptors */
+  mvNetaDescRingReset(q);
+
+  /* Zero out sent decsriptors */
+  mvNetaTxqSentDescProc(port, txp, queue); 
+
+  /* Release descriptors memory */
+  mvNetaDescrMemoryFree(&amp;dummy, &amp;q-&gt;descBuf);
+  memset(q, 0, sizeof(*q));
+
+  /* Set minimum bandwidth for disabled TXQs */
+#ifdef MV_ETH_WRR_NEW
+  MV_REG_WRITE(NETA_TXQ_TOKEN_CNTR_REG(port, txp, queue), 0);
+#else
+  MV_REG_WRITE(ETH_TXQ_TOKEN_CFG_REG(port, txp, queue), 0);
+  MV_REG_WRITE(ETH_TXQ_TOKEN_COUNT_REG(port, txp, queue), 0);
+#endif /* MV_ETH_WRR_NEW */
+
+  /* Reset Tx descriptors queue starting address and size */
+  MV_REG_WRITE(NETA_TXQ_BASE_ADDR_REG(port, txp, queue), 0);
+  MV_REG_WRITE(NETA_TXQ_SIZE_REG(port, txp, queue), 0);
+
+  /* Free TxQ memory */
+  mvOsFree(txq_ctrl);
+
+  return 0;
+}
+
+
+/* Alloc and init Rx Q */
+static MV_NETA_RXQ_CTRL* eth_if_rxq_init(int port, int queue, eth_if_pkt_pool_t* pkt_pool)
+{
+  MV_NETA_RXQ_CTRL *rxq_ctrl;
+  MV_NETA_QUEUE_CTRL *q;
+  int descr_size, descr_num, i;
+  MV_NETA_PORT_CTRL dummy; 
+  eth_if_pkt_t *pkt;  
+  struct neta_rx_desc *rx_desc;
+
+  if (pkt_pool == NULL) {
+      ETH_IF_ERROR("Packet pool NULL.");
+      return NULL;
+  }
+  
+  memset(&amp;dummy, 0, sizeof(dummy));
+  descr_num = pkt_pool-&gt;size;
+
+  /* Allocate RxQ */
+  rxq_ctrl = mvOsMalloc(sizeof(MV_NETA_RXQ_CTRL));
+  if (rxq_ctrl == NULL) {
+      ETH_IF_ERROR("Can't alloc %d bytes for Rx queue control.", sizeof(MV_NETA_RXQ_CTRL));
+      return NULL;
+  }
+  memset(rxq_ctrl, 0, sizeof(MV_NETA_RXQ_CTRL));
+  q = &amp;rxq_ctrl-&gt;queueCtrl;
+
+  /* Allocate memory for RX descriptors */
+  descr_size = ((descr_num * NETA_DESC_ALIGNED_SIZE) + CPU_D_CACHE_LINE_SIZE);
+  q-&gt;descBuf.bufVirtPtr =
+      mvNetaDescrMemoryAlloc(&amp;dummy, descr_size, &amp;q-&gt;descBuf.bufPhysAddr, &amp;q-&gt;descBuf.memHandle);
+  q-&gt;descBuf.bufSize = descr_size;
+
+  if (q-&gt;descBuf.bufVirtPtr == NULL) {
+     ETH_IF_ERROR("Can't allocate %d bytes for %d TX descr for Rx Q %d", descr_size, descr_num, queue);
+     mvOsFree(rxq_ctrl);
+     return NULL;
+  }
+
+  /* Make sure descriptor address is cache line size aligned  */
+  q-&gt;pFirst = (char *)MV_ALIGN_UP((MV_ULONG) q-&gt;descBuf.bufVirtPtr, CPU_D_CACHE_LINE_SIZE);
+  q-&gt;lastDesc = (descr_num - 1);
+  
+  mvNetaDescRingReset(q);
+  
+  /* Sync next descriptor with the one in HW */
+  q-&gt;nextToProc = MV_REG_READ(NETA_RXQ_INDEX_REG(port, queue));
+  
+  ETH_IF_DBG("eth_if_rxq_init: Curr rx descr index is %d", q-&gt;nextToProc);
+
+  /* Set Rx descriptors queue starting address */
+  MV_REG_WRITE(NETA_RXQ_BASE_ADDR_REG(port, queue),
+         netaDescVirtToPhys(q, q-&gt;pFirst));
+  MV_REG_WRITE(NETA_RXQ_SIZE_REG(port, queue), descr_num);
+
+  /* Set Offset */
+  mvNetaRxqOffsetSet(port, queue, 0 /* TODO change to some headroom? */);
+
+  /* Fill RXQ with buffers from RX pool */
+  mvNetaRxqBufSizeSet(port, queue, pkt_pool-&gt;pkt[0].buf_size);
+  mvNetaRxqBmDisable(port, queue);
+  for (i = 0; i &lt; descr_num; i++) {
+      rx_desc = (struct neta_rx_desc *)MV_NETA_QUEUE_DESC_PTR(q, i);
+      memset(rx_desc, 0, sizeof(*rx_desc));
+      pkt = &amp;pkt_pool-&gt;pkt[i];
+      mvNetaRxDescFill(rx_desc, pkt-&gt;phys_addr, (MV_U32)pkt);
+  }
+  mvNetaRxqNonOccupDescAdd(port, queue, descr_num);
+
+  return rxq_ctrl; 
+}
+
+/* SHutdown RX Q */
+static int eth_if_rxq_shutdown(MV_NETA_RXQ_CTRL *rxq_ctrl, int port, int queue)
+{
+  MV_NETA_QUEUE_CTRL *q;
+  MV_NETA_PORT_CTRL dummy;
+  struct neta_rx_desc *rx_desc;
+  int rx_pending, i;
+
+  if (rxq_ctrl == NULL) {
+      return -1;
+  }
+  
+  /* Flush pending Rx descriptors */
+  eth_if_enable_rx_queue(port, queue, false);
+  rx_pending = mvNetaRxqBusyDescNumGet(port, queue);
+
+  for (i = 0; i &lt; rx_pending; i++) {
+    rx_desc = mvNetaRxqNextDescGet(rxq_ctrl);
+  }
+  mvNetaRxqDescNumUpdate(port, queue, rx_pending, 0);
+
+
+  /* Reset descriptors and release descriptors memory */
+  memset(&amp;dummy, 0, sizeof(dummy));
+  q = &amp;rxq_ctrl-&gt;queueCtrl;
+  mvNetaDescRingReset(q);
+  mvNetaDescrMemoryFree(&amp;dummy, &amp;q-&gt;descBuf);
+  memset(q, 0, sizeof(*q));
+  
+  /* Clear Rx descriptors queue starting address and size */
+  MV_REG_WRITE(NETA_RXQ_BASE_ADDR_REG(port, queue), 0);
+  MV_REG_WRITE(NETA_RXQ_SIZE_REG(port, queue), 0);
+
+  /* Free TxQ memory */
+  mvOsFree(rxq_ctrl);
+
+  return 0;
+}
+
+
+/*** ETH IF state change routines ***/
+
+/* Terminate eth interface */
+int eth_if_shutdown(int port) {
+  eth_if_t *eth_if = &amp;eth_if_list[port];
+
+  /* Initialized? */
+  if (!eth_if-&gt;init) {
+     ETH_IF_DBG("Not init.");
+     return -1;
+  } 
+
+  /* Destroy descriptors for TXQ */
+  if (eth_if-&gt;txq_ctrl) {
+      eth_if_txq_shutdown(eth_if-&gt;txq_ctrl, eth_if-&gt;cfg.port, eth_if-&gt;cfg.txp, eth_if-&gt;cfg.txq);
+      eth_if-&gt;txq_ctrl = NULL;
+  }
+
+  /* Destroy descriptors for RXQ */
+  if (eth_if-&gt;rxq_ctrl) {
+      eth_if_rxq_shutdown(eth_if-&gt;rxq_ctrl, eth_if-&gt;cfg.port, eth_if-&gt;cfg.rxq);
+      eth_if-&gt;rxq_ctrl = NULL;
+  }
+
+  /* Free Rx packet pool */  
+  eth_if_destroy_pkt_pool(&amp;eth_if-&gt;rx_pkt_pool);
+
+  ETH_IF_INFO("Eth port %d terminated.", eth_if-&gt;cfg.port);
+
+  eth_if-&gt;init = false;
+
+  return 0;
+}
+
+
+/* Initialize eth interface */
+int eth_if_init(eth_if_config_t* cfg) {
+   eth_if_t *eth_if;
+
+   if (cfg-&gt;port &gt;= ETH_IF_MAX) {
+       ETH_IF_ERROR("Network interface config: Port (%d) out of range [%d].", cfg-&gt;port, ETH_IF_MAX);
+       goto eth_if_init_fail;
+   }
+   eth_if = &amp;eth_if_list[cfg-&gt;port];
+
+  /* Already initialized? */
+  if (eth_if-&gt;init) {
+     ETH_IF_DBG("Already init.");
+     return 0;
+  } 
+
+  /* Validate parameters */
+  if (cfg == NULL) {
+      ETH_IF_ERROR("Network interface config: NULL argument passed.");
+      goto eth_if_init_fail;
+  }
+
+  if (cfg-&gt;state == ETH_IF_STATE_NONE) {
+      ETH_IF_ERROR("Network interface config: Status is none.");
+      goto eth_if_init_fail;
+  }
+
+
+  if (cfg-&gt;rxq &lt; CONFIG_MV_ETH_RXQ || cfg-&gt;rxq &gt; 8 /* TODO add const */) {
+      ETH_IF_ERROR("Network interface config: Rx queue out of range (%d), CONFIG_MV_ETH_RXQ %d.", cfg-&gt;rxq, CONFIG_MV_ETH_RXQ);
+      goto eth_if_init_fail;
+  }
+
+  if (cfg-&gt;txq &lt; CONFIG_MV_ETH_TXQ || cfg-&gt;txq &gt; 8 /* TODO add const */) {
+      ETH_IF_ERROR("Network interface config: Tx queue out of range (%d), CONFIG_MV_ETH_TXQ %d", cfg-&gt;txq, CONFIG_MV_ETH_TXQ);
+      goto eth_if_init_fail;
+  }
+
+  memcpy(&amp;eth_if-&gt;cfg, cfg, sizeof(*cfg));
+
+  /* Create descriptors for TXQ */
+  eth_if-&gt;txq_ctrl = eth_if_txq_init(cfg-&gt;port, eth_if-&gt;cfg.txp, cfg-&gt;txq, ETH_IF_TX_DESC_NUM);
+  if (eth_if-&gt;txq_ctrl == NULL) {
+      goto eth_if_init_fail;
+  }
+
+  /* Create Rx packet pool */  
+  if (eth_if_create_pkt_pool(&amp;eth_if-&gt;rx_pkt_pool, ETH_IF_RX_DESC_NUM, 
+                             ETH_IF_RX_BUF_SIZE(ETH_IF_RX_PKT_SIZE(ETH_IF_MTU)))) {
+      goto eth_if_init_fail;
+  }
+
+  /* Create descriptors for RXQ */
+  eth_if-&gt;rxq_ctrl = eth_if_rxq_init(cfg-&gt;port, cfg-&gt;rxq, &amp;eth_if-&gt;rx_pkt_pool);
+  if (eth_if-&gt;rxq_ctrl == NULL) {
+      goto eth_if_init_fail;
+  }
+
+  /* Enable traffic on Rx and Tx queues */
+  if (cfg-&gt;state == ETH_IF_STATE_UP) {
+      eth_if_enable_rx_queue(eth_if-&gt;cfg.port, eth_if-&gt;cfg.rxq, true);
+      eth_if_enable_tx_queue(eth_if-&gt;cfg.port, eth_if-&gt;cfg.txp, eth_if-&gt;cfg.txq, true);
+  }
+
+  eth_if_reset_stats(eth_if);
+
+  eth_if-&gt;init = true;
+
+  ETH_IF_INFO("Eth port %d initialized.", eth_if-&gt;cfg.port);
+
+  return 0;
+
+eth_if_init_fail:
+  eth_if_shutdown(cfg-&gt;port);
+
+  return -1;
+}
+
+/* Interface up */
+int eth_if_up(int port) {
+    eth_if_t *eth_if;
+
+   /* TODO replace by lookup when supporting multiple ports */
+   eth_if = &amp;eth_if_list[0];
+   if (port != eth_if-&gt;cfg.port) {
+       ETH_IF_ERROR("Can't bring up the port, port invalid %d.", port);
+       return -1;
+   }
+
+   if (eth_if-&gt;txq_ctrl == NULL || eth_if-&gt;rxq_ctrl == NULL) {
+       ETH_IF_ERROR("Can't bring up the port, state invalid.");
+       return -1;
+   }
+
+   if (eth_if-&gt;cfg.state == ETH_IF_STATE_UP) {
+       return 0;
+   }
+
+  /* Enable traffic */
+  eth_if-&gt;txq_ctrl-&gt;queueCtrl.nextToProc = MV_REG_READ(NETA_TXQ_INDEX_REG(port, 0, eth_if-&gt;cfg.txq));
+  eth_if-&gt;rxq_ctrl-&gt;queueCtrl.nextToProc = MV_REG_READ(NETA_RXQ_INDEX_REG(port, eth_if-&gt;cfg.rxq));
+  
+  eth_if_enable_rx_queue(eth_if-&gt;cfg.port, eth_if-&gt;cfg.rxq, true);
+  eth_if_enable_tx_queue(eth_if-&gt;cfg.port, eth_if-&gt;cfg.txp, eth_if-&gt;cfg.txq, true);
+
+  eth_if-&gt;cfg.state = ETH_IF_STATE_UP;
+
+  ETH_IF_INFO("Eth port %d up.", eth_if-&gt;cfg.port);
+
+  return 0;
+}
+
+/* Interface down */
+int eth_if_down(int port) {
+  eth_if_t      *eth_if;
+
+  /* TODO replace by lookup when supporting multiple ports */
+  eth_if = &amp;eth_if_list[0];
+  if (port != eth_if-&gt;cfg.port) {
+      ETH_IF_ERROR("Can't bring down the port, port invalid %d.", port);
+      return -1;
+  }
+
+  if (eth_if-&gt;txq_ctrl == NULL || eth_if-&gt;rxq_ctrl == NULL) {
+      ETH_IF_ERROR("Can't bring down the port, state invalid.");
+      return -1;
+  }
+
+  if (eth_if-&gt;cfg.state == ETH_IF_STATE_DOWN) {
+      return 0;
+  }
+  
+  /* Disable traffic */
+  eth_if_enable_rx_queue(eth_if-&gt;cfg.port, eth_if-&gt;cfg.rxq, false);
+  eth_if_enable_tx_queue(eth_if-&gt;cfg.port, eth_if-&gt;cfg.txp, eth_if-&gt;cfg.txq, false);
+  
+  /* Reset descriptors */
+  mvNetaDescRingReset(&amp;eth_if-&gt;rxq_ctrl-&gt;queueCtrl);
+  mvNetaDescRingReset(&amp;eth_if-&gt;txq_ctrl-&gt;queueCtrl);
+  
+  /* Reset stats */
+  eth_if_reset_stats(eth_if);
+
+  eth_if-&gt;cfg.state = ETH_IF_STATE_DOWN;
+
+  ETH_IF_INFO("Eth port %d down.", eth_if-&gt;cfg.port);
+
+  return 0;
+}
+ 
+ 
+/* Transmit packet */
+int eth_if_tx(int port, void* data, int size)
+{
+  NETA_TX_DESC* tx_desc = NULL;
+  u32           command;
+  eth_if_t      *eth_if;
+
+  /* TODO replace by lookup when supporting multiple ports */
+#if 0
+  eth_if = &amp;eth_if_list[0];
+  if (port != eth_if-&gt;cfg.port) {
+      ETH_IF_DBG("Can't transmit a packet, specified port invalid %d.", port);
+      return -1;
+  }
+
+#else
+  eth_if = &amp;eth_if_list[port];
+#endif 
+  if (eth_if-&gt;txq_ctrl == NULL || 
+      eth_if-&gt;cfg.state == ETH_IF_STATE_DOWN) {
+      return -1;
+  }
+
+  /* Descriptor to use */
+  tx_desc = mvNetaTxqNextDescGet(eth_if-&gt;txq_ctrl);
+  if (NULL == tx_desc) {
+      ETH_IF_DBG("Can't get descriptor for Tx");
+      eth_if-&gt;stats.tx_errors++;
+
+      return -1;
+  }
+
+  /* Calculate IPv4 checksum and L4 checksum */
+  /* TODO Specify correct flags */
+  command = 0; 
+  command |= NETA_TX_F_DESC_MASK | NETA_TX_L_DESC_MASK | NETA_TX_IP_CSUM_MASK;
+  //command |= (ip4h-&gt;ihl &lt;&lt; NETA_TX_IP_HLEN_OFFS) | NETA_TX_L3_IP4;
+  //command |= (NETA_TX_L4_UDP | NETA_TX_L4_CSUM_FULL);
+
+  tx_desc-&gt;dataSize = size;
+  tx_desc-&gt;bufPhysAddr = mvOsCacheFlush(NULL, data, size);
+  tx_desc-&gt;command = command;
+  tx_desc-&gt;hw_cmd = 0;
+
+  /* Flush cache to RAM */
+  eth_if_tx_desc_flush(tx_desc);
+
+  /* Enable transmit */
+  mvNetaTxqPendDescAdd(eth_if-&gt;cfg.port, eth_if-&gt;cfg.txp, eth_if-&gt;cfg.txq, 1 /* num of descriptors */);
+
+  eth_if-&gt;stats.tx_pkts++;
+  eth_if-&gt;stats.tx_bytes += size;
+
+#ifdef ETH_IF_DEBUG  
+  if (((eth_if-&gt;stats.tx_pkts) % 100) == 0) {
+     ETH_IF_DBG(" eth_if pkts sent %d", eth_if-&gt;stats.tx_pkts);
+  }
+#endif
+
+  /* Decrement the sent descriptors */
+  mvNetaTxqSentDescProc(eth_if-&gt;cfg.port, eth_if-&gt;cfg.txp, eth_if-&gt;cfg.txq);
+   
+  return 0;
+}
+
+/* Recv packets up to a budget */
+int eth_if_rx(int port, int rx_todo) {  
+  eth_if_t           *eth_if;
+  int                 rx_done, rx_filled, rx_bytes;
+  struct neta_rx_desc *rx_desc;
+  eth_if_pkt_t        *pkt;
+  char                *data;
+  uint32_t            rx_status;
+
+  /* TODO replace by lookup when supporting multiple ports */
+  eth_if = &amp;eth_if_list[0];
+  if (port != eth_if-&gt;cfg.port) {
+      ETH_IF_DBG("Can't recv, specified port invalid %d.", port);
+      return -1;
+  }
+
+  if (eth_if-&gt;txq_ctrl == NULL || 
+      eth_if-&gt;cfg.state == ETH_IF_STATE_DOWN) {
+      return -1;
+  }
+
+  /* Get number of received packets */
+  rx_done = mvNetaRxqBusyDescNumGet(eth_if-&gt;cfg.port, eth_if-&gt;cfg.rxq);
+  if (rx_done == 0) {
+      return 0;
+  }
+
+  ETH_IF_DBG("&lt;&lt;&lt;&lt;============= mmp_eth_rx: %d pkts RX pending", rx_done);
+//mvOsCacheIoSync();
+
+  if (rx_todo &gt; rx_done)
+      rx_todo = rx_done;
+
+  rx_done = 0;
+  rx_filled = 0;
+
+  /* Fairness NAPI loop */
+  while (rx_done &lt; rx_todo) {
+
+    /* TODO consider more sophisticated prefetch: see mv_netdev.c, CONFIG_MV_ETH_RX_DESC_PREFETCH */
+    rx_desc = mvNetaRxqNextDescGet(eth_if-&gt;rxq_ctrl);
+    mvOsCacheLineInv(NULL, rx_desc);
+    prefetch(rx_desc);
+
+    rx_done++;
+    rx_filled++;
+    rx_status = rx_desc-&gt;status;
+    pkt = (eth_if_pkt_t *)rx_desc-&gt;bufCookie;
+      
+    /* Speculative ICache prefetch WA: should be replaced with dma_unmap_single (invalidate l2) */
+    mvOsCacheMultiLineInv(NULL, pkt-&gt;buf, rx_desc-&gt;dataSize);
+    /* TODO consider prefetch: see mv_netdev.c, CONFIG_MV_ETH_RX_PKT_PREFETCH */
+
+    ETH_IF_DBG("Pkt %d [0x%x], status 0x%x, dataSize %d", rx_done, (u32) pkt, rx_status, rx_desc-&gt;dataSize);
+
+    if (((rx_status &amp; NETA_RX_FL_DESC_MASK) != NETA_RX_FL_DESC_MASK) ||
+        (rx_status &amp; NETA_RX_ES_MASK)) {
+
+        ETH_IF_DBG("Rx error");
+
+        eth_if-&gt;stats.rx_errors++;
+        
+        mvNetaRxDescFill(rx_desc, pkt-&gt;phys_addr, (MV_U32)pkt);
+        continue;
+    }
+
+    rx_bytes = rx_desc-&gt;dataSize - (MV_ETH_CRC_SIZE + MV_ETH_MH_SIZE);
+    data = pkt-&gt;buf + MV_ETH_MH_SIZE;
+
+    eth_if-&gt;stats.rx_pkts++;
+    eth_if-&gt;stats.rx_bytes += rx_bytes;
+
+    /* Process recved data */
+    if (eth_if-&gt;cfg.rx_callback != NULL) {
+        eth_if-&gt;cfg.rx_callback(eth_if-&gt;cfg.port, data, rx_bytes);
+    }
+
+    /* Refill pkt */
+    mvNetaRxDescFill(rx_desc, pkt-&gt;phys_addr, (MV_U32)pkt);
+  }
+
+  /* Update RxQ management counters */
+  mvOsCacheIoSync();
+  mvNetaRxqDescNumUpdate(eth_if-&gt;cfg.port, eth_if-&gt;cfg.rxq, rx_done, rx_filled);
+
+  ETH_IF_DBG("============= mmp_eth_rx: rx_done %d, rx_filled %d =========================&gt;&gt;&gt;&gt;", rx_done, rx_filled);
+
+  return rx_done;
+}
+
+void __tx_test(void)
+{
+	struct ethhdr *eth_hdr;
+	void* pkt = NULL;
+
+	pkt = kmalloc(200, GFP_ATOMIC);
+	eth_hdr = (struct ethhdr *) ((char *)pkt + MV_ETH_MH_SIZE);
+
+	memset(pkt, 0, 200);
+	eth_hdr-&gt;h_source[0] = 0x66;
+	eth_hdr-&gt;h_source[1] = 0x66;
+	eth_hdr-&gt;h_source[2] = 0x66;
+	eth_hdr-&gt;h_source[3] = 0x66;
+	eth_hdr-&gt;h_source[4] = 0x66;
+	eth_hdr-&gt;h_source[5] = 0x66;
+
+	eth_hdr-&gt;h_dest[0] = 00;
+	eth_hdr-&gt;h_dest[1] = 10;
+	eth_hdr-&gt;h_dest[2] = 94;
+	eth_hdr-&gt;h_dest[3] = 00;
+	eth_hdr-&gt;h_dest[4] = 00;
+	eth_hdr-&gt;h_dest[5] = 04;
+
+	eth_hdr-&gt;h_proto = 0x0800;
+
+	eth_if_tx(ETH_TX_PORT, pkt, 200);
+
+	kfree(pkt);
+}
+
+static INLINE void eth_if_modify_hdr(struct ethhdr *eth)
+{
+      	memset(eth-&gt;h_source,0x66,6);
+      	eth-&gt;h_dest[0] = 00;
+      	eth-&gt;h_dest[1] = 10;
+      	eth-&gt;h_dest[2] = 94;
+      	eth-&gt;h_dest[3] = 00;
+      	eth-&gt;h_dest[4] = 00;
+      	eth-&gt;h_dest[5] = 04;
+}
+
+static INLINE void __mvNetaRxDescFill(NETA_RX_DESC *pRxDesc, MV_U32 physAddr, MV_U32 cookie)
+{
+	pRxDesc-&gt;bufCookie = (MV_U32)cookie;
+
+#if defined(CONFIG_MV_ETH_BE_WA)
+	pRxDesc-&gt;bufPhysAddr = MV_32BIT_LE(physAddr);
+#else
+	pRxDesc-&gt;bufPhysAddr = physAddr;
+#endif /* CONFIG_MV_ETH_BE_WA */
+
+#ifndef ETH_DESCR_UNCACHED
+	mvOsCacheLineFlush(NULL, pRxDesc);
+#endif
+}
+
+unsigned int 
+eth_if_fwd(unsigned int rx_port, unsigned int tx_port, int rx_todo)
+{
+	eth_if_t *eth_if_rx;
+	uint32_t rx_done, rx_filled, rx_bytes;
+	struct neta_rx_desc *rx_desc;
+	eth_if_pkt_t        *pkt;
+	u_char              *data;
+	uint32_t            rx_status;
+//      struct ethhdr *eth;
+	/* TODO replace by lookup when supporting multiple ports */
+	eth_if_rx = &amp;eth_if_list[rx_port];
+
+	if (eth_if_rx-&gt;txq_ctrl == NULL || 
+	    eth_if_rx-&gt;cfg.state == ETH_IF_STATE_DOWN) {
+		return 0;
+	}
+	
+	/* Get number of received packets */
+	rx_done = mvNetaRxqBusyDescNumGet(eth_if_rx-&gt;cfg.port, eth_if_rx-&gt;cfg.rxq);
+	if (rx_done == 0) {
+		return 0;
+	}
+	if (rx_todo &gt; rx_done)
+		rx_todo = rx_done;
+
+	rx_done = 0;
+	rx_filled = 0;
+	/* Fairness NAPI loop */
+	while (rx_done &lt; rx_todo) {
+
+		/* TODO consider more sophisticated prefetch: see mv_netdev.c, CONFIG_MV_ETH_RX_DESC_PREFETCH */
+		rx_desc = mvNetaRxqNextDescGet(eth_if_rx-&gt;rxq_ctrl);
+
+		mvOsCacheLineInv(NULL, rx_desc);
+		prefetch(rx_desc);
+
+		rx_done++;
+		rx_filled++;
+		rx_status = rx_desc-&gt;status;
+		pkt = (eth_if_pkt_t *)rx_desc-&gt;bufCookie;
+
+		/* Speculative ICache prefetch WA: should be replaced with dma_unmap_single (invalidate l2) */
+		mvOsCacheMultiLineInv(NULL, pkt-&gt;buf, rx_desc-&gt;dataSize);
+		/* TODO consider prefetch: see mv_netdev.c, CONFIG_MV_ETH_RX_PKT_PREFETCH */
+		printk(KERN_ERR "Pkt %d [0x%x], status 0x%x, dataSize %d", 
+		       rx_done, (u32) pkt, rx_status, rx_desc-&gt;dataSize);
+		if (((rx_status &amp; NETA_RX_FL_DESC_MASK) != NETA_RX_FL_DESC_MASK) ||
+		    (rx_status &amp; NETA_RX_ES_MASK)) {
+
+			ETH_IF_DBG("Rx error");
+
+			eth_if_rx-&gt;stats.rx_errors++;
+
+			mvNetaRxDescFill(rx_desc, pkt-&gt;phys_addr, (MV_U32)pkt);
+			continue;
+		}
+		printk(KERN_ERR "is_ipv4:%u, isvlan:%u, L3_offset:%u, "
+				"is_udp:%u, is_tcp:%u\n",
+		       NETA_RX_L3_IS_IP4(rx_status),
+		       NETA_RX_IS_VLAN(rx_desc) ? 1 : 0,
+		       NETA_RX_L3_OFFSET(rx_status),
+		       NETA_RX_L4_IS_UDP(rx_status),
+		       NETA_RX_L4_IS_TCP(rx_status));
+
+		rx_bytes = rx_desc-&gt;dataSize - (MV_ETH_CRC_SIZE + MV_ETH_MH_SIZE);
+//      	data = pkt-&gt;buf + MV_ETH_MH_SIZE;
+		data = pkt-&gt;buf;
+		eth_if_rx-&gt;stats.rx_pkts++;
+		eth_if_rx-&gt;stats.rx_bytes += rx_bytes;
+		/**** dummy modify *****/
+// 		eth = (struct eth_hdr *) ((char *)data + MV_ETH_MH_SIZE);
+//      	eth_if_modify_hdr(eth);
+		/**** dummy modify end ****/
+
+		eth_if_tx(ETH_TX_PORT, data, rx_bytes);
+		/* Refill pkt */
+		__mvNetaRxDescFill(rx_desc, pkt-&gt;phys_addr, (MV_U32)pkt);
+	}
+	/* Update RxQ management counters */
+//      mvOsCacheIoSync();
+	mvNetaRxqDescNumUpdate(eth_if_rx-&gt;cfg.port, eth_if_rx-&gt;cfg.rxq, rx_done, rx_filled);
+
+	ETH_IF_DBG("============= mmp_eth_rx: rx_done %d, rx_filled %d =========================&gt;&gt;&gt;&gt;", rx_done, rx_filled);
+
+	return rx_done;
+}
+
+/* Get stats */
+int eth_if_get_stats(int port, eth_if_stats_t *stats) {
+  eth_if_t *eth_if;
+
+  /* TODO replace by lookup when supporting multiple ports */
+  eth_if = &amp;eth_if_list[0];
+  if (port != eth_if-&gt;cfg.port) {
+      ETH_IF_ERROR("Can't get stats, specified port invalid %d.", port);
+      return -1;
+  }
+
+  if (stats == NULL) {
+      ETH_IF_ERROR("Can't get stats, argumet is NULL.");
+      return -1;
+  }
+
+  memcpy(stats, &amp;eth_if-&gt;stats, sizeof(eth_if_stats_t));
+
+  return 0;
+}
+
+//void eth_rx_callback(int port, void* skb, int size)
+//{
+//        struct iphdr *iph;
+//
+//        if (((struct ethhdr *)skb)-&gt;h_proto == htons(ETH_P_IP)) {
+//                iph = (struct iphdr *)((char *)skb + sizeof(struct ethhdr));
+//                pr_debug("%pI4 -&gt; %pI4 [ip.proto %u]\n", &amp;iph-&gt;saddr, &amp;iph-&gt;daddr, iph-&gt;protocol);
+//
+//        }
+//}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="14:32:0000">
+<Copy StartSeek="0" EndSeek="26292"/>
+<Insert>		ETH_IF_DBG("Pkt %d [0x%x], status 0x%x, dataSize %d", rx_done, (u32) pkt, rx_status, rx_desc-&gt;dataSize);
+</Insert>
+<Copy StartSeek="26404" EndSeek="28273"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="14:40:30000">
+<Copy StartSeek="0" EndSeek="25683"/>
+<Insert>
+</Insert>
+<Copy StartSeek="25746" EndSeek="28335"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="14:43:49000">
+<Copy StartSeek="0" EndSeek="25455"/>
+<Insert>
+</Insert>
+<Copy StartSeek="25518" EndSeek="25745"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM___TEST\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="25747" EndSeek="28336"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="14:44:44000">
+<Copy StartSeek="0" EndSeek="25455"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM___TEST\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="25457" EndSeek="28275"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="14:45:6000">
+<Copy StartSeek="0" EndSeek="25684"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="25747" EndSeek="28336"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="14:45:17000">
+<Copy StartSeek="0" EndSeek="25684"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM___TEST\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="25684" EndSeek="28273"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="17:18:5000">
+<Copy StartSeek="0" EndSeek="814"/>
+<Copy StartSeek="1509" EndSeek="28968"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="17:31:30000">
+<Copy StartSeek="0" EndSeek="814"/>
+<Copy StartSeek="909" EndSeek="29063"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="17:32:28000">
+<Copy StartSeek="0" EndSeek="861"/>
+<Copy StartSeek="1191" EndSeek="1238"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2029" EndSeek="30183"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="17:34:41000">
+<Copy StartSeek="0" EndSeek="27594"/>
+<Copy StartSeek="27656" EndSeek="30245"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="17:43:32000">
+<Copy StartSeek="0" EndSeek="27594"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM__TEST\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="27657" EndSeek="30246"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="17:44:25000">
+<Copy StartSeek="0" EndSeek="28377"/>
+<Insert>		
+</Insert>
+<Copy StartSeek="28494" EndSeek="30360"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:03:21000">
+<Copy StartSeek="0" EndSeek="28377"/>
+<Insert>		printk(KERN_ERR "(%s:%d) ipv4: %u\n", __func__, __LINE__,NETA_RX_L3_IS_IP4(rx_status), NETA_RX_L3_IP4(rx_status));
+</Insert>
+<Copy StartSeek="28508" EndSeek="30374"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:03:45000">
+<Copy StartSeek="0" EndSeek="28265"/>
+<Insert>		printk(KERN_ERR "Pkt %d [0x%x], status 0x%x, dataSize %d", rx_done, (u32) pkt, rx_status, rx_desc-&gt;dataSize);
+		printk(KERN_ERR "(%s:%d) is_ipv4:%u, offset: %u\n", __func__, __LINE__,NETA_RX_L3_IS_IP4(rx_status), NETA_RX_L3_IP4(rx_status));
+
+</Insert>
+<Copy StartSeek="28266" EndSeek="28514"/>
+<Insert>
+</Insert>
+<Copy StartSeek="28778" EndSeek="30394"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:04:44000">
+<Copy StartSeek="0" EndSeek="28265"/>
+<Insert>
+</Insert>
+<Copy StartSeek="28387" EndSeek="28635"/>
+<Insert>		printk(KERN_ERR "Pkt %d [0x%x], status 0x%x, dataSize %d", 
+		       rx_done, (u32) pkt, rx_status, rx_desc-&gt;dataSize);
+</Insert>
+<Copy StartSeek="28635" EndSeek="30393"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:04:53000">
+<Copy StartSeek="0" EndSeek="28635"/>
+<Insert>		printk(KERN_ERR "(%s:%d) is_ipv4:%u, offset: %u\n", __func__, 
+</Insert>
+<Copy StartSeek="28699" EndSeek="30392"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:05:2000">
+<Copy StartSeek="0" EndSeek="28699"/>
+<Insert>		       __LINE__,NETA_RX_L3_IS_IP4(rx_status), NETA_RX_L3_IP4(rx_status));
+
+</Insert>
+<Copy StartSeek="28786" EndSeek="30402"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:05:14000">
+<Copy StartSeek="0" EndSeek="28635"/>
+<Insert>		printk(KERN_ERR "(%s:%d) is_ipv4:%u, offset: %u\n", __func__,
+		       __LINE__,NETA_RX_L3_IS_IP4(rx_status), 
+</Insert>
+<Copy StartSeek="28720" EndSeek="30374"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:07:57000">
+<Copy StartSeek="0" EndSeek="28720"/>
+<Insert>		       NETA_RX_L3_IP4(rx_status));
+</Insert>
+<Copy StartSeek="28771" EndSeek="30388"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:12:55000">
+<Copy StartSeek="0" EndSeek="28720"/>
+<Insert>		       (rx_status &amp; NETA_RX_L3_IP4(rx_status)));
+</Insert>
+<Copy StartSeek="28758" EndSeek="30375"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:19:53000">
+<Copy StartSeek="0" EndSeek="814"/>
+<Insert>#define NETA_RX_L3_OFFS                     24
+#define NETA_RX_L3_MASK                     (3 &lt;&lt; NETA_RX_L3_OFFS)
+#define NETA_RX_L3_UN                       (0 &lt;&lt; NETA_RX_L3_OFFS)
+#define NETA_RX_L3_IP6                      (1 &lt;&lt; NETA_RX_L3_OFFS)
+#define NETA_RX_L3_IP4           	        (2 &lt;&lt; NETA_RX_L3_OFFS)
+#define NETA_RX_L3_IP4_ERR            		(3 &lt;&lt; NETA_RX_L3_OFFS)
+</Insert>
+<Copy StartSeek="1190" EndSeek="30375"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:24:57000">
+<Copy StartSeek="0" EndSeek="2456"/>
+<Copy StartSeek="2544" EndSeek="30463"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:26:35000">
+<Copy StartSeek="0" EndSeek="2456"/>
+<Insert>/*HAIM : Need to be added to eth_regs.h*/
+</Insert>
+<Copy StartSeek="2492" EndSeek="30457"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:26:45000">
+<Copy StartSeek="0" EndSeek="2492"/>
+<Insert>#define NETA_RX_L3_OFFSET                   
+</Insert>
+<Copy StartSeek="2539" EndSeek="30459"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:27:34000">
+<Copy StartSeek="0" EndSeek="2492"/>
+<Insert>#define NETA_RX_L3_OFFSET(status)	(status &amp; 7)
+</Insert>
+<Copy StartSeek="2541" EndSeek="30461"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:27:46000">
+<Copy StartSeek="0" EndSeek="2541"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2594" EndSeek="30513"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:29:20000">
+<Copy StartSeek="0" EndSeek="2541"/>
+<Insert>#define NETA_RX_L3_IPHLEN(status)	((status) &amp; 0xF0)
+</Insert>
+<Copy StartSeek="2594" EndSeek="30514"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:29:31000">
+<Copy StartSeek="0" EndSeek="2541"/>
+<Insert>#define NETA_RX_L3_IPHLEN(status)	((status) &amp; 0x1F0)
+</Insert>
+<Copy StartSeek="2601" EndSeek="30521"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:30:10000">
+<Copy StartSeek="0" EndSeek="2541"/>
+<Insert>#define NETA_RX_L3_IPHLEN(status)	(((status) &amp; 0x1F0) &gt;&gt; 8)
+</Insert>
+<Copy StartSeek="2600" EndSeek="30520"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:30:47000">
+<Copy StartSeek="0" EndSeek="2600"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2654" EndSeek="30573"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:32:44000">
+<Copy StartSeek="0" EndSeek="2029"/>
+<Insert>#define NETA_RX_IS_VLAN(rxd)           ((rxd)-&gt;pncInfo &amp; NETA_PNC_VLAN)
+</Insert>
+<Copy StartSeek="2098" EndSeek="30570"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:35:45000">
+<Copy StartSeek="0" EndSeek="2029"/>
+<Insert>#define NETA_RX_IS_VLAN(pncInfo)           (pncInfo &amp; NETA_PNC_VLAN)
+</Insert>
+<Copy StartSeek="2096" EndSeek="30568"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:35:47000">
+<Copy StartSeek="0" EndSeek="2029"/>
+<Insert>#define NETA_RX_IS_VLAN(pncInfo)         (pncInfo &amp; NETA_PNC_VLAN)
+</Insert>
+<Copy StartSeek="2098" EndSeek="30570"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:35:52000">
+<Copy StartSeek="0" EndSeek="28830"/>
+<Insert>		printk(KERN_ERR "is_ipv4:%u, offset: %u\n",
+</Insert>
+<Copy StartSeek="28887" EndSeek="28926"/>
+<Insert>		       rx_status &amp; NETA_RX_L3_IP4);
+
+</Insert>
+<Copy StartSeek="29009" EndSeek="30625"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:36:44000">
+<Copy StartSeek="0" EndSeek="28963"/>
+<Insert>		       NETA_RX_IS_VLAN(rx_desc-&gt;pncInfo));
+
+</Insert>
+<Copy StartSeek="29045" EndSeek="30661"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:37:16000">
+<Copy StartSeek="0" EndSeek="28830"/>
+<Insert>		printk(KERN_ERR "is_ipv4:%u, offset: %u, isvlan:%u\n",
+</Insert>
+<Copy StartSeek="28901" EndSeek="30675"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:37:59000">
+<Copy StartSeek="0" EndSeek="28901"/>
+<Insert>		       NETA_RX_L3_IS_IP4(rx_status),
+		       rx_status &amp; NETA_RX_L3_IP4,
+</Insert>
+<Copy StartSeek="28968" EndSeek="30666"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:38:8000">
+<Copy StartSeek="0" EndSeek="28901"/>
+<Insert>		       NETA_RX_L3_IS_IP4(rx_status), rx_status &amp; NETA_RX_L3_IP4,
+</Insert>
+<Copy StartSeek="28940" EndSeek="30638"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:39:51000">
+<Copy StartSeek="0" EndSeek="28830"/>
+<Insert>		printk(KERN_ERR "is_ipv4:%u, offset: %u, isvlan:%u, L3_offset:%u\n",
+</Insert>
+<Copy StartSeek="28889" EndSeek="30626"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:42:25000">
+<Copy StartSeek="0" EndSeek="28972"/>
+<Insert>		       NETA_RX_L3_OFFSET(status));
+
+</Insert>
+<Copy StartSeek="29046" EndSeek="30662"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:43:3000">
+<Copy StartSeek="0" EndSeek="29008"/>
+<Insert>		       NETA_RX_L4_IS_TCP(status));
+
+</Insert>
+<Copy StartSeek="29082" EndSeek="30698"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:43:13000">
+<Copy StartSeek="0" EndSeek="28830"/>
+<Insert>		printk(KERN_ERR "is_ipv4:%u, isvlan:%u, L3_offset:%u\n",
+</Insert>
+<Copy StartSeek="28918" EndSeek="29037"/>
+<Insert>		       NETA_RX_L4_IS_TCP(status),
+		       NETA_RX_L4_IS_UDP(status));
+</Insert>
+<Copy StartSeek="29111" EndSeek="30728"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:43:37000">
+<Copy StartSeek="0" EndSeek="29001"/>
+<Insert>		       NETA_RX_L3_OFFSET(status),
+		       NETA_RX_L4_IS_UDP(status),
+		       NETA_RX_L4_IS_TCP(status),);
+</Insert>
+<Copy StartSeek="29120" EndSeek="30737"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:43:55000">
+<Copy StartSeek="0" EndSeek="29079"/>
+<Insert>		       NETA_RX_L4_IS_TCP(rx_status),);
+</Insert>
+<Copy StartSeek="29119" EndSeek="30736"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:43:56000">
+<Copy StartSeek="0" EndSeek="814"/>
+<Insert>#define NETA_RX_L3_INFO                     24
+#define NETA_RX_L3_MASK                     (3 &lt;&lt; NETA_RX_L3_INFO)
+#define NETA_RX_L3_UN                       (0 &lt;&lt; NETA_RX_L3_INFO)
+#define NETA_RX_L3_IP6                      (1 &lt;&lt; NETA_RX_L3_INFO)
+#define NETA_RX_L3_IP4           	        (2 &lt;&lt; NETA_RX_L3_INFO)
+#define NETA_RX_L3_IP4_ERR            		(3 &lt;&lt; NETA_RX_L3_INFO)
+
+#define NETA_RX_L4_OFFS                     28
+#define NETA_RX_L4_MASK                     (3 &lt;&lt; NETA_RX_L4_OFFS)
+#define NETA_RX_L4_TCP                      (0 &lt;&lt; NETA_RX_L4_OFFS)
+#define NETA_RX_L4_UDP                      (1 &lt;&lt; NETA_RX_L4_OFFS)
+#define NETA_RX_L4_OTHER                    (2 &lt;&lt; NETA_RX_L4_OFFS)
+
+/* Bits of "pncExtra" field */
+#define NETA_RX_PNC_ENABLED_BIT             0
+#define NETA_RX_PNC_ENABLED_MASK            (1 &lt;&lt; NETA_RX_PNC_ENABLED_BIT)
+
+#define NETA_RX_PNC_LOOPS_OFFS              1
+#define NETA_RX_PNC_LOOPS_MASK              (0xF &lt;&lt; NETA_RX_PNC_LOOPS_OFFS)
+
+#define NETA_PNC_STATUS_OFFS                5
+#define NETA_PNC_STATUS_MASK                (3 &lt;&lt; NETA_PNC_STATUS_OFFS)
+
+#define NETA_PNC_RI_EXTRA_OFFS              16
+#define NETA_PNC_RI_EXTRA_MASK              (0xFFF &lt;&lt; NETA_PNC_RI_EXTRA_OFFS)
+</Insert>
+<Copy StartSeek="2077" EndSeek="30786"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:44:37000">
+<Copy StartSeek="0" EndSeek="2079"/>
+<Insert>#define NETA_RX_IS_VLAN(pncInfo)           (pncInfo &amp; NETA_PNC_VLAN)
+</Insert>
+<Copy StartSeek="2150" EndSeek="30788"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:44:47000">
+<Copy StartSeek="0" EndSeek="29009"/>
+<Insert>		       NETA_RX_IS_VLAN(rx_desc-&gt;pncInfo),
+</Insert>
+<Copy StartSeek="29044" EndSeek="30779"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:45:0000">
+<Copy StartSeek="0" EndSeek="2541"/>
+<Insert>#define NETA_RX_L3_OFFSET(status)	((status) &amp; 7)
+</Insert>
+<Copy StartSeek="2592" EndSeek="30781"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:48:7000">
+<Copy StartSeek="0" EndSeek="2541"/>
+<Insert>#define NETA_RX_L3_OFFSET(status)	((status) &amp; 0xF)
+</Insert>
+<Copy StartSeek="2593" EndSeek="30782"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:48:18000">
+<Copy StartSeek="0" EndSeek="27844"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM__TEST1\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="27844" EndSeek="30719"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="18:50:44000">
+<Copy StartSeek="0" EndSeek="28949"/>
+<Insert>		       NETA_RX_IS_VLAN(rx_desc),
+</Insert>
+<Copy StartSeek="28995" EndSeek="30730"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/06/26" Time="16:02:42000">
+<Copy StartSeek="0" EndSeek="28949"/>
+<Insert>		       (NETA_RX_IS_VLAN(rx_desc) &gt;&gt; 9) &amp; 1,
+</Insert>
+<Copy StartSeek="28991" EndSeek="30726"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/06/26" Time="16:02:51000">
+<Copy StartSeek="0" EndSeek="28949"/>
+<Insert>		       (NETA_RX_IS_VLAN(rx_desc) &gt;&gt; 9),
+</Insert>
+<Copy StartSeek="28984" EndSeek="30719"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/06/27" Time="10:06:36000">
+<Copy StartSeek="0" EndSeek="28949"/>
+<Insert>		       NETA_RX_IS_VLAN(rx_desc),
+</Insert>
+<Copy StartSeek="28992" EndSeek="30727"/>
+</Delta>
+</DeltaFile>

@@ -1,0 +1,37 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="5" Comment="" Date="2013/06/24" Time="12:00:6000" NL="\10" Encoding="text">
+<Insert>#ifndef __DPA_RATELIMIT_H_
+#define __DPA_RATELIMIT_H_
+
+struct dpa_ratelimit {
+	unsigned long tokens;
+	unsigned long burst_size;
+	unsigned long fill_quanta; /* added toks at each tick */
+	struct dpa_ratelimit *next;
+};
+
+int dpa_ratelimit_init(struct dpa_ratelimit *drl);
+#endif /* __DPA_RATELIMIT_H_ */
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="09:44:29000"/>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:59:41000">
+<Copy StartSeek="0" EndSeek="54"/>
+<Copy StartSeek="55" EndSeek="87"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:59:44000">
+<Copy StartSeek="0" EndSeek="55"/>
+<Copy StartSeek="219" EndSeek="251"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="11:59:55000">
+<Copy StartSeek="0" EndSeek="218"/>
+<Insert>
+</Insert>
+<Copy StartSeek="269" EndSeek="301"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="12:00:4000">
+<Copy StartSeek="0" EndSeek="218"/>
+<Copy StartSeek="219" EndSeek="302"/>
+</Delta>
+</DeltaFile>

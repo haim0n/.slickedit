@@ -1,0 +1,17 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="0" Comment="" Date="2012/04/18" Time="14:32:58000" NL="\10" Encoding="text">
+<Insert>./arch/arm/plat-armada/mv_hal/neta/nfp/mvNfp.c
+./arch/arm/plat-armada/mv_hal/neta/nfp/mvNfpCt.c
+./arch/arm/plat-armada/mv_hal/neta/nfp/mvNfpDefs.h
+./arch/arm/plat-armada/mv_hal/neta/nfp/mvNfp.h
+./arch/arm/plat-armada/mv_drivers_lsp/mv_neta/net_dev/mv_netdev.c
+./arch/arm/plat-armada/mv_drivers_lsp/mv_neta/nfp_mgr/nfp_sysfs.h
+./arch/arm/plat-armada/mv_drivers_lsp/mv_neta/nfp_mgr/mv_nfp_mgr.c
+./arch/arm/plat-armada/mv_drivers_lsp/mv_neta/nfp_mgr/nfp_ct6_sysfs.c
+./arch/arm/plat-armada/mv_drivers_lsp/mv_neta/nfp_mgr/mv_nfp_mgr.h
+./arch/arm/plat-armada/mv_drivers_lsp/mv_neta/nfp_mgr/nfp_ct_sysfs.c
+./arch/arm/plat-armada/mv_drivers_lsp/mv_neta/nfp_mgr/nfp_sysfs.c
+</Insert>
+</MostRecent>
+</DeltaFile>

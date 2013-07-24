@@ -1,0 +1,414 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="9" Comment="" Date="2012/05/15" Time="13:55:48000" NL="\10" Encoding="text">
+<Insert>[Global]
+CurrentProject=../../dpa/dpa.vpj
+[ProjectDates]
+linux-2.6.21.5-lsp-1.1.10.vpj=20120429145004000
+../../dpa/dpa.vpj=20120503095345000
+[ActiveConfig]
+linux-2.6.21.5-lsp-1.1.10.vpj=Debug
+../../dpa/dpa.vpj=Debug
+[State]
+SCREEN: 1680 1050 0 27 1678 966 0 0 N 0 0 0 0 1651 809 0
+CWD: ../../dpa
+BUFFER: BN="include/linux/types.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1913 CL=39 LE=0 CX=38 CY=22 WI=5 BI=30 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="drivers/net/bonding/bond_3ad.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1387 CL=1 LE=0 CX=0 CY=5 WI=5 BI=41 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/bridge/br_fdb.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1336 CL=1 LE=0 CX=0 CY=20 WI=5 BI=26 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/netfilter/nf_conntrack_ecache.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2226 CL=42 LE=0 CX=41 CY=24 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv4/netfilter/ip_conntrack_core.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1279 CL=17 LE=0 CX=16 CY=38 WI=5 BI=31 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/netfilter/nf_conntrack_core.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.15245 CL=1 LE=0 CX=0 CY=28 WI=5 BI=23 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="arch/arm/plat-feroceon/mv_drivers_lsp/mv_neta/nfp_mgr/nfp_vlan_sysfs.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4443 CL=22 LE=0 CX=21 CY=29 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="arch/arm/plat-feroceon/mv_drivers_lsp/mv_neta/nfp_mgr/mv_nfp_hooks.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4964 CL=1 LE=0 CX=0 CY=22 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/net/netfilter/nf_conntrack_ecache.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1695 CL=30 LE=0 CX=29 CY=26 WI=5 BI=40 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/platform/linux_kernel_space/klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7434 CL=1 LE=0 CX=0 CY=5 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+FILEHIST: 9
+include/linux/list.h
+../../dpa/platform/linux_kernel_space/klna/klna_nl.c
+/tmp/7492001b20
+include/linux/kernel.h
+../../dpa/platform/linux_kernel_space/klna/klna_nc.c
+include/linux/skbuff.h
+net/core/skbuff.c
+include/linux/netfilter_ipv4/ipt_mac.h
+include/linux/netfilter/xt_mac.h
+DEBUG: 0 0 0 0 3 0 gdb
+printf
+strcpy
+std::*
+DEBUG2: 0
+TBCLASS: 0 0
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/04/24" Time="11:13:4000">
+<Copy StartSeek="0" EndSeek="69"/>
+<Insert>linux-2.6.21.5-lsp-1.1.10.vpj=20120418073627000
+</Insert>
+<Copy StartSeek="117" EndSeek="6942"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:50:4000">
+<Copy StartSeek="0" EndSeek="266"/>
+<Insert>BUFFER: BN="include/linux/if.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.3341 CL=21 LE=0 CX=20 CY=29 WI=5 BI=46 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv4/devinet.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4039 CL=60 LE=0 CX=59 CY=20 WI=5 BI=48 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/dev.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.25015 CL=21 LE=0 CX=20 CY=23 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/bridge/br_if.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6819 CL=1 LE=0 CX=0 CY=19 WI=5 BI=57 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="drivers/block/aoe/aoenet.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.498 CL=24 LE=0 CX=23 CY=22 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/Makefile"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Makefile	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=5 BI=39 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="arch/avr32/kernel/kprobes.c"
+</Insert>
+<Copy StartSeek="299" EndSeek="472"/>
+<Insert>VIEW: LN=.1259 CL=78 LE=0 CX=77 CY=24 WI=5 BI=61 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+</Insert>
+<Copy StartSeek="580" EndSeek="753"/>
+<Insert>VIEW: LN=.622 CL=27 LE=0 CX=26 CY=29 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna.bak/klna_evnt_mgr.c"
+</Insert>
+<Copy StartSeek="1157" EndSeek="1330"/>
+<Insert>VIEW: LN=.225 CL=47 LE=0 CX=46 CY=13 WI=5 BI=52 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="kernel/kprobes.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=744 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.22542 CL=23 LE=0 CX=22 CY=23 WI=5 BI=58 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1680" EndSeek="1718"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131817 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.10443 CL=19 LE=0 CX=18 CY=23 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/core/sock.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.22028 CL=52 LE=0 CX=51 CY=14 WI=5 BI=51 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/net/sock.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8082 CL=9 LE=0 CX=8 CY=22 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/linux/kallsyms.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1119 CL=1 LE=0 CX=0 CY=5 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/asm-arm/cacheflush.h"
+</Insert>
+<Copy StartSeek="2282" EndSeek="2455"/>
+<Insert>VIEW: LN=.11224 CL=1 LE=0 CX=0 CY=5 WI=5 BI=59 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=11 ",,,"
+BUFFER: BN="include/net/sock.h"
+VIEW: LN=.8082 CL=9 LE=0 CX=15 CY=22 WI=201 BI=17 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+BUFFER: BN="include/linux/kallsyms.h"
+VIEW: LN=.579 CL=1 LE=0 CX=7 CY=19 WI=67 BI=14 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="include/asm-arm/cacheflush.h"
+VIEW: LN=.11224 CL=2 LE=0 CX=8 CY=24 WI=195 BI=59 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=6 ",,,"
+BUFFER: BN="include/linux/if.h"
+VIEW: LN=.3341 CL=21 LE=0 CX=27 CY=29 WI=110 BI=46 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=12 ",,,"
+BUFFER: BN="net/ipv4/devinet.c"
+VIEW: LN=.4039 CL=60 LE=0 CX=66 CY=20 WI=97 BI=48 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=18 ",,,"
+BUFFER: BN="net/core/dev.c"
+VIEW: LN=.25015 CL=21 LE=0 CX=27 CY=23 WI=314 BI=25 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=30 ",,,"
+BUFFER: BN="net/bridge/br_if.c"
+VIEW: LN=.6819 CL=1 LE=0 CX=7 CY=19 WI=159 BI=57 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=29 ",,,"
+BUFFER: BN="drivers/block/aoe/aoenet.c"
+VIEW: LN=.498 CL=24 LE=0 CX=30 CY=22 WI=198 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2668" EndSeek="2712"/>
+<Copy StartSeek="2866" EndSeek="2903"/>
+<Insert>VIEW: LN=.335 CL=25 LE=0 CX=24 CY=7 WI=179 BI=39 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="arch/avr32/kernel/kprobes.c"
+VIEW: LN=.1259 CL=78 LE=0 CX=84 CY=24 WI=297 BI=61 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3139" EndSeek="3183"/>
+<Insert>BUFFER: BN="../../dpa/klna/klna_nl.c"
+VIEW: LN=.622 CL=27 LE=0 CX=35 CY=29 WI=185 BI=27 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=7 ",,,"
+BUFFER: BN="../../dpa/klna.bak/klna_evnt_mgr.c"
+VIEW: LN=.225 CL=47 LE=0 CX=53 CY=13 WI=230 BI=52 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=26 ",,,"
+BUFFER: BN="kernel/kprobes.c"
+VIEW: LN=.22542 CL=23 LE=0 CX=31 CY=23 WI=187 BI=58 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+</Insert>
+<Copy StartSeek="3337" EndSeek="3375"/>
+<Insert>VIEW: LN=.10443 CL=19 LE=0 CX=27 CY=23 WI=205 BI=10 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=3 ",,,"
+BUFFER: BN="net/core/sock.c"
+VIEW: LN=.21851 CL=1 LE=0 CX=9 CY=7 WI=300 BI=51 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3755" EndSeek="3767"/>
+<Insert>include/linux/spinlock.h
+include/linux/kprobes.h
+kernel/kprobes.c
+../../dpa/klna/klna_nc.c
+include/linux/module.h
+net/core/sock.c
+</Insert>
+<Copy StartSeek="3808" EndSeek="3828"/>
+<Insert>kernel/kallsyms.c
+</Insert>
+<Copy StartSeek="3828" EndSeek="3847"/>
+<Copy StartSeek="4008" EndSeek="4075"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:24:25000">
+<Copy StartSeek="0" EndSeek="266"/>
+<Insert>BUFFER: BN="drivers/net/pppoe.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6011 CL=67 LE=0 CX=66 CY=23 WI=5 BI=60 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/linux/netdevice.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8905 CL=40 LE=0 CX=39 CY=28 WI=5 BI=54 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/Makefile"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Makefile	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.556 CL=38 LE=0 CX=37 CY=18 WI=5 BI=44 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/include/klna_pppoe_sock.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.72 CL=26 LE=0 CX=25 CY=4 WI=5 BI=61 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_main.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131688 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.457 CL=21 LE=0 CX=20 CY=18 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131688 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.875 CL=21 LE=0 CX=20 CY=32 WI=5 BI=35 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.330 CL=1 LE=0 CX=0 CY=17 WI=5 BI=4 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/klna/klna_pppoe_sock.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.327 CL=4 LE=0 CX=3 CY=2 WI=5 BI=31 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=7 ",,,"
+BUFFER: BN="drivers/net/pppoe.c"
+VIEW: LN=.6011 CL=67 LE=0 CX=75 CY=23 WI=235 BI=60 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+BUFFER: BN="include/linux/netdevice.h"
+VIEW: LN=.8905 CL=40 LE=0 CX=46 CY=28 WI=168 BI=54 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="../../dpa/klna/Makefile"
+VIEW: LN=.556 CL=38 LE=0 CX=37 CY=18 WI=324 BI=44 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=6 ",,,"
+BUFFER: BN="../../dpa/klna/include/klna_pppoe_sock.h"
+VIEW: LN=.72 CL=26 LE=0 CX=34 CY=4 WI=329 BI=61 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=4 ",,,"
+BUFFER: BN="../../dpa/klna/klna_main.c"
+VIEW: LN=.457 CL=21 LE=0 CX=27 CY=18 WI=120 BI=27 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="../../dpa/klna/klna_nc.c"
+VIEW: LN=.875 CL=21 LE=0 CX=29 CY=32 WI=189 BI=35 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=3 ",,,"
+BUFFER: BN="../../dpa/klna/klna_nl.c"
+VIEW: LN=.330 CL=1 LE=0 CX=7 CY=17 WI=291 BI=4 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="558" EndSeek="602"/>
+<Insert>BUFFER: BN="../../dpa/klna/klna_pppoe_sock.c"
+VIEW: LN=.1332 CL=45 LE=0 CX=53 CY=11 WI=184 BI=31 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="723" EndSeek="735"/>
+<Insert>../../dpa/klna/include/klna_pppoe_sock.h
+drivers/net/pppoe.c
+</Insert>
+<Copy StartSeek="735" EndSeek="915"/>
+<Copy StartSeek="974" EndSeek="1041"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/05/02" Time="09:57:18000">
+<Copy StartSeek="0" EndSeek="117"/>
+<Copy StartSeek="153" EndSeek="1077"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/05/06" Time="15:15:54000">
+<Copy StartSeek="0" EndSeek="204"/>
+<Copy StartSeek="228" EndSeek="1101"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/05/06" Time="15:15:54000">
+<Copy StartSeek="0" EndSeek="9"/>
+<Insert>CurrentProject=linux-2.6.21.5-lsp-1.1.10.vpj
+</Insert>
+<Copy StartSeek="42" EndSeek="1089"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/05/06" Time="15:15:54000">
+<Copy StartSeek="0" EndSeek="224"/>
+<Insert>SCREEN: 1680 1050 0 27 1678 966 0 0 N 0 0 0 0 1628 809 0
+CWD: ../linux-2.6.21.5-lsp-1.1.0
+</Insert>
+<Copy StartSeek="883" EndSeek="935"/>
+<Copy StartSeek="1860" EndSeek="2033"/>
+<Insert>VIEW: LN=.37843 CL=9 LE=0 CX=8 CY=7 WI=5 BI=60 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=1 ",,,"
+</Insert>
+<Copy StartSeek="2800" EndSeek="2852"/>
+<Insert>VIEW: LN=.35496 CL=1 LE=0 CX=9 CY=23 WI=79 BI=60 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3658" EndSeek="3670"/>
+<Insert>include/net/sock.h
+include/linux/netdevice.h
+include/linux/if_pppox.h
+../../dpa/klna/klna_main.c
+../../dpa/klna/klna_nc.c
+</Insert>
+<Copy StartSeek="3670" EndSeek="3787"/>
+<Copy StartSeek="4035" EndSeek="4102"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/05/06" Time="15:54:3000">
+<Copy StartSeek="0" EndSeek="224"/>
+<Insert>SCREEN: 1680 1050 0 27 1680 967 0 0 N 0 0 0 0 1653 810 0
+CWD: ../../dpa
+BUFFER: BN="include/net/netfilter/nf_conntrack_ecache.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1695 CL=30 LE=0 CX=29 CY=26 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/netfilter/nf_conntrack_ecache.c"
+</Insert>
+<Copy StartSeek="364" EndSeek="537"/>
+<Insert>VIEW: LN=.1991 CL=1 LE=0 CX=0 CY=5 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/ipv4/netfilter/ip_conntrack_core.c"
+</Insert>
+<Copy StartSeek="643" EndSeek="816"/>
+<Insert>VIEW: LN=.1279 CL=17 LE=0 CX=16 CY=38 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/netfilter/nf_conntrack_core.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131688 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.15245 CL=1 LE=0 CX=0 CY=28 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/platform/linux_kernel_space/klna/klna_nc.c"
+</Insert>
+<Copy StartSeek="925" EndSeek="1098"/>
+<Insert>VIEW: LN=.4600 CL=41 LE=0 CX=40 CY=19 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="arch/arm/plat-feroceon/mv_drivers_lsp/mv_neta/nfp_mgr/nfp_vlan_sysfs.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4443 CL=22 LE=0 CX=21 CY=29 WI=5 BI=30 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="arch/arm/plat-feroceon/mv_drivers_lsp/mv_neta/nfp_mgr/mv_nfp_hooks.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.0 CL=1 LE=0 CX=0 CY=0 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1653 810 0 0 N  WF=0 WT=4 ",,,"
+BUFFER: BN="include/net/netfilter/nf_conntrack_ecache.h"
+VIEW: LN=.1695 CL=30 LE=0 CX=36 CY=26 WI=250 BI=19 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1653 810 0 0 N  WF=0 WT=6 ",,,"
+</Insert>
+<Copy StartSeek="1716" EndSeek="1765"/>
+<Insert>VIEW: LN=.2226 CL=42 LE=0 CX=48 CY=24 WI=253 BI=13 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+</Insert>
+<Copy StartSeek="2005" EndSeek="2057"/>
+<Insert>VIEW: LN=.1279 CL=17 LE=0 CX=23 CY=38 WI=243 BI=29 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1653 810 0 0 N  WF=0 WT=3 ",,,"
+</Insert>
+<Copy StartSeek="2297" EndSeek="2344"/>
+<Insert>VIEW: LN=.15245 CL=1 LE=0 CX=7 CY=28 WI=282 BI=27 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1653 810 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="../../dpa/platform/linux_kernel_space/klna/klna_nc.c"
+VIEW: LN=.4600 CL=41 LE=0 CX=49 CY=19 WI=278 BI=10 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1653 810 0 0 N  WF=0 WT=5 ",,,"
+</Insert>
+<Copy StartSeek="2583" EndSeek="2667"/>
+<Insert>VIEW: LN=.4443 CL=22 LE=0 CX=30 CY=29 WI=209 BI=30 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1653 810 0 0 M  WF=0 WT=8 ",,,"
+</Insert>
+<Copy StartSeek="2907" EndSeek="2989"/>
+<Insert>VIEW: LN=.4964 CL=1 LE=0 CX=7 CY=22 WI=83 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4318" EndSeek="4330"/>
+<Insert>../../dpa/klna/klna_nl.c
+../../dpa/klna/klna_pppoe_sock.c
+drivers/net/pppoe.c
+net/ipv4/netfilter/ip_conntrack_core.c
+include/linux/netfilter_ipv4/ip_conntrack.h
+include/linux/netfilter/nf_conntrack_common.h
+net/netfilter/nf_conntrack_core.c
+</Insert>
+<Copy StartSeek="4528" EndSeek="4581"/>
+<Insert>arch/arm/plat-feroceon/mv_drivers_lsp/mv_neta/nfp_mgr/nfp_vlan_sysfs.c
+</Insert>
+<Copy StartSeek="4581" EndSeek="4648"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/05/14" Time="10:24:31000">
+<Copy StartSeek="0" EndSeek="281"/>
+<Insert>CWD: ../../dpa/platform/linux_kernel_space/klna
+</Insert>
+<Copy StartSeek="296" EndSeek="331"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1913 CL=39 LE=0 CX=38 CY=22 WI=5 BI=49 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="net/bridge/br_private.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.729 CL=1 LE=0 CX=0 CY=5 WI=5 BI=42 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="571" EndSeek="615"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1387 CL=1 LE=0 CX=0 CY=5 WI=5 BI=44 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/linux/if_bridge.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2279 CL=1 LE=0 CX=0 CY=22 WI=5 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="852" EndSeek="885"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=744 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1336 CL=1 LE=0 CX=0 CY=20 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1123" EndSeek="1172"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2226 CL=42 LE=0 CX=41 CY=24 WI=5 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1412" EndSeek="1464"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1279 CL=17 LE=0 CX=16 CY=38 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1704" EndSeek="1751"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.15245 CL=1 LE=0 CX=0 CY=28 WI=5 BI=31 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1990" EndSeek="2074"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4443 CL=22 LE=0 CX=21 CY=29 WI=5 BI=23 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2314" EndSeek="2396"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4964 CL=1 LE=0 CX=0 CY=22 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2634" EndSeek="2691"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1695 CL=30 LE=0 CX=29 CY=26 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2931" EndSeek="2997"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7434 CL=1 LE=0 CX=0 CY=5 WI=5 BI=40 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../../dpa/platform/linux_kernel_space/klna/klna_nc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8867 CL=23 LE=0 CX=22 CY=17 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1651 601 0 0 M  WF=0 WT=1 ",,,"
+BUFFER: BN="../../dpa/platform/linux_kernel_space/klna/klna_nc.c"
+VIEW: LN=.8939 CL=11 LE=0 CX=19 CY=12 WI=231 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3234" EndSeek="3246"/>
+<Insert>net/bridge/br_fdb.c
+net/bridge/br_private.h
+include/linux/rcupdate.h
+kernel/printk.c
+</Insert>
+<Copy StartSeek="3246" EndSeek="3412"/>
+<Copy StartSeek="3525" EndSeek="3592"/>
+</Delta>
+</DeltaFile>

@@ -1,0 +1,65 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="10" Comment="" Date="2012/04/29" Time="17:48:23000" NL="\10" Encoding="text">
+<Insert>#ifndef KLNA_PPPOE_SOCK_H
+#define KLNA_PPPOE_SOCK_H
+
+struct net_device;
+void find_dev_pppoe_socks(struct net_device *);
+#endif /* KLNA_PPPOE_SOCK_H */
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:32:20000"/>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:32:53000">
+<Copy StartSeek="0" EndSeek="53"/>
+<Copy StartSeek="76" EndSeek="107"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:33:3000">
+<Copy StartSeek="0" EndSeek="53"/>
+<Insert>void scan_tasks(void);
+</Insert>
+<Copy StartSeek="82" EndSeek="113"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:33:45000">
+<Copy StartSeek="0" EndSeek="53"/>
+<Insert>void scan_tasks_pppox(void);
+</Insert>
+<Copy StartSeek="76" EndSeek="107"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:34:5000">
+<Copy StartSeek="0" EndSeek="53"/>
+<Insert>void find_pppoe(void);
+</Insert>
+<Copy StartSeek="84" EndSeek="115"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:34:34000">
+<Copy StartSeek="0" EndSeek="53"/>
+<Insert>void find_pppoe_sockets(void);
+</Insert>
+<Copy StartSeek="82" EndSeek="113"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:34:44000">
+<Copy StartSeek="0" EndSeek="53"/>
+<Insert>void find_pppoe_socks(void);
+</Insert>
+<Copy StartSeek="86" EndSeek="117"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:47:24000">
+<Copy StartSeek="0" EndSeek="53"/>
+<Insert>void find_dev_pppoe_socks(void);
+</Insert>
+<Copy StartSeek="112" EndSeek="143"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:47:48000">
+<Copy StartSeek="0" EndSeek="53"/>
+<Insert>struct netdev;
+</Insert>
+<Copy StartSeek="72" EndSeek="147"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:48:16000">
+<Copy StartSeek="0" EndSeek="72"/>
+<Insert>void find_dev_pppoe_socks(struct netdev *);
+</Insert>
+<Copy StartSeek="120" EndSeek="151"/>
+</Delta>
+</DeltaFile>

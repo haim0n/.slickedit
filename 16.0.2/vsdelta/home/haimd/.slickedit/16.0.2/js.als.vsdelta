@@ -1,0 +1,71 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1" Comment="" Date="2012/01/03" Time="11:13:50000" NL="\10" Encoding="utf8">
+<Insert>=surround_with_while while (%\c) {
+                     %\m sur_text -indent%
+                     }
+=surround_with_try try {
+                   %\m sur_text -indent%
+                   }
+=surround_with_catch catch (%\c) {
+                     %\m sur_text -indent%
+                     }
+=surround_with_do...while do {
+                          %\m sur_text -indent%
+                          } while (%\c);
+=surround_with_if if (%\c) {
+                  %\m sur_text -indent%
+                  }
+=surround_with_default default:
+                       %\m sur_text -indent%
+=surround_with_case case %\c:
+                    %\m sur_text -indent%
+                    break;
+=surround_with_if...else if (%\c) {
+                         %\m sur_text -indent%
+                         } else {
+                         }
+=surround_with_finally finally {
+                       %\m sur_text -indent%
+                       }
+=surround_with_for for (%\c) {
+                   %\m sur_text -indent%
+                   }
+
+=surround_with_try...catch try {
+                           %\m sur_text -indent%
+                           } catch (%\c) { %\S
+                           }
+=surround_with_try...catch...finally try {
+                                     %\m sur_text -indent%
+                                     } catch (%\c) { %\S
+                                     } finally {
+                                     }
+=surround_with_try...finally try {
+                             %\m sur_text -indent%
+                             } finally {
+                             %\i%\c
+                             }
+=surround_with_switch switch (%\c) {
+                      %\m sur_text%
+                      }
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="utf8" Date="2012/01/01" Time="16:34:55000">
+<Copy StartSeek="0" EndSeek="674"/>
+<Insert>=surround_with_switch switch (%\c) {
+                      %\m sur_text%
+                      }
+</Insert>
+<Copy StartSeek="674" EndSeek="1014"/>
+<Copy StartSeek="1015" EndSeek="1097"/>
+<Insert>                           } catch () {
+</Insert>
+<Copy StartSeek="1144" EndSeek="1275"/>
+<Insert>                                     } catch () {
+</Insert>
+<Copy StartSeek="1332" EndSeek="1547"/>
+<Insert>                             }
+</Insert>
+</Delta>
+</DeltaFile>

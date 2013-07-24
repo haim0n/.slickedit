@@ -1,0 +1,32 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="2" Comment="" Date="2012/05/31" Time="16:21:55000" NL="\10" Encoding="text">
+<Insert>
+
+int __init klna_ip_tables_init(void)
+{
+	int ret;
+
+	return ret;
+}
+
+void __exit ip_tables_fini(void)
+{
+}
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/05/31" Time="12:07:10000">
+<Copy StartSeek="0" EndSeek="1"/>
+<Insert>static int __init klna_ip_tables_init(void)
+</Insert>
+<Copy StartSeek="38" EndSeek="67"/>
+<Insert>static void __exit ip_tables_fini(void)
+</Insert>
+<Copy StartSeek="100" EndSeek="105"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/05/31" Time="12:07:24000">
+<Copy StartSeek="0" EndSeek="1"/>
+<Copy StartSeek="2" EndSeek="106"/>
+</Delta>
+</DeltaFile>

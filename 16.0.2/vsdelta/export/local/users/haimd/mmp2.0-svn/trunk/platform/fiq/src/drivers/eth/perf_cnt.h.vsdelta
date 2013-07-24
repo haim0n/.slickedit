@@ -1,0 +1,73 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1" Comment="" Date="2012/03/15" Time="15:16:18000" NL="\10" Encoding="text">
+<Insert>#ifndef __PERF_CNT__
+#define __PERF_CNT__
+
+/* Performance counters. For more details refere to:
+   "Sheeva™ 88SV131 ARM v5TE Processor Core with MMU and L1/L2 Cache Datasheet" */
+#define PERF_COUNTER_TYPE_CYCLE_COUNT      (0x03)
+#define PERF_COUNTER_TYPE_CACHE_READ_HIT   (0x05)
+#define PERF_COUNTER_TYPE_CACHE_READ_MISS  (0x09)
+#define PERF_COUNTER_TYPE_CACHE_WRITE_HIT  (0x11)
+#define PERF_COUNTER_TYPE_CACHE_WRITE_MISS (0x21)
+
+/* Reset counter 32-bit value words:
+   0,1 - C0 counter register
+   2,3 - C1 counter register
+   4,5 - C2 counter register
+   6,7 - C3 counter register */
+#define PERF_COUNTER_RESET(num) \
+  do { \
+    register uint32_t val = 0; \
+  __asm volatile ("mcr p15, 0, %0, c15, c13, "#num : : "r" (val)); \
+  } while (0);
+
+
+/* Enable counter register with the specified counter type */
+#define PERF_COUNTER_START(counter,type) \
+  do { \
+	__asm volatile ("mcr p15, 0, %0, c15, c12," #counter : : "r" (type)); \
+  } while (0);
+
+/* Copy current counter 32-bit value words into 32-bit result:
+   0,1 - C0 counter register
+   2,3 - C1 counter register
+   4,5 - C2 counter register
+   6,7 - C3 counter register */
+#define PERF_COUNTER_GET(num,val) \
+  do { \
+	__asm volatile ("mrc p15, 0, %0, c15, c13, "#num : "=r" (val)); \
+} while (0);
+
+#define PERF_BEGIN(measure,counter)  PERF_COUNTER_GET(counter,measure);
+
+#define PERF_END(measure,counter) \
+   do { \
+	uint32_t val; \
+	PERF_COUNTER_GET(counter,val); \
+	measure = val - measure; \
+} while (0); \
+
+
+
+#endif /* __PERF_CNT__ */</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="11:46:5000">
+<Copy StartSeek="0" EndSeek="749"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="750" EndSeek="864"/>
+<Insert>     __asm volatile ("mcr p15, 0, %0, c15, c12," #counter : : "r" (type)); \
+</Insert>
+<Copy StartSeek="937" EndSeek="1180"/>
+<Insert>  __asm volatile ("mrc p15, 0, %0, c15, c13, "#num : "=r" (val)); \
+</Insert>
+<Copy StartSeek="1247" EndSeek="1380"/>
+<Insert>    uint32_t val; \
+    PERF_COUNTER_GET(counter,val); \
+    measure = val - measure; \
+</Insert>
+<Copy StartSeek="1459" EndSeek="1502"/>
+</Delta>
+</DeltaFile>

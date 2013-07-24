@@ -1,0 +1,578 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="19" Comment="" Date="2012/05/15" Time="14:53:35000" NL="\10" Encoding="text">
+<Insert>#include &lt;linux/version.h&gt;
+#include &lt;asm/types.h&gt;
+#include &lt;linux/socket.h&gt;
+#include &lt;linux/err.h&gt;
+#include &lt;linux/string.h&gt;
+#include &lt;linux/in.h&gt;
+#include &lt;linux/netlink.h&gt;
+#include &lt;linux/if_link.h&gt;
+#include &lt;linux/rtnetlink.h&gt;
+#include &lt;linux/moduleparam.h&gt;
+
+#include &lt;net/sock.h&gt;
+
+#include "include/klna_nl.h"
+
+
+#undef pr_fmt
+#define pr_fmt(fmt) "klna_nl: " fmt
+
+#if LINUX_VERSION_CODE &lt;= KERNEL_VERSION(2,6,24)
+#define SHUT_RDWR 2
+#ifndef CONFIG_ARPD
+	#error "CONFIG_ARPD not configured"
+#endif /* CONFIG_ARPD */
+#endif /* KERNEL_VERSION(2.6.24) */
+
+#define RTMGRP_NEIGH	4
+#define RTMGRP_IPV4_ROUTE	0x40
+//#endif /* CONFIG_ARPD */
+
+#define KLNA_GRP (RTMGRP_IPV4_ROUTE | RTMGRP_NEIGH | RTNLGRP_LINK | RTNLGRP_NEIGH)
+#define IFLA_RTA(r)  ((struct rtattr*)(((char*)(r)) + NLMSG_ALIGN(sizeof(struct ifinfomsg))))
+#define IFLA_PAYLOAD(n) NLMSG_PAYLOAD(n,sizeof(struct ifinfomsg))
+
+static int no_arp = 0;
+module_param(no_arp, int, 0644);
+MODULE_PARM_DESC(no_arp, "avoid reporting arp events");
+
+
+struct msgnames_t {
+	int id;
+	char *msg;
+} typenames[] = {
+#define MSG(x) { x, #x }
+	MSG(RTM_NEWROUTE),
+	MSG(RTM_DELROUTE),
+	MSG(RTM_GETROUTE),
+	MSG(RTM_NEWNEIGH),
+	MSG(RTM_DELNEIGH),
+	MSG(RTM_NEWLINK),
+	MSG(RTM_DELLINK),
+#undef MSG
+	{0,0}
+};
+
+static struct socket *klna_socket;
+
+static char *klna_nl_lookup_name(struct msgnames_t *db,int id)
+{
+	static char name[512];
+	struct msgnames_t *msgnamesiter;
+	for (msgnamesiter=db;msgnamesiter-&gt;msg;++msgnamesiter) {
+		if (msgnamesiter-&gt;id == id)
+			break;
+	}
+	if (msgnamesiter-&gt;msg) {
+		return msgnamesiter-&gt;msg;
+	}
+	snprintf(name,sizeof(name),"#%i",id);
+	return name;
+}
+
+#ifndef NIPQUAD
+	#define NIPQUAD(addr) \
+	((unsigned char *)&amp;addr)[0], \
+	((unsigned char *)&amp;addr)[1], \
+	((unsigned char *)&amp;addr)[2], \
+	((unsigned char *)&amp;addr)[3]
+	#define NIPQUAD_FMT "%u.%u.%u.%u"
+#endif
+
+#if 0
+static void
+netlink_parse_rtattr(struct rtattr **tb, int max, struct rtattr *rta, int len)
+{
+	while (RTA_OK(rta, len)) {
+		if (rta-&gt;rta_type &lt;= max)
+			tb[rta-&gt;rta_type] = rta;
+		rta = RTA_NEXT(rta,len);
+	}
+}
+#endif
+
+static int klna_nl_ev_route(struct nlmsghdr *nlh, void *buffer)
+{
+	struct rtmsg *rtm;
+	struct rtattr *rta;
+	int rtl;
+	rtm = (struct rtmsg *)buffer;
+	rta = (struct rtattr*)RTM_RTA(rtm);
+	rtl = RTM_PAYLOAD(nlh);
+	printk("%s: family: %u\n", __func__, rtm-&gt;rtm_family);
+	/* parse each attr */
+	for (; RTA_OK(rta, rtl); rta = RTA_NEXT(rta, rtl)) {
+		if (rta-&gt;rta_type == RTA_DST) {
+			uint32_t dst_addr = *((uint32_t *)RTA_DATA(rta));
+			printk("dst " NIPQUAD_FMT "/%u\n", NIPQUAD(dst_addr),
+			       rtm-&gt;rtm_dst_len);
+		}
+		if (rta-&gt;rta_type == RTA_GATEWAY) {
+			uint32_t dst_gw = *((uint32_t *)RTA_DATA(rta));
+			printk("gw " NIPQUAD_FMT "\n", NIPQUAD(dst_gw));
+		}
+		if (rta-&gt;rta_type == RTA_OIF) {
+			uint32_t oif = *((uint32_t *)RTA_DATA(rta));
+			printk("oif_index %u\n", oif);
+		}
+	}
+	if (nlh-&gt;nlmsg_type == RTM_NEWROUTE) {
+		printk("new route\n");
+		/* dpa_rt_rule_add */
+	} else {
+		/* dpa_rt_rule_del */
+		printk("del route\n");
+	}
+
+	return 0;
+}
+
+/* we handle only bridge if bind/unbind here,
+   the rest is done in notification chains */
+static int klna_nl_ev_link(struct nlmsghdr *nlh, void *buffer)
+{
+	struct ifinfomsg *ifi;
+	struct rtattr *rta;
+//      struct interface *ifp;
+	int rtl;
+	int new_if = (nlh-&gt;nlmsg_type == RTM_NEWLINK);
+
+	ifi = (struct ifinfomsg *)buffer;
+	rta = (struct rtattr*)IFLA_RTA(ifi);
+	rtl = IFLA_PAYLOAD(nlh);
+
+	pr_debug("%s: ifi_family: %u\n", __func__, ifi-&gt;ifi_family);
+	if (ifi-&gt;ifi_family != AF_BRIDGE)
+		return 0;
+
+	if (new_if) {
+		printk("bridge if bind\n");
+	} else 
+		printk("bridge if unbind\n");
+	
+	/* parse each attr */
+	for (; RTA_OK(rta, rtl); rta = RTA_NEXT(rta, rtl)) {
+		if (rta-&gt;rta_type == IFLA_IFNAME) {
+			printk("name: %s, flags %#x, type %#x\n",(char *)RTA_DATA(rta), 
+			       ifi-&gt;ifi_flags,
+			       ifi-&gt;ifi_type);
+		}
+	}
+	printk("\n");
+	if (new_if) {
+		/* add */
+	} else {
+		/* del */
+	}
+	return 0;
+}
+
+static int klna_nl_ev_arp(struct nlmsghdr *nlh, void *buffer)
+{
+	struct ndmsg *ndm;
+	struct rtattr *rta;
+	int rtl;
+	int new_neigh = 0;
+
+	ndm = (struct ndmsg *)buffer;
+	rta = (struct rtattr*)RTM_RTA(ndm);
+	rtl = RTM_PAYLOAD(nlh);
+	printk("%s: family: %u\n", __func__, ndm-&gt;ndm_family);
+	/* parse each attr */
+	for (; RTA_OK(rta, rtl); rta = RTA_NEXT(rta, rtl)) {
+		if (rta-&gt;rta_type == NDA_DST) {
+			uint32_t dst_addr = *((uint32_t *)RTA_DATA(rta));
+			printk("ip " NIPQUAD_FMT "\n", NIPQUAD(dst_addr));
+			continue;
+		}
+		if (rta-&gt;rta_type == NDA_LLADDR) {
+			#define MAX_BUF_LEN 6
+			uint8_t ha[MAX_BUF_LEN];
+			uint8_t *data = (uint8_t *)RTA_DATA(rta);
+			uint32_t data_len =
+				rta-&gt;rta_len &lt; MAX_BUF_LEN ? rta-&gt;rta_len : MAX_BUF_LEN;
+			uint32_t i;
+
+			new_neigh = 1; /* NDA_LLADDR appears only in new entry */
+			memcpy(ha, data, data_len);
+			for (i = 0; i &lt; data_len; i++) {
+				printk("%x:", ha[i]);
+			}
+			printk("\n");
+			continue;
+		}
+	}
+	if (new_neigh) {
+		printk("new arp entry\n");
+		/* dpa_arp_rule_add */
+	} else {
+		/* dpa_arp_rule_del */
+		printk("del arp entry\n");
+	}
+	return 0;
+}
+
+static void klna_nl_dump_skb(struct sk_buff *skb) 
+{
+#ifdef DEBUG
+	char tmp[80];
+	char *p = skb-&gt;data;
+	char *t = tmp;
+	int i;
+	for (i = 0; i &lt; skb-&gt;len; i++) {
+		t += sprintf(t, "%02x ", *p++ &amp; 0xff);
+		if ((i &amp; 0x0f) == 8) {
+			printk(KERN_DEBUG "dump: %s\n", tmp);
+			t = tmp;
+		}
+	}
+	if (i &amp; 0x07)
+		printk(KERN_DEBUG "dump: %s\n", tmp);
+#endif
+}
+
+/* Receive message from netlink and pass information to relevant function. */
+static void klna_nl_data_ready(struct sock *sk, int bytes)
+{
+	int status = 0;
+	int ret = 0;
+	int len;
+	void *buf;
+	struct sk_buff *skb;
+	struct nlmsghdr *nlh;
+	
+	pr_debug("%s: got a message %u bytes\n", __func__, bytes);
+	while ((skb = skb_recv_datagram(sk, 0, 1, &amp;ret)) == NULL) {
+		if (ret == -EAGAIN) {
+			printk(KERN_ERR "no data available\n");
+			return;
+		}
+		pr_debug("recvfrom() error %d\n", -ret);
+	}
+
+	len = skb-&gt;len;
+	klna_nl_dump_skb(skb);
+	for (nlh = (struct nlmsghdr *)skb-&gt;data; NLMSG_OK(nlh, len);
+	    nlh = NLMSG_NEXT(nlh, status)) {
+		pr_debug("%s: nlmsg_len %u, nlmsg_type %u\n", __func__,
+		       nlh-&gt;nlmsg_len, nlh-&gt;nlmsg_type);
+		/* Finish of reading. */
+		if (nlh-&gt;nlmsg_type == NLMSG_DONE)
+			return;
+
+		/* Error handling. */
+		if (nlh-&gt;nlmsg_type == NLMSG_ERROR) {
+			printk(KERN_ERR "nl message error\n");
+			return;
+		}
+		if (no_arp &amp;&amp;
+		    nlh-&gt;nlmsg_type != RTM_NEWNEIGH &amp;&amp;
+		    nlh-&gt;nlmsg_type != RTM_DELNEIGH) {
+			pr_debug("nlmsg_type: %i (%s)\n",(nlh-&gt;nlmsg_type), 
+			       klna_nl_lookup_name(typenames,nlh-&gt;nlmsg_type));
+		}
+		/* OK we got netlink message. */
+		buf = NLMSG_DATA(skb-&gt;data);
+		switch (nlh-&gt;nlmsg_type) {
+		case RTM_NEWROUTE:
+		case RTM_DELROUTE:
+			ret = klna_nl_ev_route(nlh, buf);
+			break;
+		case RTM_NEWNEIGH:
+		case RTM_DELNEIGH:
+			if (!no_arp)
+				ret = klna_nl_ev_arp(nlh, buf);
+			break;
+		case RTM_NEWLINK:
+		case RTM_DELLINK:
+			ret = klna_nl_ev_link(nlh, buf);
+			break;
+		}
+	}
+	skb_orphan(skb);
+	kfree_skb(skb);
+
+	return;
+}
+#if LINUX_VERSION_CODE &lt; KERNEL_VERSION(2,6,24)
+extern struct neigh_table arp_tbl;
+void klna_init_arp_neigh_tbl(struct neigh_table *tbl)
+{
+	struct neighbour *n;
+	u32 hash_val;
+	
+	read_lock_bh(&amp;tbl-&gt;lock);
+	hash_val = atomic_read(&amp;tbl-&gt;entries);
+	while (hash_val--) {
+		for (n = tbl-&gt;hash_buckets[hash_val &amp; tbl-&gt;hash_mask]; n; 
+		      n = n-&gt;next) {
+			neigh_hold(n);
+			n-&gt;parms-&gt;app_probes = 1;
+			neigh_release(n);
+		}
+	}
+	read_unlock_bh(&amp;tbl-&gt;lock);
+}
+#endif /* KERNEL_VERSION(2,6,24) */
+
+int klna_nl_open(void)
+{
+	struct sock *sock;
+	struct sockaddr_nl addr;
+	int rc = sock_create_kern(AF_NETLINK,SOCK_RAW, NETLINK_ROUTE, &amp;klna_socket);
+
+#if LINUX_VERSION_CODE &lt; KERNEL_VERSION(2,6,24)
+	klna_init_arp_neigh_tbl(&amp;arp_tbl);
+#endif
+	if (rc &lt; 0) {
+		printk(KERN_ERR "socket_create err %d\n", rc);
+		return rc;
+	}
+
+	memset((void *)&amp;addr, 0, sizeof(addr));
+	addr.nl_family = AF_NETLINK;
+	addr.nl_pid = 0;
+	addr.nl_groups = KLNA_GRP;
+	rc = kernel_bind(klna_socket, (struct sockaddr *)&amp;addr, sizeof(addr));
+	if (rc &lt;0) {
+		printk(KERN_ERR "bind err\n");
+		return rc;
+	}
+
+	/* set the socket up */
+	sock = klna_socket-&gt;sk;
+	sock-&gt;sk_data_ready = klna_nl_data_ready;
+	sock-&gt;sk_allocation = GFP_ATOMIC;
+	return 0;
+}
+
+void klna_nl_close(void)
+{
+	klna_socket-&gt;ops-&gt;shutdown(klna_socket, SHUT_RDWR);
+	sock_release(klna_socket);
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="11:53:9000">
+<Copy StartSeek="0" EndSeek="7434"/>
+<Copy StartSeek="8270" EndSeek="9097"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/05/13" Time="18:23:51000">
+<Copy StartSeek="0" EndSeek="8227"/>
+<Insert> out:
+</Insert>
+<Copy StartSeek="8227" EndSeek="9091"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/05/13" Time="18:23:59000">
+<Copy StartSeek="0" EndSeek="8226"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8226" EndSeek="9090"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/05/13" Time="18:24:1000">
+<Copy StartSeek="0" EndSeek="7854"/>
+<Insert>			if (has_expired(br, f))
+				continue;
+</Insert>
+<Copy StartSeek="7909" EndSeek="9104"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/05/13" Time="18:26:47000">
+<Copy StartSeek="0" EndSeek="7910"/>
+<Insert>			if (skip) {
+				--skip;
+				continue;
+			}
+
+</Insert>
+<Copy StartSeek="7910" EndSeek="9057"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/05/13" Time="18:27:0000">
+<Copy StartSeek="0" EndSeek="7477"/>
+<Insert>int klna_br_fdb_fillbuf(struct net_bridge *br, void *buf,
+		   unsigned long maxnum, unsigned long skip)
+{
+</Insert>
+<Copy StartSeek="7526" EndSeek="8999"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/05/13" Time="18:31:51000">
+<Copy StartSeek="0" EndSeek="7557"/>
+<Insert>	int i, num = 0;
+</Insert>
+<Copy StartSeek="7565" EndSeek="8990"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/05/13" Time="18:32:0000">
+<Copy StartSeek="0" EndSeek="7622"/>
+<Insert>	memset(buf, 0, maxnum*sizeof(struct __fdb_entry));
+
+</Insert>
+<Copy StartSeek="7622" EndSeek="8937"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/05/13" Time="18:49:25000">
+<Copy StartSeek="0" EndSeek="7434"/>
+<Copy StartSeek="7600" EndSeek="8001"/>
+<Copy StartSeek="8005" EndSeek="8217"/>
+<Copy StartSeek="8317" EndSeek="9207"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/05/14" Time="10:03:33000">
+<Copy StartSeek="0" EndSeek="7540"/>
+<Insert>#define NIP6_FMT "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x"
+</Insert>
+<Copy StartSeek="7588" EndSeek="9196"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/05/14" Time="10:03:45000">
+<Copy StartSeek="0" EndSeek="8207"/>
+<Insert>			printk("fdb[%u]: %x:%x:%x:%x:%x:%x, port:%u, local:%u, static:%u, timeout:%lu ",
+</Insert>
+<Copy StartSeek="8296" EndSeek="9201"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/05/14" Time="10:04:15000">
+<Copy StartSeek="0" EndSeek="8207"/>
+<Insert>			printk("fdb[%u]: "MAC_FMT(f-&gt;addr.addr), port:%u, local:%u, static:%u, timeout:%lu ",
+			       i, )
+</Insert>
+<Copy StartSeek="8356" EndSeek="9246"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/05/14" Time="10:05:59000">
+<Copy StartSeek="0" EndSeek="8207"/>
+<Insert>			printk("fdb[%u]: "MAC_FMT(f-&gt;addr.addr) ", port:%s, local:%u, static:%u, timeout:%lu ",
+			       i, MAC_ADDR(f-&gt;addr.addr), f-&gt;dst-&gt;dev-&gt;name, )
+</Insert>
+<Copy StartSeek="8458" EndSeek="9348"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/05/14" Time="10:06:41000">
+<Copy StartSeek="0" EndSeek="7589"/>
+<Insert>/* taken from br_fbd.c br_fdb_fillbuf() */
+int klna_br_fdb_fillbuf(struct net_bridge *br)
+{
+	struct __fdb_entry *fe = buf;
+	int i;
+	struct hlist_node *h;
+	struct net_bridge_fdb_entry *f;
+
+	rcu_read_lock();
+	for (i = 0; i &lt; BR_HASH_SIZE; i++) {
+		hlist_for_each_entry_rcu(f, h, &amp;br-&gt;hash[i], hlist) {
+//      		if (has_expired(br, f))
+//      			continue;
+
+			/* convert from internal format to API */
+			
+			memcpy(fe-&gt;mac_addr, f-&gt;addr.addr, ETH_ALEN);
+			fe-&gt;port_no = f-&gt;dst-&gt;port_no;
+			fe-&gt;is_local = f-&gt;is_local;
+			if (!f-&gt;is_static)
+				fe-&gt;ageing_timer_value = jiffies_to_clock_t(jiffies - f-&gt;ageing_timer);
+
+			printk("fdb[%u]: "MAC_FMT(f-&gt;addr.addr) ", port:%s, local:%u, "
+				"static:%u, timeout:%lu ", 
+			       i, MAC_ADDR(f-&gt;addr.addr), f-&gt;dst-&gt;dev-&gt;name, 
+			       f-&gt;is_local, f-&gt;is_static, 
+			       jiffies_to_clock_t(jiffies - f-&gt;ageing_timer))
+			++fe;
+			++num;
+		}
+	}
+	rcu_read_unlock();
+
+	return num;
+}
+
+</Insert>
+<Copy StartSeek="7589" EndSeek="8416"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/05/14" Time="10:07:53000">
+<Copy StartSeek="0" EndSeek="7434"/>
+<Insert>#define MAC_ADDR(mac) \
+	mac[0]), \
+	mac[1]), \
+	mac[2]), \
+	mac[3]), \
+	mac[4]), \
+	mac[5]), \
+	mac[6]),
+#define MAC_FMT "%04x:%04x:%04x:%04x:%04x:%04x"
+
+</Insert>
+<Copy StartSeek="7434" EndSeek="8261"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/05/14" Time="10:09:17000">
+<Copy StartSeek="0" EndSeek="7434"/>
+<Copy StartSeek="8719" EndSeek="9546"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/05/15" Time="14:40:43000">
+<Copy StartSeek="0" EndSeek="7578"/>
+<Insert>/* taken from br_fbd.c br_fdb_fillbuf() */
+int klna_br_fdb_read(struct net_bridge *br)
+{
+	unsigned int i;
+	struct hlist_node *h;
+	struct net_bridge_fdb_entry *f;
+
+	rcu_read_lock();
+	for (i = 0; i &lt; BR_HASH_SIZE; i++) {
+		hlist_for_each_entry_rcu(f, h, &amp;br-&gt;hash[i], hlist) {
+//      		if (has_expired(br, f))
+//      			continue;
+
+//      		if (!f-&gt;is_static)
+//      			fe-&gt;ageing_timer_value = jiffies_to_clock_t(jiffies - f-&gt;ageing_timer);
+
+			printk("fdb[%u]: " MAC_FMT ", port:%s, local:%u, "
+				"static:%u, timeout:%lu ", 
+			       i, MAC_ADDR(f-&gt;addr.addr), f-&gt;dst-&gt;dev-&gt;name, 
+			       f-&gt;is_local, f-&gt;is_static, 
+			       jiffies_to_clock_t(jiffies - f-&gt;ageing_timer));
+		}
+	}
+	rcu_read_unlock();
+
+	return i;
+}
+
+</Insert>
+<Copy StartSeek="7579" EndSeek="8822"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/05/15" Time="14:52:40000">
+<Copy StartSeek="0" EndSeek="7434"/>
+<Insert>#define MAC_ADDR(mac) \
+	mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
+#ifndef MAC_FMT
+#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+#endif
+
+
+void klna_fdb_timer(unsigned long arg)
+{
+	struct net_bridge *br = (sruct net_bridge *)arg;
+	if (!arg) {
+		return;
+	}
+	pr_info("%s:\n",__func__);
+	klna_br_fdb_read(br);
+	mod_timer(&amp;fdb_timer, jiffies + 5 * HZ);
+}
+
+static void __init init_fdb_timer(void)
+{
+	init_timer(&amp;fdb_timer);
+	vp-&gt;timer.expires = jiffies + HZ;
+	vp-&gt;timer.data = NULL;
+	vp-&gt;timer.function = &amp;fdb_;	/* timer handler */
+	add_timer(&amp;fdb_timer);
+
+}
+
+</Insert>
+<Copy StartSeek="7436" EndSeek="8263"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/05/15" Time="14:53:25000">
+<Copy StartSeek="0" EndSeek="7434"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="7434" EndSeek="8261"/>
+</Delta>
+</DeltaFile>

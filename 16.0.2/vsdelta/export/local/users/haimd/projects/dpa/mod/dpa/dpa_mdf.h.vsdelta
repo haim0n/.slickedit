@@ -1,0 +1,408 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="34" Comment="" Date="2013/06/18" Time="15:09:26000" NL="\10" Encoding="text">
+<Insert>#ifndef __DPA_CHG_BIT_H__
+#define __DPA_CHG_BIT_H__
+
+#include &lt;dpa_types.h&gt;
+
+#ifdef __DPA_DEBUG__
+int printk(const char * fmt, ...);
+#define DPA_MDF_DBG(format, args...) printk(format"\n", ##args)
+#else
+#define DPA_MDF_DBG(format, args...)
+#endif
+
+enum dpa_mdf_id {
+	DPA_MDF_MH_CHG_BIT = 0,
+	DPA_MDF_MH_CHG = (1 &lt;&lt; DPA_MDF_MH_CHG_BIT),
+
+	DPA_MDF_MH_ADD_BIT = 1,
+	DPA_MDF_MH_ADD = (1 &lt;&lt; DPA_MDF_MH_ADD_BIT),
+
+	DPA_MDF_MH_DEL_BIT = 2,
+	DPA_MDF_MH_DEL = (1 &lt;&lt; DPA_MDF_MH_DEL_BIT),
+
+	DPA_MDF_ETH_CHG_BIT = 3,
+	DPA_MDF_ETH_CHG = (1 &lt;&lt; DPA_MDF_ETH_CHG_BIT),
+
+	DPA_MDF_VLAN_CHG_BIT = 4,
+	DPA_MDF_VLAN_CHG = (1 &lt;&lt; DPA_MDF_VLAN_CHG_BIT),
+	DPA_MDF_VLAN_ADD_BIT = 5,
+	DPA_MDF_VLAN_ADD = (1 &lt;&lt; DPA_MDF_VLAN_ADD_BIT),
+	DPA_MDF_VLAN_DEL_BIT = 6,
+	DPA_MDF_VLAN_DEL = (1 &lt;&lt; DPA_MDF_VLAN_DEL_BIT),
+
+	DPA_MDF_PPPOE_ADD_BIT = 7,
+	DPA_MDF_PPPOE_ADD = (1 &lt;&lt; DPA_MDF_PPPOE_ADD_BIT),
+	DPA_MDF_PPPOE_DEL_BIT = 8,
+	DPA_MDF_PPPOE_DEL = (1 &lt;&lt; DPA_MDF_PPPOE_DEL_BIT),
+
+	DPA_MDF_IP_V4_CHG_BIT = 9,
+	DPA_MDF_IP_V4_CHG = (1 &lt;&lt; DPA_MDF_IP_V4_CHG_BIT),
+
+	DPA_MDF_IP_V4_TTL_BIT = 10,
+	DPA_MDF_IP_V4_TTL = (1 &lt;&lt; DPA_MDF_IP_V4_TTL_BIT),
+
+	DPA_MDF_IP_V4_DSCP_CNG_BIT = 11,
+	DPA_MDF_IP_V4_DSCP_CNG = (1 &lt;&lt; DPA_MDF_IP_V4_DSCP_CNG_BIT),
+  
+	DPA_MDF_L4_CHG_BIT = 12,
+	DPA_MDF_L4_CHG = (1 &lt;&lt; DPA_MDF_L4_CHG_BIT),
+};
+
+void dpa_modify_pkt(eth_pkt_t *pkt);
+uint32_t dpa_mdf_init(void);
+#endif
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:27:10000">
+<Copy StartSeek="0" EndSeek="841"/>
+<Insert>	DPA_MDF_L3_V4_CHG_BIT = 10,
+	DPA_MDF_L3_V4_CHG = (1 &lt;&lt; DPA_MDF_L3_V4_CHG_BIT),
+</Insert>
+<Copy StartSeek="921" EndSeek="1257"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:40:34000">
+<Copy StartSeek="0" EndSeek="1002"/>
+<Insert>	DPA_MDF_L4_UDP_CHG_BIT = 12,
+	DPA_MDF_L4_UDP_CHG = (1 &lt;&lt; DPA_MDF_L4_UDP_CHG_BIT),
+	DPA_MDF_L4_TCP_CHG_BIT = 13,
+	DPA_MDF_L4_TCP_CHG = (1 &lt;&lt; DPA_MDF_L4_TCP_CHG_BIT),
+
+</Insert>
+<Copy StartSeek="1074" EndSeek="1162"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:44:2000">
+<Copy StartSeek="0" EndSeek="1073"/>
+<Insert>
+	DPA_MDF_MAX = DPA_MDF_L4_TCP_CHG_BIT,
+</Insert>
+<Copy StartSeek="1073" EndSeek="1122"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:44:25000">
+<Copy StartSeek="0" EndSeek="950"/>
+<Insert>	DPA_MDF_L3_V6_CHG = (1 &lt;&lt; DPA_MDF_L3_V6_CHG_BIT),
+</Insert>
+<Copy StartSeek="1001" EndSeek="1122"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="18:00:18000">
+<Copy StartSeek="0" EndSeek="921"/>
+<Insert>	DPA_MDF_L3_V6_CHG_BIT = 11,
+	DPA_MDF_IP_V6_CHG = (1 &lt;&lt; DPA_MDF_L3_V6_CHG_BIT),
+</Insert>
+<Copy StartSeek="993" EndSeek="1114"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="18:00:49000">
+<Copy StartSeek="0" EndSeek="921"/>
+<Insert>	DPA_MDF_IP_V6_CHG = 11,
+	DPA_MDF_IP_V6_CHG = (1 &lt;&lt; DPA_MDF_IP_V6_CHG),
+</Insert>
+<Copy StartSeek="1001" EndSeek="1122"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="19:38:9000">
+<Copy StartSeek="0" EndSeek="96"/>
+<Insert>	DPA_MDF_MH_CHG_BIT = 0,
+	DPA_MDF_MH_CHG = (1 &lt;&lt; DPA_MDF_MH_CHG_BIT),
+
+	DPA_MDF_MH_ADD_BIT = 1,
+	DPA_MDF_MH_ADD = (1 &lt;&lt; DPA_MDF_MH_ADD_BIT),
+</Insert>
+<Copy StartSeek="210" EndSeek="211"/>
+<Insert>	DPA_MDF_MH_DEL_BIT = 2,
+	DPA_MDF_MH_DEL = (1 &lt;&lt; DPA_MDF_MH_DEL_BIT),
+
+	DPA_MDF_ETH_CHG_BIT = 3,
+	DPA_MDF_ETH_CHG = (1 &lt;&lt; DPA_MDF_ETH_CHG_BIT),
+
+	DPA_MDF_VLAN_CHG_BIT = 4,
+	DPA_MDF_VLAN_CHG = (1 &lt;&lt; DPA_MDF_VLAN_CHG_BIT),
+	DPA_MDF_VLAN_ADD_BIT = 5,
+	DPA_MDF_VLAN_ADD = (1 &lt;&lt; DPA_MDF_VLAN_ADD_BIT),
+	DPA_MDF_VLAN_DEL_BIT = 6,
+	DPA_MDF_VLAN_DEL = (1 &lt;&lt; DPA_MDF_VLAN_DEL_BIT),
+
+	DPA_MDF_PPOE_CHG_BIT = 7,
+	DPA_MDF_PPOE_CHG = (1 &lt;&lt; DPA_MDF_PPOE_CHG_BIT),
+	DPA_MDF_PPOE_ADD_BIT = 8,
+	DPA_MDF_PPOE_ADD = (1 &lt;&lt; DPA_MDF_PPOE_ADD_BIT),
+	DPA_MDF_PPOE_DEL_BIT = 9,
+	DPA_MDF_PPOE_DEL = (1 &lt;&lt; DPA_MDF_PPOE_DEL_BIT),
+
+	DPA_MDF_IP_V4_CHG_BIT = 10,
+	DPA_MDF_IP_V4_CHG = (1 &lt;&lt; DPA_MDF_IP_V4_CHG_BIT),
+	DPA_MDF_IP_V6_CHG_BIT = 11,
+	DPA_MDF_IP_V6_CHG = (1 &lt;&lt; DPA_MDF_IP_V6_CHG_BIT),
+
+	DPA_MDF_L4_CHG_BIT = 12,
+	DPA_MDF_L4_CHG = (1 &lt;&lt; DPA_MDF_L4_CHG_BIT),
+</Insert>
+<Copy StartSeek="487" EndSeek="536"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="15:32:29000">
+<Copy StartSeek="0" EndSeek="302"/>
+<Insert>	DPA_MDF_PPOE_CHG = (1 &lt;&lt; 7),
+	DPA_MDF_PPOE_ADD = (1 &lt;&lt; 8),
+	DPA_MDF_PPOE_DEL = (1 &lt;&lt; 9),
+</Insert>
+<Copy StartSeek="395" EndSeek="539"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="15:37:8000">
+<Copy StartSeek="0" EndSeek="490"/>
+<Copy StartSeek="522" EndSeek="571"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="15:41:8000">
+<Copy StartSeek="0" EndSeek="96"/>
+<Insert>	DPA_MDF_MH_CHG = (1 &lt;&lt; 0),
+	DPA_MDF_MH_ADD = (1 &lt;&lt; 1),
+	DPA_MDF_MH_DEL = (1 &lt;&lt; 2),
+
+	DPA_MDF_ETH_CHG = (1 &lt;&lt; 3),
+</Insert>
+<Copy StartSeek="237" EndSeek="238"/>
+<Insert>	DPA_MDF_VLAN_CHG = (1 &lt;&lt; 4),
+	DPA_MDF_VLAN_ADD = (1 &lt;&lt; 5),
+	DPA_MDF_VLAN_DEL = (1 &lt;&lt; 6),
+
+	DPA_MDF_PPPOE_CHG = (1 &lt;&lt; 7),
+	DPA_MDF_PPPOE_ADD = (1 &lt;&lt; 8),
+	DPA_MDF_PPPOE_DEL = (1 &lt;&lt; 9),
+
+	DPA_MDF_IP_V4_CHG = (1 &lt;&lt; 10),
+	DPA_MDF_IP_V6_CHG = (1 &lt;&lt; 11),
+
+	DPA_MDF_L4_CHG = (1 &lt;&lt; 12),
+</Insert>
+<Copy StartSeek="611" EndSeek="612"/>
+<Insert>	DPA_MDF_MAX = DPA_MDF_L4_CHG,
+</Insert>
+<Copy StartSeek="1073" EndSeek="1122"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="15:42:28000">
+<Copy StartSeek="0" EndSeek="612"/>
+<Insert>	DPA_MDF_PPOE_CHG_BIT = 7,
+	DPA_MDF_PPOE_CHG = (1 &lt;&lt; DPA_MDF_PPOE_CHG_BIT),
+	DPA_MDF_PPOE_ADD_BIT = 8,
+	DPA_MDF_PPOE_ADD = (1 &lt;&lt; DPA_MDF_PPOE_ADD_BIT),
+	DPA_MDF_PPOE_DEL_BIT = 9,
+	DPA_MDF_PPOE_DEL = (1 &lt;&lt; DPA_MDF_PPOE_DEL_BIT),
+</Insert>
+<Copy StartSeek="849" EndSeek="1131"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="15:42:47000">
+<Copy StartSeek="0" EndSeek="1082"/>
+<Copy StartSeek="1118" EndSeek="1167"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="15:43:5000">
+<Copy StartSeek="0" EndSeek="1083"/>
+<Insert>	DPA_MDF_MAX = DPA_MDF_L4_CHG_BIT,
+</Insert>
+<Copy StartSeek="1122" EndSeek="1171"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="15:43:16000">
+<Copy StartSeek="0" EndSeek="1083"/>
+<Insert>	DPA_MDF_MAX = DPA_MDF_L4_CHG_BIT + 1,
+</Insert>
+<Copy StartSeek="1118" EndSeek="1167"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="15:43:24000">
+<Copy StartSeek="0" EndSeek="1159"/>
+<Copy StartSeek="1184" EndSeek="1192"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="16:01:27000">
+<Copy StartSeek="0" EndSeek="1159"/>
+<Insert>void dpa_mdf_init(void);
+</Insert>
+<Copy StartSeek="1188" EndSeek="1196"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="16:05:2000">
+<Copy StartSeek="0" EndSeek="96"/>
+<Insert>	DPA_MDF_MH_CHG_BIT = 0,
+	DPA_MDF_MH_CHG = (1 &lt;&lt; DPA_MDF_MH_CHG_BIT),
+
+	DPA_MDF_MH_ADD_BIT = 1,
+	DPA_MDF_MH_ADD = (1 &lt;&lt; DPA_MDF_MH_ADD_BIT),
+</Insert>
+<Copy StartSeek="210" EndSeek="211"/>
+<Insert>	DPA_MDF_MH_DEL_BIT = 2,
+	DPA_MDF_MH_DEL = (1 &lt;&lt; DPA_MDF_MH_DEL_BIT),
+
+	DPA_MDF_ETH_CHG_BIT = 3,
+	DPA_MDF_ETH_CHG = (1 &lt;&lt; DPA_MDF_ETH_CHG_BIT),
+
+	DPA_MDF_VLAN_CHG_BIT = 4,
+	DPA_MDF_VLAN_CHG = (1 &lt;&lt; DPA_MDF_VLAN_CHG_BIT),
+	DPA_MDF_VLAN_ADD_BIT = 5,
+	DPA_MDF_VLAN_ADD = (1 &lt;&lt; DPA_MDF_VLAN_ADD_BIT),
+	DPA_MDF_VLAN_DEL_BIT = 6,
+	DPA_MDF_VLAN_DEL = (1 &lt;&lt; DPA_MDF_VLAN_DEL_BIT),
+
+	DPA_MDF_PPPOE_CHG_BIT = 7,
+	DPA_MDF_PPPOE_CHG = (1 &lt;&lt; DPA_MDF_PPPOE_CHG_BIT),
+	DPA_MDF_PPPOE_ADD_BIT = 8,
+	DPA_MDF_PPPOE_ADD = (1 &lt;&lt; DPA_MDF_PPPOE_ADD_BIT),
+	DPA_MDF_PPPOE_DEL_BIT = 9,
+	DPA_MDF_PPPOE_DEL = (1 &lt;&lt; DPA_MDF_PPPOE_DEL_BIT),
+
+	DPA_MDF_IP_V4_CHG_BIT = 10,
+	DPA_MDF_IP_V4_CHG = (1 &lt;&lt; DPA_MDF_IP_V4_CHG_BIT),
+	DPA_MDF_IP_V6_CHG_BIT = 11,
+	DPA_MDF_IP_V6_CHG = (1 &lt;&lt; DPA_MDF_IP_V6_CHG_BIT),
+
+	DPA_MDF_L4_CHG_BIT = 12,
+	DPA_MDF_L4_CHG = (1 &lt;&lt; DPA_MDF_L4_CHG_BIT),
+
+	DPA_MDF_MAX = DPA_MDF_L4_CHG_BIT,
+</Insert>
+<Copy StartSeek="490" EndSeek="568"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="17:12:55000">
+<Copy StartSeek="0" EndSeek="96"/>
+<Insert>	DPA_MDF_MH_CHG = (1 &lt;&lt; 0),
+	DPA_MDF_MH_ADD = (1 &lt;&lt; 1),
+	DPA_MDF_MH_DEL = (1 &lt;&lt; 2),
+
+	DPA_MDF_ETH_CHG = (1 &lt;&lt; 3),
+</Insert>
+<Copy StartSeek="237" EndSeek="238"/>
+<Insert>	DPA_MDF_VLAN_CHG = (1 &lt;&lt; 4),
+	DPA_MDF_VLAN_ADD = (1 &lt;&lt; 5),
+	DPA_MDF_VLAN_DEL = (1 &lt;&lt; 6),
+
+	DPA_MDF_PPPOE_CHG = (1 &lt;&lt; 7),
+	DPA_MDF_PPPOE_ADD = (1 &lt;&lt; 8),
+	DPA_MDF_PPPOE_DEL = (1 &lt;&lt; 9),
+
+	DPA_MDF_IP_V4_CHG = (1 &lt;&lt; 10),
+	DPA_MDF_IP_V6_CHG = (1 &lt;&lt; 11),
+
+	DPA_MDF_L4_CHG = (1 &lt;&lt; 12),
+</Insert>
+<Copy StartSeek="1118" EndSeek="1196"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="17:39:35000">
+<Copy StartSeek="0" EndSeek="77"/>
+<Insert>enum dpa_mdf_ops {
+</Insert>
+<Copy StartSeek="97" EndSeek="1197"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="17:42:13000">
+<Copy StartSeek="0" EndSeek="76"/>
+<Insert>
+</Insert>
+<Copy StartSeek="114" EndSeek="1234"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="17:42:51000">
+<Copy StartSeek="0" EndSeek="76"/>
+<Insert>#define DPA_MDF(MDF_ID) (1&lt;&lt;(MDF_ID))
+</Insert>
+<Copy StartSeek="78" EndSeek="1123"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1162" EndSeek="1236"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="17:42:56000">
+<Copy StartSeek="0" EndSeek="1084"/>
+<Insert>
+	DPA_MDF_MAX = DPA_MDF_L4_CHG_BIT,
+</Insert>
+<Copy StartSeek="1084" EndSeek="1200"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="17:43:11000">
+<Copy StartSeek="0" EndSeek="1087"/>
+<Insert>#define DPA_MDF(MDF_ID) (1&lt;&lt;(MDF_ID))
+
+</Insert>
+<Copy StartSeek="1088" EndSeek="1162"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="17:43:42000">
+<Copy StartSeek="0" EndSeek="78"/>
+<Insert>enum dpa_mdf_bits {
+</Insert>
+<Copy StartSeek="96" EndSeek="1160"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="17:45:11000">
+<Copy StartSeek="0" EndSeek="77"/>
+<Insert>
+</Insert>
+<Copy StartSeek="211" EndSeek="1293"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:20:31000">
+<Copy StartSeek="0" EndSeek="1063"/>
+<Insert>	DPA_MDF_IP_V6_CHG_BIT = 11,
+	DPA_MDF_IP_V6_CHG = (1 &lt;&lt; DPA_MDF_IP_V6_CHG_BIT),
+
+	DPA_MDF_L4_CHG_BIT = 12,
+</Insert>
+<Copy StartSeek="1090" EndSeek="1213"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:28:57000">
+<Copy StartSeek="0" EndSeek="1064"/>
+<Insert>	DPA_MDF_L4_CHG_BIT = 11,
+</Insert>
+<Copy StartSeek="1171" EndSeek="1294"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="09:45:14000">
+<Copy StartSeek="0" EndSeek="1064"/>
+<Insert>	DPA_MDF_IP_V4_CHG_BIT = 11,
+	DPA_MDF_IP_V4_CHG = (1 &lt;&lt; DPA_MDF_IP_V4_CHG_BIT),
+</Insert>
+<Copy StartSeek="1144" EndSeek="1294"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="09:45:22000">
+<Copy StartSeek="0" EndSeek="1093"/>
+<Insert>	DPA_MDF_IP_V4_TTL = (1 &lt;&lt; DPA_MDF_IP_V4_CHG_BIT),
+</Insert>
+<Copy StartSeek="1144" EndSeek="1294"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="09:45:29000">
+<Copy StartSeek="0" EndSeek="1145"/>
+<Insert>	DPA_MDF_L4_CHG_BIT = 12,
+	DPA_MDF_L4_CHG = (1 &lt;&lt; DPA_MDF_L4_CHG_BIT),
+</Insert>
+<Copy StartSeek="1316" EndSeek="1394"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2013/05/23" Time="11:35:7000">
+<Copy StartSeek="0" EndSeek="745"/>
+<Insert>	DPA_MDF_PPPOE_CHG_BIT = 7,
+	DPA_MDF_PPPOE_CHG = (1 &lt;&lt; DPA_MDF_PPPOE_CHG_BIT),
+	DPA_MDF_PPPOE_ADD_BIT = 8,
+</Insert>
+<Copy StartSeek="773" EndSeek="824"/>
+<Insert>	DPA_MDF_PPPOE_DEL_BIT = 9,
+</Insert>
+<Copy StartSeek="852" EndSeek="904"/>
+<Insert>	DPA_MDF_IP_V4_CHG_BIT = 10,
+</Insert>
+<Copy StartSeek="932" EndSeek="984"/>
+<Insert>	DPA_MDF_IP_V4_TTL_BIT = 11,
+</Insert>
+<Copy StartSeek="1013" EndSeek="1065"/>
+<Insert>	DPA_MDF_IP_V4_DSCP_CNG_BIT = 12,
+</Insert>
+<Copy StartSeek="1099" EndSeek="1314"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2013/06/16" Time="18:10:21000">
+<Copy StartSeek="0" EndSeek="1163"/>
+<Insert>  DPA_MDF_L4_CHG_BIT = 13,
+</Insert>
+<Copy StartSeek="1190" EndSeek="1314"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2013/06/16" Time="18:10:26000">
+<Copy StartSeek="0" EndSeek="1163"/>
+<Insert>  DPA_MDF_L4_CHG_BIT = 12,
+  DPA_MDF_L4_CHG = (1 &lt;&lt; DPA_MDF_L4_CHG_BIT),
+</Insert>
+<Copy StartSeek="1234" EndSeek="1312"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2013/06/16" Time="18:10:28000">
+<Copy StartSeek="0" EndSeek="98"/>
+<Insert>#define DPA_MDF_DBG(format, args...) DPA_DBG(format, ##args)
+</Insert>
+<Copy StartSeek="197" EndSeek="203"/>
+<Insert>#define DPA_MDF_DBG(format, args...) 
+</Insert>
+<Copy StartSeek="240" EndSeek="1349"/>
+</Delta>
+</DeltaFile>

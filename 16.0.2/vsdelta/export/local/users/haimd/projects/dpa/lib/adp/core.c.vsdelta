@@ -1,0 +1,950 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="18" Comment="" Date="2013/07/17" Time="18:44:42000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+*
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+*
+* adp_api.c
+*
+* Description:
+*       Marvell Data Path Acceleration Engine API
+*
+*/
+
+#include &lt;adp.h&gt;
+#include &lt;adp_os.h&gt;
+#include &lt;adp_log.h&gt;
+#include &lt;adp_types.h&gt;
+#include &lt;adp_perf_cnt.h&gt;
+#include &lt;adp/core.h&gt;
+#include &lt;eth/eth.h&gt;
+/* TODO: dynamically select platform's eth driver */
+#include &lt;eth/eth_regs.h&gt;
+#include &lt;spa/spa.h&gt;
+#include &lt;util/string.h&gt;
+#include &lt;util/queue.h&gt;
+#include &lt;util/mem.h&gt;
+#include &lt;util/timer.h&gt;
+#include &lt;util/cache_ops.h&gt;
+
+#include "version.h"
+#include "frwd.h"
+#include "policer.h"
+
+#define ADP_IS_INITIALIZED_OR_RETURN_ERROR \
+  do { if (!adp_is_init()) { \
+      return ADP_NOT_INIT; } \
+  } while (0)
+
+#ifdef __ADP_CHECK_MARVELL_CPU__
+#define ADP_ERROR_IF_NOT_MARVELL_CPU() \
+do { \
+  uint32_t reg_val = 0;                                           \
+   __asm volatile ("mrc p15, 0, %0, c0, c0, 0" : "=r" (reg_val)); \
+   reg_val &gt;&gt;= 24; \
+   if (reg_val != 0x56 &amp;&amp; reg_val != 0x41) {\
+       return -1; \
+   }\
+} while (0)
+#else
+#define ADP_ERROR_IF_NOT_MARVELL_CPU()
+#endif
+
+/* Time interval, microseconds, of HW timer */
+#define ADP_TIMER_DURATION_USEC (100)
+
+/* HW timer number */
+#define ADP_TIMER_ID            (2)
+
+/* headroom for possible headers */
+#define ADP_HEADROOM      (32)
+
+/* Prototypes */
+void adp_pkt_rx(eth_pkt_t* pkt);
+void adp_rx_done(uint8_t port);
+void adp_tx_done(uint8_t port, uint32_t sent);
+static inline eth_pkt_t *adp_get_pkt_tx(uint32_t priority);
+int printk(const char * fmt, ...);
+
+/* ADP API state */
+
+typedef enum {
+  ADP_STATUS_SHUTDOWN,
+  ADP_STATUS_INIT_IN_PROGRESS,
+  ADP_STATUS_INIT,
+  ADP_STATUS_SHUTDOWN_IN_PROGRESS
+} adp_status_t;
+
+
+typedef struct
+{
+  adp_os_config_t os;
+  eth_config_t    eth[ADP_ETH_MAX_PORT_NUM];
+}
+adp_config_t;
+
+
+typedef struct {
+  adp_status_t     status; /* Initialization state */
+  adp_config_t     config; /* Platform configuration */
+  queue_t         *spa_txq[ADP_PKT_PRI_NUM]; /* Outgoing queues */
+  queue_t         *spa_txq_done; /* Temp Tx Q for slow path packets */
+  eth_ops_t        eth_ops; /* Ethernet operations */
+  adp_pkt_stats_t  pkt_stats; /* Packet buffer stats */
+
+#ifdef __ADP_MEM_LOG__
+  adp_pkt_alloc_stats_t pkt_alloc_stats; /* Memory stats */
+#endif /* __ADP_MEM_LOG__ */
+} adp_state_t;
+
+static adp_state_t adp_state =
+  {.status = ADP_STATUS_SHUTDOWN,
+   .spa_txq = {NULL},
+   .spa_txq_done = NULL,
+   .eth_ops = {.pkt_alloc = adp_pkt_alloc,
+               .pkt_free = adp_pkt_free,
+               .pkt_rx = adp_pkt_rx,
+               .rx_done = adp_rx_done,
+               .tx_done = adp_tx_done}};
+
+
+
+/******************************************************
+ *   ADP utility routines
+ */
+
+/* Terminate Ethernet layer */
+int32_t adp_eth_shutdown(void) {
+  uint32_t i, err;
+  eth_config_t *cfg;
+
+  err = ADP_OK;
+
+  for (i = 0; i &lt; ADP_ETH_MAX_PORT_NUM; i++) {
+       cfg = &amp;adp_state.config.eth[i];
+       if (cfg-&gt;status) {
+           eth_shutdown(cfg-&gt;port);
+       }
+  }
+
+  return err;
+}
+
+
+/* Transmit slow path packets. Handle highest priority packets first */
+void adp_slow_path_tx(void) {
+  eth_pkt_t* pkt;
+  int32_t pri;
+
+  for (pri = ADP_PKT_PRI_MAX; pri &gt;= ADP_PKT_PRI_MIN; pri--) {
+       while ((pkt = adp_get_pkt_tx(pri)) != NULL) {
+          eth_pkt_tx(pkt);
+          queue_put(adp_state.spa_txq_done, pkt);
+
+          adp_state.pkt_stats.lcl_tx_pkts++;
+       }
+  }
+}
+
+
+/* Init slow path interface */
+int32_t adp_slow_path_init(void) {
+  uint32_t i;
+  int32_t err;
+
+  /* Temp queue for transmited packets from slow path */
+  adp_state.spa_txq_done = queue_create(SPA_TX_QUEUE_SIZE);
+  if (adp_state.spa_txq_done == NULL) {
+      ADP_ERROR("Can't alloc temp Tx done queue of size (%d)", SPA_TX_QUEUE_SIZE);
+      err = ADP_OUT_OF_MEMORY;
+      goto fail;
+  }
+
+  /* Slow path Tx queues */
+  for (i = 0; i &lt; ADP_PKT_PRI_NUM; i++) {
+       adp_state.spa_txq[i] = queue_create(SPA_TX_QUEUE_SIZE);
+       if (adp_state.spa_txq[i] == NULL) {
+           ADP_ERROR("Can't alloc Tx queue (%d) of size (%d)", i, SPA_TX_QUEUE_SIZE);
+           err = ADP_OUT_OF_MEMORY;
+           goto fail;
+       }
+  }
+
+  /* Slow path adapter */
+  if ((err = spa_init())) {
+      goto fail;
+  }
+
+  return ADP_OK;
+
+fail:
+  return err;
+}
+
+/* Terminate slow path interface */
+void adp_slow_path_shutdown() {
+  eth_pkt_t *pkt;
+  uint32_t   i;
+
+  /* Slow path adapter */
+  spa_shutdown();
+
+  /* Tx queues */
+  for (i = 0; i &lt; ADP_PKT_PRI_NUM; i++) {
+       if (adp_state.spa_txq[i] != NULL) {
+           while ((pkt = queue_get(adp_state.spa_txq[i])) != NULL) {
+              adp_pkt_free(pkt);
+           }
+           queue_destroy(adp_state.spa_txq[i]);
+           adp_state.spa_txq[i] = NULL;
+       }
+  }
+
+  /* Tx done queue */
+  if (adp_state.spa_txq_done != NULL) {
+      while ((pkt = queue_get(adp_state.spa_txq_done)) != NULL) {
+              adp_pkt_free(pkt);
+      }
+      queue_destroy(adp_state.spa_txq_done);
+      adp_state.spa_txq_done = NULL;
+  }
+}
+
+/******************************************************
+ *   ADP pkt allocation/deallocation
+ */
+
+
+static int is_adp_pkt_print = 1;
+eth_pkt_t *adp_pkt_alloc(uint32_t size) {
+  eth_pkt_t *pkt;
+  uint8_t *data;
+  uint32_t total_size, headroom;
+  void* os_handle;
+
+  headroom = ADP_HEADROOM + sizeof(eth_pkt_t);
+  total_size = headroom + size + (CPU_D_CACHE_LINE_SIZE - 1);
+
+  pkt = (eth_pkt_t *) adp_os_pkt_alloc(total_size, headroom, CPU_D_CACHE_LINE_SIZE,
+          &amp;os_handle, &amp;data);
+  if (pkt == NULL) {
+      ADP_ERROR("Failed to alloc OS packet, (%d) bytes.", total_size);
+      return NULL;
+  }
+  if (is_adp_pkt_print) {
+          is_adp_pkt_print = 0;
+          printk("(%s:%d) pkt_alloc total %u, headroom %u\n",
+                 __func__, __LINE__, total_size, headroom);
+  }
+
+  /* Put pkt meta data first */
+  adp_memset(pkt, 0, sizeof(eth_pkt_t));
+
+  pkt-&gt;buff = pkt-&gt;phy_hdr = data;
+  if (MEM_IS_NOT_ALIGN(pkt-&gt;buff, CPU_D_CACHE_LINE_SIZE)) {
+      ADP_ERROR("Memory buffer not aligned (0x%x), pkt size %d", (uint32_t)pkt-&gt;buff, sizeof(eth_pkt_t));
+}
+
+  /* Provoke page fault while in Linux context */
+  pkt-&gt;buff[0] = pkt-&gt;buff[size-1] = 0x78;
+
+  /* Fill in pkt meta data */
+  pkt-&gt;os_handle = os_handle;
+  pkt-&gt;buff_dma = pkt-&gt;phy_hdr_dma = adp_os_virt_to_phys(pkt-&gt;buff, size);
+  pkt-&gt;size = 0;
+  pkt-&gt;alloc_size = size;
+  pkt-&gt;pool_id = ETH_POOL_ID_UKNOWN;
+  pkt-&gt;adp_handle = (void*) NULL;
+  pkt-&gt;status = ETH_PKT_STATUS_NONE;
+
+#ifdef __ADP_MEM_LOG__
+  if (pkt != NULL) {
+      adp_state.pkt_alloc_stats.alloc_pkts++;
+  }
+#endif /* __ADP_MEM_LOG__ */
+
+  return pkt;
+}
+
+
+void adp_pkt_free(eth_pkt_t* pkt) {
+  void *os_handle;
+
+#ifdef __ADP_MEM_LOG__
+  adp_state.pkt_alloc_stats.free_pkts++;
+#endif /* __ADP_MEM_LOG__ */
+
+  if (pkt) {
+      os_handle = pkt-&gt;os_handle;
+
+      if (ETH_IS_PKT_SLOW_PATH(pkt)) {
+          ADP_FREE(pkt);
+      }
+      adp_os_pkt_free(os_handle);
+  }
+}
+
+eth_pkt_t *adp_pkt_wrap(void *data, uint32_t size, void *os_handle) {
+  eth_pkt_t *pkt;
+
+  pkt = ADP_MALLOC(sizeof(eth_pkt_t));
+  if (pkt != NULL) {
+      adp_memset(pkt, 0, sizeof(eth_pkt_t));
+      pkt-&gt;os_handle = os_handle;
+      pkt-&gt;size = size;
+      pkt-&gt;alloc_size = size; /* TODO Check where used? */
+      pkt-&gt;pool_id = ETH_POOL_ID_FOREIGN; /* Foreign packet buffer indication */
+      pkt-&gt;adp_handle = (void*) NULL;
+#ifdef __ADP_MEM_LOG__
+      adp_state.pkt_alloc_stats.alloc_pkts++;
+#endif /* __ADP_MEM_LOG__ */
+  }
+
+  return pkt;
+}
+
+
+#ifdef __ADP_MEM_LOG__
+void adp_print_pkt_alloc_stats(void) {
+  ADP_INFO("Packet buffer stats allocated %d pkts, freed %d pkts",
+           adp_state.pkt_alloc_stats.alloc_pkts,
+           adp_state.pkt_alloc_stats.free_pkts);
+}
+#endif /* __ADP_MEM_LOG__ */
+
+
+
+/******************************************************
+ *   ADP processing routines
+ */
+
+/* End of Rx batch */
+void adp_rx_done(uint8_t port) {
+  /* Forward pkts to slow path */
+  spa_rx_done(port);
+
+  /* Transmit pkts from slow path */
+  adp_slow_path_tx();
+}
+
+/* Called by Ethernet driver when xmit done */
+void adp_tx_done(uint8_t port, uint32_t sent) {
+  register eth_pkt_t* pkt;
+
+  /* Return packet to slow path for freeing */
+  while ((pkt = queue_get(adp_state.spa_txq_done)) != NULL) {
+    /* FIXME Not handling the case when SPA xmit done Q is full!
+       And we can't free it in data path context. Should add an extra temp Q for this */
+    spa_pkt_tx_done(pkt);
+  }
+}
+
+/* Get next packet to transmit from slow path */
+static inline eth_pkt_t *adp_get_pkt_tx(uint32_t priority) {
+  return (eth_pkt_t *) queue_get(adp_state.spa_txq[priority]);
+}
+
+
+
+#if defined (__ADP_MODE_ADP__)
+
+/* Full ADP flow */
+void adp_pkt_rx(eth_pkt_t* pkt) {
+  /* Classify and modify */
+  switch (adp_frwd_rx(pkt)) {
+        case DPF_FWD:
+          pkt-&gt;tx_cmd |= NETA_TX_FLZ_DESC_MASK; /* FIXME Move to adp_frwd_rx */
+          pkt-&gt;status = ETH_PKT_STATUS_FWD;
+          adp_state.pkt_stats.fwd_pkts++;
+          break;
+
+        case DPF_LCL:
+          if (spa_pkt_rx(pkt)) {
+              pkt-&gt;status = ETH_PKT_STATUS_LCL;
+              adp_state.pkt_stats.lcl_rx_pkts++;
+              break;
+          }
+
+        default: /* Drop */
+          pkt-&gt;status = ETH_PKT_STATUS_DROP;
+          adp_state.pkt_stats.dropped_pkts++;
+  }
+}
+
+
+#elif defined (__ADP_MODE_SLOW_PATH__)
+
+/* All goes to slow path */
+void adp_pkt_rx(eth_pkt_t* pkt) {
+  if (spa_pkt_rx(pkt)) {
+      pkt-&gt;status = ETH_PKT_STATUS_LCL;
+      pkt-&gt;prio = ADP_PKT_PRI_MIN;
+      adp_state.pkt_stats.lcl_rx_pkts++;
+  } else {
+      pkt-&gt;status = ETH_PKT_STATUS_DROP;
+      adp_state.pkt_stats.dropped_pkts++;
+  }
+}
+
+#elif defined (__ADP_MODE_FWD__)
+
+/* All packets sent to alternate port unmodified */
+void adp_pkt_rx(eth_pkt_t* pkt) {
+  /* Base performance test: Just flip the ports */
+  pkt-&gt;port ^= 0x1;
+  pkt-&gt;queue = 0;
+  pkt-&gt;hw_cmd = NETA_TX_FLZ_DESC_MASK | NETA_TX_L4_CSUM_NOT;
+  pkt-&gt;status = ETH_PKT_STATUS_FWD;
+  adp_state.pkt_stats.fwd_pkts++;
+}
+
+#else
+  #error "Please define ADP mode"
+#endif
+
+
+/******************************************************
+ *   ADP Internal API implementation
+ */
+
+/* Append slow path packet to transmit queue. Caller must also wake-up
+   the fast path thread via adp_tx_start */
+int32_t adp_pkt_tx(eth_pkt_t *pkt, uint32_t priority) {
+  if (!adp_tx_queue_ready(priority)) {
+      return ADP_QUEUE_IS_FULL;
+  }
+
+  queue_put(adp_state.spa_txq[priority], (void*) pkt);
+
+  return ADP_OK;
+}
+
+/* Fire-up fast path context timer if pending pkts */
+int32_t adp_tx_start(void) {
+  /* FIXME Make sure packets get to ADP transmit ! */
+
+  return ADP_OK;
+}
+
+bool adp_tx_queue_ready(uint32_t priority) {
+  return (adp_is_init() &amp;&amp; !queue_is_full(adp_state.spa_txq[priority]));
+}
+
+
+/* Redeem packet buffer to ethernet pool */
+int32_t adp_pkt_reclaim(eth_pkt_t *pkt) {
+  eth_pkt_t *new_pkt;
+
+  if (!adp_is_init() /* TODO May remove this check since checking in eth_pkt_pool_is_full */
+      || eth_pkt_pool_is_full(pkt-&gt;pool_id)) {
+      return ADP_OK;
+  }
+
+  /* Original pkt preserved since it will be handled in slow path */
+  new_pkt = adp_pkt_alloc(pkt-&gt;alloc_size);
+  if (new_pkt == NULL) {
+      ADP_ERROR("Can't alloc pkt for eth port (%d)", pkt-&gt;pool_id);
+      return ADP_OUT_OF_MEMORY;
+  }
+
+  new_pkt-&gt;pool_id = pkt-&gt;pool_id;
+  eth_pkt_put(new_pkt);
+
+  return ADP_OK;
+}
+
+
+/******************************************************
+ *   ADP Public API implementation
+ */
+
+const char* adp_get_version(void)
+{
+  static char buf[256] = {0};
+#ifdef __ADP_RUNTIME_DEBUG__
+  const char* debug="DEBUG";
+#else
+  const char* debug="";
+#endif
+
+#ifndef __ADP_VERSION__
+#define __ADP_VERSION__ v0.0.0
+#else
+#define WRAP2(X) #X
+#define WRAP1(X) WRAP2(X)
+#define WRAP(X) WRAP1(X)
+#define __ADP_VERSION_STR__ WRAP(__ADP_VERSION__)
+#endif
+  adp_snprintf(buf,sizeof(buf), "Version: %s Date: %s %s %s",
+               __ADP_VERSION_STR__,
+               __DATE__,
+               __TIME__,
+               debug);
+  return buf;
+}
+
+
+int32_t adp_port_get_status(uint8_t port, bool *status) {
+  ADP_IS_INITIALIZED_OR_RETURN_ERROR;
+
+  *status = false;
+
+  if (!ETH_PORT_VALID(port)) {
+      ADP_ERROR("Port stat failed, invalid port (%d).", port);
+      return ADP_INVALID_PARAM;
+  }
+
+  *status = adp_state.config.eth[port].status;
+
+  return ADP_OK;
+}
+
+
+int32_t adp_port_add(uint8_t port) {
+  eth_config_t *cfg;
+  int32_t err;
+
+  ADP_IS_INITIALIZED_OR_RETURN_ERROR;
+
+  if (!ETH_PORT_VALID(port)) {
+      ADP_ERROR("Add port failed, invalid port (%d).", port);
+      err = ADP_INVALID_PARAM;
+      goto fail;
+  }
+
+  cfg = &amp;adp_state.config.eth[port];
+  if (cfg-&gt;status) {
+      ADP_ERROR("Add port failed, port (%d) already active.", port);
+      return ADP_PORT_ACTIVE;
+  }
+
+  cfg-&gt;port = port;
+  cfg-&gt;rxq_num = 8; /* FIXME Take from .config */
+  cfg-&gt;txq_num = 8; /* FIXME Take from .config */
+  cfg-&gt;mtu = ETH_DEF_MTU; /* FIXME Take from .config */
+  cfg-&gt;rx_desc_num = 128;
+  cfg-&gt;tx_desc_num = 2 * cfg-&gt;rx_desc_num;
+  cfg-&gt;pkt_pool_size = cfg-&gt;rxq_num * (1  /*spare */ +  cfg-&gt;rx_desc_num);
+  cfg-&gt;status = true;
+  cfg-&gt;ops = adp_state.eth_ops;
+
+  if (ETH_PORT_IS_PON(port)) {
+      cfg-&gt;txp_num = ETH_MAX_TXP_NUM;
+  } else {
+      cfg-&gt;txp_num = 1;
+  }
+
+  /* Hijack slow path netdev */
+  err = spa_port_install(cfg-&gt;port);
+  if (err != ADP_OK) {
+        ADP_ERROR("Can't hijack slow path port (%d)", cfg-&gt;port);
+        goto fail;
+  }
+
+  /* Init bare metal eth driver */
+  err = eth_init(cfg);
+  if (err != ADP_OK) {
+        ADP_ERROR("Can't init bare metal driver for port (%d)", cfg-&gt;port);
+        goto fail;
+  }
+
+  /* Unmask ethernet interrupts */
+  eth_irq_enable(cfg-&gt;port);
+
+  return ADP_OK;
+
+fail:
+  return err;
+}
+
+
+int32_t adp_port_del(uint8_t port) {
+  eth_config_t *cfg;
+
+  ADP_IS_INITIALIZED_OR_RETURN_ERROR;
+
+  if (!ETH_PORT_VALID(port)) {
+      ADP_ERROR("Removing port failed, invalid port %d", port);
+      return ADP_INVALID_PARAM;
+  }
+
+  cfg = &amp;adp_state.config.eth[port];
+  if (!cfg-&gt;status) {
+      ADP_ERROR("Removing port failed, port inactive %d", port);
+      return ADP_PORT_INACTIVE;
+  }
+
+  /* Mask ethernet interrupts */
+  eth_irq_disable(port);
+
+  /* Uninit bare metal driver */
+  eth_shutdown(port);
+
+  /* Restore slow path netdev */
+  spa_port_uninstall(port);
+
+  cfg-&gt;status = false;
+
+  return ADP_OK;
+}
+
+
+
+int32_t adp_config_init(adp_config_t *config) {
+
+  return ADP_OK;
+}
+
+int adp_timer_init(void)
+{
+        int err;
+        timer_params_t timer = {
+                .handler = adp_policer_timer_cb,
+                .period_ns = 1000000000 / ADP_CLK_PER_SEC,
+        };
+
+        err = timer_create(&amp;timer);
+        if (err != ADP_OK) {
+                return err;
+        }
+        timer_start();
+
+        return ADP_OK;
+}
+
+int adp_timer_shutdown()
+{
+        timer_stop();
+        return timer_destroy();
+}
+
+int32_t adp_init(void) {
+  int32_t err;
+
+  ADP_ERROR_IF_NOT_MARVELL_CPU();
+
+  ADP_INFO("ADP initialization started");
+
+  /* Already initialized */
+  if (adp_is_init()) {
+      ADP_INFO("ADP already initialized.");
+      return ADP_OK;
+  }
+
+  adp_state.status = ADP_STATUS_INIT_IN_PROGRESS;
+
+  /* Configuration */
+  if ((err = adp_config_init(&amp;adp_state.config))) {
+      goto fail;
+  }
+
+  /* OS primitives */
+  if ((err = adp_os_init(&amp;adp_state.config.os))) {
+      goto fail;
+  }
+
+  /* Slow path interface */
+  if ((err = adp_slow_path_init())) {
+      goto fail;
+  }
+
+  /* Classifier */
+  if ((err = adp_frwd_init())) {
+      goto fail;
+  }
+
+  if ((err = adp_timer_init())) {
+      goto fail;
+  }
+
+  /* Statistics */
+  adp_stats_reset();
+
+  adp_state.status = ADP_STATUS_INIT;
+
+  ADP_INFO("ADP initialized successfully");
+
+  return ADP_OK;
+
+fail:
+  ADP_ERROR("ADP initialized failed");
+
+  adp_shutdown();
+
+  return err;
+}
+
+
+bool adp_is_init(void) {
+  return (adp_state.status == ADP_STATUS_INIT);
+}
+
+
+int32_t adp_shutdown(void) {
+
+  /* Mask ethernet interrupts */
+  eth_irq_disable_all();
+
+  adp_timer_shutdown();
+  adp_state.status = ADP_STATUS_SHUTDOWN_IN_PROGRESS;
+
+  /* Classifier */
+  adp_frwd_exit();
+
+  /* Ethernet driver */
+  adp_eth_shutdown();
+
+  /* Slow path interface */
+  adp_slow_path_shutdown();
+
+  /* OS primitives */
+  adp_os_shutdown();
+
+  adp_state.status = ADP_STATUS_SHUTDOWN;
+
+#ifdef __ADP_MEM_LOG__
+  adp_print_pkt_alloc_stats();
+  adp_mem_print_stats();
+#endif /* __ADP_MEM_LOG__ */
+
+  return ADP_OK;
+}
+
+
+int32_t adp_stats_get(adp_stats_t *stats) {
+  uint32_t i;
+  ADP_IS_INITIALIZED_OR_RETURN_ERROR;
+
+  if (stats == NULL) {
+      return ADP_INVALID_PARAM;
+  }
+
+  adp_memset(stats, 0, sizeof(*stats));
+  adp_memcpy(&amp;stats-&gt;pkt, &amp;adp_state.pkt_stats, sizeof(stats-&gt;pkt));
+#ifdef __ADP_MEM_LOG__
+  adp_memcpy(&amp;stats-&gt;pkt_alloc, &amp;adp_state.pkt_alloc_stats, sizeof(stats-&gt;pkt_alloc));
+#endif
+  for (i = 0; i &lt; ADP_ETH_MAX_PORT_NUM; i++) {
+       eth_config_t *cfg = &amp;adp_state.config.eth[i];
+       if (cfg-&gt;status) {
+           eth_stats_get(cfg-&gt;port, &amp;stats-&gt;eth[cfg-&gt;port]);
+       }
+  }
+
+  return ADP_OK;
+}
+
+
+int32_t adp_stats_reset(void) {
+  int port;
+
+  adp_memset(&amp;adp_state.pkt_stats, 0, sizeof(adp_state.pkt_stats));
+#ifdef __ADP_MEM_LOG__
+  adp_memset(&amp;adp_state.pkt_alloc_stats, 0, sizeof(adp_state.pkt_alloc_stats));
+#endif /* __ADP_MEM_LOG__ */
+  for (port = 0; port &lt; ADP_ETH_MAX_PORT_NUM; port++) {
+       eth_stats_reset(port);
+  }
+
+  return ADP_OK;
+}
+
+
+
+int32_t adp_table_flush(void) {
+  ADP_IS_INITIALIZED_OR_RETURN_ERROR;
+
+  adp_frwd_clean_all();
+
+  return ADP_OK;
+}
+
+
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/07/04" Time="09:34:21000">
+<Copy StartSeek="0" EndSeek="17917"/>
+<Insert>  PERF_COUNTER_RESET(0);
+  PERF_COUNTER_START(0, C0_RETIRED_INSTRUCTION /*C0_ICACHE_READ_LATENCY*/ /*PERF_COUNTER_TYPE_CYCLE_COUNT*/);
+
+</Insert>
+<Copy StartSeek="17917" EndSeek="18057"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/07/04" Time="15:30:8000">
+<Copy StartSeek="0" EndSeek="18055"/>
+<Copy StartSeek="18169" EndSeek="18170"/>
+<Insert>
+</Insert>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/07/04" Time="15:44:8000">
+<Copy StartSeek="0" EndSeek="17559"/>
+<Insert>
+</Insert>
+<Copy StartSeek="17588" EndSeek="18083"/>
+<Insert>int32_t adp_stats_get(void) {
+  ADP_IS_INITIALIZED_OR_RETURN_ERROR;
+
+  adp_frwd_clean_all();
+
+  return ADP_OK;
+}
+
+
+</Insert>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/07/04" Time="15:44:42000">
+<Copy StartSeek="0" EndSeek="17559"/>
+<Insert>  adp_frwd_get_hash_stats();
+</Insert>
+<Copy StartSeek="17583" EndSeek="18079"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/07/04" Time="15:45:3000">
+<Copy StartSeek="0" EndSeek="17559"/>
+<Insert>  adp_frwd_get_stats();
+</Insert>
+<Copy StartSeek="17560" EndSeek="18056"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/07/04" Time="16:27:2000">
+<Copy StartSeek="0" EndSeek="13657"/>
+<Insert>  cfg-&gt;rx_desc_num = 128;
+</Insert>
+<Copy StartSeek="13683" EndSeek="18057"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2013/07/07" Time="13:13:53000">
+<Copy StartSeek="0" EndSeek="13657"/>
+<Insert>  cfg-&gt;rx_desc_num = 256;
+</Insert>
+<Copy StartSeek="13683" EndSeek="18057"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2013/07/07" Time="13:27:2000">
+<Copy StartSeek="0" EndSeek="3599"/>
+<Insert>
+          pkt-&gt;queue = 0; /* TODO adp_qos2queue(pkt); */
+          pkt-&gt;hw_cmd = NETA_TX_FLZ_DESC_MASK | NETA_TX_L4_CSUM_NOT;
+</Insert>
+<Copy StartSeek="3599" EndSeek="5404"/>
+<Copy StartSeek="5437" EndSeek="5906"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6100" EndSeek="6849"/>
+<Insert>      adp_state.pkt_alloc_stats.fast_path_alloc_pkts++;
+  }
+</Insert>
+<Copy StartSeek="6853" EndSeek="7021"/>
+<Insert>  if (ETH_IS_PKT_FAST_PATH(pkt)) {
+      adp_state.pkt_alloc_stats.fast_path_free_pkts++;
+  } else {
+      adp_state.pkt_alloc_stats.slow_path_free_pkts++;
+  }
+</Insert>
+<Copy StartSeek="7021" EndSeek="7711"/>
+<Insert>      adp_state.pkt_alloc_stats.slow_path_alloc_pkts++;
+</Insert>
+<Copy StartSeek="7711" EndSeek="7825"/>
+<Insert>  ADP_INFO("Packet buffer memory statistics (total/fast path/slow path):"
+           " allocated  (%d/%d/%d), freed (%d/%d/%d)",
+</Insert>
+<Copy StartSeek="7892" EndSeek="7941"/>
+<Insert>           adp_state.pkt_alloc_stats.fast_path_alloc_pkts,
+           adp_state.pkt_alloc_stats.slow_path_alloc_pkts,
+           adp_state.pkt_alloc_stats.free_pkts,
+           adp_state.pkt_alloc_stats.fast_path_free_pkts,
+           adp_state.pkt_alloc_stats.slow_path_free_pkts);
+}
+</Insert>
+<Copy StartSeek="7992" EndSeek="8169"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8169" EndSeek="9050"/>
+<Insert>          pkt-&gt;hw_cmd |= NETA_TX_FLZ_DESC_MASK;
+</Insert>
+<Copy StartSeek="9130" EndSeek="9256"/>
+<Insert>          if (!spa_rx_queue_is_full(pkt-&gt;prio)) {
+</Insert>
+<Copy StartSeek="9289" EndSeek="9386"/>
+<Insert>              spa_pkt_rx(pkt, pkt-&gt;prio);
+</Insert>
+<Copy StartSeek="9386" EndSeek="9649"/>
+<Insert>  if (spa_rx_queue_is_full(ADP_PKT_PRI_MIN)) {
+      pkt-&gt;status = ETH_PKT_STATUS_DROP;
+      adp_state.pkt_stats.dropped_pkts++;
+  } else {
+</Insert>
+<Copy StartSeek="9674" EndSeek="9714"/>
+<Copy StartSeek="9749" EndSeek="9790"/>
+<Insert>      spa_pkt_rx(pkt, ADP_PKT_PRI_MIN);
+  }
+}
+
+</Insert>
+<Copy StartSeek="9891" EndSeek="13334"/>
+<Copy StartSeek="13443" EndSeek="17642"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="18:18:38000">
+<Copy StartSeek="0" EndSeek="5964"/>
+<Insert>          printk(KERN_ERR "(%s:%d) pkt_alloc total %u, headroom %u\n",
+</Insert>
+<Copy StartSeek="6026" EndSeek="17633"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="18:18:54000">
+<Copy StartSeek="0" EndSeek="13193"/>
+<Insert>  cfg-&gt;pkt_pool_size = cfg-&gt;rxq_num * (100 /* spare */ +  cfg-&gt;rx_desc_num);
+</Insert>
+<Copy StartSeek="13272" EndSeek="17635"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="18:28:5000">
+<Copy StartSeek="0" EndSeek="13193"/>
+<Insert>  cfg-&gt;pkt_pool_size = cfg-&gt;rxq_num * (/*100 /* spare */ +  cfg-&gt;rx_desc_num);
+</Insert>
+<Copy StartSeek="13270" EndSeek="17633"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="18:28:16000">
+<Copy StartSeek="0" EndSeek="13193"/>
+<Insert>  cfg-&gt;pkt_pool_size = cfg-&gt;rxq_num * (/*100  spare */ +  cfg-&gt;rx_desc_num);
+</Insert>
+<Copy StartSeek="13270" EndSeek="17633"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="18:31:14000">
+<Copy StartSeek="0" EndSeek="13193"/>
+<Insert>  cfg-&gt;pkt_pool_size = cfg-&gt;rxq_num * (100  /*spare */ +  cfg-&gt;rx_desc_num);
+</Insert>
+<Copy StartSeek="13269" EndSeek="17632"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="18:32:57000">
+<Copy StartSeek="0" EndSeek="13193"/>
+<Insert>  cfg-&gt;pkt_pool_size = cfg-&gt;rxq_num * (50  /*spare */ +  cfg-&gt;rx_desc_num);
+</Insert>
+<Copy StartSeek="13269" EndSeek="17632"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="18:34:59000">
+<Copy StartSeek="0" EndSeek="13193"/>
+<Insert>  cfg-&gt;pkt_pool_size = cfg-&gt;rxq_num * (25  /*spare */ +  cfg-&gt;rx_desc_num);
+</Insert>
+<Copy StartSeek="13269" EndSeek="17632"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="18:36:51000">
+<Copy StartSeek="0" EndSeek="13193"/>
+<Insert>  cfg-&gt;pkt_pool_size = cfg-&gt;rxq_num * (12  /*spare */ +  cfg-&gt;rx_desc_num);
+</Insert>
+<Copy StartSeek="13268" EndSeek="17631"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="18:38:51000">
+<Copy StartSeek="0" EndSeek="13193"/>
+<Insert>  cfg-&gt;pkt_pool_size = cfg-&gt;rxq_num * (1  /*spare */ +  cfg-&gt;rx_desc_num);
+</Insert>
+<Copy StartSeek="13268" EndSeek="17631"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="18:43:44000">
+<Copy StartSeek="0" EndSeek="13193"/>
+<Insert>  cfg-&gt;pkt_pool_size = cfg-&gt;rxq_num * (0  /*spare */ +  cfg-&gt;rx_desc_num);
+</Insert>
+<Copy StartSeek="13268" EndSeek="17631"/>
+</Delta>
+</DeltaFile>

@@ -1,0 +1,227 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="26" Comment="" Date="2012/11/22" Time="17:27:10000" NL="\10" Encoding="text">
+<Insert>#include &lt;dpa_types.h&gt;
+#include &lt;log/log.h&gt;
+#include &lt;util/string.h&gt;
+
+#include "dpa_cls.h"
+#include "dpa_mdf_ip.h"
+
+void dpa_mdf_ipv4_chg(eth_pkt_t *pkt)
+{
+	dpa_ip_hdr_t *iph = pkt-&gt;ip_hdr;
+	struct dpa_entry *dpe = (struct dpa_entry *)pkt-&gt;dpa_handle;
+	struct dpa_pri_key *mt = &amp;dpe-&gt;mod.mod_tuple;
+
+	iph-&gt;saddr = mt-&gt;sip;
+	iph-&gt;daddr = mt-&gt;dip;
+	iph-&gt;ttl--;
+}
+
+void inline dpa_mdf_ipv4_ttl(eth_pkt_t *pkt)
+{
+	pkt-&gt;ip_hdr-&gt;ttl--;
+}
+
+void dpa_mdf_ipv6_chg(eth_pkt_t *pkt)
+{
+
+}
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="13:59:38000">
+<Copy StartSeek="0" EndSeek="152"/>
+<Insert>
+</Insert>
+<Copy StartSeek="200" EndSeek="267"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:02:7000">
+<Copy StartSeek="0" EndSeek="200"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="279" EndSeek="343"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:02:43000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Copy StartSeek="133" EndSeek="384"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:03:41000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>#define IPH(pkt) ((dpa_ip_hdr_t *)(pkt))
+</Insert>
+<Copy StartSeek="92" EndSeek="343"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:09:56000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpm_ipv4_mdfy(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="154" EndSeek="283"/>
+<Copy StartSeek="436" EndSeek="500"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:24:23000">
+<Copy StartSeek="0" EndSeek="204"/>
+<Insert>	iph-&gt;saddr = dpe-&gt;mod.mod_tuple.sip;
+</Insert>
+<Copy StartSeek="204" EndSeek="462"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:24:26000">
+<Copy StartSeek="0" EndSeek="245"/>
+<Insert>void dpm_ipv4_mdfy_sip(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="307" EndSeek="462"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:24:32000">
+<Copy StartSeek="0" EndSeek="398"/>
+<Copy StartSeek="555" EndSeek="619"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:24:48000">
+<Copy StartSeek="0" EndSeek="204"/>
+<Insert>	iph-&gt;daddr = dpe-&gt;mod.mod_tuple.dip;
+</Insert>
+<Copy StartSeek="242" EndSeek="619"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:24:59000">
+<Copy StartSeek="0" EndSeek="514"/>
+<Copy StartSeek="552" EndSeek="657"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:25:3000">
+<Copy StartSeek="0" EndSeek="242"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="262" EndSeek="412"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="432" EndSeek="624"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="644" EndSeek="708"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:50:19000">
+<Copy StartSeek="0" EndSeek="412"/>
+<Insert>	pkt_iph-&gt;ttl--;
+</Insert>
+<Copy StartSeek="425" EndSeek="704"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:54:35000">
+<Copy StartSeek="0" EndSeek="242"/>
+<Insert>	pkt_iph-&gt;ttl--;
+</Insert>
+<Copy StartSeek="255" EndSeek="616"/>
+<Insert>	pkt_iph-&gt;ttl--;
+</Insert>
+<Copy StartSeek="629" EndSeek="696"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="14:54:43000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpm_ipv4_mdfy_sip(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="150" EndSeek="238"/>
+<Insert>	iph-&gt;ttl--;
+}
+
+void dpm_ipv4_mdfy_dip(struct dpa_entry *dpe, eth_pkt_t *pkt)
+{
+	dpa_ip_hdr_t *iph = (dpa_ip_hdr_t *)pkt-&gt;buff;
+	iph-&gt;daddr = dpe-&gt;mod.mod_tuple.dip;
+	iph-&gt;ttl--;
+}
+
+void dpm_ipv4_mdfy_sip_dip(struct dpa_entry *dpe, eth_pkt_t *pkt)
+{
+	dpa_ip_hdr_t *iph = (dpa_ip_hdr_t *)pkt-&gt;buff;
+	iph-&gt;saddr = dpe-&gt;mod.mod_tuple.sip;
+</Insert>
+<Copy StartSeek="238" EndSeek="356"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="15:52:5000">
+<Copy StartSeek="0" EndSeek="152"/>
+<Insert>	dpa_ip_hdr_t *iph = (dpa_ip_hdr_t *)pkt-&gt;buff;
+</Insert>
+<Copy StartSeek="186" EndSeek="342"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="15:53:27000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpm_ipv4_mdfy(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="127" EndSeek="319"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="16:29:47000">
+<Copy StartSeek="0" EndSeek="163"/>
+<Copy StartSeek="226" EndSeek="382"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="16:37:21000">
+<Copy StartSeek="0" EndSeek="318"/>
+<Insert>void dpm_ipv6_mdfy(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="353" EndSeek="359"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="16:38:50000">
+<Copy StartSeek="0" EndSeek="225"/>
+<Insert>
+	iph-&gt;saddr = dpe-&gt;mod.mod_tuple.sip;
+	iph-&gt;daddr = dpe-&gt;mod.mod_tuple.dip;
+</Insert>
+<Copy StartSeek="319" EndSeek="376"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="16:42:57000">
+<Copy StartSeek="0" EndSeek="335"/>
+<Copy StartSeek="421" EndSeek="462"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="18:23:24000">
+<Copy StartSeek="0" EndSeek="371"/>
+<Insert>	dpa_ip_hdr_t *iph = pkt-&gt;ip_hdr;
+	iph-&gt;ttl--;
+}
+
+</Insert>
+<Copy StartSeek="392" EndSeek="433"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="11:52:29000">
+<Copy StartSeek="0" EndSeek="91"/>
+<Insert>
+</Insert>
+<Copy StartSeek="112" EndSeek="453"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:58:12000">
+<Copy StartSeek="0" EndSeek="391"/>
+<Insert>	pkt-&gt;iph-&gt;ttl--;
+</Insert>
+<Copy StartSeek="412" EndSeek="456"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="13:57:28000">
+<Copy StartSeek="0" EndSeek="355"/>
+<Insert>void dpm_ipv4_ttl(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="396" EndSeek="463"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="13:57:47000">
+<Copy StartSeek="0" EndSeek="91"/>
+<Insert>#include "dpm_ip.h"
+</Insert>
+<Copy StartSeek="115" EndSeek="116"/>
+<Insert>void dpm_ipv4_mdfy(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="155" EndSeek="363"/>
+<Insert>void inline dpm_ipv4_ttl(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="408" EndSeek="434"/>
+<Insert>void dpm_ipv6_mdfy(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="473" EndSeek="479"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:25:42000">
+<Copy StartSeek="0" EndSeek="116"/>
+<Insert>void dpa_mdf_ipv4_mdfy(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="154" EndSeek="433"/>
+<Insert>void dpa_mdf_ipv6_mdfy(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="471" EndSeek="477"/>
+</Delta>
+</DeltaFile>

@@ -1,0 +1,70 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="2" Comment="" Date="2012/04/29" Time="18:20:30000" NL="\10" Encoding="text">
+<Insert>/*
+ *	Marvell Kernel Learning Agent
+ * 
+ *      Authors:
+ *	Haim Daniel
+ *
+ *	This program is free software; you can redistribute it and/or
+ *	modify it under the terms of the GNU General Public License
+ *	as published by the Free Software Foundation; either version
+ *	2 of the License, or (at your option) any later version.
+ */
+
+#include &lt;linux/module.h&gt;
+#include &lt;linux/kernel.h&gt;
+#include "include/klna_nl.h"
+#include "include/klna_nc.h"
+
+#undef pr_fmt
+#define pr_fmt(fmt) "klna: " fmt
+
+static int __init klna_init(void)
+{
+	int err = 0;
+
+	pr_info("init\n");
+	err = klna_nl_open();
+	if (err) {
+		printk(KERN_ERR "nl failed\n");
+		return err;
+	}
+	err = klna_nc_init();
+	if (err) {
+		printk(KERN_ERR "nc failed\n");
+		klna_nl_close();
+		return err;
+	}
+
+	return err;
+}
+
+static void __exit klna_exit(void)
+{
+	pr_info("exit\n");
+	klna_nl_close();
+	klna_nc_exit();
+}
+
+module_init(klna_init)
+module_exit(klna_exit)
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Haim Daniel &lt;haimd@marvell.com&gt;");
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="15:21:8000">
+<Copy StartSeek="0" EndSeek="384"/>
+<Insert>#include "klna_nl.h"
+#include "klna_nc.h"
+</Insert>
+<Copy StartSeek="442" EndSeek="984"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:30:51000">
+<Copy StartSeek="0" EndSeek="457"/>
+<Insert>#define pr_fmt(fmt)	"klna: " fmt
+</Insert>
+<Copy StartSeek="490" EndSeek="984"/>
+</Delta>
+</DeltaFile>

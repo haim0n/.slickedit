@@ -1,0 +1,465 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="41" Comment="" Date="2012/08/06" Time="12:18:22000" NL="\10" Encoding="text">
+<Insert>#ifndef ___DPA_MV_NETA_H__
+#define ___DPA_MV_NETA_H__
+
+#include &lt;eth/eth_regs.h&gt;
+
+/***************************** mvPnc.h ***********************************/
+#define BIT(b)			(1&lt;&lt;(b))
+#define RI_DA_MC            	(BIT(10))	/* multicast */
+#define RI_DA_BC            	(BIT(11))	/* broadcast */
+#define RI_DA_ME            	(BIT(12))	/* unicast */
+#define RI_PPPOE            	(BIT(13))	/* PPPoE */
+/* BITS 14-17 are reserved for setting MH field in HWF packets (TXz_MH_reg_1-15) */
+#define RI_L3_FLOW          	(BIT(18))     /* L3 flow is found */
+#define RI_VLAN             	(BIT(19))     /* VLAN */
+#define RI_RX_SPECIAL       	(BIT(20))     /* Packet for special RX processing */
+/*************************************************************************/
+
+#define NETA_RX_IP_IS_FRAG(status)     ((status) &amp; NETA_RX_IP4_FRAG_MASK)
+#define NETA_RX_L4_CSUM_IS_OK(status)  ((status) &amp; NETA_RX_L4_CSUM_OK_MASK)
+#define NETA_RX_IS_PPPOE(rxd)          ((rxd)-&gt;pncInfo &amp; NETA_PNC_PPPOE)
+#define NETA_RX_GET_IPHDR_OFFSET(rxd)       (((rxd)-&gt;status &amp; NETA_RX_L3_OFFSET_MASK) &gt;&gt; NETA_RX_L3_OFFSET_OFFS)
+
+#define NETA_RX_GET_IPHDR_HDRLEN(rxd)       (((rxd)-&gt;status &amp; NETA_RX_IP_HLEN_MASK) &gt;&gt; NETA_RX_IP_HLEN_OFFS)
+
+#ifdef DPA_ETH_PNC
+
+#define NETA_RX_IS_VLAN(rxd)           ((rxd)-&gt;pncInfo &amp; NETA_PNC_VLAN)
+#define NETA_RX_SET_VLAN(rxd)          ((rxd)-&gt;pncInfo |= NETA_PNC_VLAN)
+
+#define NETA_RX_L3_IS_IP4(status)      (((status) &amp; NETA_RX_L3_MASK) == NETA_RX_L3_IP4)
+
+#define NETA_RX_L3_IS_IP4_ERR(status)  (((status) &amp; NETA_RX_L3_MASK) == NETA_RX_L3_IP4_ERR)
+
+#define NETA_RX_L3_IS_IP6(status)      (((status) &amp; NETA_RX_L3_MASK) == NETA_RX_L3_IP6)
+
+#define NETA_RX_L4_IS_TCP(status)      (((status) &amp; NETA_RX_L4_MASK) == NETA_RX_L4_TCP)
+
+#define NETA_RX_L4_IS_UDP(status)      (((status) &amp; NETA_RX_L4_MASK) == NETA_RX_L4_UDP)
+
+#define NETA_RX_L4_IS_OTHER(status)    (((status) &amp; NETA_RX_L4_MASK) == NETA_RX_L4_OTHER)
+
+
+/* PnC result info */
+#define NETA_PNC_VLAN       (RI_VLAN  &gt;&gt; 9)
+#define NETA_PNC_DA_MC      (RI_DA_MC &gt;&gt; 9)
+#define NETA_PNC_DA_BC      (RI_DA_BC &gt;&gt; 9)
+#define NETA_PNC_DA_UC      (RI_DA_ME &gt;&gt; 9)
+#define NETA_PNC_PPPOE      (RI_PPPOE &gt;&gt; 9)
+#define NETA_PNC_RX_SPECIAL (RI_RX_SPECIAL &gt;&gt; 9)
+
+#endif /* DPA_ETH_PNC */
+
+#endif /* ___DPA_MV_NETA_H__ */
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/07/17" Time="15:18:50000">
+<Insert>#ifndef __MV_DPA_NETA_H
+#define __MV_DPA_NETA_H
+</Insert>
+<Copy StartSeek="52" EndSeek="2475"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/07/17" Time="15:19:22000">
+<Insert>#ifndef __MV_DPA_NETA_H__
+#define __MV_DPA_NETA_H__
+</Insert>
+<Copy StartSeek="54" EndSeek="2477"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/07/17" Time="15:19:44000">
+<Copy StartSeek="0" EndSeek="2341"/>
+<Insert>	MV_ULONG physAddr;
+	MV_U8 *pBuf;
+</Insert>
+<Copy StartSeek="2388" EndSeek="2419"/>
+<Insert>	MV_U8  pool;
+	MV_U8  reserved;
+</Insert>
+<Copy StartSeek="2465" EndSeek="2504"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/07/17" Time="15:20:38000">
+<Copy StartSeek="0" EndSeek="2388"/>
+<Insert>	MV_U16 bytes;
+	MV_U16 offset;
+</Insert>
+<Copy StartSeek="2435" EndSeek="2481"/>
+<Insert>	MV_U16 vlanId;
+</Insert>
+<Copy StartSeek="2505" EndSeek="2528"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/07/17" Time="15:20:50000">
+<Copy StartSeek="0" EndSeek="982"/>
+<Insert>//#ifdef CONFIG_MV_ETH_PNC
+</Insert>
+<Copy StartSeek="1008" EndSeek="2527"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="08:31:11000">
+<Copy StartSeek="0" EndSeek="54"/>
+<Copy StartSeek="55" EndSeek="2528"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:05:27000">
+<Copy StartSeek="0" EndSeek="2528"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:05:44000">
+<Copy StartSeek="0" EndSeek="2520"/>
+<Insert>#endif
+</Insert>
+<Copy StartSeek="2551" EndSeek="2584"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:05:50000">
+<Copy StartSeek="0" EndSeek="2520"/>
+<Insert>#endif /*CONFIG_DPA_ETH_PNC */
+</Insert>
+<Copy StartSeek="2552" EndSeek="2585"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:05:52000">
+<Copy StartSeek="0" EndSeek="2300"/>
+<Copy StartSeek="2842" EndSeek="3127"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:09:59000">
+<Copy StartSeek="0" EndSeek="2389"/>
+<Insert>	MV_U16  dataSize;
+	MV_U16  pncInfo;
+	MV_U32  status;
+	MV_U32  pncFlowId;
+	MV_U32  bufPhysAddr;
+	MV_U16  csumL4;
+	MV_U16  prefetchCmd;
+	MV_U32  bufCookie;
+	MV_U32  hw_cmd;
+	MV_U32  pncExtra;
+</Insert>
+<Copy StartSeek="2648" EndSeek="2702"/>
+<Insert>	MV_U32  status;
+	MV_U16  pncInfo;
+	MV_U16  dataSize;
+	MV_U32  bufPhysAddr;
+	MV_U32  pncFlowId;
+	MV_U32  bufCookie;
+	MV_U16  prefetchCmd;
+	MV_U16  csumL4;
+	MV_U32  pncExtra;
+	MV_U32  hw_cmd;
+</Insert>
+<Copy StartSeek="2961" EndSeek="3263"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:10:27000">
+<Copy StartSeek="0" EndSeek="2978"/>
+<Copy StartSeek="2985" EndSeek="3270"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:11:27000">
+<Copy StartSeek="0" EndSeek="2985"/>
+<Copy StartSeek="2986" EndSeek="3271"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:11:28000">
+<Copy StartSeek="0" EndSeek="55"/>
+<Copy StartSeek="82" EndSeek="3298"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:15:43000">
+<Copy StartSeek="0" EndSeek="55"/>
+<Insert>#include &lt;eth/eth_regs.h&gt;
+</Insert>
+<Copy StartSeek="83" EndSeek="3300"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:17:20000">
+<Copy StartSeek="0" EndSeek="55"/>
+<Insert>//#include &lt;eth/eth_regs.h&gt;
+</Insert>
+<Copy StartSeek="81" EndSeek="3298"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:17:49000">
+<Copy StartSeek="0" EndSeek="1010"/>
+<Insert>#ifdef CONFIG_DPA_ETH_PNC
+</Insert>
+<Copy StartSeek="1029" EndSeek="3291"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:18:1000">
+<Copy StartSeek="0" EndSeek="3226"/>
+<Insert>#endif /* CONFIG_DPA_ETH_PNC */
+</Insert>
+<Copy StartSeek="3251" EndSeek="3284"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:18:5000">
+<Copy StartSeek="0" EndSeek="2320"/>
+<Insert>#if defined(DPA_CPU_BE) &amp;&amp; !defined(CONFIG_DPA_ETH_BE_WA)
+</Insert>
+<Copy StartSeek="2371" EndSeek="3277"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:19:52000">
+<Copy StartSeek="0" EndSeek="2372"/>
+<Insert>typedef struct neta_rx_desc {
+</Insert>
+<Copy StartSeek="2394" EndSeek="2653"/>
+<Insert>} NETA_RX_DESC;
+</Insert>
+<Copy StartSeek="2656" EndSeek="2664"/>
+<Insert>typedef struct neta_rx_desc {
+</Insert>
+<Copy StartSeek="2686" EndSeek="2945"/>
+<Insert>} NETA_RX_DESC;
+</Insert>
+<Copy StartSeek="2948" EndSeek="3235"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:20:40000">
+<Copy StartSeek="0" EndSeek="2957"/>
+<Insert>typedef struct eth_pbuf {
+</Insert>
+<Copy StartSeek="2975" EndSeek="3154"/>
+<Insert>} MV_ETH_PKT;
+</Insert>
+<Copy StartSeek="3157" EndSeek="3216"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:20:48000">
+<Copy StartSeek="0" EndSeek="2653"/>
+<Insert>};
+</Insert>
+<Copy StartSeek="2669" EndSeek="2677"/>
+<Insert>struct neta_rx_desc {
+</Insert>
+<Copy StartSeek="2707" EndSeek="2966"/>
+<Insert>};
+</Insert>
+<Copy StartSeek="2982" EndSeek="2991"/>
+<Insert>struct eth_pbuf {
+</Insert>
+<Copy StartSeek="3017" EndSeek="3196"/>
+<Insert>};
+</Insert>
+<Copy StartSeek="3210" EndSeek="3269"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:21:53000">
+<Copy StartSeek="0" EndSeek="2320"/>
+<Copy StartSeek="2321" EndSeek="3270"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:31:48000">
+<Copy StartSeek="0" EndSeek="2320"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2613" EndSeek="3562"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:32:32000">
+<Copy StartSeek="0" EndSeek="2612"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2638" EndSeek="3529"/>
+<Insert>#endif /* DPA_ETH_PNC */
+</Insert>
+<Copy StartSeek="3530" EndSeek="3563"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:33:9000">
+<Copy StartSeek="0" EndSeek="55"/>
+<Copy StartSeek="75" EndSeek="3583"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/07/18" Time="09:36:25000">
+<Copy StartSeek="0" EndSeek="1690"/>
+<Insert>#define NETA_RX_L3_IS_UN(status)       (((status) &amp; NETA_RX_L3_MASK) == NETA_RX_L3_UN)
+#define NETA_RX_L3_SET_UN(rxd)         ((rxd)-&gt;status |= NETA_RX_L3_UN)
+
+</Insert>
+<Copy StartSeek="1690" EndSeek="3423"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/07/19" Time="16:40:35000">
+<Copy StartSeek="0" EndSeek="102"/>
+<Copy StartSeek="128" EndSeek="3449"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/07/19" Time="17:08:41000">
+<Copy StartSeek="0" EndSeek="1310"/>
+<Insert>#define NETA_RX_L3_SET_IP4(rxd)        ((rxd)-&gt;status |= NETA_RX_L3_IP4)
+
+</Insert>
+<Copy StartSeek="1311" EndSeek="2451"/>
+<Insert>#if defined(DPA_CPU_BE) &amp;&amp; !defined(DPA_ETH_BE_WA)
+
+struct neta_rx_desc {
+	unsigned short  dataSize;
+	unsigned short  pncInfo;
+	unsigned int  status;
+	unsigned int  pncFlowId;
+	unsigned int  bufPhysAddr;
+	unsigned short  csumL4;
+	unsigned short  prefetchCmd;
+	unsigned int  bufCookie;
+	unsigned int  hw_cmd;
+	unsigned int  pncExtra;
+} NETA_RX_DESC;
+
+#else
+
+typedef struct neta_rx_desc {
+	unsigned int  status;
+	unsigned short  pncInfo;
+	unsigned short  dataSize;
+	unsigned int  bufPhysAddr;
+	unsigned int  pncFlowId;
+	unsigned int  bufCookie;
+	unsigned short  prefetchCmd;
+	unsigned short  csumL4;
+	unsigned int  pncExtra;
+	unsigned int  hw_cmd;
+} NETA_RX_DESC;
+
+#endif
+
+typedef struct eth_pbuf {
+	void *osInfo;
+	unsigned long physAddr;
+	unsigned char *pBuf;
+	unsigned short bytes;
+	unsigned short offset;
+	unsigned char pool;
+	unsigned char reserved;
+	unsigned short vlanId;
+} MV_ETH_PKT;
+
+
+
+</Insert>
+<Copy StartSeek="2451" EndSeek="2483"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/08/06" Time="12:04:45000">
+<Copy StartSeek="0" EndSeek="102"/>
+<Insert>#define MV_ETH_MH_SIZE	2
+
+</Insert>
+<Copy StartSeek="102" EndSeek="333"/>
+<Insert>#define	NETA_RX_L4_CSUM_SET_OK(rxd)    ((rxd)-&gt;status |= NETA_RX_L4_CSUM_OK_MASK)
+
+</Insert>
+<Copy StartSeek="333" EndSeek="406"/>
+<Insert>#define NETA_RX_SET_PPPOE(rxd)         ((rxd)-&gt;pncInfo |= NETA_PNC_PPPOE)
+
+</Insert>
+<Copy StartSeek="406" EndSeek="519"/>
+<Insert>#define NETA_RX_SET_IPHDR_OFFSET(rxd, offs) ((rxd)-&gt;status |= ((offs) &lt;&lt; NETA_RX_L3_OFFSET_OFFS) &amp; NETA_RX_L3_OFFSET_MASK)
+
+</Insert>
+<Copy StartSeek="520" EndSeek="1096"/>
+<Insert>#define NETA_RX_L3_SET_IP4_ERR(rxd)    ((rxd)-&gt;status |= NETA_RX_L3_IP4_ERR)
+
+</Insert>
+<Copy StartSeek="1097" EndSeek="2099"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/08/06" Time="12:11:11000">
+<Copy StartSeek="0" EndSeek="176"/>
+<Insert>#define NETA_RX_IP_SET_FRAG(rxd)       ((rxd)-&gt;status |= NETA_RX_IP4_FRAG_MASK)
+
+</Insert>
+<Copy StartSeek="177" EndSeek="2019"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/08/06" Time="12:11:22000">
+<Copy StartSeek="0" EndSeek="176"/>
+<Insert>
+</Insert>
+<Copy StartSeek="176" EndSeek="548"/>
+<Insert>#define NETA_RX_SET_IPHDR_HDRLEN(rxd, hlen) ((rxd)-&gt;status |= ((hlen) &lt;&lt; NETA_RX_IP_HLEN_OFFS) &amp; NETA_RX_IP_HLEN_MASK)
+
+</Insert>
+<Copy StartSeek="549" EndSeek="1899"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/08/06" Time="12:11:30000">
+<Copy StartSeek="0" EndSeek="985"/>
+<Insert>#define NETA_RX_L3_SET_IP6(rxd)        ((rxd)-&gt;status |= NETA_RX_L3_IP6)
+
+</Insert>
+<Copy StartSeek="986" EndSeek="1074"/>
+<Insert>#define NETA_RX_L4_SET_TCP(rxd)        ((rxd)-&gt;status |= NETA_RX_L4_TCP)
+
+</Insert>
+<Copy StartSeek="1075" EndSeek="1163"/>
+<Insert>#define NETA_RX_L4_SET_UDP(rxd)        ((rxd)-&gt;status |= NETA_RX_L4_UDP)
+
+</Insert>
+<Copy StartSeek="1164" EndSeek="1254"/>
+<Insert>#define NETA_RX_L4_SET_OTHER(rxd)      ((rxd)-&gt;status |= NETA_RX_L4_OTHER)
+
+</Insert>
+<Copy StartSeek="1255" EndSeek="1605"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/08/06" Time="12:11:49000">
+<Copy StartSeek="0" EndSeek="1255"/>
+<Copy StartSeek="1751" EndSeek="2101"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/08/06" Time="12:13:9000">
+<Copy StartSeek="0" EndSeek="1255"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1264" EndSeek="1278"/>
+<Insert>#define RI_DA_MC            (BIT10)	/* multicast */
+#define RI_DA_BC            (BIT11)	/* broadcast */
+#define RI_DA_ME            (BIT12)	/* unicast */
+#define RI_PPPOE            (BIT13)	/* PPPoE */
+</Insert>
+<Copy StartSeek="1488" EndSeek="1572"/>
+<Insert>#define RI_L3_FLOW          (BIT18)     /* L3 flow is found */
+#define RI_VLAN             (BIT19)     /* VLAN */
+#define RI_RX_SPECIAL       (BIT20)     /* Packet for special RX processing */
+</Insert>
+<Copy StartSeek="1771" EndSeek="2123"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/08/06" Time="12:15:55000">
+<Copy StartSeek="0" EndSeek="1255"/>
+<Insert>#define 
+</Insert>
+<Copy StartSeek="1281" EndSeek="2140"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/08/06" Time="12:16:17000">
+<Copy StartSeek="0" EndSeek="1255"/>
+<Insert>#define BIT(b)		 (1&lt;&lt;(b))
+/* mvPnc.h */
+#define RI_DA_MC            (BIT(10))	/* multicast */
+#define RI_DA_BC            (BIT(11))	/* broadcast */
+#define RI_DA_ME            (BIT(12))	/* unicast */
+#define RI_PPPOE            (BIT(13))	/* PPPoE */
+</Insert>
+<Copy StartSeek="1572" EndSeek="1656"/>
+<Insert>#define RI_L3_FLOW          (BIT(18))     /* L3 flow is found */
+#define RI_VLAN             (BIT(19))     /* VLAN */
+#define RI_RX_SPECIAL       (BIT(20))     /* Packet for special RX processing */
+</Insert>
+<Copy StartSeek="1858" EndSeek="1859"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1859" EndSeek="2209"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/08/06" Time="12:16:52000">
+<Copy StartSeek="0" EndSeek="55"/>
+<Insert>#include "_mvPnc.h"
+</Insert>
+<Copy StartSeek="55" EndSeek="82"/>
+<Copy StartSeek="659" EndSeek="1839"/>
+<Insert>/***************************** mvPnc.h ***********************************/
+#define RI_DA_MC            	(BIT(10))	/* multicast */
+#define RI_DA_BC            	(BIT(11))	/* broadcast */
+#define RI_DA_ME            	(BIT(12))	/* unicast */
+#define RI_PPPOE            	(BIT(13))	/* PPPoE */
+/* BITS 14-17 are reserved for setting MH field in HWF packets (TXz_MH_reg_1-15) */
+#define RI_L3_FLOW          	(BIT(18))     /* L3 flow is found */
+#define RI_VLAN             	(BIT(19))     /* VLAN */
+#define RI_RX_SPECIAL       	(BIT(20))     /* Packet for special RX processing */
+
+</Insert>
+<Copy StartSeek="1840" EndSeek="2190"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/08/06" Time="12:17:12000">
+<Copy StartSeek="0" EndSeek="658"/>
+<Insert>
+</Insert>
+<Copy StartSeek="735" EndSeek="2266"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/08/06" Time="12:17:52000">
+<Copy StartSeek="0" EndSeek="158"/>
+<Copy StartSeek="184" EndSeek="1914"/>
+<Insert>#define BIT(b)			(1&lt;&lt;(b))
+</Insert>
+<Copy StartSeek="1915" EndSeek="2267"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/08/06" Time="12:18:11000">
+<Copy StartSeek="0" EndSeek="1915"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="1915" EndSeek="2265"/>
+</Delta>
+</DeltaFile>

@@ -1,0 +1,271 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1" Comment="" Date="2012/05/03" Time="15:03:6000" NL="\10" Encoding="text">
+<Insert>/* Helper handling for netfilter. */
+
+/* (C) 1999-2001 Paul `Rusty' Russell
+ * (C) 2002-2006 Netfilter Core Team &lt;coreteam@netfilter.org&gt;
+ * (C) 2003,2004 USAGI/WIDE Project &lt;http://www.linux-ipv6.org&gt;
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+
+#include &lt;linux/types.h&gt;
+#include &lt;linux/netfilter.h&gt;
+#include &lt;linux/module.h&gt;
+#include &lt;linux/skbuff.h&gt;
+#include &lt;linux/vmalloc.h&gt;
+#include &lt;linux/stddef.h&gt;
+#include &lt;linux/slab.h&gt;
+#include &lt;linux/random.h&gt;
+#include &lt;linux/err.h&gt;
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/netdevice.h&gt;
+#include &lt;linux/rculist.h&gt;
+#include &lt;linux/rtnetlink.h&gt;
+
+#include &lt;net/netfilter/nf_conntrack.h&gt;
+#include &lt;net/netfilter/nf_conntrack_l3proto.h&gt;
+#include &lt;net/netfilter/nf_conntrack_l4proto.h&gt;
+#include &lt;net/netfilter/nf_conntrack_helper.h&gt;
+#include &lt;net/netfilter/nf_conntrack_core.h&gt;
+#include &lt;net/netfilter/nf_conntrack_extend.h&gt;
+
+static DEFINE_MUTEX(nf_ct_helper_mutex);
+static struct hlist_head *nf_ct_helper_hash __read_mostly;
+static unsigned int nf_ct_helper_hsize __read_mostly;
+static unsigned int nf_ct_helper_count __read_mostly;
+static int nf_ct_helper_vmalloc;
+
+
+/* Stupid hash, but collision free for the default registrations of the
+ * helpers currently in the kernel. */
+static unsigned int helper_hash(const struct nf_conntrack_tuple *tuple)
+{
+	return (((tuple-&gt;src.l3num &lt;&lt; 8) | tuple-&gt;dst.protonum) ^
+		(__force __u16)tuple-&gt;src.u.all) % nf_ct_helper_hsize;
+}
+
+static struct nf_conntrack_helper *
+__nf_ct_helper_find(const struct nf_conntrack_tuple *tuple)
+{
+	struct nf_conntrack_helper *helper;
+	struct nf_conntrack_tuple_mask mask = { .src.u.all = htons(0xFFFF) };
+	struct hlist_node *n;
+	unsigned int h;
+
+	if (!nf_ct_helper_count)
+		return NULL;
+
+	h = helper_hash(tuple);
+	hlist_for_each_entry_rcu(helper, n, &amp;nf_ct_helper_hash[h], hnode) {
+		if (nf_ct_tuple_src_mask_cmp(tuple, &amp;helper-&gt;tuple, &amp;mask))
+			return helper;
+	}
+	return NULL;
+}
+
+struct nf_conntrack_helper *
+__nf_conntrack_helper_find_byname(const char *name)
+{
+	struct nf_conntrack_helper *h;
+	struct hlist_node *n;
+	unsigned int i;
+
+	for (i = 0; i &lt; nf_ct_helper_hsize; i++) {
+		hlist_for_each_entry_rcu(h, n, &amp;nf_ct_helper_hash[i], hnode) {
+			if (!strcmp(h-&gt;name, name))
+				return h;
+		}
+	}
+	return NULL;
+}
+EXPORT_SYMBOL_GPL(__nf_conntrack_helper_find_byname);
+
+struct nf_conn_help *nf_ct_helper_ext_add(struct nf_conn *ct, gfp_t gfp)
+{
+	struct nf_conn_help *help;
+
+	help = nf_ct_ext_add(ct, NF_CT_EXT_HELPER, gfp);
+	if (help)
+		INIT_HLIST_HEAD(&amp;help-&gt;expectations);
+	else
+		pr_debug("failed to add helper extension area");
+	return help;
+}
+EXPORT_SYMBOL_GPL(nf_ct_helper_ext_add);
+
+int __nf_ct_try_assign_helper(struct nf_conn *ct, gfp_t flags)
+{
+	int ret = 0;
+	struct nf_conntrack_helper *helper;
+	struct nf_conn_help *help = nfct_help(ct);
+
+	helper = __nf_ct_helper_find(&amp;ct-&gt;tuplehash[IP_CT_DIR_REPLY].tuple);
+	if (helper == NULL) {
+		if (help)
+			rcu_assign_pointer(help-&gt;helper, NULL);
+		goto out;
+	}
+
+	if (help == NULL) {
+		help = nf_ct_helper_ext_add(ct, flags);
+		if (help == NULL) {
+			ret = -ENOMEM;
+			goto out;
+		}
+	} else {
+		memset(&amp;help-&gt;help, 0, sizeof(help-&gt;help));
+	}
+
+	rcu_assign_pointer(help-&gt;helper, helper);
+out:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(__nf_ct_try_assign_helper);
+
+static inline int unhelp(struct nf_conntrack_tuple_hash *i,
+			 const struct nf_conntrack_helper *me)
+{
+	struct nf_conn *ct = nf_ct_tuplehash_to_ctrack(i);
+	struct nf_conn_help *help = nfct_help(ct);
+
+	if (help &amp;&amp; help-&gt;helper == me) {
+		nf_conntrack_event(IPCT_HELPER, ct);
+		rcu_assign_pointer(help-&gt;helper, NULL);
+	}
+	return 0;
+}
+
+void nf_ct_helper_destroy(struct nf_conn *ct)
+{
+	struct nf_conn_help *help = nfct_help(ct);
+	struct nf_conntrack_helper *helper;
+
+	if (help) {
+		rcu_read_lock();
+		helper = rcu_dereference(help-&gt;helper);
+		if (helper &amp;&amp; helper-&gt;destroy)
+			helper-&gt;destroy(ct);
+		rcu_read_unlock();
+	}
+}
+
+int nf_conntrack_helper_register(struct nf_conntrack_helper *me)
+{
+	unsigned int h = helper_hash(&amp;me-&gt;tuple);
+
+	BUG_ON(me-&gt;expect_policy == NULL);
+	BUG_ON(me-&gt;expect_class_max &gt;= NF_CT_MAX_EXPECT_CLASSES);
+	BUG_ON(strlen(me-&gt;name) &gt; NF_CT_HELPER_NAME_LEN - 1);
+	printk(KERN_ERR "(%s:%d) HAIM: port %u, name %s\n", __func__, __LINE__,
+	       ntohs(me-&gt;tuple.src.u.tcp.port), me-&gt;name);
+	
+	mutex_lock(&amp;nf_ct_helper_mutex);
+	hlist_add_head_rcu(&amp;me-&gt;hnode, &amp;nf_ct_helper_hash[h]);
+	nf_ct_helper_count++;
+	mutex_unlock(&amp;nf_ct_helper_mutex);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(nf_conntrack_helper_register);
+
+static void __nf_conntrack_helper_unregister(struct nf_conntrack_helper *me,
+					     struct net *net)
+{
+	struct nf_conntrack_tuple_hash *h;
+	struct nf_conntrack_expect *exp;
+	const struct hlist_node *n, *next;
+	const struct hlist_nulls_node *nn;
+	unsigned int i;
+
+	/* Get rid of expectations */
+	for (i = 0; i &lt; nf_ct_expect_hsize; i++) {
+		hlist_for_each_entry_safe(exp, n, next,
+					  &amp;net-&gt;ct.expect_hash[i], hnode) {
+			struct nf_conn_help *help = nfct_help(exp-&gt;master);
+			if ((help-&gt;helper == me || exp-&gt;helper == me) &amp;&amp;
+			    del_timer(&amp;exp-&gt;timeout)) {
+				nf_ct_unlink_expect(exp);
+				nf_ct_expect_put(exp);
+			}
+		}
+	}
+
+	/* Get rid of expecteds, set helpers to NULL. */
+	hlist_nulls_for_each_entry(h, nn, &amp;net-&gt;ct.unconfirmed, hnnode)
+		unhelp(h, me);
+	for (i = 0; i &lt; net-&gt;ct.htable_size; i++) {
+		hlist_nulls_for_each_entry(h, nn, &amp;net-&gt;ct.hash[i], hnnode)
+			unhelp(h, me);
+	}
+}
+
+void nf_conntrack_helper_unregister(struct nf_conntrack_helper *me)
+{
+	struct net *net;
+
+	mutex_lock(&amp;nf_ct_helper_mutex);
+	hlist_del_rcu(&amp;me-&gt;hnode);
+	nf_ct_helper_count--;
+	mutex_unlock(&amp;nf_ct_helper_mutex);
+
+	/* Make sure every nothing is still using the helper unless its a
+	 * connection in the hash.
+	 */
+	synchronize_rcu();
+
+	rtnl_lock();
+	spin_lock_bh(&amp;nf_conntrack_lock);
+	for_each_net(net)
+		__nf_conntrack_helper_unregister(me, net);
+	spin_unlock_bh(&amp;nf_conntrack_lock);
+	rtnl_unlock();
+}
+EXPORT_SYMBOL_GPL(nf_conntrack_helper_unregister);
+
+static struct nf_ct_ext_type helper_extend __read_mostly = {
+	.len	= sizeof(struct nf_conn_help),
+	.align	= __alignof__(struct nf_conn_help),
+	.id	= NF_CT_EXT_HELPER,
+};
+
+int nf_conntrack_helper_init(void)
+{
+	int err;
+
+	nf_ct_helper_hsize = 1; /* gets rounded up to use one page */
+	nf_ct_helper_hash = nf_ct_alloc_hashtable(&amp;nf_ct_helper_hsize,
+						  &amp;nf_ct_helper_vmalloc, 0);
+	if (!nf_ct_helper_hash)
+		return -ENOMEM;
+
+	err = nf_ct_extend_register(&amp;helper_extend);
+	if (err &lt; 0)
+		goto err1;
+
+	return 0;
+
+err1:
+	nf_ct_free_hashtable(nf_ct_helper_hash, nf_ct_helper_vmalloc,
+			     nf_ct_helper_hsize);
+	return err;
+}
+
+void nf_conntrack_helper_fini(void)
+{
+	nf_ct_extend_unregister(&amp;helper_extend);
+	nf_ct_free_hashtable(nf_ct_helper_hash, nf_ct_helper_vmalloc,
+			     nf_ct_helper_hsize);
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2010/04/02" Time="01:59:14000">
+<Copy StartSeek="0" EndSeek="4253"/>
+<Insert>
+</Insert>
+<Copy StartSeek="4380" EndSeek="6843"/>
+</Delta>
+</DeltaFile>

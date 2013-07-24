@@ -1,0 +1,608 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="57" Comment="" Date="2012/11/22" Time="17:27:10000" NL="\10" Encoding="text">
+<Insert>#ifndef __DPA_CHG_BIT_H__
+#define __DPA_CHG_BIT_H__
+
+#include &lt;dpa_types.h&gt;
+
+enum dpa_mdf_ops {
+	DPA_MDF_MH_CHG_BIT = 0,
+	DPA_MDF_MH_CHG = (1 &lt;&lt; DPA_MDF_MH_CHG_BIT),
+
+	DPA_MDF_MH_ADD_BIT = 1,
+	DPA_MDF_MH_ADD = (1 &lt;&lt; DPA_MDF_MH_ADD_BIT),
+
+	DPA_MDF_MH_DEL_BIT = 2,
+	DPA_MDF_MH_DEL = (1 &lt;&lt; DPA_MDF_MH_DEL_BIT),
+
+	DPA_MDF_ETH_CHG_BIT = 3,
+	DPA_MDF_ETH_CHG = (1 &lt;&lt; DPA_MDF_ETH_CHG_BIT),
+
+	DPA_MDF_VLAN_CHG_BIT = 4,
+	DPA_MDF_VLAN_CHG = (1 &lt;&lt; DPA_MDF_VLAN_CHG_BIT),
+	DPA_MDF_VLAN_ADD_BIT = 5,
+	DPA_MDF_VLAN_ADD = (1 &lt;&lt; DPA_MDF_VLAN_ADD_BIT),
+	DPA_MDF_VLAN_DEL_BIT = 6,
+	DPA_MDF_VLAN_DEL = (1 &lt;&lt; DPA_MDF_VLAN_DEL_BIT),
+
+	DPA_MDF_PPOE_CHG_BIT = 7,
+	DPA_MDF_PPOE_CHG = (1 &lt;&lt; DPA_MDF_PPOE_CHG_BIT),
+	DPA_MDF_PPOE_ADD_BIT = 8,
+	DPA_MDF_PPOE_ADD = (1 &lt;&lt; DPA_MDF_PPOE_ADD_BIT),
+	DPA_MDF_PPOE_DEL_BIT = 9,
+	DPA_MDF_PPOE_DEL = (1 &lt;&lt; DPA_MDF_PPOE_DEL_BIT),
+
+	DPA_MDF_L3_V4_CHG_BIT = 10,
+	DPA_MDF_L3_V4_CHG = (1 &lt;&lt; DPA_MDF_L3_V4_CHG_BIT),
+	DPA_MDF_L3_V6_CHG_BIT = 11,
+	DPA_MDF_L3_V6_CHG = (1 &lt;&lt; DPA_MDF_L3_V6_CHG_BIT),
+
+	DPA_MDF_L4_UDP_CHG_BIT = 12,
+	DPA_MDF_L4_UDP_CHG = (1 &lt;&lt; DPA_MDF_L4_UDP_CHG_BIT),
+	DPA_MDF_L4_TCP_CHG_BIT = 13,
+	DPA_MDF_L4_TCP_CHG = (1 &lt;&lt; DPA_MDF_L4_TCP_CHG_BIT),
+
+	DPA_MDF_MAX = DPA_MDF_L4_TCP_CHG_BIT,
+};
+
+void dpa_modify_pkt(eth_pkt_t *pkt);
+#endif
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="16:16:35000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Copy StartSeek="143" EndSeek="151"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="16:25:12000">
+<Copy StartSeek="0" EndSeek="143"/>
+<Copy StartSeek="174" EndSeek="182"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:09:18000">
+<Copy StartSeek="0" EndSeek="173"/>
+<Insert>
+</Insert>
+<Copy StartSeek="173" EndSeek="181"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:09:28000">
+<Copy StartSeek="0" EndSeek="143"/>
+<Insert>struct dpa_modifier *dpm_tbl;
+</Insert>
+<Copy StartSeek="143" EndSeek="151"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:09:42000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Copy StartSeek="142" EndSeek="246"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:15:41000">
+<Copy StartSeek="0" EndSeek="84"/>
+<Insert>#define DPM_VLAN 2
+#define DPM_PPOE 4
+#define DPM_PPOE 4
+
+</Insert>
+<Copy StartSeek="171" EndSeek="275"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:16:30000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>#define DPM_ETH 1
+#define DPM_VLAN 2
+#define DPM_VLAN_ADD 4
+#define DPM_VLAN_DEL 8
+#define DPM_PPOE 16
+#define DPM_PPOE 32
+</Insert>
+<Copy StartSeek="171" EndSeek="276"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:17:4000">
+<Copy StartSeek="0" EndSeek="71"/>
+<Copy StartSeek="72" EndSeek="145"/>
+<Copy StartSeek="146" EndSeek="278"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:17:8000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>#define DPM_ETH_MDFY 	1
+</Insert>
+<Copy StartSeek="73" EndSeek="74"/>
+<Insert>#define DPM_VLAN_MDFY 	2
+#define DPM_VLAN_ADD 	4
+#define DPM_VLAN_DEL 	8
+</Insert>
+<Copy StartSeek="153" EndSeek="154"/>
+<Insert>#define DPM_PPOE_MDFY 	16
+
+
+</Insert>
+<Copy StartSeek="238" EndSeek="342"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:19:16000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>#define DPM_ETH_MDFY 	0x1
+</Insert>
+<Copy StartSeek="75" EndSeek="76"/>
+<Insert>#define DPM_VLAN_MDFY 	0x2
+#define DPM_VLAN_ADD 	0x4
+#define DPM_VLAN_DEL 	0x8
+</Insert>
+<Copy StartSeek="161" EndSeek="162"/>
+<Insert>#define DPM_PPOE_MDFY 	0x10
+#define DPM_PPOE_ADD 	0x20
+#define DPM_PPOE_DEL 	0x40
+</Insert>
+<Copy StartSeek="250" EndSeek="356"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:19:39000">
+<Copy StartSeek="0" EndSeek="251"/>
+<Insert>
+</Insert>
+<Copy StartSeek="282" EndSeek="386"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:22:54000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>#define DPM_ETH_MDFY 	0x1UL
+</Insert>
+<Copy StartSeek="73" EndSeek="74"/>
+<Insert>#define DPM_VLAN_MDFY 	0x2UL
+#define DPM_VLAN_ADD 	0x4UL
+#define DPM_VLAN_DEL 	0x8UL
+</Insert>
+<Copy StartSeek="153" EndSeek="154"/>
+<Insert>#define DPM_PPOE_MDFY 	0x10UL
+#define DPM_PPOE_ADD 	0x20UL
+#define DPM_PPOE_DEL 	0x40UL
+</Insert>
+<Copy StartSeek="236" EndSeek="237"/>
+<Insert>#define DPM_PPOE_MDFY 	0x10UL
+</Insert>
+<Copy StartSeek="265" EndSeek="370"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:23:2000">
+<Copy StartSeek="0" EndSeek="74"/>
+<Insert>#define DPM_VLAN_MDFY 	0x2
+#define DPM_VLAN_ADD 	0x4
+#define DPM_VLAN_DEL 	0x8
+</Insert>
+<Copy StartSeek="146" EndSeek="147"/>
+<Insert>#define DPM_PPOE_MDFY 	0x10
+#define DPM_PPOE_ADD 	0x20
+#define DPM_PPOE_DEL 	0x40
+</Insert>
+<Copy StartSeek="229" EndSeek="230"/>
+<Copy StartSeek="315" EndSeek="448"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:23:46000">
+<Copy StartSeek="0" EndSeek="315"/>
+<Insert>#define DPM_PPOE_MDFY 	0x10
+</Insert>
+<Copy StartSeek="316" EndSeek="421"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:24:9000">
+<Copy StartSeek="0" EndSeek="315"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="378" EndSeek="482"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:24:48000">
+<Copy StartSeek="0" EndSeek="345"/>
+<Insert>#define DPM_L3_V6_MDFY 	0x400
+</Insert>
+<Copy StartSeek="375" EndSeek="482"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:24:50000">
+<Copy StartSeek="0" EndSeek="376"/>
+<Insert>
+</Insert>
+<Copy StartSeek="407" EndSeek="408"/>
+<Copy StartSeek="410" EndSeek="514"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:25:35000">
+<Copy StartSeek="0" EndSeek="407"/>
+<Insert>
+</Insert>
+<Copy StartSeek="438" EndSeek="440"/>
+<Copy StartSeek="441" EndSeek="545"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:25:44000">
+<Copy StartSeek="0" EndSeek="526"/>
+<Copy StartSeek="540" EndSeek="559"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:27:9000">
+<Copy StartSeek="0" EndSeek="439"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="439" EndSeek="557"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:31:9000">
+<Copy StartSeek="0" EndSeek="439"/>
+<Insert>struct dpa_modifier {
+	void (*op)(eth_pkt_t *pkt);
+#ifdef __DPA_DEBUG__
+	char *name;
+	uint32_t id;
+#endif
+};
+
+</Insert>
+<Copy StartSeek="439" EndSeek="447"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:40:28000">
+<Copy StartSeek="0" EndSeek="439"/>
+<Copy StartSeek="459" EndSeek="467"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:41:3000">
+<Copy StartSeek="0" EndSeek="439"/>
+<Insert>#define DPM_MAX		32
+</Insert>
+<Copy StartSeek="439" EndSeek="447"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:41:29000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Copy StartSeek="292" EndSeek="683"/>
+<Insert>
+</Insert>
+<Copy StartSeek="686" EndSeek="694"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:45:59000">
+<Copy StartSeek="0" EndSeek="285"/>
+<Copy StartSeek="313" EndSeek="722"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:46:19000">
+<Copy StartSeek="0" EndSeek="285"/>
+<Insert>	DPM_LAST = DPM_L4_TCP_MDFY
+</Insert>
+<Copy StartSeek="314" EndSeek="723"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:46:21000">
+<Copy StartSeek="0" EndSeek="285"/>
+<Copy StartSeek="286" EndSeek="724"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:46:23000">
+<Copy StartSeek="0" EndSeek="286"/>
+<Insert>	DPM_LAST = DPM_L4_TCP_MDFY,
+</Insert>
+<Copy StartSeek="314" EndSeek="723"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:46:30000">
+<Copy StartSeek="0" EndSeek="136"/>
+<Copy StartSeek="152" EndSeek="739"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:50:47000">
+<Copy StartSeek="0" EndSeek="136"/>
+<Copy StartSeek="137" EndSeek="740"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:50:47000">
+<Copy StartSeek="0" EndSeek="335"/>
+<Insert>/*
+#define DPM_ETH_MDFY 	0x1
+
+#define DPM_MH_MDFY 	0x2
+#define DPM_MH_ADD 	0x4
+#define DPM_MH_DEL	0x8
+
+#define DPM_VLAN_MDFY 	0x10
+#define DPM_VLAN_ADD 	0x20
+#define DPM_VLAN_DEL 	0x40
+
+#define DPM_PPOE_MDFY 	0x80
+#define DPM_PPOE_ADD 	0x100
+#define DPM_PPOE_DEL 	0x200
+
+#define DPM_L3_V4_MDFY 	0x400
+#define DPM_L3_V6_MDFY 	0x800
+
+#define DPM_L4_UDP_MDFY	0x1000
+#define DPM_L4_TCP_MDFY	0x2000
+*/
+</Insert>
+<Copy StartSeek="335" EndSeek="343"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="13:59:57000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>enum {
+</Insert>
+<Copy StartSeek="62" EndSeek="339"/>
+<Insert>};
+</Insert>
+<Copy StartSeek="352" EndSeek="361"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:31:1000">
+<Copy StartSeek="0" EndSeek="339"/>
+<Insert>} dpm_nodes;
+</Insert>
+<Copy StartSeek="354" EndSeek="363"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:31:17000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>typedef enum {
+</Insert>
+<Copy StartSeek="54" EndSeek="331"/>
+<Insert>} dpm_nodes_t;
+</Insert>
+<Copy StartSeek="334" EndSeek="343"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:40:58000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>enum {
+</Insert>
+<Copy StartSeek="64" EndSeek="353"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:42:20000">
+<Copy StartSeek="0" EndSeek="80"/>
+<Insert>	DPM_MH_MDFY DPM_FIRST,
+</Insert>
+<Copy StartSeek="106" EndSeek="355"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:43:44000">
+<Copy StartSeek="0" EndSeek="347"/>
+<Copy StartSeek="383" EndSeek="391"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:08:36000">
+<Copy StartSeek="0" EndSeek="347"/>
+<Insert>void dpa_modify_pkt(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="384" EndSeek="392"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:08:41000">
+<Copy StartSeek="0" EndSeek="46"/>
+<Insert>
+</Insert>
+<Copy StartSeek="69" EndSeek="414"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:09:8000">
+<Copy StartSeek="0" EndSeek="46"/>
+<Copy StartSeek="47" EndSeek="70"/>
+<Copy StartSeek="71" EndSeek="416"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:09:14000">
+<Copy StartSeek="0" EndSeek="371"/>
+<Insert>void dpa_modify_pkt(eth_pkt_t *pkt);
+</Insert>
+<Copy StartSeek="408" EndSeek="416"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:12:51000">
+<Copy StartSeek="0" EndSeek="371"/>
+<Insert>void dpm_modify_pkt(eth_pkt_t *pkt);
+</Insert>
+<Copy StartSeek="408" EndSeek="416"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:13:0000">
+<Copy StartSeek="0" EndSeek="71"/>
+<Insert>enum DPM_NODES {
+</Insert>
+<Copy StartSeek="86" EndSeek="414"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:34:54000">
+<Copy StartSeek="0" EndSeek="71"/>
+<Insert>enum dpm_ops {
+</Insert>
+<Copy StartSeek="86" EndSeek="414"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:35:16000">
+<Copy StartSeek="0" EndSeek="71"/>
+<Insert>enum DPM_OPS {
+</Insert>
+<Copy StartSeek="86" EndSeek="414"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:35:20000">
+<Copy StartSeek="0" EndSeek="86"/>
+<Insert>	DPM_FIRST = 1,
+</Insert>
+<Copy StartSeek="102" EndSeek="414"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:36:0000">
+<Copy StartSeek="0" EndSeek="86"/>
+<Insert>	DPM_FIRST = 0,
+	DPM_MH_MDFY = DPM_FIRST,
+</Insert>
+<Copy StartSeek="104" EndSeek="390"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:36:17000">
+<Insert>#ifndef __DPA_MDFY_H__
+#define __DPA_MDFY_H__
+</Insert>
+<Copy StartSeek="54" EndSeek="94"/>
+<Insert>	DPM_MH_MDFY = 0,
+	DPM_MH_ADD,
+	DPM_MH_DEL,
+</Insert>
+<Copy StartSeek="150" EndSeek="151"/>
+<Insert>	DPM_ETH_MDFY,
+</Insert>
+<Copy StartSeek="170" EndSeek="171"/>
+<Insert>	DPM_VLAN_MDFY,
+	DPM_VLAN_ADD,
+	DPM_VLAN_DEL,
+</Insert>
+<Copy StartSeek="229" EndSeek="230"/>
+<Insert>	DPM_PPOE_MDFY,
+	DPM_PPOE_ADD,
+	DPM_PPOE_DEL,
+</Insert>
+<Copy StartSeek="288" EndSeek="289"/>
+<Insert>	DPM_L3_V4_MDFY,
+	DPM_L3_V6_MDFY,
+</Insert>
+<Copy StartSeek="331" EndSeek="332"/>
+<Insert>	DPM_L4_UDP_MDFY,
+	DPM_L4_TCP_MDFY,
+</Insert>
+<Copy StartSeek="376" EndSeek="377"/>
+<Insert>	DPM_MAX = DPM_L4_TCP_MDFY,
+</Insert>
+<Copy StartSeek="409" EndSeek="458"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:38:45000">
+<Copy StartSeek="0" EndSeek="116"/>
+<Copy StartSeek="155" EndSeek="497"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:39:23000">
+<Copy StartSeek="0" EndSeek="116"/>
+<Insert>	DPM_MH_MDFY = (1 &lt;&lt; DPM_MH_MDFY_BIT),
+</Insert>
+<Copy StartSeek="116" EndSeek="458"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:39:42000">
+<Copy StartSeek="0" EndSeek="116"/>
+<Insert>	DPM_MH_ADD_BIT,
+	DPM_MH_DEL_BIT,
+</Insert>
+<Copy StartSeek="158" EndSeek="159"/>
+<Insert>	DPM_ETH_MDFY_BIT,
+</Insert>
+<Copy StartSeek="182" EndSeek="183"/>
+<Insert>	DPM_VLAN_MDFY_BIT,
+	DPM_VLAN_ADD_BIT,
+	DPM_VLAN_DEL_BIT,
+</Insert>
+<Copy StartSeek="253" EndSeek="254"/>
+<Insert>	DPM_PPOE_MDFY_BIT,
+	DPM_PPOE_ADD_BIT,
+	DPM_PPOE_DEL_BIT,
+</Insert>
+<Copy StartSeek="324" EndSeek="325"/>
+<Insert>	DPM_L3_V4_MDFY_BIT,
+	DPM_L3_V6_MDFY_BIT,
+</Insert>
+<Copy StartSeek="377" EndSeek="378"/>
+<Insert>	DPM_L4_UDP_MDFY_BIT,
+	DPM_L4_TCP_MDFY_BIT,
+</Insert>
+<Copy StartSeek="432" EndSeek="514"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:40:30000">
+<Copy StartSeek="0" EndSeek="116"/>
+<Copy StartSeek="156" EndSeek="177"/>
+<Copy StartSeek="215" EndSeek="236"/>
+<Insert>
+</Insert>
+<Copy StartSeek="274" EndSeek="297"/>
+<Insert>
+</Insert>
+<Copy StartSeek="339" EndSeek="363"/>
+<Copy StartSeek="406" EndSeek="429"/>
+<Copy StartSeek="470" EndSeek="493"/>
+<Insert>
+</Insert>
+<Copy StartSeek="535" EndSeek="559"/>
+<Copy StartSeek="602" EndSeek="625"/>
+<Copy StartSeek="666" EndSeek="689"/>
+<Insert>
+</Insert>
+<Copy StartSeek="731" EndSeek="920"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:42:46000">
+<Copy StartSeek="0" EndSeek="757"/>
+<Copy StartSeek="802" EndSeek="828"/>
+<Insert>
+</Insert>
+<Copy StartSeek="874" EndSeek="901"/>
+<Copy StartSeek="949" EndSeek="976"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1024" EndSeek="1105"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:42:55000">
+<Copy StartSeek="0" EndSeek="802"/>
+<Copy StartSeek="803" EndSeek="1106"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:43:9000">
+<Copy StartSeek="0" EndSeek="802"/>
+<Insert>
+</Insert>
+<Copy StartSeek="802" EndSeek="948"/>
+<Insert>
+</Insert>
+<Copy StartSeek="948" EndSeek="1104"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:43:19000">
+<Copy StartSeek="0" EndSeek="79"/>
+<Insert>enum dpm_ops {
+	DPM_MH_MDFY_BIT = 0,
+	DPM_MH_MDFY = (1 &lt;&lt; DPM_MH_MDFY_BIT),
+</Insert>
+<Copy StartSeek="171" EndSeek="172"/>
+<Insert>	DPM_MH_ADD_BIT = 1,
+	DPM_MH_ADD = (1 &lt;&lt; DPM_MH_ADD_BIT),
+</Insert>
+<Copy StartSeek="242" EndSeek="243"/>
+<Insert>	DPM_MH_DEL_BIT = 2,
+	DPM_MH_DEL = (1 &lt;&lt; DPM_MH_DEL_BIT),
+</Insert>
+<Copy StartSeek="313" EndSeek="314"/>
+<Insert>	DPM_ETH_MDFY_BIT = 3,
+	DPM_ETH_MDFY = (1 &lt;&lt; DPM_ETH_MDFY_BIT),
+</Insert>
+<Copy StartSeek="390" EndSeek="391"/>
+<Insert>	DPM_VLAN_MDFY_BIT = 4,
+	DPM_VLAN_MDFY = (1 &lt;&lt; DPM_VLAN_MDFY_BIT),
+	DPM_VLAN_ADD_BIT = 5,
+	DPM_VLAN_ADD = (1 &lt;&lt; DPM_VLAN_ADD_BIT),
+	DPM_VLAN_DEL_BIT = 6,
+	DPM_VLAN_DEL = (1 &lt;&lt; DPM_VLAN_DEL_BIT),
+</Insert>
+<Copy StartSeek="622" EndSeek="623"/>
+<Insert>	DPM_PPOE_MDFY_BIT = 7,
+	DPM_PPOE_MDFY = (1 &lt;&lt; DPM_PPOE_MDFY_BIT),
+	DPM_PPOE_ADD_BIT = 8,
+	DPM_PPOE_ADD = (1 &lt;&lt; DPM_PPOE_ADD_BIT),
+	DPM_PPOE_DEL_BIT = 9,
+	DPM_PPOE_DEL = (1 &lt;&lt; DPM_PPOE_DEL_BIT),
+</Insert>
+<Copy StartSeek="854" EndSeek="855"/>
+<Insert>	DPM_L3_V4_MDFY_BIT = 10,
+	DPM_L3_V4_MDFY = (1 &lt;&lt; DPM_L3_V4_MDFY_BIT),
+	DPM_L3_V6_MDFY_BIT = 11,
+	DPM_L3_V6_MDFY = (1 &lt;&lt; DPM_L3_V6_MDFY_BIT),
+</Insert>
+<Copy StartSeek="1021" EndSeek="1022"/>
+<Insert>	DPM_L4_UDP_MDFY_BIT = 12,
+	DPM_L4_UDP_MDFY = (1 &lt;&lt; DPM_L4_UDP_MDFY_BIT),
+	DPM_L4_TCP_MDFY_BIT = 13,
+	DPM_L4_TCP_MDFY = (1 &lt;&lt; DPM_L4_TCP_MDFY_BIT),
+</Insert>
+<Copy StartSeek="1194" EndSeek="1195"/>
+<Insert>	DPM_MAX = DPM_L4_TCP_MDFY_BIT,
+</Insert>
+<Copy StartSeek="1235" EndSeek="1284"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:25:41000">
+<Insert>#ifndef __DPA_MDFY_BIT_H__
+#define __DPA_MDFY_BIT_H__
+</Insert>
+<Copy StartSeek="52" EndSeek="96"/>
+<Insert>	DPA_MDF_MH_MDFY_BIT = 0,
+	DPA_MDF_MH_MDFY = (1 &lt;&lt; DPA_MDF_MH_MDFY_BIT),
+</Insert>
+<Copy StartSeek="166" EndSeek="309"/>
+<Insert>	DPA_MDF_ETH_MDFY_BIT = 3,
+	DPA_MDF_ETH_MDFY = (1 &lt;&lt; DPA_MDF_ETH_MDFY_BIT),
+</Insert>
+<Copy StartSeek="382" EndSeek="383"/>
+<Insert>	DPA_MDF_VLAN_MDFY_BIT = 4,
+	DPA_MDF_VLAN_MDFY = (1 &lt;&lt; DPA_MDF_VLAN_MDFY_BIT),
+</Insert>
+<Copy StartSeek="459" EndSeek="612"/>
+<Insert>	DPA_MDF_PPOE_MDFY_BIT = 7,
+	DPA_MDF_PPOE_MDFY = (1 &lt;&lt; DPA_MDF_PPOE_MDFY_BIT),
+</Insert>
+<Copy StartSeek="688" EndSeek="841"/>
+<Insert>	DPA_MDF_L3_V4_MDFY_BIT = 10,
+	DPA_MDF_L3_V4_MDFY = (1 &lt;&lt; DPA_MDF_L3_V4_MDFY_BIT),
+	DPA_MDF_L3_V6_MDFY_BIT = 11,
+	DPA_MDF_L3_V6_MDFY = (1 &lt;&lt; DPA_MDF_L3_V6_MDFY_BIT),
+</Insert>
+<Copy StartSeek="1001" EndSeek="1002"/>
+<Insert>	DPA_MDF_L4_UDP_MDFY_BIT = 12,
+	DPA_MDF_L4_UDP_MDFY = (1 &lt;&lt; DPA_MDF_L4_UDP_MDFY_BIT),
+	DPA_MDF_L4_TCP_MDFY_BIT = 13,
+	DPA_MDF_L4_TCP_MDFY = (1 &lt;&lt; DPA_MDF_L4_TCP_MDFY_BIT),
+</Insert>
+<Copy StartSeek="1168" EndSeek="1169"/>
+<Insert>	DPA_MDF_MAX = DPA_MDF_L4_TCP_MDFY_BIT,
+</Insert>
+<Copy StartSeek="1208" EndSeek="1257"/>
+</Delta>
+</DeltaFile>

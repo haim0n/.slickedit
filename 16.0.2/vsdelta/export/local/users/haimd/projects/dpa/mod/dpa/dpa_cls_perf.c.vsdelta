@@ -1,0 +1,2957 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="399" Comment="" Date="2012/11/26" Time="17:24:48000" NL="\10" Encoding="text">
+<Insert>#include &lt;dpa_types.h&gt;
+#include &lt;dpa_os.h&gt;
+#include &lt;util/string.h&gt;
+#include &lt;log/log.h&gt;
+#include &lt;dpa/../../platform/linux_kernel_space/eth/eth_regs.h&gt;
+#include "dpa_cls_perf.h"
+#include "dpa_cls.h"
+#include "/export/nases/filerpt108_voip_gtw_sw/Tools/cpuc/incl/cpuc_api.h"
+
+#define DPA_CLS_DBG(format, args...) /* DPA_DBG(format, ##args) */
+
+#define PKT_SZ 128
+#define PERF_DST_IP 0x01010101
+#define PERF_SRC_IP 0x02020202
+
+#define PERF_DPORT 0x6666
+#define PERF_SPORT 0x8080
+
+static char pkt_raw_data[PKT_SZ] = {0};
+static eth_pkt_t perf_pkt = {0};
+static eth_rx_desc_t perf_pkt_rx_desc = {0};
+
+static void init_perf_pkt_rx_desc(eth_pkt_t *pkt)
+{
+	if (pkt-&gt;ip_hdr-&gt;version == 4) {
+		pkt-&gt;rx_desc-&gt;status |= NETA_RX_L3_IP4;
+	}
+	if (pkt-&gt;ip_hdr-&gt;version == 6) {
+		pkt-&gt;rx_desc-&gt;status |= NETA_RX_L3_IP6;
+	}
+	if (pkt-&gt;ip_hdr-&gt;protocol == DPA_IP_PROTO_TCP) {
+		pkt-&gt;rx_desc-&gt;status |= NETA_RX_L4_TCP;
+	}
+	if (pkt-&gt;ip_hdr-&gt;protocol == DPA_IP_PROTO_UDP) {
+		pkt-&gt;rx_desc-&gt;status |= NETA_RX_L4_UDP;
+	}
+	pkt-&gt;rx_desc-&gt;status |= NETA_RX_L4_CSUM_OK_MASK;
+	pkt-&gt;rx_desc-&gt;pnc_info |= NETA_PNC_DA_UC;
+
+}
+
+static void init_perf_pkt_tcphdr(dpa_tcp_hdr_t *th)
+{
+	th-&gt;source = dpa_htons(PERF_SPORT);
+	th-&gt;dest = dpa_htons(PERF_DPORT);
+}
+
+static void init_perf_pkt_iph(dpa_ip_hdr_t *iph)
+{
+	iph-&gt;daddr = dpa_htonl(PERF_DST_IP);
+	iph-&gt;saddr = dpa_htonl(PERF_SRC_IP);
+	iph-&gt;protocol = DPA_IP_PROTO_TCP;
+	iph-&gt;version = 4;
+	iph-&gt;ihl = 5;
+}
+
+static void init_perf_pkt(eth_pkt_t *pkt)
+{
+	pkt-&gt;eth_hdr = (dpa_eth_hdr_t *)((uint8_t *)pkt_raw_data + 2);
+	pkt-&gt;size = PKT_SZ;
+	dpa_memset(pkt-&gt;eth_hdr-&gt;h_dest, 0x11, 6);
+	dpa_memset(pkt-&gt;eth_hdr-&gt;h_source, 0x22,6);
+	pkt-&gt;eth_hdr-&gt;h_proto = dpa_htons(0x0800);
+	pkt-&gt;ip_hdr = (dpa_ip_hdr_t  *)((uint8_t *)(pkt-&gt;eth_hdr) + sizeof(dpa_eth_hdr_t));
+	pkt-&gt;rx_desc = &amp;perf_pkt_rx_desc;
+	pkt-&gt;buff = (uint8_t *)pkt-&gt;eth_hdr;
+
+	init_perf_pkt_iph(pkt-&gt;ip_hdr);
+	init_perf_pkt_tcphdr((dpa_tcp_hdr_t *)((uint8_t *)(pkt-&gt;ip_hdr) + 20));
+	init_perf_pkt_rx_desc(pkt);
+}
+
+eth_pkt_t *get_perf_pkt(void)
+{
+	init_perf_pkt(&amp;perf_pkt);
+
+	return &amp;perf_pkt;
+}
+
+static void dpa_perf_modify_pkt(eth_pkt_t *pkt)
+{
+	dpa_memset(pkt-&gt;eth_hdr-&gt;h_dest, 0xaa, 12); /* modify mac */
+	pkt-&gt;ip_hdr-&gt;saddr ^= 1; /* toggle ip address */
+	pkt-&gt;ip_hdr-&gt;daddr ^= 1; /* toggle ip address */
+	pkt-&gt;l4_hdr-&gt;dest ^= 1; /* toggle dport */
+	pkt-&gt;l4_hdr-&gt;source ^= 1; /* restore dport */
+}
+
+static void dpa_perf_restore_pkt(eth_pkt_t *pkt)
+{
+	dpa_memset(pkt-&gt;eth_hdr-&gt;h_dest, 0x11, 6);
+	dpa_memset(pkt-&gt;eth_hdr-&gt;h_source, 0x22,6);
+
+	pkt-&gt;ip_hdr-&gt;saddr ^= 1; /* restore ip address */
+	pkt-&gt;ip_hdr-&gt;daddr ^= 1; /* toggle ip address */
+	pkt-&gt;l4_hdr-&gt;dest ^= 1; /* restore dport */
+	pkt-&gt;l4_hdr-&gt;source ^= 1; /* restore dport */
+}
+
+void dpa_perf_measure(eth_pkt_t *pkt)
+{
+	unsigned int i;
+	unsigned int state;
+	struct dpa_entry *dpe;
+	int types[4] = {C0_RETIRED_INSTRUCTION, C1_SINGLE_ISSUE, C2_CYCLE_COUNT, C3_DCACHE_READ_MISS};
+	int resolutions[4] = {-1,-1,-1,-1}; // bin widths in auto-calibration mode
+
+	CPUC_INIT_DEVICE();
+	CPUC_INIT_COUNTERS(types,resolutions);
+
+	/* the warmup aka DPA learning*/
+	i = 10;
+        while (i--) {
+//     	START_COUNT_BLOCK("cls_rx");
+		dpa_cls_rx(pkt);
+		dpa_perf_modify_pkt(pkt); /* simulate os nework stack */
+		dpa_cls_tx(pkt);
+		dpa_perf_restore_pkt(pkt); /* for next iteration */
+//    	READ_COUNT_BLOCK("cls_rx");
+        }
+	dpe = (struct dpa_entry *)pkt-&gt;dpa_handle;
+	if (dpe-&gt;state != DPE_FWD) {
+			DPA_DBG("error in state %u\n", dpe-&gt;state);
+			return;
+	}
+
+	/* DPA FWD simulation */
+	i = 20000;
+	while (i--) {
+		START_COUNT_BLOCK("cls_rx");
+		state = dpa_cls_rx(pkt);
+		READ_COUNT_BLOCK("cls_rx");
+
+		if (state != DPE_FWD)
+			DPA_DBG("state %u\n", state);
+		dpa_perf_restore_pkt(pkt); /* for next iteration */
+	}
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="12:48:27000">
+<Copy StartSeek="0" EndSeek="45"/>
+<Insert>
+</Insert>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="12:50:42000">
+<Copy StartSeek="0" EndSeek="45"/>
+<Insert>dpa_ip_hdr_t iph = {
+	.daddr = 0x10101010;
+	.saddr = 0x20202020;
+	 
+}
+</Insert>
+<Copy StartSeek="149" EndSeek="191"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="12:51:36000">
+<Copy StartSeek="0" EndSeek="115"/>
+<Insert>	.protocol = DPA_IP_PROTO_UDP,
+</Insert>
+<Copy StartSeek="222" EndSeek="258"/>
+<Insert>	pkt-&gt;
+}
+</Insert>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="12:54:52000">
+<Copy StartSeek="0" EndSeek="258"/>
+<Insert>	char *iplen = 
+</Insert>
+<Copy StartSeek="295" EndSeek="412"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="12:55:40000">
+<Copy StartSeek="0" EndSeek="295"/>
+<Copy StartSeek="296" EndSeek="413"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="12:55:41000">
+<Copy StartSeek="0" EndSeek="258"/>
+<Insert>	char *iplen = sizeof(dpa_ip_hdr_t);
+</Insert>
+<Copy StartSeek="303" EndSeek="421"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="12:55:48000">
+<Copy StartSeek="0" EndSeek="258"/>
+<Insert>	unsigned char iplen = sizeof(dpa_ip_hdr_t);
+</Insert>
+<Copy StartSeek="301" EndSeek="419"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="12:56:10000">
+<Copy StartSeek="0" EndSeek="302"/>
+<Insert>	dpa_memcpy(pkt-&gt;ip_hdr, &amp;perf_iph, sizeof(perf_iph));
+</Insert>
+<Copy StartSeek="344" EndSeek="406"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="12:56:18000">
+<Copy StartSeek="0" EndSeek="258"/>
+<Insert>	unsigned char ihl = sizeof(dpa_ip_hdr_t);
+</Insert>
+<Copy StartSeek="295" EndSeek="338"/>
+<Insert>	dpa_memcpy(pkt-&gt;ip_hdr + , &amp;perf_iph, sizeof(perf_iph));
+</Insert>
+<Copy StartSeek="413" EndSeek="417"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="12:57:6000">
+<Copy StartSeek="0" EndSeek="258"/>
+<Copy StartSeek="298" EndSeek="336"/>
+<Copy StartSeek="397" EndSeek="518"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:01:6000">
+<Copy StartSeek="0" EndSeek="368"/>
+<Insert>	eth_hdr-&gt;h_proto = 0x0800;
+</Insert>
+<Copy StartSeek="407" EndSeek="529"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:01:21000">
+<Copy StartSeek="0" EndSeek="408"/>
+<Copy StartSeek="448" EndSeek="569"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:01:55000">
+<Copy StartSeek="0" EndSeek="408"/>
+<Insert>	pkt-&gt;ip_hdr += sizeof(dpa_eth_hdr_t);
+</Insert>
+<Copy StartSeek="461" EndSeek="583"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:02:11000">
+<Copy StartSeek="0" EndSeek="408"/>
+<Insert>	pkt-&gt;ip_hdr = pkt-&gt;eth_hdr + sizeof(dpa_eth_hdr_t);
+</Insert>
+<Copy StartSeek="472" EndSeek="594"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:02:29000">
+<Copy StartSeek="0" EndSeek="45"/>
+<Insert>dpa_ip_hdr_t perf_iph = {
+</Insert>
+<Copy StartSeek="78" EndSeek="168"/>
+<Insert>dpa_tcp_hdr_t perf_th = {
+</Insert>
+<Copy StartSeek="201" EndSeek="240"/>
+<Copy StartSeek="241" EndSeek="609"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:03:18000">
+<Copy StartSeek="0" EndSeek="220"/>
+<Insert>	.dest = 0x6666
+</Insert>
+<Copy StartSeek="237" EndSeek="610"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:03:26000">
+<Copy StartSeek="0" EndSeek="606"/>
+<Insert>	
+}
+</Insert>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:03:43000">
+<Copy StartSeek="0" EndSeek="242"/>
+<Insert>void init_pkt(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="277" EndSeek="613"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:03:54000">
+<Copy StartSeek="0" EndSeek="241"/>
+<Insert>
+</Insert>
+<Copy StartSeek="373" EndSeek="744"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:07:43000">
+<Copy StartSeek="0" EndSeek="370"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="416" EndSeek="417"/>
+<Copy StartSeek="420" EndSeek="791"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:08:13000">
+<Copy StartSeek="0" EndSeek="416"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="419" EndSeek="790"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:08:18000">
+<Copy StartSeek="0" EndSeek="45"/>
+<Insert>static dpa_ip_hdr_t perf_iph = {
+	.daddr = 0x10101010,
+	.saddr = 0x20202020,
+	.protocol = DPA_IP_PROTO_TCP,
+	.ihl = 5;
+};
+
+static dpa_tcp_hdr_t perf_th = {
+	.source = 0x8080,
+	.dest = 0x6666,
+};
+
+</Insert>
+<Copy StartSeek="45" EndSeek="223"/>
+<Copy StartSeek="382" EndSeek="753"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:08:53000">
+<Copy StartSeek="0" EndSeek="284"/>
+<Insert>		.daddr = 0x10101010,
+		.saddr = 0x20202020,
+</Insert>
+<Copy StartSeek="344" EndSeek="767"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:09:22000">
+<Copy StartSeek="0" EndSeek="314"/>
+<Insert>		.saddr = ntohl(0x20202020),
+</Insert>
+<Copy StartSeek="344" EndSeek="767"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:09:29000">
+<Copy StartSeek="0" EndSeek="376"/>
+<Insert>		.ihl = 5;
+</Insert>
+<Copy StartSeek="410" EndSeek="789"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:09:56000">
+<Copy StartSeek="0" EndSeek="404"/>
+<Insert>		
+		
+</Insert>
+<Copy StartSeek="404" EndSeek="783"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:09:58000">
+<Copy StartSeek="0" EndSeek="174"/>
+<Insert>	memcpy(th, &amp;perf_th, sizeof(dpa_tcp_hdr_t));
+</Insert>
+<Copy StartSeek="224" EndSeek="413"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="467" EndSeek="838"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:10:56000">
+<Copy StartSeek="0" EndSeek="718"/>
+<Insert>
+</Insert>
+<Copy StartSeek="720" EndSeek="839"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:11:30000">
+<Copy StartSeek="0" EndSeek="720"/>
+<Insert>	dpa_memcpy(pkt-&gt;ip_hdr, &amp;perf_iph, ihl);
+</Insert>
+<Copy StartSeek="749" EndSeek="826"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:12:59000">
+<Copy StartSeek="0" EndSeek="749"/>
+<Insert>	dpa_memcpy((uint8_t  *)(pkt-&gt;ip_hdr) + ihl, &amp;perf_iph, sizeof(perf_iph));
+</Insert>
+<Copy StartSeek="801" EndSeek="803"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:13:22000">
+<Copy StartSeek="0" EndSeek="749"/>
+<Insert>	init_perf_tcphdr((uint8_t  *)(pkt-&gt;ip_hdr) + ihl);
+</Insert>
+<Copy StartSeek="802" EndSeek="804"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:14:0000">
+<Copy StartSeek="0" EndSeek="749"/>
+<Insert>	init_perf_tcphdr((uint32_t  *)(pkt-&gt;ip_hdr) + ihl);
+</Insert>
+<Copy StartSeek="806" EndSeek="808"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:14:48000">
+<Copy StartSeek="0" EndSeek="749"/>
+<Insert>	init_perf_tcphdr((uint8_t  *)(pkt-&gt;ip_hdr) + ihl &lt;&lt; 2);
+</Insert>
+<Copy StartSeek="808" EndSeek="810"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:14:55000">
+<Copy StartSeek="0" EndSeek="749"/>
+<Insert>	init_perf_tcphdr((uint8_t  *)(pkt-&gt;ip_hdr) + (ihl &lt;&lt; 2));
+</Insert>
+<Copy StartSeek="800" EndSeek="802"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:14:59000">
+<Copy StartSeek="0" EndSeek="544"/>
+<Insert>	uint8_t ihl = sizeof(dpa_ip_hdr_t);
+
+</Insert>
+<Copy StartSeek="545" EndSeek="765"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:15:14000">
+<Copy StartSeek="0" EndSeek="45"/>
+<Insert>void init_perf_tcphdr(uint8_t *th)
+</Insert>
+<Copy StartSeek="84" EndSeek="231"/>
+<Insert>void init_perf_iph(uint8_t iph)
+</Insert>
+<Copy StartSeek="267" EndSeek="691"/>
+<Insert>	init_perf_iph(pkt-&gt;ip_hdr);
+	init_perf_tcphdr((uint8_t  *)(pkt-&gt;ip_hdr) + 20);
+</Insert>
+<Copy StartSeek="779" EndSeek="781"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:15:34000">
+<Copy StartSeek="0" EndSeek="781"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="13:17:41000">
+<Copy StartSeek="0" EndSeek="45"/>
+<Copy StartSeek="90" EndSeek="828"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:23:11000">
+<Copy StartSeek="0" EndSeek="64"/>
+<Insert>static char *pkt[PKT_SZ]
+</Insert>
+<Copy StartSeek="90" EndSeek="829"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:23:15000">
+<Copy StartSeek="0" EndSeek="828"/>
+<Insert>
+</Insert>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:23:23000">
+<Copy StartSeek="0" EndSeek="64"/>
+<Insert>static char *pkt[PKT_SZ];
+</Insert>
+<Copy StartSeek="99" EndSeek="837"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:24:8000">
+<Copy StartSeek="0" EndSeek="64"/>
+<Insert>static char *pkt_raw_data[PKT_SZ];
+</Insert>
+<Copy StartSeek="98" EndSeek="99"/>
+<Copy StartSeek="100" EndSeek="838"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:24:15000">
+<Copy StartSeek="0" EndSeek="98"/>
+<Insert>
+</Insert>
+<Copy StartSeek="121" EndSeek="859"/>
+<Insert>
+</Insert>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:25:5000">
+<Copy StartSeek="0" EndSeek="891"/>
+<Insert>
+}
+
+</Insert>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:25:33000">
+<Copy StartSeek="0" EndSeek="122"/>
+<Insert>void init_perf_pkt_tcphdr(uint8_t *th)
+</Insert>
+<Copy StartSeek="168" EndSeek="315"/>
+<Insert>void init_perf_pkt_iph(uint8_t iph)
+</Insert>
+<Copy StartSeek="358" EndSeek="566"/>
+<Insert>void init_perf_pkt(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="608" EndSeek="949"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:26:10000">
+<Copy StartSeek="0" EndSeek="933"/>
+<Copy StartSeek="934" EndSeek="950"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:26:17000">
+<Copy StartSeek="0" EndSeek="23"/>
+<Copy StartSeek="49" EndSeek="71"/>
+<Copy StartSeek="72" EndSeek="977"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:27:38000">
+<Copy StartSeek="0" EndSeek="23"/>
+<Copy StartSeek="43" EndSeek="997"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:34:36000">
+<Copy StartSeek="0" EndSeek="43"/>
+<Copy StartSeek="68" EndSeek="1022"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:35:12000">
+<Copy StartSeek="0" EndSeek="459"/>
+<Insert>		.daddr = ntohl(0x01010101),
+		.saddr = ntohl(0x02020202),
+</Insert>
+<Copy StartSeek="527" EndSeek="1030"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:35:43000">
+<Copy StartSeek="0" EndSeek="387"/>
+<Insert>static void init_perf_pkt_iph(uint8_t iph)
+</Insert>
+<Copy StartSeek="431" EndSeek="1031"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:37:2000">
+<Copy StartSeek="0" EndSeek="870"/>
+<Insert>	init_perf_pkt_iph(pkt-&gt;ip_hdr);
+</Insert>
+<Copy StartSeek="914" EndSeek="1042"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:37:19000">
+<Copy StartSeek="0" EndSeek="804"/>
+<Insert>	pkt-&gt;ip_hdr = (uint8_t *)pkt-&gt;eth_hdr + sizeof(dpa_eth_hdr_t);
+</Insert>
+<Copy StartSeek="870" EndSeek="1044"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:37:40000">
+<Copy StartSeek="0" EndSeek="804"/>
+<Insert>	pkt-&gt;ip_hdr = (uint8_t *)(pkt-&gt;eth_hdr) + sizeof(dpa_eth_hdr_t);
+</Insert>
+<Copy StartSeek="889" EndSeek="1063"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:38:14000">
+<Copy StartSeek="0" EndSeek="170"/>
+<Insert>static eth_pkt_t *pkt;
+
+</Insert>
+<Copy StartSeek="171" EndSeek="1040"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:39:14000">
+<Copy StartSeek="0" EndSeek="170"/>
+<Insert>
+</Insert>
+<Copy StartSeek="194" EndSeek="1063"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:39:26000">
+<Copy StartSeek="0" EndSeek="170"/>
+<Insert>static eth_pkt_t *pkt;
+
+</Insert>
+<Copy StartSeek="171" EndSeek="1040"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:39:54000">
+<Copy StartSeek="0" EndSeek="1002"/>
+<Insert>	init_perf_pkt(pkt);
+</Insert>
+<Copy StartSeek="1032" EndSeek="1049"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:40:0000">
+<Copy StartSeek="0" EndSeek="1002"/>
+<Insert>	init_perf_pkt(pkt_raw_data);
+</Insert>
+<Copy StartSeek="1045" EndSeek="1062"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:40:9000">
+<Copy StartSeek="0" EndSeek="1046"/>
+<Insert>	return pkt;
+</Insert>
+<Copy StartSeek="1068" EndSeek="1071"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:40:12000">
+<Copy StartSeek="0" EndSeek="1046"/>
+<Insert>	return pkt_raw_data;
+</Insert>
+<Copy StartSeek="1081" EndSeek="1084"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:40:22000">
+<Copy StartSeek="0" EndSeek="668"/>
+<Insert>	dpa_eth_hdr_t *eth_hdr = pkt-&gt;eth_hdr;
+</Insert>
+<Copy StartSeek="699" EndSeek="1075"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:42:53000">
+<Copy StartSeek="0" EndSeek="624"/>
+<Insert>static void init_perf_pkt(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="664" EndSeek="1073"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:43:4000">
+<Copy StartSeek="0" EndSeek="666"/>
+<Insert>	dpa_eth_hdr_t *eth_hdr = pkt;
+</Insert>
+<Copy StartSeek="714" EndSeek="1090"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:43:21000">
+<Copy StartSeek="0" EndSeek="1008"/>
+<Insert>	init_perf_pkt((eth_pkt_t *)pkt_raw_data);
+</Insert>
+<Copy StartSeek="1038" EndSeek="1077"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:43:26000">
+<Copy StartSeek="0" EndSeek="787"/>
+<Insert>	pkt-&gt;ip_hdr = (dpa_ip_hdr_t  *)((uint8_t *)(pkt-&gt;eth_hdr) + sizeof(dpa_eth_hdr_t));
+</Insert>
+<Copy StartSeek="876" EndSeek="1081"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:44:56000">
+<Copy StartSeek="0" EndSeek="624"/>
+<Insert>static void init_perf_pkt(uint8_t *pkt)
+</Insert>
+<Copy StartSeek="666" EndSeek="668"/>
+<Insert>	dpa_eth_hdr_t *eth_hdr = (dpa_eth_hdr_t *)pkt;
+</Insert>
+<Copy StartSeek="699" EndSeek="772"/>
+<Insert>	eth_hdr-&gt;ip_hdr = (dpa_ip_hdr_t  *)((uint8_t *)(pkt-&gt;eth_hdr) + sizeof(dpa_eth_hdr_t));
+</Insert>
+<Copy StartSeek="857" EndSeek="993"/>
+<Insert>	init_perf_pkt(pkt_raw_data);
+</Insert>
+<Copy StartSeek="1036" EndSeek="1075"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:45:23000">
+<Copy StartSeek="0" EndSeek="170"/>
+<Insert>
+</Insert>
+<Copy StartSeek="186" EndSeek="1090"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:47:5000">
+<Copy StartSeek="0" EndSeek="170"/>
+<Insert>eth_pkt_t *pkt
+</Insert>
+<Copy StartSeek="186" EndSeek="1091"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:47:6000">
+<Copy StartSeek="0" EndSeek="1009"/>
+<Copy StartSeek="1039" EndSeek="1121"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:47:19000">
+<Copy StartSeek="0" EndSeek="1009"/>
+<Insert>	pkt-&gt;eth_hdr = pkt_raw_data;
+</Insert>
+<Copy StartSeek="1056" EndSeek="1138"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:47:28000">
+<Copy StartSeek="0" EndSeek="1056"/>
+<Insert>	init_perf_pkt((eth_pkt_t *)pkt_raw_data);
+</Insert>
+<Copy StartSeek="1077" EndSeek="1116"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:47:45000">
+<Copy StartSeek="0" EndSeek="1078"/>
+<Insert>	return (eth_pkt_t *)pkt_raw_data;
+</Insert>
+<Copy StartSeek="1104" EndSeek="1107"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:48:9000">
+<Copy StartSeek="0" EndSeek="1078"/>
+<Insert>	return (eth_pkt_t *)pkt;
+</Insert>
+<Copy StartSeek="1092" EndSeek="1095"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:48:13000">
+<Copy StartSeek="0" EndSeek="1078"/>
+<Insert>	return (pkt;
+</Insert>
+<Copy StartSeek="1091" EndSeek="1094"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:48:13000">
+<Copy StartSeek="0" EndSeek="716"/>
+<Copy StartSeek="763" EndSeek="1056"/>
+<Insert>	pkt-&gt;eth_hdr = (dpa_eth_hdr_t *)pkt_raw_data;
+</Insert>
+<Copy StartSeek="1058" EndSeek="1096"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:48:29000">
+<Copy StartSeek="0" EndSeek="684"/>
+<Insert>	dpa_eth_hdr_t *eth_hdr = pkt;
+</Insert>
+<Copy StartSeek="709" EndSeek="757"/>
+<Copy StartSeek="783" EndSeek="1116"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:48:46000">
+<Copy StartSeek="0" EndSeek="757"/>
+<Insert>	eth_hdr = pkt-&gt;eth_hdr;
+
+</Insert>
+<Copy StartSeek="757" EndSeek="789"/>
+<Insert>	eth_hdr-&gt;h_proto = dpa_ntohs(0x0800);
+</Insert>
+<Copy StartSeek="833" EndSeek="1095"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:49:0000">
+<Copy StartSeek="0" EndSeek="684"/>
+<Insert>	dpa_eth_hdr_t *eth_hdr;
+
+</Insert>
+<Copy StartSeek="684" EndSeek="731"/>
+<Copy StartSeek="732" EndSeek="1070"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:49:4000">
+<Copy StartSeek="0" EndSeek="1030"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="1030" EndSeek="1068"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:49:11000">
+<Copy StartSeek="0" EndSeek="732"/>
+<Insert>	dpa_memset(eth_hdr, 0xba, 12);
+</Insert>
+<Copy StartSeek="798" EndSeek="1102"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:49:42000">
+<Copy StartSeek="0" EndSeek="732"/>
+<Insert>	dpa_memset(eth_hdr, 0xba, 6);
+	dpa_memset(eth_hdr + 6, 0xea, 6);
+</Insert>
+<Copy StartSeek="764" EndSeek="1068"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:49:52000">
+<Copy StartSeek="0" EndSeek="764"/>
+<Insert>	pkt-&gt;eth_hdr-&gt;h_proto = dpa_ntohs(0x0800);
+</Insert>
+<Copy StartSeek="808" EndSeek="1068"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:50:16000">
+<Copy StartSeek="0" EndSeek="453"/>
+<Insert>		.daddr = dpa_ntohl(0x01010101),
+		.saddr = dpa_ntohl(0x02020202),
+</Insert>
+<Copy StartSeek="521" EndSeek="1068"/>
+</Delta>
+<Delta Version="84" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:51:9000">
+<Copy StartSeek="0" EndSeek="262"/>
+<Insert>		.source = dpa_ntohs(0x8080),
+		.dest = dpa_ntohs(0x6666),
+</Insert>
+<Copy StartSeek="322" EndSeek="1068"/>
+</Delta>
+<Delta Version="85" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:51:19000">
+<Copy StartSeek="0" EndSeek="732"/>
+<Insert>	dpa_memset(eth_hdr, 0xba, 12);
+</Insert>
+<Copy StartSeek="769" EndSeek="1073"/>
+</Delta>
+<Delta Version="86" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:51:39000">
+<Copy StartSeek="0" EndSeek="1073"/>
+</Delta>
+<Delta Version="87" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:57:36000">
+<Copy StartSeek="0" EndSeek="116"/>
+<Insert>
+</Insert>
+<Copy StartSeek="178" EndSeek="1309"/>
+</Delta>
+<Delta Version="88" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:57:53000">
+<Copy StartSeek="0" EndSeek="68"/>
+<Copy StartSeek="89" EndSeek="1330"/>
+</Delta>
+<Delta Version="89" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:58:4000">
+<Copy StartSeek="0" EndSeek="1247"/>
+<Insert>                DPA_INFO("M %u\n",i);
+</Insert>
+<Copy StartSeek="1288" EndSeek="1333"/>
+</Delta>
+<Delta Version="90" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:58:9000">
+<Copy StartSeek="0" EndSeek="1117"/>
+<Copy StartSeek="1152" EndSeek="1368"/>
+</Delta>
+<Delta Version="91" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:58:21000">
+<Copy StartSeek="0" EndSeek="1117"/>
+<Insert>	DPA_INFO("start measurements\n");
+</Insert>
+<Copy StartSeek="1155" EndSeek="1371"/>
+</Delta>
+<Delta Version="92" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:58:25000">
+<Copy StartSeek="0" EndSeek="252"/>
+<Insert>eth_pkt_t *pkt;
+</Insert>
+<Copy StartSeek="273" EndSeek="1376"/>
+</Delta>
+<Delta Version="93" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:02:9000">
+<Copy StartSeek="0" EndSeek="1160"/>
+<Insert>	init_perf_pkt(pkt);
+</Insert>
+<Copy StartSeek="1186" EndSeek="1381"/>
+</Delta>
+<Delta Version="94" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:02:16000">
+<Copy StartSeek="0" EndSeek="1187"/>
+<Insert>	return pkt;
+</Insert>
+<Copy StartSeek="1205" EndSeek="1386"/>
+</Delta>
+<Delta Version="95" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:02:31000">
+<Copy StartSeek="0" EndSeek="252"/>
+<Insert>eth_pkt_t *perf_pkt;
+</Insert>
+<Copy StartSeek="280" EndSeek="1393"/>
+</Delta>
+<Delta Version="96" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:03:51000">
+<Copy StartSeek="0" EndSeek="1307"/>
+<Insert>                DPA_CLS_DBG("M %u\n",i);
+</Insert>
+<Copy StartSeek="1349" EndSeek="1394"/>
+</Delta>
+<Delta Version="97" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:05:27000">
+<Copy StartSeek="0" EndSeek="826"/>
+<Copy StartSeek="845" EndSeek="1413"/>
+</Delta>
+<Delta Version="98" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:05:52000">
+<Copy StartSeek="0" EndSeek="826"/>
+<Insert>	DPA_CLS_DBG(""");
+</Insert>
+<Copy StartSeek="844" EndSeek="1412"/>
+</Delta>
+<Delta Version="99" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:05:53000">
+<Copy StartSeek="0" EndSeek="881"/>
+<Copy StartSeek="899" EndSeek="943"/>
+<Insert>
+</Insert>
+<Copy StartSeek="961" EndSeek="1046"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="1064" EndSeek="1463"/>
+</Delta>
+<Delta Version="100" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:05:57000">
+<Copy StartSeek="0" EndSeek="1108"/>
+<Copy StartSeek="1126" EndSeek="1481"/>
+</Delta>
+<Delta Version="101" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:06:3000">
+<Copy StartSeek="0" EndSeek="826"/>
+<Insert>	DPA_CLS_DBG("");
+</Insert>
+<Copy StartSeek="882" EndSeek="919"/>
+<Insert>	DPA_CLS_DBG("");
+</Insert>
+<Copy StartSeek="975" EndSeek="1557"/>
+</Delta>
+<Delta Version="102" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:07:21000">
+<Copy StartSeek="0" EndSeek="826"/>
+<Insert>	DPA_CLS_DBG("pkt %p eth_hdr %p\n", pkt, pkt-&gt;eth_hdr);
+</Insert>
+<Copy StartSeek="826" EndSeek="863"/>
+<Insert>	DPA_CLS_DBG("pkt %p eth_hdr %p\n", pkt, pkt-&gt;eth_hdr);
+</Insert>
+<Copy StartSeek="865" EndSeek="909"/>
+<Insert>	DPA_CLS_DBG("");
+</Insert>
+<Copy StartSeek="909" EndSeek="994"/>
+<Insert>	DPA_CLS_DBG("");
+</Insert>
+<Copy StartSeek="996" EndSeek="1040"/>
+<Insert>	DPA_CLS_DBG("");
+</Insert>
+<Copy StartSeek="1042" EndSeek="1397"/>
+</Delta>
+<Delta Version="103" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:08:18000">
+<Copy StartSeek="0" EndSeek="863"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="863" EndSeek="1395"/>
+</Delta>
+<Delta Version="104" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:08:19000">
+<Copy StartSeek="0" EndSeek="825"/>
+<Insert>
+</Insert>
+<Copy StartSeek="825" EndSeek="1394"/>
+</Delta>
+<Delta Version="105" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:08:21000">
+<Copy StartSeek="0" EndSeek="862"/>
+<Copy StartSeek="863" EndSeek="1395"/>
+</Delta>
+<Delta Version="106" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:08:22000">
+<Copy StartSeek="0" EndSeek="862"/>
+<Insert>
+</Insert>
+<Copy StartSeek="918" EndSeek="1450"/>
+</Delta>
+<Delta Version="107" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:09:1000">
+<Copy StartSeek="0" EndSeek="962"/>
+<Copy StartSeek="1018" EndSeek="1506"/>
+</Delta>
+<Delta Version="108" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:09:4000">
+<Copy StartSeek="0" EndSeek="962"/>
+<Insert>	DPA_CLS_DBG("pkt %p eth_hdr %p\n", pkt, pkt-&gt;eth_hdr);
+</Insert>
+<Copy StartSeek="980" EndSeek="1468"/>
+</Delta>
+<Delta Version="109" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:09:16000">
+<Copy StartSeek="0" EndSeek="252"/>
+<Insert>static eth_pkt_t *perf_pkt;
+</Insert>
+<Copy StartSeek="279" EndSeek="824"/>
+<Copy StartSeek="825" EndSeek="1468"/>
+</Delta>
+<Delta Version="110" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:10:8000">
+<Copy StartSeek="0" EndSeek="1241"/>
+<Insert>	init_perf_pkt(perf_pkt);
+</Insert>
+<Copy StartSeek="1268" EndSeek="1469"/>
+</Delta>
+<Delta Version="111" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:10:17000">
+<Copy StartSeek="0" EndSeek="1269"/>
+<Insert>	return perf_pkt;
+</Insert>
+<Copy StartSeek="1288" EndSeek="1470"/>
+</Delta>
+<Delta Version="112" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:10:20000">
+<Copy StartSeek="0" EndSeek="1383"/>
+<Insert>                DPA_CLS_DBG("rx %u\n",i);
+                dpa_cls_rx(pkt);
+        }
+}
+</Insert>
+</Delta>
+<Delta Version="113" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:21:26000">
+<Copy StartSeek="0" EndSeek="1361"/>
+<Copy StartSeek="1379" EndSeek="1430"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="114" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:21:40000">
+<Copy StartSeek="0" EndSeek="1430"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1509" EndSeek="1527"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="115" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:25:2000">
+<Copy StartSeek="0" EndSeek="136"/>
+<Insert>
+</Insert>
+<Copy StartSeek="159" EndSeek="1552"/>
+</Delta>
+<Delta Version="116" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:46:44000">
+<Copy StartSeek="0" EndSeek="1531"/>
+<Copy StartSeek="1566" EndSeek="1584"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="117" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:48:34000">
+<Copy StartSeek="0" EndSeek="1617"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="118" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:48:43000">
+<Copy StartSeek="0" EndSeek="301"/>
+<Insert>
+</Insert>
+<Copy StartSeek="339" EndSeek="1654"/>
+<Insert>	DPA_CLS_DBG("start measurements\n");
+</Insert>
+<Copy StartSeek="1683" EndSeek="1686"/>
+</Delta>
+<Delta Version="119" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:49:6000">
+<Copy StartSeek="0" EndSeek="301"/>
+<Insert>extern uint32_t dpa_cycle_count[32];
+</Insert>
+<Copy StartSeek="331" EndSeek="1679"/>
+</Delta>
+<Delta Version="120" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:49:7000">
+<Copy StartSeek="0" EndSeek="301"/>
+<Insert>uint32_t dpa_cycle_count[32];
+</Insert>
+<Copy StartSeek="330" EndSeek="1678"/>
+</Delta>
+<Delta Version="121" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:49:10000">
+<Copy StartSeek="0" EndSeek="1646"/>
+<Insert>	DPA_CLS_DBG("cycles %u\n");
+</Insert>
+<Copy StartSeek="1695" EndSeek="1698"/>
+</Delta>
+<Delta Version="122" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:49:27000">
+<Copy StartSeek="0" EndSeek="1695"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="123" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:49:29000">
+<Copy StartSeek="0" EndSeek="1646"/>
+<Copy StartSeek="1647" EndSeek="1698"/>
+</Delta>
+<Delta Version="124" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:49:31000">
+<Copy StartSeek="0" EndSeek="301"/>
+<Insert>uint32_t dpa_cycle_count[3];
+</Insert>
+<Copy StartSeek="337" EndSeek="1705"/>
+</Delta>
+<Delta Version="125" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:50:26000">
+<Copy StartSeek="0" EndSeek="1418"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1498" EndSeek="1567"/>
+<Insert>	PERF_COUNTER_RESET(0);
+	PERF_COUNTER_START(0, PERF_COUNTER_TYPE_CYCLE_COUNT);
+</Insert>
+<Copy StartSeek="1567" EndSeek="1705"/>
+</Delta>
+<Delta Version="126" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:52:29000">
+<Copy StartSeek="0" EndSeek="1389"/>
+<Insert>        unsigned int i = 10;
+</Insert>
+<Copy StartSeek="1418" EndSeek="1705"/>
+</Delta>
+<Delta Version="127" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:54:6000">
+<Copy StartSeek="0" EndSeek="1567"/>
+<Insert>	PERF_BEGIN(dpa_cycle_count[0],0);
+</Insert>
+<Copy StartSeek="1603" EndSeek="1621"/>
+<Insert>	PERF_END(dpa_cycle_count[0],0);
+</Insert>
+<Copy StartSeek="1656" EndSeek="1708"/>
+</Delta>
+<Delta Version="128" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:23:37000">
+<Copy StartSeek="0" EndSeek="1567"/>
+<Insert>	PERF_BEGIN(0, dpa_cycle_count[0]);
+</Insert>
+<Copy StartSeek="1602" EndSeek="1620"/>
+<Insert>	PERF_END(0, dpa_cycle_count[0],);
+</Insert>
+<Copy StartSeek="1653" EndSeek="1705"/>
+</Delta>
+<Delta Version="129" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:23:51000">
+<Copy StartSeek="0" EndSeek="158"/>
+<Insert>
+</Insert>
+<Copy StartSeek="234" EndSeek="1780"/>
+</Delta>
+<Delta Version="130" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:30:15000">
+<Copy StartSeek="0" EndSeek="1493"/>
+<Insert>	PERF_COUNTER_RESET(0);
+	PERF_COUNTER_START(0, PERF_COUNTER_TYPE_CYCLE_COUNT);
+</Insert>
+<Copy StartSeek="1586" EndSeek="1656"/>
+<Insert>	PERF_BEGIN(dpa_cycle_count[0],0);
+</Insert>
+<Copy StartSeek="1698" EndSeek="1716"/>
+<Insert>	PERF_END(dpa_cycle_count[0],0);
+</Insert>
+<Copy StartSeek="1756" EndSeek="1808"/>
+</Delta>
+<Delta Version="131" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:30:25000">
+<Copy StartSeek="0" EndSeek="1464"/>
+<Insert>        unsigned int i = 12;
+</Insert>
+<Copy StartSeek="1496" EndSeek="1811"/>
+</Delta>
+<Delta Version="132" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:31:12000">
+<Copy StartSeek="0" EndSeek="1701"/>
+<Insert>	dpa_cls_rx(pkt);
+</Insert>
+<Copy StartSeek="1726" EndSeek="1818"/>
+</Delta>
+<Delta Version="133" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:31:33000">
+<Copy StartSeek="0" EndSeek="1496"/>
+<Insert>//      PERF_COUNTER_RESET(0);
+//      PERF_COUNTER_START(0, PERF_COUNTER_TYPE_CYCLE_COUNT);
+
+</Insert>
+<Copy StartSeek="1497" EndSeek="1566"/>
+<Insert>//      PERF_BEGIN(dpa_cycle_count[0],0);
+//      dpa_cls_rx(pkt);
+//      PERF_END(dpa_cycle_count[0],0);
+
+</Insert>
+<Copy StartSeek="1567" EndSeek="1618"/>
+</Delta>
+<Delta Version="134" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:32:43000">
+<Copy StartSeek="0" EndSeek="1496"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1773" EndSeek="1894"/>
+</Delta>
+<Delta Version="135" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:35:4000">
+<Copy StartSeek="0" EndSeek="1737"/>
+<Insert>	START_COUNT_BLOCK("my block 1");
+
+
+</Insert>
+<Copy StartSeek="1738" EndSeek="1778"/>
+<Copy StartSeek="1813" EndSeek="1894"/>
+</Delta>
+<Delta Version="136" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:35:26000">
+<Copy StartSeek="0" EndSeek="1832"/>
+<Insert>        }
+
+</Insert>
+<Copy StartSeek="1877" EndSeek="1928"/>
+</Delta>
+<Delta Version="137" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:35:38000">
+<Copy StartSeek="0" EndSeek="376"/>
+<Insert>static uint32_t dpa_cycle_count[3];
+
+</Insert>
+<Copy StartSeek="377" EndSeek="1840"/>
+<Insert>
+	DPA_CLS_DBG("cycles %u\n", dpa_cycle_count[0]);
+}
+</Insert>
+</Delta>
+<Delta Version="138" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:36:1000">
+<Copy StartSeek="0" EndSeek="158"/>
+<Insert>#include "/export/nases/filerpt108_voip_gtw_sw/Tools/cpuc/incl/cpuc_api.h"
+</Insert>
+<Copy StartSeek="180" EndSeek="1789"/>
+</Delta>
+<Delta Version="139" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:36:40000">
+<Copy StartSeek="0" EndSeek="1610"/>
+<Insert>	CPUC_INITIALIZE(types,resolutions);
+</Insert>
+<Copy StartSeek="1650" EndSeek="1792"/>
+</Delta>
+<Delta Version="140" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:38:8000">
+<Copy StartSeek="0" EndSeek="158"/>
+<Insert>#include "cpuc_api.h"
+</Insert>
+<Copy StartSeek="224" EndSeek="1836"/>
+</Delta>
+<Delta Version="141" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:38:21000">
+<Copy StartSeek="0" EndSeek="158"/>
+<Insert>#include "/export/nases/filerpt108_voip_gtw_sw/Tools/cpuc/incl.h"
+</Insert>
+<Copy StartSeek="233" EndSeek="1845"/>
+</Delta>
+<Delta Version="142" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:38:25000">
+<Copy StartSeek="0" EndSeek="1556"/>
+<Insert>	int resolutions[4] = {-1,-1,-1,-1} // bin widths in auto-calibration mode
+</Insert>
+<Copy StartSeek="1632" EndSeek="1846"/>
+</Delta>
+<Delta Version="143" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:38:51000">
+<Copy StartSeek="0" EndSeek="1632"/>
+<Insert>	int j;
+
+</Insert>
+<Copy StartSeek="1633" EndSeek="1838"/>
+</Delta>
+<Delta Version="144" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:38:56000">
+<Copy StartSeek="0" EndSeek="1738"/>
+<Insert>		START_COUNT_BLOCK("my block 1");
+</Insert>
+<Copy StartSeek="1766" EndSeek="1831"/>
+</Delta>
+<Delta Version="145" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:59:16000">
+<Copy StartSeek="0" EndSeek="1785"/>
+<Insert>		READ_COUNT_BLOCK("my block 1");
+</Insert>
+<Copy StartSeek="1812" EndSeek="1824"/>
+</Delta>
+<Delta Version="146" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:59:43000">
+<Copy StartSeek="0" EndSeek="1738"/>
+<Insert>		START_COUNT_BLOCK("dpa");
+</Insert>
+<Copy StartSeek="1769" EndSeek="1788"/>
+<Insert>		READ_COUNT_BLOCK("dpa");
+</Insert>
+<Copy StartSeek="1818" EndSeek="1830"/>
+</Delta>
+<Delta Version="147" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="17:00:44000">
+<Copy StartSeek="0" EndSeek="1300"/>
+<Insert>	DPA_CLS_DBG("start measurements\n");
+</Insert>
+<Copy StartSeek="1365" EndSeek="1857"/>
+</Delta>
+<Delta Version="148" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="17:07:9000">
+<Copy StartSeek="0" EndSeek="1765"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1803" EndSeek="1822"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1859" EndSeek="1871"/>
+</Delta>
+<Delta Version="149" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="17:10:2000">
+<Copy StartSeek="0" EndSeek="136"/>
+<Insert>#include "perf_cnt.h"
+</Insert>
+<Copy StartSeek="136" EndSeek="1849"/>
+</Delta>
+<Delta Version="150" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="20:05:43000">
+<Copy StartSeek="0" EndSeek="1433"/>
+<Insert>        unsigned int i = 20000;
+</Insert>
+<Copy StartSeek="1462" EndSeek="1846"/>
+</Delta>
+<Delta Version="151" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="20:09:9000">
+<Copy StartSeek="0" EndSeek="1433"/>
+<Insert>        unsigned int i = 10;
+</Insert>
+<Copy StartSeek="1465" EndSeek="1849"/>
+</Delta>
+<Delta Version="152" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="20:26:27000">
+<Copy StartSeek="0" EndSeek="937"/>
+<Insert>	DPA_CLS_DBG("pkt %p eth_hdr %p\n", pkt, pkt-&gt;eth_hdr);
+</Insert>
+<Copy StartSeek="937" EndSeek="981"/>
+<Insert>	DPA_CLS_DBG("");
+</Insert>
+<Copy StartSeek="981" EndSeek="1775"/>
+</Delta>
+<Delta Version="153" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="20:51:34000">
+<Copy StartSeek="0" EndSeek="1359"/>
+<Insert>        unsigned int i = 20000;
+</Insert>
+<Copy StartSeek="1388" EndSeek="1772"/>
+</Delta>
+<Delta Version="154" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="20:52:51000">
+<Copy StartSeek="0" EndSeek="274"/>
+<Insert>#define PKT_SZ 128
+</Insert>
+<Copy StartSeek="292" EndSeek="1771"/>
+</Delta>
+<Delta Version="155" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="20:53:36000">
+<Copy StartSeek="0" EndSeek="1358"/>
+<Insert>        unsigned int i = 10;
+	int types[4] = {C0_RETIRED_INSTRUCTION, C1_SINGLE_ISSUE, C2_CYCLE_COUNT, C3_DCACHE_READ_MISS};
+	int resolutions[4] = {-1,-1,-1,-1}; // bin widths in auto-calibration mode
+
+	CPUC_INIT_DEVICE();
+
+
+	CPUC_INIT_COUNTERS(types,resolutions);
+</Insert>
+<Copy StartSeek="1657" EndSeek="1805"/>
+</Delta>
+<Delta Version="156" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="21:12:4000">
+<Copy StartSeek="0" EndSeek="212"/>
+<Insert>#define DPA_CLS_DBG(format, args...) DPA_DBG(format, ##args)
+</Insert>
+<Copy StartSeek="277" EndSeek="1809"/>
+</Delta>
+<Delta Version="157" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="21:12:34000">
+<Copy StartSeek="0" EndSeek="1362"/>
+<Insert>//      unsigned int i = 10;
+</Insert>
+<Copy StartSeek="1384" EndSeek="1802"/>
+</Delta>
+<Delta Version="158" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="21:13:30000">
+<Copy StartSeek="0" EndSeek="357"/>
+<Insert>
+</Insert>
+<Copy StartSeek="390" EndSeek="1834"/>
+</Delta>
+<Delta Version="159" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="10:23:14000">
+<Copy StartSeek="0" EndSeek="1394"/>
+<Insert>	unsigned int i = 10;
+</Insert>
+<Copy StartSeek="1417" EndSeek="1835"/>
+</Delta>
+<Delta Version="160" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="10:23:29000">
+<Copy StartSeek="0" EndSeek="1394"/>
+<Insert>	unsigned int i = 100;
+</Insert>
+<Copy StartSeek="1418" EndSeek="1836"/>
+</Delta>
+<Delta Version="161" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="10:23:51000">
+<Copy StartSeek="0" EndSeek="357"/>
+<Insert>external unsigned long ai_word;
+
+</Insert>
+<Copy StartSeek="358" EndSeek="1804"/>
+</Delta>
+<Delta Version="162" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="10:30:53000">
+<Copy StartSeek="0" EndSeek="1362"/>
+<Insert>	unsigned int i = 1000;
+</Insert>
+<Copy StartSeek="1384" EndSeek="1802"/>
+</Delta>
+<Delta Version="163" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="11:37:35000">
+<Copy StartSeek="0" EndSeek="855"/>
+<Insert>	pkt-&gt;eth_hdr = (dpa_eth_hdr_t *)pkt_raw_data;
+</Insert>
+<Copy StartSeek="906" EndSeek="1806"/>
+</Delta>
+<Delta Version="164" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="11:58:17000">
+<Copy StartSeek="0" EndSeek="855"/>
+<Insert>	pkt-&gt;eth_hdr = (dpa_eth_hdr_t *)pkt_raw_data + 2;
+</Insert>
+<Copy StartSeek="902" EndSeek="1802"/>
+</Delta>
+<Delta Version="165" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="11:58:25000">
+<Copy StartSeek="0" EndSeek="855"/>
+<Insert>	pkt-&gt;eth_hdr = (dpa_eth_hdr_t *)pkt_raw_data;
+</Insert>
+<Copy StartSeek="919" EndSeek="1819"/>
+</Delta>
+<Delta Version="166" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="11:58:54000">
+<Copy StartSeek="0" EndSeek="278"/>
+<Insert>#define PKT_SZ 64
+</Insert>
+<Copy StartSeek="297" EndSeek="1820"/>
+</Delta>
+<Delta Version="167" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="11:59:6000">
+<Copy StartSeek="0" EndSeek="1380"/>
+<Insert>	unsigned int i = 10;
+</Insert>
+<Copy StartSeek="1403" EndSeek="1821"/>
+</Delta>
+<Delta Version="168" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="12:02:9000">
+<Copy StartSeek="0" EndSeek="1380"/>
+<Insert>	unsigned int i = 100;
+</Insert>
+<Copy StartSeek="1404" EndSeek="1822"/>
+</Delta>
+<Delta Version="169" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="12:03:8000">
+<Copy StartSeek="0" EndSeek="1404"/>
+<Insert>//      int types[4] = {C0_RETIRED_INSTRUCTION, C1_SINGLE_ISSUE, C2_CYCLE_COUNT, C3_DCACHE_READ_MISS};
+//      int resolutions[4] = {-1,-1,-1,-1}; // bin widths in auto-calibration mode
+//
+//      CPUC_INIT_DEVICE();
+//
+//
+//      CPUC_INIT_COUNTERS(types,resolutions);
+</Insert>
+<Copy StartSeek="1640" EndSeek="1682"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1713" EndSeek="1732"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1762" EndSeek="1774"/>
+</Delta>
+<Delta Version="170" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="12:05:35000">
+<Copy StartSeek="0" EndSeek="1682"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1720" EndSeek="1739"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1776" EndSeek="1788"/>
+</Delta>
+<Delta Version="171" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="13:28:18000">
+<Copy StartSeek="0" EndSeek="1380"/>
+<Insert>	unsigned int i = 2000;
+</Insert>
+<Copy StartSeek="1405" EndSeek="1789"/>
+</Delta>
+<Delta Version="172" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="13:30:11000">
+<Copy StartSeek="0" EndSeek="1683"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1714" EndSeek="1733"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1763" EndSeek="1775"/>
+</Delta>
+<Delta Version="173" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="14:45:25000">
+<Copy StartSeek="0" EndSeek="1683"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1721" EndSeek="1740"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1777" EndSeek="1789"/>
+</Delta>
+<Delta Version="174" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="15:02:57000">
+<Copy StartSeek="0" EndSeek="1380"/>
+<Insert>	unsigned int i = 20000;
+</Insert>
+<Copy StartSeek="1429" EndSeek="1685"/>
+<Copy StartSeek="1694" EndSeek="1773"/>
+<Copy StartSeek="1792" EndSeek="1841"/>
+</Delta>
+<Delta Version="175" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="15:20:51000">
+<Copy StartSeek="0" EndSeek="1685"/>
+<Insert>	i = 10;
+</Insert>
+<Copy StartSeek="1694" EndSeek="1841"/>
+</Delta>
+<Delta Version="176" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="15:20:59000">
+<Copy StartSeek="0" EndSeek="1839"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="177" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="15:21:56000">
+<Copy StartSeek="0" EndSeek="1839"/>
+<Copy StartSeek="1840" EndSeek="1984"/>
+</Delta>
+<Delta Version="178" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="15:22:7000">
+<Copy StartSeek="0" EndSeek="1867"/>
+<Insert>//      START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1897" EndSeek="1935"/>
+<Insert>//      READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1965" EndSeek="1971"/>
+</Delta>
+<Delta Version="179" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="15:22:14000">
+<Copy StartSeek="0" EndSeek="1867"/>
+<Insert>	START_COUNT_BLOCK("cls_rx");
+	 dpa_cls_rx(pkt);
+	 dpa_cls_tx(pkt);
+	 READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1966" EndSeek="1972"/>
+</Delta>
+<Delta Version="180" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="15:22:18000">
+<Copy StartSeek="0" EndSeek="1917"/>
+<Insert>		dpa_cls_tx(pkt);
+</Insert>
+<Copy StartSeek="1917" EndSeek="1953"/>
+</Delta>
+<Delta Version="181" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="15:22:43000">
+<Copy StartSeek="0" EndSeek="1867"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1905" EndSeek="1924"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1961" EndSeek="1967"/>
+</Delta>
+<Delta Version="182" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="15:23:29000">
+<Copy StartSeek="0" EndSeek="1840"/>
+<Insert>	i = 20000;
+	while (i--) {
+</Insert>
+<Copy StartSeek="1881" EndSeek="1919"/>
+<Insert>		dpa_cls_rx(pkt);
+</Insert>
+<Copy StartSeek="1945" EndSeek="1982"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="1992" EndSeek="1995"/>
+</Delta>
+<Delta Version="183" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="15:28:14000">
+<Copy StartSeek="0" EndSeek="297"/>
+<Insert>static char pkt_raw_data[PKT_SZ];
+</Insert>
+<Copy StartSeek="337" EndSeek="2001"/>
+</Delta>
+<Delta Version="184" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="16:33:42000">
+<Copy StartSeek="0" EndSeek="1998"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="185" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="16:34:12000">
+<Copy StartSeek="0" EndSeek="1691"/>
+<Insert>	i = 12;
+</Insert>
+<Copy StartSeek="1699" EndSeek="1999"/>
+</Delta>
+<Delta Version="186" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="16:35:46000">
+<Copy StartSeek="0" EndSeek="1691"/>
+<Insert>	i = 5;
+</Insert>
+<Copy StartSeek="1706" EndSeek="1728"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1759" EndSeek="1778"/>
+<Insert>		dpa_cls_tx(pkt);
+//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1834" EndSeek="1999"/>
+</Delta>
+<Delta Version="187" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:20:23000">
+<Copy StartSeek="0" EndSeek="1386"/>
+<Insert>//      unsigned int i = 20000;
+	unsigned int i;
+</Insert>
+<Copy StartSeek="1435" EndSeek="1999"/>
+</Delta>
+<Delta Version="188" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:20:26000">
+<Copy StartSeek="0" EndSeek="1778"/>
+<Insert>//      	dpa_cls_tx(pkt);
+</Insert>
+<Copy StartSeek="1797" EndSeek="1992"/>
+</Delta>
+<Delta Version="189" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:21:13000">
+<Copy StartSeek="0" EndSeek="1691"/>
+<Insert>//      i = 5;
+</Insert>
+<Copy StartSeek="1700" EndSeek="1986"/>
+</Delta>
+<Delta Version="190" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:21:18000">
+<Copy StartSeek="0" EndSeek="1722"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1760" EndSeek="1798"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1835" EndSeek="2000"/>
+</Delta>
+<Delta Version="191" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:21:23000">
+<Copy StartSeek="0" EndSeek="1846"/>
+<Insert>//      i = 20000;
+//      while (i--) {
+//      	START_COUNT_BLOCK("cls_rx");
+//      	dpa_cls_rx(pkt);
+//      	READ_COUNT_BLOCK("cls_rx");
+//      }
+</Insert>
+<Copy StartSeek="1956" EndSeek="1958"/>
+</Delta>
+<Delta Version="192" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:21:28000">
+<Copy StartSeek="0" EndSeek="1873"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1911" EndSeek="1930"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1967" EndSeek="1972"/>
+</Delta>
+<Delta Version="193" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:23:36000">
+<Copy StartSeek="0" EndSeek="1873"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1904" EndSeek="1923"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1953" EndSeek="1958"/>
+</Delta>
+<Delta Version="194" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:24:9000">
+<Copy StartSeek="0" EndSeek="1873"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1911" EndSeek="1930"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1967" EndSeek="1972"/>
+</Delta>
+<Delta Version="195" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:25:58000">
+<Copy StartSeek="0" EndSeek="1873"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1904" EndSeek="1923"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="1953" EndSeek="1958"/>
+</Delta>
+<Delta Version="196" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:26:24000">
+<Copy StartSeek="0" EndSeek="1779"/>
+<Copy StartSeek="1823" EndSeek="2002"/>
+</Delta>
+<Delta Version="197" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:27:24000">
+<Copy StartSeek="0" EndSeek="1779"/>
+<Insert>		memset(pkt-&gt;eth_hdr-&gt;h_source, 0xaa, 12);
+</Insert>
+<Copy StartSeek="1821" EndSeek="2000"/>
+</Delta>
+<Delta Version="198" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:27:29000">
+<Copy StartSeek="0" EndSeek="1779"/>
+<Insert>		memset(pkt-&gt;eth_hdr-&gt;h_dest, 0xaa, 12);
+</Insert>
+<Copy StartSeek="1825" EndSeek="2004"/>
+</Delta>
+<Delta Version="199" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:27:42000">
+<Copy StartSeek="0" EndSeek="212"/>
+<Insert>#define DPA_CLS_DBG(format, args...) /*DPA_DBG(format, ##args)*/
+</Insert>
+<Copy StartSeek="273" EndSeek="2000"/>
+</Delta>
+<Delta Version="200" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:28:21000">
+<Copy StartSeek="0" EndSeek="1840"/>
+<Copy StartSeek="1886" EndSeek="2046"/>
+</Delta>
+<Delta Version="201" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:28:56000">
+<Copy StartSeek="0" EndSeek="1934"/>
+<Insert>	i = 20000;
+</Insert>
+<Copy StartSeek="1943" EndSeek="2043"/>
+</Delta>
+<Delta Version="202" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:29:25000">
+<Copy StartSeek="0" EndSeek="1989"/>
+<Insert>		dpa_cls_rx(pkt);
+</Insert>
+<Copy StartSeek="2038" EndSeek="2073"/>
+</Delta>
+<Delta Version="203" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:29:43000">
+<Copy StartSeek="0" EndSeek="2023"/>
+<Insert>			DPA_DBG("")
+</Insert>
+<Copy StartSeek="2047" EndSeek="2082"/>
+</Delta>
+<Delta Version="204" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:32:4000">
+<Copy StartSeek="0" EndSeek="1407"/>
+<Copy StartSeek="1428" EndSeek="2010"/>
+<Insert>		if (dpa_cls_rx(pkt) != DPE_FWD)
+			DPA_DBG("state %u");
+</Insert>
+<Copy StartSeek="2087" EndSeek="2122"/>
+</Delta>
+<Delta Version="205" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:32:41000">
+<Copy StartSeek="0" EndSeek="2061"/>
+<Insert>			DPA_DBG("state %u", );
+</Insert>
+<Copy StartSeek="2092" EndSeek="2127"/>
+</Delta>
+<Delta Version="206" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:32:44000">
+<Copy StartSeek="0" EndSeek="1979"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2017" EndSeek="2099"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2136" EndSeek="2141"/>
+</Delta>
+<Delta Version="207" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:32:51000">
+<Copy StartSeek="0" EndSeek="2044"/>
+<Copy StartSeek="2090" EndSeek="2187"/>
+</Delta>
+<Delta Version="208" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:37:11000">
+<Copy StartSeek="0" EndSeek="2044"/>
+<Insert>		dpa_memset(pkt-&gt;eth_hdr-&gt;h_dest, 0xba, 12);
+</Insert>
+<Copy StartSeek="2044" EndSeek="2099"/>
+<Copy StartSeek="2146" EndSeek="2188"/>
+</Delta>
+<Delta Version="209" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:37:24000">
+<Copy StartSeek="0" EndSeek="1979"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2010" EndSeek="2037"/>
+<Copy StartSeek="2067" EndSeek="2169"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2170" EndSeek="2175"/>
+</Delta>
+<Delta Version="210" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:37:55000">
+<Copy StartSeek="0" EndSeek="212"/>
+<Insert>#define DPA_CLS_DBG(format, args...) DPA_DBG(format, ##args)
+</Insert>
+<Copy StartSeek="279" EndSeek="2181"/>
+</Delta>
+<Delta Version="211" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:38:14000">
+<Copy StartSeek="0" EndSeek="1961"/>
+<Insert>	i = 10;
+</Insert>
+<Copy StartSeek="1973" EndSeek="2184"/>
+</Delta>
+<Delta Version="212" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:38:50000">
+<Copy StartSeek="0" EndSeek="1988"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2026" EndSeek="2053"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2090" EndSeek="2198"/>
+</Delta>
+<Delta Version="213" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:39:44000">
+<Copy StartSeek="0" EndSeek="1961"/>
+<Insert>	i = 20000;
+</Insert>
+<Copy StartSeek="1970" EndSeek="2195"/>
+</Delta>
+<Delta Version="214" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:40:24000">
+<Copy StartSeek="0" EndSeek="2087"/>
+<Insert>		if (state != DPE_FWD)
+			DPA_DBG("state %u", state);
+
+</Insert>
+<Copy StartSeek="2087" EndSeek="2139"/>
+</Delta>
+<Delta Version="215" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:42:56000">
+<Copy StartSeek="0" EndSeek="2087"/>
+<Insert>		dpa_memset(pkt-&gt;eth_hdr-&gt;h_dest, 0xba, 12);
+</Insert>
+<Copy StartSeek="2156" EndSeek="2162"/>
+</Delta>
+<Delta Version="216" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:43:5000">
+<Copy StartSeek="0" EndSeek="1802"/>
+<Insert>		dpa_memset(pkt-&gt;eth_hdr-&gt;h_dest, 0xaa, 12);
+</Insert>
+<Copy StartSeek="1865" EndSeek="2179"/>
+</Delta>
+<Delta Version="217" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:43:16000">
+<Copy StartSeek="0" EndSeek="1884"/>
+<Insert>		dpa_memset(pkt-&gt;eth_hdr-&gt;h_dest, 0xba, 12);
+</Insert>
+<Copy StartSeek="1953" EndSeek="2202"/>
+</Delta>
+<Delta Version="218" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:43:23000">
+<Copy StartSeek="0" EndSeek="2001"/>
+<Insert>	i = 20;
+</Insert>
+<Copy StartSeek="2013" EndSeek="2205"/>
+</Delta>
+<Delta Version="219" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:44:36000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2059" EndSeek="2086"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2116" EndSeek="2191"/>
+</Delta>
+<Delta Version="220" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:45:49000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2066" EndSeek="2093"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2130" EndSeek="2205"/>
+</Delta>
+<Delta Version="221" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:46:27000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2059" EndSeek="2086"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2116" EndSeek="2191"/>
+</Delta>
+<Delta Version="222" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:49:14000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2066" EndSeek="2093"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2130" EndSeek="2205"/>
+</Delta>
+<Delta Version="223" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:50:3000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2059" EndSeek="2086"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2116" EndSeek="2191"/>
+</Delta>
+<Delta Version="224" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="17:52:6000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2066" EndSeek="2093"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2130" EndSeek="2205"/>
+</Delta>
+<Delta Version="225" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="18:45:49000">
+<Copy StartSeek="0" EndSeek="2001"/>
+<Insert>	i = 20000;
+</Insert>
+<Copy StartSeek="2010" EndSeek="2202"/>
+</Delta>
+<Delta Version="226" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="19:16:34000">
+<Copy StartSeek="0" EndSeek="2001"/>
+<Insert>	i = 10;
+</Insert>
+<Copy StartSeek="2013" EndSeek="2205"/>
+</Delta>
+<Delta Version="227" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="19:20:32000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2059" EndSeek="2086"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2116" EndSeek="2191"/>
+</Delta>
+<Delta Version="228" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="19:40:25000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2066" EndSeek="2093"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2130" EndSeek="2205"/>
+</Delta>
+<Delta Version="229" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="19:41:14000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2059" EndSeek="2086"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2116" EndSeek="2191"/>
+</Delta>
+<Delta Version="230" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="19:42:59000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2066" EndSeek="2093"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2130" EndSeek="2205"/>
+</Delta>
+<Delta Version="231" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="19:44:30000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2059" EndSeek="2086"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2116" EndSeek="2191"/>
+</Delta>
+<Delta Version="232" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="19:51:37000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2066" EndSeek="2093"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2130" EndSeek="2205"/>
+</Delta>
+<Delta Version="233" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="19:52:53000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2059" EndSeek="2086"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2116" EndSeek="2191"/>
+</Delta>
+<Delta Version="234" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="19:54:53000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2066" EndSeek="2093"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2130" EndSeek="2205"/>
+</Delta>
+<Delta Version="235" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="19:59:14000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2059" EndSeek="2086"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2116" EndSeek="2191"/>
+</Delta>
+<Delta Version="236" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="20:08:20000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2066" EndSeek="2093"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2130" EndSeek="2205"/>
+</Delta>
+<Delta Version="237" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="20:16:36000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2059" EndSeek="2086"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2116" EndSeek="2191"/>
+</Delta>
+<Delta Version="238" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="10:22:46000">
+<Copy StartSeek="0" EndSeek="2001"/>
+<Insert>	i = 20000;
+</Insert>
+<Copy StartSeek="2010" EndSeek="2188"/>
+</Delta>
+<Delta Version="239" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="10:49:11000">
+<Copy StartSeek="0" EndSeek="929"/>
+<Insert>	dpa_memset(pkt-&gt;eth_hdr, 0xba, 12);
+</Insert>
+<Copy StartSeek="974" EndSeek="2196"/>
+</Delta>
+<Delta Version="240" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="11:19:45000">
+<Copy StartSeek="0" EndSeek="2009"/>
+<Insert>	i = 10;
+</Insert>
+<Copy StartSeek="2021" EndSeek="2199"/>
+</Delta>
+<Delta Version="241" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="11:22:55000">
+<Copy StartSeek="0" EndSeek="2009"/>
+<Insert>	i = 20000;
+</Insert>
+<Copy StartSeek="2018" EndSeek="2196"/>
+</Delta>
+<Delta Version="242" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="11:26:34000">
+<Copy StartSeek="0" EndSeek="2009"/>
+<Insert>	i = 10;
+</Insert>
+<Copy StartSeek="2021" EndSeek="2199"/>
+</Delta>
+<Delta Version="243" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="11:27:29000">
+<Copy StartSeek="0" EndSeek="2036"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2074" EndSeek="2101"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2138" EndSeek="2213"/>
+</Delta>
+<Delta Version="244" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="11:28:39000">
+<Copy StartSeek="0" EndSeek="2101"/>
+<Copy StartSeek="2163" EndSeek="2275"/>
+</Delta>
+<Delta Version="245" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="13:16:46000">
+<Copy StartSeek="0" EndSeek="2127"/>
+<Insert>			DPA_DBG("state %u\n", state)
+</Insert>
+<Copy StartSeek="2160" EndSeek="2276"/>
+</Delta>
+<Delta Version="246" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="13:16:51000">
+<Copy StartSeek="0" EndSeek="2101"/>
+<Copy StartSeek="2138" EndSeek="2201"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2202" EndSeek="2277"/>
+</Delta>
+<Delta Version="247" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="13:17:21000">
+<Copy StartSeek="0" EndSeek="2201"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2201" EndSeek="2276"/>
+</Delta>
+<Delta Version="248" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="13:17:26000">
+<Copy StartSeek="0" EndSeek="2036"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2067" EndSeek="2094"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2124" EndSeek="2262"/>
+</Delta>
+<Delta Version="249" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="16:57:59000">
+<Copy StartSeek="0" EndSeek="2036"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2074" EndSeek="2101"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2138" EndSeek="2276"/>
+</Delta>
+<Delta Version="250" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="17:05:29000">
+<Copy StartSeek="0" EndSeek="2036"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2067" EndSeek="2094"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2124" EndSeek="2262"/>
+</Delta>
+<Delta Version="251" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="17:25:17000">
+<Copy StartSeek="0" EndSeek="2009"/>
+<Insert>	i = 20000;
+</Insert>
+<Copy StartSeek="2018" EndSeek="2259"/>
+</Delta>
+<Delta Version="252" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="17:41:18000">
+<Copy StartSeek="0" EndSeek="2033"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2071" EndSeek="2098"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2135" EndSeek="2273"/>
+</Delta>
+<Delta Version="253" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="17:41:31000">
+<Copy StartSeek="0" EndSeek="2009"/>
+<Insert>	i = 10;
+</Insert>
+<Copy StartSeek="2021" EndSeek="2276"/>
+</Delta>
+<Delta Version="254" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="17:48:12000">
+<Copy StartSeek="0" EndSeek="2009"/>
+<Insert>	i = 20000;
+</Insert>
+<Copy StartSeek="2018" EndSeek="2273"/>
+</Delta>
+<Delta Version="255" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="17:50:2000">
+<Copy StartSeek="0" EndSeek="2009"/>
+<Insert>	i = 10;
+</Insert>
+<Copy StartSeek="2021" EndSeek="2276"/>
+</Delta>
+<Delta Version="256" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="17:56:8000">
+<Copy StartSeek="0" EndSeek="2036"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2067" EndSeek="2094"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2124" EndSeek="2262"/>
+</Delta>
+<Delta Version="257" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="17:59:40000">
+<Copy StartSeek="0" EndSeek="2009"/>
+<Insert>	i = 20000;
+</Insert>
+<Copy StartSeek="2018" EndSeek="2259"/>
+</Delta>
+<Delta Version="258" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="18:33:22000">
+<Copy StartSeek="0" EndSeek="2009"/>
+<Insert>	i = 20;
+</Insert>
+<Copy StartSeek="2021" EndSeek="2262"/>
+</Delta>
+<Delta Version="259" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="20:08:41000">
+<Copy StartSeek="0" EndSeek="2036"/>
+<Insert>		START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2074" EndSeek="2101"/>
+<Insert>		READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2138" EndSeek="2276"/>
+</Delta>
+<Delta Version="260" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="20:09:11000">
+<Copy StartSeek="0" EndSeek="2036"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2067" EndSeek="2094"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2124" EndSeek="2262"/>
+</Delta>
+<Delta Version="261" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="20:18:2000">
+<Copy StartSeek="0" EndSeek="367"/>
+<Copy StartSeek="422" EndSeek="2317"/>
+</Delta>
+<Delta Version="262" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:15:30000">
+<Copy StartSeek="0" EndSeek="279"/>
+<Insert>
+</Insert>
+<Copy StartSeek="279" EndSeek="298"/>
+<Copy StartSeek="299" EndSeek="2317"/>
+</Delta>
+<Delta Version="263" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:15:47000">
+<Copy StartSeek="0" EndSeek="279"/>
+<Copy StartSeek="280" EndSeek="299"/>
+<Insert>
+</Insert>
+<Copy StartSeek="299" EndSeek="2317"/>
+</Delta>
+<Delta Version="264" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:15:51000">
+<Copy StartSeek="0" EndSeek="418"/>
+<Insert>
+</Insert>
+<Copy StartSeek="436" EndSeek="2334"/>
+</Delta>
+<Delta Version="265" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:15:59000">
+<Copy StartSeek="0" EndSeek="418"/>
+<Insert>	pkt-&gt;rx_desc |= 
+</Insert>
+<Copy StartSeek="451" EndSeek="2349"/>
+</Delta>
+<Delta Version="266" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:16:26000">
+<Copy StartSeek="0" EndSeek="451"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="455" EndSeek="2350"/>
+</Delta>
+<Delta Version="267" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:16:27000">
+<Copy StartSeek="0" EndSeek="367"/>
+<Insert>statc void init_perf_pkt_rx_desc(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="417" EndSeek="419"/>
+<Insert>	pkt-&gt;rx_desc |= NETA_RX_L3_IP4;
+
+}
+</Insert>
+<Copy StartSeek="491" EndSeek="492"/>
+<Copy StartSeek="495" EndSeek="2390"/>
+</Delta>
+<Delta Version="268" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:17:2000">
+<Copy StartSeek="0" EndSeek="487"/>
+<Insert>	} 
+</Insert>
+<Copy StartSeek="490" EndSeek="2389"/>
+</Delta>
+<Delta Version="269" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:17:11000">
+<Copy StartSeek="0" EndSeek="490"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="566" EndSeek="2461"/>
+</Delta>
+<Delta Version="270" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:17:24000">
+<Copy StartSeek="0" EndSeek="561"/>
+<Copy StartSeek="648" EndSeek="649"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="653" EndSeek="2548"/>
+</Delta>
+<Delta Version="271" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:26:15000">
+<Copy StartSeek="0" EndSeek="648"/>
+<Copy StartSeek="735" EndSeek="737"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="741" EndSeek="2636"/>
+</Delta>
+<Delta Version="272" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:26:30000">
+<Copy StartSeek="0" EndSeek="698"/>
+<Insert>		pkt-&gt;rx_desc |= NETA_RX_L4_TCP;
+</Insert>
+<Copy StartSeek="732" EndSeek="2636"/>
+</Delta>
+<Delta Version="273" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:26:34000">
+<Copy StartSeek="0" EndSeek="736"/>
+<Insert>
+</Insert>
+<Copy StartSeek="778" EndSeek="779"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="780" EndSeek="781"/>
+<Copy StartSeek="784" EndSeek="2679"/>
+</Delta>
+<Delta Version="274" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:27:30000">
+<Copy StartSeek="0" EndSeek="453"/>
+<Insert>		pkt-&gt;rx_desc |= NETA_RX_L3_IP4;
+</Insert>
+<Copy StartSeek="495" EndSeek="532"/>
+<Insert>		pkt-&gt;rx_desc |= NETA_RX_L3_IP6;
+</Insert>
+<Copy StartSeek="574" EndSeek="627"/>
+<Insert>		pkt-&gt;rx_desc |= NETA_RX_L4_TCP;
+</Insert>
+<Copy StartSeek="669" EndSeek="722"/>
+<Insert>		pkt-&gt;rx_desc |= NETA_RX_L4_UDP;
+</Insert>
+<Copy StartSeek="764" EndSeek="768"/>
+<Insert>	pkt-&gt;rx_desc |= NETA_RX_L4_CSUM_OK_MASK;
+</Insert>
+<Copy StartSeek="818" EndSeek="2719"/>
+</Delta>
+<Delta Version="275" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:27:56000">
+<Copy StartSeek="0" EndSeek="767"/>
+<Insert>
+</Insert>
+<Copy StartSeek="767" EndSeek="2718"/>
+</Delta>
+<Delta Version="276" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:28:0000">
+<Copy StartSeek="0" EndSeek="817"/>
+<Insert>
+</Insert>
+<Copy StartSeek="882" EndSeek="884"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="888" EndSeek="2783"/>
+</Delta>
+<Delta Version="277" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:28:33000">
+<Copy StartSeek="0" EndSeek="817"/>
+<Insert>	pkt-&gt;rx_desc-&gt;pnc_info |= (rx_desc-&gt;pnc_info &amp; NETA_PNC_DA_UC);
+</Insert>
+<Copy StartSeek="860" EndSeek="861"/>
+<Insert>
+</Insert>
+<Copy StartSeek="863" EndSeek="864"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="864" EndSeek="2759"/>
+</Delta>
+<Delta Version="278" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:28:43000">
+<Copy StartSeek="0" EndSeek="366"/>
+<Insert>
+</Insert>
+<Copy StartSeek="397" EndSeek="2789"/>
+</Delta>
+<Delta Version="279" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:29:7000">
+<Copy StartSeek="0" EndSeek="366"/>
+<Insert>static eth_rx_desc_t rx_desc;
+</Insert>
+<Copy StartSeek="402" EndSeek="2795"/>
+</Delta>
+<Delta Version="280" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:29:13000">
+<Copy StartSeek="0" EndSeek="339"/>
+<Insert>static eth_pkt_t perf_pkt;
+</Insert>
+<Copy StartSeek="372" EndSeek="2801"/>
+</Delta>
+<Delta Version="281" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:29:17000">
+<Copy StartSeek="0" EndSeek="372"/>
+<Insert>static eth_rx_desc_t rx_desc = {0};
+</Insert>
+<Copy StartSeek="417" EndSeek="2810"/>
+</Delta>
+<Delta Version="282" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:29:35000">
+<Copy StartSeek="0" EndSeek="1651"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="1688" EndSeek="2845"/>
+</Delta>
+<Delta Version="283" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:30:5000">
+<Copy StartSeek="0" EndSeek="89"/>
+<Copy StartSeek="153" EndSeek="2909"/>
+</Delta>
+<Delta Version="284" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:33:44000">
+<Copy StartSeek="0" EndSeek="1853"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="1885" EndSeek="2938"/>
+</Delta>
+<Delta Version="285" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:34:13000">
+<Copy StartSeek="0" EndSeek="1796"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="1796" EndSeek="2936"/>
+</Delta>
+<Delta Version="286" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:34:17000">
+<Copy StartSeek="0" EndSeek="2683"/>
+<Insert>	i = 20000;
+</Insert>
+<Copy StartSeek="2692" EndSeek="2933"/>
+</Delta>
+<Delta Version="287" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="13:36:15000">
+<Copy StartSeek="0" EndSeek="2683"/>
+<Insert>	i = 10;
+</Insert>
+<Copy StartSeek="2695" EndSeek="2936"/>
+</Delta>
+<Delta Version="288" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="13:49:25000">
+<Copy StartSeek="0" EndSeek="363"/>
+<Copy StartSeek="415" EndSeek="1297"/>
+<Insert>		.daddr = dpa_htonl(0x01010101),
+		.saddr = dpa_htonl(0x02020202),
+</Insert>
+<Copy StartSeek="1357" EndSeek="2980"/>
+</Delta>
+<Delta Version="289" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:46:27000">
+<Copy StartSeek="0" EndSeek="363"/>
+<Insert>#define SRC_IP 0x02020202
+</Insert>
+<Copy StartSeek="363" EndSeek="389"/>
+<Copy StartSeek="416" EndSeek="2981"/>
+</Delta>
+<Delta Version="290" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:46:30000">
+<Copy StartSeek="0" EndSeek="363"/>
+<Insert>#define DST_IP 0x01010101
+#define SRC_IP 0x02020202
+</Insert>
+<Copy StartSeek="425" EndSeek="1308"/>
+<Insert>		.daddr = dpa_htonl(DST_IP),
+		.saddr = dpa_htonl(SRC_IP),
+</Insert>
+<Copy StartSeek="1378" EndSeek="3001"/>
+</Delta>
+<Delta Version="291" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:46:57000">
+<Copy StartSeek="0" EndSeek="2748"/>
+<Insert>	i = 20000;
+</Insert>
+<Copy StartSeek="2756" EndSeek="2997"/>
+</Delta>
+<Delta Version="292" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:50:10000">
+<Copy StartSeek="0" EndSeek="2399"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="2399" EndSeek="2995"/>
+</Delta>
+<Delta Version="293" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:54:5000">
+<Copy StartSeek="0" EndSeek="2440"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2440" EndSeek="2994"/>
+</Delta>
+<Delta Version="294" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:54:6000">
+<Copy StartSeek="0" EndSeek="2988"/>
+<Insert>
+	}
+}
+</Insert>
+</Delta>
+<Delta Version="295" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:54:15000">
+<Copy StartSeek="0" EndSeek="2745"/>
+<Insert>	i = 5;
+</Insert>
+<Copy StartSeek="2757" EndSeek="2997"/>
+</Delta>
+<Delta Version="296" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:55:34000">
+<Copy StartSeek="0" EndSeek="2745"/>
+<Insert>	i = 20000;
+</Insert>
+<Copy StartSeek="2753" EndSeek="2993"/>
+</Delta>
+<Delta Version="297" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:56:23000">
+<Copy StartSeek="0" EndSeek="2609"/>
+<Copy StartSeek="2660" EndSeek="3044"/>
+</Delta>
+<Delta Version="298" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:56:56000">
+<Copy StartSeek="0" EndSeek="2660"/>
+<Copy StartSeek="2705" EndSeek="3089"/>
+</Delta>
+<Delta Version="299" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:57:19000">
+<Copy StartSeek="0" EndSeek="2793"/>
+<Copy StartSeek="2890" EndSeek="3186"/>
+</Delta>
+<Delta Version="300" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:57:28000">
+<Copy StartSeek="0" EndSeek="2793"/>
+<Insert>		pkt-&gt;ip_hdr-&gt;saddr ^= 1; /* toggle ip address */
+		pkt-&gt;l4_hdr-&gt;dest ^= 1; /* toggle dport */
+</Insert>
+<Copy StartSeek="2891" EndSeek="3188"/>
+</Delta>
+<Delta Version="301" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:57:34000">
+<Copy StartSeek="0" EndSeek="2891"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2891" EndSeek="3187"/>
+</Delta>
+<Delta Version="302" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:57:37000">
+<Copy StartSeek="0" EndSeek="3182"/>
+<Insert>	}
+}
+</Insert>
+</Delta>
+<Delta Version="303" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:57:46000">
+<Copy StartSeek="0" EndSeek="2095"/>
+<Copy StartSeek="2153" EndSeek="3343"/>
+</Delta>
+<Delta Version="304" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:59:50000">
+<Copy StartSeek="0" EndSeek="2149"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="2308" EndSeek="3498"/>
+</Delta>
+<Delta Version="305" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:00:0000">
+<Copy StartSeek="0" EndSeek="2095"/>
+<Insert>static void dpa_perf_spoof_netstack(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="2143" EndSeek="3494"/>
+</Delta>
+<Delta Version="306" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:00:11000">
+<Copy StartSeek="0" EndSeek="2304"/>
+<Copy StartSeek="2522" EndSeek="3712"/>
+</Delta>
+<Delta Version="307" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:00:49000">
+<Copy StartSeek="0" EndSeek="2973"/>
+<Insert>		dpa_memset(pkt-&gt;eth_hdr-&gt;h_dest, 0xaa, 12); /* modify mac */
+		pkt-&gt;ip_hdr-&gt;saddr ^= 1; /* toggle ip address */
+		pkt-&gt;l4_hdr-&gt;dest ^= 1; /* toggle dport */
+</Insert>
+<Copy StartSeek="3001" EndSeek="3581"/>
+</Delta>
+<Delta Version="308" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:01:21000">
+<Copy StartSeek="0" EndSeek="2973"/>
+<Insert>		dpa_perf_modify_pkt(pkt);
+</Insert>
+<Copy StartSeek="3032" EndSeek="3612"/>
+</Delta>
+<Delta Version="309" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:01:33000">
+<Copy StartSeek="0" EndSeek="3051"/>
+<Insert>		dpa_memset(pkt-&gt;eth_hdr-&gt;h_dest, 0xba, 12); /* restore orig mac */
+		pkt-&gt;ip_hdr-&gt;saddr ^= 1; /* restore ip address */
+		pkt-&gt;l4_hdr-&gt;dest ^= 1; /* restore dport */
+</Insert>
+<Copy StartSeek="3105" EndSeek="3499"/>
+</Delta>
+<Delta Version="310" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:02:4000">
+<Copy StartSeek="0" EndSeek="3327"/>
+<Insert>		dpa_memset(pkt-&gt;eth_hdr-&gt;h_dest, 0xba, 12); /* restore orig mac */
+		pkt-&gt;ip_hdr-&gt;saddr ^= 1; /* restore ip address */
+		pkt-&gt;l4_hdr-&gt;dest ^= 1; /* restore dport */
+	}
+}
+</Insert>
+</Delta>
+<Delta Version="311" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:02:29000">
+<Copy StartSeek="0" EndSeek="3264"/>
+<Insert>		if (state != DPE_FWD) {
+</Insert>
+<Copy StartSeek="3288" EndSeek="3321"/>
+<Insert>		}
+</Insert>
+<Copy StartSeek="3321" EndSeek="3380"/>
+</Delta>
+<Delta Version="312" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:02:39000">
+<Copy StartSeek="0" EndSeek="3153"/>
+<Copy StartSeek="3179" EndSeek="3406"/>
+</Delta>
+<Delta Version="313" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:02:55000">
+<Copy StartSeek="0" EndSeek="2867"/>
+<Insert>	/* the warmup */
+</Insert>
+<Copy StartSeek="2901" EndSeek="3422"/>
+</Delta>
+<Delta Version="314" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:03:19000">
+<Copy StartSeek="0" EndSeek="426"/>
+<Copy StartSeek="478" EndSeek="1169"/>
+<Insert>		.source = dpa_htons(0x8080),
+		.dest = dpa_htons(0x6666),
+</Insert>
+<Copy StartSeek="1227" EndSeek="3472"/>
+</Delta>
+<Delta Version="315" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:04:55000">
+<Copy StartSeek="0" EndSeek="478"/>
+<Copy StartSeek="479" EndSeek="3473"/>
+</Delta>
+<Delta Version="316" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:04:55000">
+<Copy StartSeek="0" EndSeek="452"/>
+<Insert>#define PERF_DPORT 0x8080
+</Insert>
+<Copy StartSeek="478" EndSeek="3473"/>
+</Delta>
+<Delta Version="317" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:05:0000">
+<Copy StartSeek="0" EndSeek="1170"/>
+<Insert>		.source = dpa_htons(),
+</Insert>
+<Copy StartSeek="1205" EndSeek="3483"/>
+</Delta>
+<Delta Version="318" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:05:4000">
+<Copy StartSeek="0" EndSeek="2583"/>
+<Copy StartSeek="2623" EndSeek="3523"/>
+</Delta>
+<Delta Version="319" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:06:27000">
+<Copy StartSeek="0" EndSeek="2619"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2681" EndSeek="3584"/>
+</Delta>
+<Delta Version="320" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:06:54000">
+<Copy StartSeek="0" EndSeek="2681"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="2682" EndSeek="2683"/>
+<Copy StartSeek="2686" EndSeek="3586"/>
+</Delta>
+<Delta Version="321" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:08:12000">
+<Copy StartSeek="0" EndSeek="2682"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="2685" EndSeek="3585"/>
+</Delta>
+<Delta Version="322" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:09:57000">
+<Copy StartSeek="0" EndSeek="2682"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="2746" EndSeek="3646"/>
+</Delta>
+<Delta Version="323" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:11:5000">
+<Copy StartSeek="0" EndSeek="2743"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="2747" EndSeek="3647"/>
+</Delta>
+<Delta Version="324" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:11:15000">
+<Copy StartSeek="0" EndSeek="2582"/>
+<Insert>
+bool is_valid_fwd(eth_pkt_t *pkt)
+{
+	struct dpa_entry *dpe = (struct dpa_entry *)pkt-&gt;dpa_handle;
+
+	if (dpe-&gt;state != DPE_FWD)
+			DPA_DBG("state %u\n", state);
+
+}
+
+</Insert>
+<Copy StartSeek="2582" EndSeek="3482"/>
+</Delta>
+<Delta Version="325" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:11:51000">
+<Copy StartSeek="0" EndSeek="2582"/>
+<Copy StartSeek="2583" EndSeek="3483"/>
+</Delta>
+<Delta Version="326" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:11:52000">
+<Copy StartSeek="0" EndSeek="598"/>
+<Copy StartSeek="861" EndSeek="3746"/>
+</Delta>
+<Delta Version="327" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:12:52000">
+<Copy StartSeek="0" EndSeek="598"/>
+<Insert>static void dpa_dump_pkt(uint8_t *pkt, uint32_t bytes)
+</Insert>
+<Copy StartSeek="658" EndSeek="3751"/>
+</Delta>
+<Delta Version="328" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:13:2000">
+<Copy StartSeek="0" EndSeek="3524"/>
+<Insert>	i = 5;
+</Insert>
+<Copy StartSeek="3536" EndSeek="3755"/>
+</Delta>
+<Delta Version="329" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:24:43000">
+<Copy StartSeek="0" EndSeek="3639"/>
+<Copy StartSeek="3668" EndSeek="3784"/>
+</Delta>
+<Delta Version="330" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:28:43000">
+<Copy StartSeek="0" EndSeek="3639"/>
+<Copy StartSeek="3640" EndSeek="3785"/>
+</Delta>
+<Delta Version="331" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:28:45000">
+<Copy StartSeek="0" EndSeek="3524"/>
+<Insert>	i = 20000;
+</Insert>
+<Copy StartSeek="3532" EndSeek="3781"/>
+</Delta>
+<Delta Version="332" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:30:46000">
+<Copy StartSeek="0" EndSeek="3636"/>
+<Insert>		dpa_perf_dump_pkt(pkt,40);
+</Insert>
+<Copy StartSeek="3672" EndSeek="3788"/>
+</Delta>
+<Delta Version="333" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:31:10000">
+<Copy StartSeek="0" EndSeek="2144"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="2182" EndSeek="3824"/>
+</Delta>
+<Delta Version="334" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:33:55000">
+<Copy StartSeek="0" EndSeek="2182"/>
+<Copy StartSeek="2183" EndSeek="3825"/>
+</Delta>
+<Delta Version="335" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:33:57000">
+<Copy StartSeek="0" EndSeek="3561"/>
+<Insert>	i = 5;
+</Insert>
+<Copy StartSeek="3573" EndSeek="3829"/>
+</Delta>
+<Delta Version="336" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:46:49000">
+<Copy StartSeek="0" EndSeek="3561"/>
+<Insert>	i = 20000;
+</Insert>
+<Copy StartSeek="3570" EndSeek="3826"/>
+</Delta>
+<Delta Version="337" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:47:36000">
+<Copy StartSeek="0" EndSeek="2928"/>
+<Insert>	unsigned int i = 20000;
+</Insert>
+<Copy StartSeek="2945" EndSeek="3818"/>
+</Delta>
+<Delta Version="338" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:48:9000">
+<Copy StartSeek="0" EndSeek="598"/>
+<Insert>static void dpa_perf_dump_pkt(uint8_t *pkt, uint32_t bytes)
+{
+#ifdef __DPA_DEBUG__
+  
+	uint32_t i = 0;
+
+	DPA_DBG("%4x: ", i);
+	for (i = 1; i&lt;= bytes; i++) {
+		DPA_DBG("%.2x ", (*pkt) &amp; 0xff);
+		if ((i &amp; 0xf) == 0) {
+			DPA_DBG("\n%4x: ", i);
+		}
+		pkt++;
+	}
+#endif
+}
+</Insert>
+<Copy StartSeek="1000" EndSeek="3801"/>
+<Insert>		dpa_perf_dump_pkt(pkt-&gt;buff, 40);
+</Insert>
+<Copy StartSeek="3844" EndSeek="3960"/>
+</Delta>
+<Delta Version="339" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:48:38000">
+<Copy StartSeek="0" EndSeek="2069"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2090" EndSeek="3980"/>
+</Delta>
+<Delta Version="340" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="15:53:10000">
+<Copy StartSeek="0" EndSeek="2778"/>
+<Insert>	pkt-&gt;l4_hdr-&gt;dest ^= 1; /* toggle dport */
+</Insert>
+<Copy StartSeek="2829" EndSeek="3002"/>
+<Insert>	pkt-&gt;l4_hdr-&gt;dest ^= 1; /* restore dport */
+</Insert>
+<Copy StartSeek="3054" EndSeek="3994"/>
+</Delta>
+<Delta Version="341" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:13:54000">
+<Copy StartSeek="0" EndSeek="3722"/>
+<Insert>	i = 10;
+</Insert>
+<Copy StartSeek="3730" EndSeek="3993"/>
+</Delta>
+<Delta Version="342" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:14:28000">
+<Copy StartSeek="0" EndSeek="2728"/>
+<Insert>	pkt-&gt;ip_hdr-&gt;saddr ^= 1; /* toggle ip address */
+//      pkt-&gt;l4_hdr-&gt;dest ^= 1; /* toggle dport */
+</Insert>
+<Copy StartSeek="2829" EndSeek="2951"/>
+<Insert>	pkt-&gt;ip_hdr-&gt;saddr ^= 1; /* restore ip address */
+//      pkt-&gt;l4_hdr-&gt;dest ^= 1; /* restore dport */
+</Insert>
+<Copy StartSeek="3054" EndSeek="3993"/>
+</Delta>
+<Delta Version="343" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:14:51000">
+<Copy StartSeek="0" EndSeek="3009"/>
+<Insert>	pkt-&gt;l4_hdr-&gt;dest ^= 1; /* restore dport */
+</Insert>
+<Copy StartSeek="3061" EndSeek="4000"/>
+</Delta>
+<Delta Version="344" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:15:11000">
+<Copy StartSeek="0" EndSeek="2785"/>
+<Insert>	pkt-&gt;l4_hdr-&gt;dest ^= 1; /* toggle dport */
+</Insert>
+<Copy StartSeek="2836" EndSeek="4007"/>
+</Delta>
+<Delta Version="345" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:16:32000">
+<Copy StartSeek="0" EndSeek="2728"/>
+<Insert>//      pkt-&gt;ip_hdr-&gt;saddr ^= 1; /* toggle ip address */
+</Insert>
+<Copy StartSeek="2778" EndSeek="2951"/>
+<Insert>//      pkt-&gt;ip_hdr-&gt;saddr ^= 1; /* restore ip address */
+</Insert>
+<Copy StartSeek="3002" EndSeek="3993"/>
+</Delta>
+<Delta Version="346" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:17:0000">
+<Copy StartSeek="0" EndSeek="1699"/>
+<Insert>static void init_perf_pkt_iph(uint8_t *iph)
+</Insert>
+<Copy StartSeek="1749" EndSeek="2344"/>
+<Insert>	init_perf_pkt_iph((uint8_t *)pkt-&gt;ip_hdr);
+</Insert>
+<Copy StartSeek="2377" EndSeek="3988"/>
+</Delta>
+<Delta Version="347" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:31:58000">
+<Copy StartSeek="0" EndSeek="1699"/>
+<Insert>static void init_perf_pkt_iph(dpa_ip_hdr_t  *iph)
+</Insert>
+<Copy StartSeek="1748" EndSeek="3987"/>
+</Delta>
+<Delta Version="348" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:31:59000">
+<Copy StartSeek="0" EndSeek="1750"/>
+<Insert>	dpa_ip_hdr_t perf_iph = {
+		.daddr = dpa_htonl(PERF_DST_IP),
+		.saddr = dpa_htonl(PERF_SRC_IP),
+		.protocol = DPA_IP_PROTO_TCP,
+		.version = 4,
+		.ihl = 5,
+	};
+</Insert>
+<Copy StartSeek="1899" EndSeek="1900"/>
+<Insert>	dpa_memcpy(iph, &amp;perf_iph, sizeof(dpa_ip_hdr_t));
+}
+
+</Insert>
+<Copy StartSeek="1900" EndSeek="3921"/>
+</Delta>
+<Delta Version="349" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:32:43000">
+<Copy StartSeek="0" EndSeek="1750"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="1750" EndSeek="3919"/>
+</Delta>
+<Delta Version="350" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:32:48000">
+<Copy StartSeek="0" EndSeek="1498"/>
+<Insert>static void init_perf_pkt_tcphdr(uint8_t *th)
+</Insert>
+<Copy StartSeek="1550" EndSeek="3925"/>
+</Delta>
+<Delta Version="351" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:33:30000">
+<Copy StartSeek="0" EndSeek="1552"/>
+<Insert>	dpa_tcp_hdr_t perf_th = {
+		.source = dpa_htons(PERF_SPORT),
+		.dest = dpa_htons(PERF_DPORT),
+	};
+
+	dpa_memcpy(th, &amp;perf_th, sizeof(dpa_tcp_hdr_t));
+}
+
+</Insert>
+<Copy StartSeek="1627" EndSeek="3847"/>
+</Delta>
+<Delta Version="352" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:33:51000">
+<Copy StartSeek="0" EndSeek="1552"/>
+<Insert>	th-&gt;source = dpa_htons(PERF_SPORT),
+	th-&gt;dest = dpa_htons(PERF_DPORT),
+</Insert>
+<Copy StartSeek="1624" EndSeek="3847"/>
+</Delta>
+<Delta Version="353" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:33:55000">
+<Copy StartSeek="0" EndSeek="2236"/>
+<Insert>	init_perf_pkt_tcphdr((uint8_t  *)(pkt-&gt;ip_hdr) + 20);
+</Insert>
+<Copy StartSeek="2297" EndSeek="3853"/>
+</Delta>
+<Delta Version="354" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:34:36000">
+<Copy StartSeek="0" EndSeek="2236"/>
+<Insert>	init_perf_pkt_tcphdr((udpa_tcp_hdr_t *)(pkt-&gt;ip_hdr) + 20);
+</Insert>
+<Copy StartSeek="2304" EndSeek="3860"/>
+</Delta>
+<Delta Version="355" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:34:48000">
+<Copy StartSeek="0" EndSeek="2236"/>
+<Insert>	init_perf_pkt_tcphdr((udpa_tcp_hdr_t *)(pkt-&gt;ip_hdr) + l4_offset);
+</Insert>
+<Copy StartSeek="2309" EndSeek="3865"/>
+</Delta>
+<Delta Version="356" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:35:50000">
+<Copy StartSeek="0" EndSeek="1955"/>
+<Insert>	dpa_memset(pkt-&gt;eth_hdr-&gt;h_dest, 0xba, 12);
+</Insert>
+<Copy StartSeek="2045" EndSeek="3910"/>
+</Delta>
+<Delta Version="357" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:45:53000">
+<Copy StartSeek="0" EndSeek="1955"/>
+<Insert>	dpa_memset(pkt-&gt;eth_hdr-&gt;h_dest, 0xba, 6);
+	dpa_memset(pkt-&gt;eth_hdr-&gt;h_source, 0xba, 6);
+</Insert>
+<Copy StartSeek="2044" EndSeek="3909"/>
+</Delta>
+<Delta Version="358" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:46:2000">
+<Copy StartSeek="0" EndSeek="2799"/>
+<Insert>	dpa_memset(pkt-&gt;eth_hdr-&gt;h_dest, 0xba, 12); /* restore orig mac */
+</Insert>
+<Copy StartSeek="2889" EndSeek="3931"/>
+</Delta>
+<Delta Version="359" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:46:21000">
+<Copy StartSeek="0" EndSeek="1999"/>
+<Insert>	dpa_memset(pkt-&gt;eth_hdr-&gt;h_source, 0x12,6);
+</Insert>
+<Copy StartSeek="2044" EndSeek="2843"/>
+<Insert>	dpa_memset(pkt-&gt;eth_hdr-&gt;h_source, 0x12,6);
+</Insert>
+<Copy StartSeek="2888" EndSeek="3931"/>
+</Delta>
+<Delta Version="360" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:46:43000">
+<Copy StartSeek="0" EndSeek="2417"/>
+<Insert>	DPA_CLS_DBG("start measurements, perf_pkt %p\n", pkt_raw_data);
+</Insert>
+<Copy StartSeek="2478" EndSeek="2936"/>
+<Copy StartSeek="2937" EndSeek="3928"/>
+</Delta>
+<Delta Version="361" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:47:35000">
+<Copy StartSeek="0" EndSeek="2417"/>
+<Insert>	DPA_DBG("start measurements, perf_pkt %p\n", pkt_raw_data);
+</Insert>
+<Copy StartSeek="2417" EndSeek="3867"/>
+</Delta>
+<Delta Version="362" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:47:47000">
+<Copy StartSeek="0" EndSeek="2579"/>
+<Copy StartSeek="2655" EndSeek="3943"/>
+</Delta>
+<Delta Version="363" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:49:36000">
+<Copy StartSeek="0" EndSeek="2705"/>
+<Copy StartSeek="2780" EndSeek="4018"/>
+</Delta>
+<Delta Version="364" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:49:46000">
+<Copy StartSeek="0" EndSeek="2654"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2654" EndSeek="4017"/>
+</Delta>
+<Delta Version="365" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:49:49000">
+<Copy StartSeek="0" EndSeek="2974"/>
+<Copy StartSeek="3049" EndSeek="3100"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3174" EndSeek="4165"/>
+</Delta>
+<Delta Version="366" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:50:14000">
+<Copy StartSeek="0" EndSeek="3100"/>
+<Insert>DPA_DBG("new_src %x new_dst %x", pkt-&gt;ip_hdr-&gt;saddr, pkt-&gt;ip_hdr-&gt;daddr);
+</Insert>
+<Copy StartSeek="3175" EndSeek="4166"/>
+</Delta>
+<Delta Version="367" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:50:15000">
+<Copy StartSeek="0" EndSeek="2974"/>
+<Insert>	DPA_DBG("org_src %x org_dst %x", pkt-&gt;ip_hdr-&gt;saddr, pkt-&gt;ip_hdr-&gt;daddr);
+</Insert>
+<Copy StartSeek="3049" EndSeek="3100"/>
+<Insert>	DPA_DBG("new_src %x new_dst %x", pkt-&gt;ip_hdr-&gt;saddr, pkt-&gt;ip_hdr-&gt;daddr);
+</Insert>
+<Copy StartSeek="3175" EndSeek="4166"/>
+</Delta>
+<Delta Version="368" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:51:56000">
+<Copy StartSeek="0" EndSeek="3601"/>
+<Insert>	i = 12;
+</Insert>
+<Copy StartSeek="3610" EndSeek="4166"/>
+</Delta>
+<Delta Version="369" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:02:54000">
+<Copy StartSeek="0" EndSeek="3270"/>
+<Insert>	unsigned int i;
+</Insert>
+<Copy StartSeek="3291" EndSeek="4170"/>
+</Delta>
+<Delta Version="370" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:03:42000">
+<Copy StartSeek="0" EndSeek="3771"/>
+<Copy StartSeek="3820" EndSeek="4219"/>
+</Delta>
+<Delta Version="371" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:04:21000">
+<Copy StartSeek="0" EndSeek="3614"/>
+<Insert>        while (i--) {
+</Insert>
+<Copy StartSeek="3649" EndSeek="4232"/>
+</Delta>
+<Delta Version="372" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:04:40000">
+<Copy StartSeek="0" EndSeek="3605"/>
+<Insert>	i = 10;
+</Insert>
+<Copy StartSeek="3605" EndSeek="4223"/>
+</Delta>
+<Delta Version="373" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:04:57000">
+<Copy StartSeek="0" EndSeek="3824"/>
+<Copy StartSeek="3831" EndSeek="4230"/>
+</Delta>
+<Delta Version="374" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:05:13000">
+<Copy StartSeek="0" EndSeek="3640"/>
+<Copy StartSeek="3647" EndSeek="3831"/>
+<Insert>		i++;
+</Insert>
+<Copy StartSeek="3831" EndSeek="4230"/>
+</Delta>
+<Delta Version="375" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:05:27000">
+<Copy StartSeek="0" EndSeek="3932"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3970" EndSeek="4267"/>
+</Delta>
+<Delta Version="376" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:05:48000">
+<Copy StartSeek="0" EndSeek="3932"/>
+<Insert>	DPA_DBG("learned in %u packets", i);
+</Insert>
+<Copy StartSeek="3980" EndSeek="4277"/>
+</Delta>
+<Delta Version="377" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:05:56000">
+<Copy StartSeek="0" EndSeek="3980"/>
+<Copy StartSeek="3981" EndSeek="4278"/>
+</Delta>
+<Delta Version="378" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:05:58000">
+<Copy StartSeek="0" EndSeek="3782"/>
+<Insert>		state = ((dpa_entry *)pkt-&gt;dpa_handle)-&gt;state;
+</Insert>
+<Copy StartSeek="3838" EndSeek="4285"/>
+</Delta>
+<Delta Version="379" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:06:18000">
+<Copy StartSeek="0" EndSeek="3291"/>
+<Insert>	unsigned int state;
+</Insert>
+<Copy StartSeek="3322" EndSeek="4295"/>
+</Delta>
+<Delta Version="380" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:06:39000">
+<Copy StartSeek="0" EndSeek="3949"/>
+<Insert>	DPA_DBG("---- learned in %u packets ----", i);
+
+</Insert>
+<Copy StartSeek="4031" EndSeek="4212"/>
+<Insert>		if (state != DPE_FWD)
+			DPA_DBG("state %u\n", state);
+</Insert>
+<Copy StartSeek="4215" EndSeek="4274"/>
+</Delta>
+<Delta Version="381" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:07:27000">
+<Copy StartSeek="0" EndSeek="3615"/>
+<Insert>        while (state != DPE_FWD) {
+</Insert>
+<Copy StartSeek="3646" EndSeek="4270"/>
+</Delta>
+<Delta Version="382" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:07:43000">
+<Copy StartSeek="0" EndSeek="3615"/>
+<Insert>	i = 12;
+</Insert>
+<Copy StartSeek="3624" EndSeek="4270"/>
+</Delta>
+<Delta Version="383" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:07:46000">
+<Copy StartSeek="0" EndSeek="3646"/>
+<Insert>		i++;
+</Insert>
+<Copy StartSeek="3646" EndSeek="4263"/>
+</Delta>
+<Delta Version="384" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:08:7000">
+<Copy StartSeek="0" EndSeek="3291"/>
+<Insert>	unsigned int state = DPE_LRN;
+</Insert>
+<Copy StartSeek="3336" EndSeek="4277"/>
+</Delta>
+<Delta Version="385" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:08:43000">
+<Copy StartSeek="0" EndSeek="3795"/>
+<Insert>		state = ((struct dpa_entry *)pkt-&gt;dpa_handle)-&gt;state;
+</Insert>
+<Copy StartSeek="3795" EndSeek="3896"/>
+<Insert>	if (state != DPE_FWD) {
+</Insert>
+<Copy StartSeek="4004" EndSeek="4304"/>
+</Delta>
+<Delta Version="386" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:10:17000">
+<Copy StartSeek="0" EndSeek="3940"/>
+<Insert>	if (((struct dpa_entry *)pkt-&gt;dpa_handle)-&gt;state != DPE_FWD) {
+</Insert>
+<Copy StartSeek="3970" EndSeek="4270"/>
+</Delta>
+<Delta Version="387" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:10:25000">
+<Copy StartSeek="0" EndSeek="3698"/>
+<Insert>		dpa_cls_rx(pkt);
+</Insert>
+<Copy StartSeek="3725" EndSeek="4278"/>
+</Delta>
+<Delta Version="388" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:11:29000">
+<Copy StartSeek="0" EndSeek="3698"/>
+<Insert>		state = dpa_cls_rx(pkt);
+</Insert>
+<Copy StartSeek="3717" EndSeek="4270"/>
+</Delta>
+<Delta Version="389" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:11:34000">
+<Copy StartSeek="0" EndSeek="3336"/>
+<Insert>//      unsigned int i;
+</Insert>
+<Copy StartSeek="3336" EndSeek="4246"/>
+</Delta>
+<Delta Version="390" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:12:2000">
+<Copy StartSeek="0" EndSeek="3946"/>
+<Insert>			DPA_DBG("error in state %u\n", state);
+</Insert>
+<Copy StartSeek="3993" EndSeek="4251"/>
+</Delta>
+<Delta Version="391" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:12:31000">
+<Copy StartSeek="0" EndSeek="4192"/>
+<Copy StartSeek="4249" EndSeek="4308"/>
+</Delta>
+<Delta Version="392" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:13:12000">
+<Copy StartSeek="0" EndSeek="4189"/>
+<Insert>		
+</Insert>
+<Copy StartSeek="4189" EndSeek="4305"/>
+</Delta>
+<Delta Version="393" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:13:14000">
+<Copy StartSeek="0" EndSeek="4146"/>
+<Insert>//      	dpa_perf_dump_pkt(pkt-&gt;buff, 40);
+</Insert>
+<Copy StartSeek="4146" EndSeek="4262"/>
+</Delta>
+<Delta Version="394" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:13:20000">
+<Copy StartSeek="0" EndSeek="598"/>
+<Insert>//static void dpa_perf_dump_pkt(uint8_t *pkt, uint32_t bytes)
+//{
+//#ifdef __DPA_DEBUG__
+//
+//        uint32_t i = 0;
+//
+//        DPA_DBG("%4x: ", i);
+//        for (i = 1; i&lt;= bytes; i++) {
+//                DPA_DBG("%.2x ", (*pkt) &amp; 0xff);
+//                if ((i &amp; 0xf) == 0) {
+//                        DPA_DBG("\n%4x: ", i);
+//                }
+//                pkt++;
+//        }
+//#endif
+//}
+
+</Insert>
+<Copy StartSeek="598" EndSeek="3859"/>
+</Delta>
+<Delta Version="395" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:13:41000">
+<Copy StartSeek="0" EndSeek="2867"/>
+<Insert>	unsigned int i = 0;
+</Insert>
+<Copy StartSeek="2884" EndSeek="3855"/>
+</Delta>
+<Delta Version="396" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:16:2000">
+<Copy StartSeek="0" EndSeek="2176"/>
+<Insert>	DPA_DBG("org_src %x org_dst %x", pkt-&gt;ip_hdr-&gt;saddr, pkt-&gt;ip_hdr-&gt;daddr);
+</Insert>
+<Copy StartSeek="2176" EndSeek="2226"/>
+<Insert>	DPA_DBG("new_src %x new_dst %x", pkt-&gt;ip_hdr-&gt;saddr, pkt-&gt;ip_hdr-&gt;daddr);
+//      pkt-&gt;l4_hdr-&gt;dest ^= 1; /* toggle dport */
+}
+
+</Insert>
+<Copy StartSeek="2273" EndSeek="2414"/>
+<Insert>	DPA_DBG("pkt_src %x pkt_dst %x", pkt-&gt;ip_hdr-&gt;saddr, pkt-&gt;ip_hdr-&gt;daddr);
+</Insert>
+<Copy StartSeek="2414" EndSeek="2465"/>
+<Insert>	DPA_DBG("org_src %x org_dst %x", pkt-&gt;ip_hdr-&gt;saddr, pkt-&gt;ip_hdr-&gt;daddr);
+//      pkt-&gt;l4_hdr-&gt;dest ^= 1; /* restore dport */
+}
+
+</Insert>
+<Copy StartSeek="2513" EndSeek="2915"/>
+<Insert>//      	START_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="2952" EndSeek="3103"/>
+<Insert>//      	READ_COUNT_BLOCK("cls_rx");
+</Insert>
+<Copy StartSeek="3138" EndSeek="3538"/>
+</Delta>
+<Delta Version="397" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:19:42000">
+<Copy StartSeek="0" EndSeek="3310"/>
+<Insert>	i = 2;
+</Insert>
+<Copy StartSeek="3322" EndSeek="3542"/>
+</Delta>
+<Delta Version="398" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:20:23000">
+<Copy StartSeek="0" EndSeek="2226"/>
+<Copy StartSeek="2276" EndSeek="2320"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="2370" EndSeek="2562"/>
+<Copy StartSeek="2612" EndSeek="2657"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="2707" EndSeek="3736"/>
+</Delta>
+</DeltaFile>

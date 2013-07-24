@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<KeyBindings Version="1.0" Emulation="Visual C++ 6">
+	<Mode Name="actionscript">
+		<Assign Key="{" Command="actionscript-begin"/>
+		<Assign Key="}" Command="actionscript-endbrace"/>
+	</Mode>
+	<Mode Name="default">
+		<Assign Key="Alt+C" Command="comment"/>
+		<Assign Key="Alt+E" Command="comment-erase"/>
+		<Assign Key="Alt+Left" Command="prev-buff-tab"/>
+		<Assign Key="Alt+P" Command="activate-files"/>
+		<Assign Key="Alt+Right" Command="next-buff-tab"/>
+		<Assign Key="Ctrl+-" Command="cvs-diff-with-tip"/>
+		<Assign Key="Ctrl+Alt+P" Command="toggle-preview"/>
+		<Assign Key="Ctrl+B" Command="clear-highlights"/>
+		<Assign Key="Ctrl+Down" Command="next-proc"/>
+		<Assign Key="Ctrl+F10" Command="beautify-selection"/>
+		<Assign Key="Ctrl+F11" Command="record-macro-toggle"/>
+		<Assign Key="Ctrl+F2" Command="set-bookmark"/>
+		<Assign Key="Ctrl+J" Command="quick-highlight"/>
+		<Assign Key="Ctrl+K" Command="activate-find-symbol"/>
+		<Assign Key="Ctrl+R" Command="gui-replace"/>
+		<Assign Key="Ctrl+Shift+F" Command="find-in-files"/>
+		<Assign Key="Ctrl+Up" Command="prev-proc"/>
+	</Mode>
+	<Mode Name="grep">
+		<Assign Key="Ctrl+Down" Command="grep-next-file"/>
+		<Assign Key="Ctrl+Up" Command="grep-prev-file"/>
+		<Assign Key="Esc" Command="grep-esc"/>
+	</Mode>
+	<Mode Name="html">
+		<Assign Key="Tab" Command="html-key"/>
+	</Mode>
+	<Mode Name="pascal">
+		<Assign Key="d" Command="pascal-d"/>
+		<Assign Key="D" Command="pascal-d"/>
+		<Assign Key="n" Command="pascal-n"/>
+		<Assign Key="N" Command="pascal-n"/>
+		<Assign Key="y" Command="pascal-y"/>
+		<Assign Key="Y" Command="pascal-y"/>
+	</Mode>
+	<Mode Name="qbasic">
+		<Assign Key="Ctrl+Space" Command="codehelp-complete"/>
+	</Mode>
+	<Mode Name="ruby">
+		<Assign Key="[" Command="ruby-bracket"/>
+	</Mode>
+	<Mode Name="systemverilog">
+		<Assign Key="Ctrl+Space" Command="codehelp-complete"/>
+	</Mode>
+	<Mode Name="vera">
+		<Assign Key="(" Command="auto-functionhelp-key"/>
+		<Assign Key="Ctrl+Space" Command="codehelp-complete"/>
+	</Mode>
+	<Mode Name="verilog">
+		<Assign Key="Ctrl+Space" Command="codehelp-complete"/>
+	</Mode>
+</KeyBindings>

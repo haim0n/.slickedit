@@ -1,0 +1,333 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="44" Comment="" Date="2012/08/02" Time="16:06:29000" NL="\10" Encoding="text">
+<Insert>#include &lt;linux/module.h&gt;
+#include &lt;linux/moduleparam.h&gt;
+#include "dpa_cls_mm.h"
+
+static unsigned int blks = 1&lt;&lt;2;
+static unsigned int blk_sz = 100;
+
+module_param(blks, uint, 0644);
+module_param(blk_sz, uint, 0644);
+
+MODULE_PARM_DESC(blks, "number of mm blocks");
+MODULE_PARM_DESC(blk_sz, "size_of(block)");
+
+void **blks_tbl = NULL;
+int __init dcm_test_init(void)
+{
+	
+
+	blks_tbl = dcm_init(blks, blk_sz);
+	printk(KERN_ERR "(%s:%d) head %p, blks %u, blksize %u\n", __func__, __LINE__,
+	       blks_tbl, blks, blk_sz);
+
+	if (!blks_tbl)
+		return -ENOMEM;
+
+	blks_tbl[0] = dcm_alloc();
+	blks_tbl[1] = dcm_alloc();
+	blks_tbl[2] = dcm_alloc();
+	blks_tbl[3] = dcm_alloc();
+
+	dcm_free(blks_tbl[1]);
+	dcm_free(blks_tbl[3]);
+	dcm_free(blks_tbl[2]);
+	dcm_free(blks_tbl[0]);
+
+	blks_tbl[0] = dcm_alloc();
+
+	return 0;
+}
+module_init(dcm_test_init);
+
+void __exit dcm_test_exit(void)
+{
+	dcm_exit();
+}
+module_exit(dcm_test_exit);
+MODULE_LICENSE("GPL");
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:27:32000">
+<Copy StartSeek="0" EndSeek="64"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:27:56000">
+<Copy StartSeek="0" EndSeek="64"/>
+<Insert>
+</Insert>
+<Copy StartSeek="93" EndSeek="130"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:28:39000">
+<Copy StartSeek="0" EndSeek="61"/>
+<Insert>
+}
+</Insert>
+<Copy StartSeek="115" EndSeek="209"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:28:46000">
+<Copy StartSeek="0" EndSeek="26"/>
+<Insert>
+</Insert>
+<Copy StartSeek="50" EndSeek="232"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:29:5000">
+<Copy StartSeek="0" EndSeek="135"/>
+<Insert>
+}
+</Insert>
+<Copy StartSeek="137" EndSeek="231"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:29:31000">
+<Copy StartSeek="0" EndSeek="84"/>
+<Copy StartSeek="98" EndSeek="149"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="201" EndSeek="295"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:30:57000">
+<Copy StartSeek="0" EndSeek="51"/>
+<Copy StartSeek="100" EndSeek="248"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="310" EndSeek="404"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:32:7000">
+<Copy StartSeek="0" EndSeek="51"/>
+<Insert>int blks = 1&lt;&lt;14;
+module_param(blks, int, 644);
+
+</Insert>
+<Copy StartSeek="277" EndSeek="581"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:34:9000">
+<Copy StartSeek="0" EndSeek="185"/>
+<Copy StartSeek="186" EndSeek="582"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:34:15000">
+<Copy StartSeek="0" EndSeek="105"/>
+<Copy StartSeek="106" EndSeek="583"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:34:17000">
+<Copy StartSeek="0" EndSeek="377"/>
+<Insert>	head = dcm_init(uint32_t blks, uint32_t blk_sz);
+</Insert>
+<Copy StartSeek="409" EndSeek="565"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:34:32000">
+<Copy StartSeek="0" EndSeek="409"/>
+<Insert>	printk(KERN_ERR "(%s:%d) head *p\n", __func__, __LINE__,);
+</Insert>
+<Copy StartSeek="474" EndSeek="570"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:34:43000">
+<Copy StartSeek="0" EndSeek="474"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="504" EndSeek="598"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:35:18000">
+<Copy StartSeek="0" EndSeek="489"/>
+<Insert>		return 
+</Insert>
+<Copy StartSeek="507" EndSeek="606"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:35:30000">
+<Copy StartSeek="0" EndSeek="475"/>
+<Insert>	if (!head) {
+</Insert>
+<Copy StartSeek="487" EndSeek="505"/>
+<Insert>	}
+}
+</Insert>
+<Copy StartSeek="507" EndSeek="601"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:35:32000">
+<Copy StartSeek="0" EndSeek="326"/>
+<Insert>	printk(KERN_ERR "(%s:%d)\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="326" EndSeek="358"/>
+<Insert>	printk(KERN_ERR "(%s:%d) head *p\n", __func__, __LINE__, head);
+
+</Insert>
+<Copy StartSeek="469" EndSeek="595"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:36:13000">
+<Copy StartSeek="0" EndSeek="418"/>
+<Insert>	       __func__, __LINE__, head, blks, blksize);
+</Insert>
+<Copy StartSeek="467" EndSeek="594"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:38:8000">
+<Copy StartSeek="0" EndSeek="563"/>
+<Insert>
+</Insert>
+<Copy StartSeek="576" EndSeek="606"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:38:49000">
+<Copy StartSeek="0" EndSeek="106"/>
+<Insert>module_param(blks, unsigned int, 644);
+module_param(blk_sz, unsigned int, 644);
+</Insert>
+<Copy StartSeek="168" EndSeek="588"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="13:08:51000">
+<Copy StartSeek="0" EndSeek="51"/>
+<Insert>unsigned int blks = 1&lt;&lt;14;
+unsigned int blk_sz = 100;
+</Insert>
+<Copy StartSeek="87" EndSeek="570"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="13:08:56000">
+<Copy StartSeek="0" EndSeek="26"/>
+<Copy StartSeek="57" EndSeek="601"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="13:10:21000">
+<Copy StartSeek="0" EndSeek="119"/>
+<Insert>module_param(blks, int, 644);
+module_param(blk_sz, int, 644);
+</Insert>
+<Copy StartSeek="183" EndSeek="603"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="13:10:46000">
+<Copy StartSeek="0" EndSeek="82"/>
+<Insert>int blks = 1&lt;&lt;14;
+int blk_sz = 100;
+</Insert>
+<Copy StartSeek="132" EndSeek="617"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="13:15:20000">
+<Copy StartSeek="0" EndSeek="82"/>
+<Insert>static int blks = 1&lt;&lt;14;
+static int blk_sz = 100;
+</Insert>
+<Copy StartSeek="150" EndSeek="635"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="13:15:29000">
+<Copy StartSeek="0" EndSeek="151"/>
+<Insert>module_param(blks, int, 0644);
+module_param(blk_sz, int, 0644);
+</Insert>
+<Copy StartSeek="217" EndSeek="637"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="13:15:36000">
+<Copy StartSeek="0" EndSeek="389"/>
+<Insert>	printk(KERN_ERR "(%s:%d) head *p, blks %u, blksize %u\n", 
+	       __func__, __LINE__, head, blks, blk_sz);
+</Insert>
+<Copy StartSeek="497" EndSeek="636"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="13:16:58000">
+<Copy StartSeek="0" EndSeek="528"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="542" EndSeek="648"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="13:17:8000">
+<Copy StartSeek="0" EndSeek="648"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="13:17:47000">
+<Copy StartSeek="0" EndSeek="648"/>
+<Insert>MODULE_LICENCE(GPL);
+</Insert>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="13:17:51000">
+<Copy StartSeek="0" EndSeek="648"/>
+<Insert>MODULE_LICENCE("GPL");
+</Insert>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="13:18:14000">
+<Copy StartSeek="0" EndSeek="498"/>
+<Copy StartSeek="526" EndSeek="699"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:14:14000">
+<Copy StartSeek="0" EndSeek="310"/>
+<Copy StartSeek="333" EndSeek="366"/>
+<Insert>	void *head;
+</Insert>
+<Copy StartSeek="368" EndSeek="369"/>
+<Insert>	head = dcm_init(blks, blk_sz);
+</Insert>
+<Copy StartSeek="405" EndSeek="514"/>
+<Insert>	dcm_alloc();
+	dcm_alloc();
+</Insert>
+<Copy StartSeek="571" EndSeek="744"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:15:34000">
+<Copy StartSeek="0" EndSeek="570"/>
+<Insert>
+</Insert>
+<Copy StartSeek="651" EndSeek="824"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:16:7000">
+<Copy StartSeek="0" EndSeek="651"/>
+<Copy StartSeek="652" EndSeek="825"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:16:8000">
+<Copy StartSeek="0" EndSeek="484"/>
+<Insert>	       head, blks, blk_sz);
+</Insert>
+<Copy StartSeek="517" EndSeek="829"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:16:28000">
+<Copy StartSeek="0" EndSeek="310"/>
+<Insert>void *blks_tbl = NULL;
+</Insert>
+<Copy StartSeek="335" EndSeek="831"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:16:39000">
+<Copy StartSeek="0" EndSeek="310"/>
+<Insert>void *blks_tbl[] = NULL;
+</Insert>
+<Copy StartSeek="334" EndSeek="830"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:16:48000">
+<Copy StartSeek="0" EndSeek="519"/>
+<Copy StartSeek="554" EndSeek="692"/>
+<Insert>	if (!head)
+		return -ENOMEM;
+
+</Insert>
+<Copy StartSeek="693" EndSeek="835"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:17:11000">
+<Copy StartSeek="0" EndSeek="535"/>
+<Insert>	 return -ENOMEM;
+</Insert>
+<Copy StartSeek="553" EndSeek="835"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:17:12000">
+<Copy StartSeek="0" EndSeek="667"/>
+<Insert>	dcm_free(blks_tbl[2]);
+</Insert>
+<Copy StartSeek="691" EndSeek="835"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:19:26000">
+<Copy StartSeek="0" EndSeek="82"/>
+<Insert>static unsigned int blks = 1&lt;&lt;14;
+</Insert>
+<Copy StartSeek="115" EndSeek="834"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:51:51000">
+<Copy StartSeek="0" EndSeek="690"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="740" EndSeek="882"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:56:27000">
+<Copy StartSeek="0" EndSeek="738"/>
+<Insert>
+</Insert>
+<Copy StartSeek="762" EndSeek="763"/>
+<Copy StartSeek="764" EndSeek="906"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:01:29000">
+<Copy StartSeek="0" EndSeek="763"/>
+<Insert>
+</Insert>
+<Copy StartSeek="792" EndSeek="934"/>
+</Delta>
+</DeltaFile>

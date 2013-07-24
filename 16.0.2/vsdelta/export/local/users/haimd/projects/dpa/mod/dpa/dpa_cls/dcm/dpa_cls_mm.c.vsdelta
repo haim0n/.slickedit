@@ -1,0 +1,871 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="124" Comment="" Date="2012/08/02" Time="16:08:30000" NL="\10" Encoding="text">
+<Insert>#include &lt;linux/slab.h&gt;
+#include "dpa_cls_mm.h"
+
+/* HAIM FIXME : not SMP safe !! */
+static unsigned long *dcm_head = NULL; 	/* chief head of the pool */
+static unsigned long *dcm_fp = NULL; 	/* next free */
+static uint32_t dcm_blks; 		/* number of available blocks */
+
+#define dcm_dump() \
+(pr_debug(KERN_ERR "(%s:%d) dcm_head %p, dcm_fp %p, blks %u\n",  \
+	__func__, __LINE__,dcm_head, dcm_fp, dcm_blks))
+
+
+void *dcm_alloc(void)
+{
+	unsigned long *tmp;
+
+	if (!dcm_blks)
+		return NULL;
+	
+	tmp = dcm_fp;
+	dcm_fp = (unsigned long *)*dcm_fp;
+	*tmp = 0;
+	dcm_blks--;
+
+	return tmp;
+}
+
+void dcm_free(void *blk)
+{
+	*(unsigned long *)blk = (unsigned long)dcm_fp;
+	dcm_fp = (unsigned long *)blk;
+	dcm_blks++;
+}
+
+/* HAIM FIXME : alignment !!! */
+void *dcm_init(uint32_t blks, uint32_t blk_sz)
+{
+	uint32_t i;
+	unsigned long *tmp;
+
+	dcm_head = kzalloc(blks * blk_sz, GFP_KERNEL);
+	if (!dcm_head)
+		return NULL;
+
+	dcm_blks = blks;
+	tmp = dcm_head;
+	for (i = 0; i &lt; blks - 1; i++) {
+		*tmp = (unsigned long)((unsigned char *)tmp + blk_sz);
+		tmp = (unsigned long *)((unsigned char *)tmp + blk_sz);
+	}
+	*((unsigned char *)tmp + blk_sz) = 0;
+	dcm_fp = dcm_head;
+
+	return dcm_head;
+}
+
+void dcm_exit(void)
+{
+	if (dcm_head)
+		kfree(dcm_head);
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:29:28000">
+<Copy StartSeek="0" EndSeek="24"/>
+<Insert>#include &lt;dpa_types.h&gt;
+#include "dpa_cls.h"
+</Insert>
+<Copy StartSeek="72" EndSeek="856"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:31:24000">
+<Copy StartSeek="0" EndSeek="276"/>
+<Copy StartSeek="306" EndSeek="886"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:31:39000">
+<Copy StartSeek="0" EndSeek="306"/>
+<Copy StartSeek="307" EndSeek="887"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:31:40000">
+<Copy StartSeek="0" EndSeek="276"/>
+<Insert>typedef unsigned int uint32_t
+</Insert>
+<Copy StartSeek="307" EndSeek="888"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:31:42000">
+<Copy StartSeek="0" EndSeek="615"/>
+<Insert>	dcm_free = head;
+</Insert>
+<Copy StartSeek="637" EndSeek="892"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:32:4000">
+<Copy StartSeek="0" EndSeek="308"/>
+<Copy StartSeek="542" EndSeek="893"/>
+<Insert>void *dcm_alloc(void)
+</Insert>
+<Copy StartSeek="913" EndSeek="915"/>
+<Insert>	void *tmp;
+
+	if (!dcm_size)
+		return NULL;
+	
+	tmp = dcm_free;
+	dcm_free = *dcm_free;
+	*tmp = NULL;
+	dcm_blks--;
+
+	return tmp;
+}
+
+void dcm_free(void *blk)
+{
+	*blk = dcm_free;
+	*dcm_free = blk;
+
+	dcm_blks++;
+}
+</Insert>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:32:54000">
+<Copy StartSeek="0" EndSeek="345"/>
+<Insert>	if (!dcm_size)
+</Insert>
+<Copy StartSeek="361" EndSeek="935"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:34:16000">
+<Copy StartSeek="0" EndSeek="108"/>
+<Insert>static void *dcm_head = NULL; 	/* chief head of the pool */
+</Insert>
+<Copy StartSeek="168" EndSeek="935"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:35:24000">
+<Copy StartSeek="0" EndSeek="168"/>
+<Insert>static void *dcm_free = NULL; 	/* next free */
+</Insert>
+<Copy StartSeek="215" EndSeek="935"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:35:27000">
+<Copy StartSeek="0" EndSeek="108"/>
+<Insert>static long *dcm_head = NULL; 	/* chief head of the pool */
+static long *dcm_free = NULL; 	/* next free */
+</Insert>
+<Copy StartSeek="215" EndSeek="935"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:35:41000">
+<Copy StartSeek="0" EndSeek="395"/>
+<Insert>	dcm_free = *dcm_free;
+</Insert>
+<Copy StartSeek="430" EndSeek="947"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:36:4000">
+<Copy StartSeek="0" EndSeek="395"/>
+<Insert>	dcm_free = *(uint32_t *)dcm_free;
+</Insert>
+<Copy StartSeek="442" EndSeek="959"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:36:28000">
+<Copy StartSeek="0" EndSeek="395"/>
+<Insert>	(uint32_t *)dcm_free = *(uint32_t *)dcm_free;
+</Insert>
+<Copy StartSeek="436" EndSeek="953"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:38:16000">
+<Copy StartSeek="0" EndSeek="395"/>
+<Insert>	(long)dcm_free = *(uint32_t *)dcm_free;
+</Insert>
+<Copy StartSeek="430" EndSeek="947"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:38:24000">
+<Copy StartSeek="0" EndSeek="395"/>
+<Insert>	(long)dcm_free = *(long)dcm_free;
+</Insert>
+<Copy StartSeek="417" EndSeek="934"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:38:46000">
+<Copy StartSeek="0" EndSeek="395"/>
+<Insert>	dcm_free = dcm_free;
+</Insert>
+<Copy StartSeek="418" EndSeek="935"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:39:13000">
+<Copy StartSeek="0" EndSeek="307"/>
+<Insert>
+</Insert>
+<Copy StartSeek="334" EndSeek="961"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:40:40000">
+<Copy StartSeek="0" EndSeek="421"/>
+<Insert>	dcm_free = *dcm_free;
+</Insert>
+<Copy StartSeek="461" EndSeek="978"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:41:39000">
+<Copy StartSeek="0" EndSeek="421"/>
+<Insert>	dcm_free = *(unsigned long *)dcm_free;
+</Insert>
+<Copy StartSeek="478" EndSeek="995"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:42:8000">
+<Copy StartSeek="0" EndSeek="421"/>
+<Insert>	(unsigned long *)dcm_free = *(unsigned long *)dcm_free;
+</Insert>
+<Copy StartSeek="461" EndSeek="978"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:42:18000">
+<Copy StartSeek="0" EndSeek="421"/>
+<Insert>	dcm_free = *(unsigned long *)dcm_free;
+</Insert>
+<Copy StartSeek="471" EndSeek="988"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:42:33000">
+<Copy StartSeek="0" EndSeek="471"/>
+<Insert>	*tmp = NULL;
+</Insert>
+<Copy StartSeek="502" EndSeek="1005"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:43:21000">
+<Copy StartSeek="0" EndSeek="471"/>
+<Insert>	*(unsigned long *)tmp = NULL;
+</Insert>
+<Copy StartSeek="510" EndSeek="1013"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:43:54000">
+<Copy StartSeek="0" EndSeek="471"/>
+<Insert>	*(unsigned long *)tmp = (void *)NULL;
+</Insert>
+<Copy StartSeek="502" EndSeek="1005"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:44:6000">
+<Copy StartSeek="0" EndSeek="421"/>
+<Insert>	dcm_free = (void *)(*(unsigned long *)dcm_free);
+</Insert>
+<Copy StartSeek="444" EndSeek="978"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:45:29000">
+<Copy StartSeek="0" EndSeek="444"/>
+<Insert>	*(unsigned long *)tmp = NULL;
+</Insert>
+<Copy StartSeek="458" EndSeek="961"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:45:32000">
+<Copy StartSeek="0" EndSeek="108"/>
+<Insert>static void *dcm_head = NULL; 	/* chief head of the pool */
+static void *dcm_free = NULL; 	/* next free */
+</Insert>
+<Copy StartSeek="233" EndSeek="979"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:45:47000">
+<Copy StartSeek="0" EndSeek="376"/>
+<Insert>	void *tmp;
+</Insert>
+<Copy StartSeek="397" EndSeek="988"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:45:59000">
+<Copy StartSeek="0" EndSeek="448"/>
+<Insert>	dcm_free = *dcm_free;
+</Insert>
+<Copy StartSeek="479" EndSeek="996"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:47:29000">
+<Copy StartSeek="0" EndSeek="448"/>
+<Insert>	dcm_free = *(void *)dcm_free;
+</Insert>
+<Copy StartSeek="471" EndSeek="988"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:47:36000">
+<Copy StartSeek="0" EndSeek="448"/>
+<Insert>	dcm_free = *dcm_free;
+</Insert>
+<Copy StartSeek="488" EndSeek="1005"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:48:11000">
+<Copy StartSeek="0" EndSeek="488"/>
+<Insert>	*tmp = NULL;
+</Insert>
+<Copy StartSeek="519" EndSeek="1022"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:48:37000">
+<Copy StartSeek="0" EndSeek="488"/>
+<Insert>	*tmp = (unsigned long *)NULL;
+</Insert>
+<Copy StartSeek="502" EndSeek="1005"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:48:44000">
+<Copy StartSeek="0" EndSeek="488"/>
+<Insert>	*tmp = NULL;
+</Insert>
+<Copy StartSeek="499" EndSeek="1002"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:48:58000">
+<Copy StartSeek="0" EndSeek="294"/>
+<Insert>typedef unsigned int uint32_t;
+</Insert>
+<Copy StartSeek="294" EndSeek="971"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:49:11000">
+<Copy StartSeek="0" EndSeek="294"/>
+<Insert>#define GET_NEXTP(ptr) ()
+
+</Insert>
+<Copy StartSeek="294" EndSeek="944"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:49:14000">
+<Copy StartSeek="0" EndSeek="498"/>
+<Insert>	*blk = dcm_free;
+</Insert>
+<Copy StartSeek="533" EndSeek="961"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:50:39000">
+<Copy StartSeek="0" EndSeek="533"/>
+<Insert>	*dcm_free = blk;
+</Insert>
+<Copy StartSeek="568" EndSeek="978"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:50:44000">
+<Copy StartSeek="0" EndSeek="177"/>
+<Insert>static unsigned long *dcm_free = NULL; 	/* next free */
+</Insert>
+<Copy StartSeek="234" EndSeek="374"/>
+<Insert>	tmp = dcm_free;
+	dcm_free = (unsigned long *)*dcm_free;
+</Insert>
+<Copy StartSeek="434" EndSeek="502"/>
+<Insert>	*(unsigned long *)blk = dcm_free;
+	*(unsigned long *)dcm_free = blk;
+</Insert>
+<Copy StartSeek="574" EndSeek="898"/>
+<Insert>	dcm_free = dcm_head;
+</Insert>
+<Copy StartSeek="921" EndSeek="985"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:51:46000">
+<Copy StartSeek="0" EndSeek="177"/>
+<Insert>static unsigned long *dcm_freep = NULL; 	/* next free */
+</Insert>
+<Copy StartSeek="231" EndSeek="371"/>
+<Insert>	tmp = dcm_freep;
+	dcm_freep = (unsigned long *)*dcm_freep;
+</Insert>
+<Copy StartSeek="422" EndSeek="490"/>
+<Insert>	*(unsigned long *)blk = dcm_freep;
+	*(unsigned long *)dcm_freep = blk;
+</Insert>
+<Copy StartSeek="556" EndSeek="880"/>
+<Insert>	dcm_freep = dcm_head;
+</Insert>
+<Copy StartSeek="900" EndSeek="964"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:53:15000">
+<Copy StartSeek="0" EndSeek="490"/>
+<Insert>	*(unsigned long *)blk = dcm_fp;
+</Insert>
+<Copy StartSeek="538" EndSeek="979"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:53:56000">
+<Copy StartSeek="0" EndSeek="538"/>
+<Insert>	*(unsigned long *)dcm_fp = blk;
+</Insert>
+<Copy StartSeek="586" EndSeek="994"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:54:10000">
+<Copy StartSeek="0" EndSeek="490"/>
+<Insert>	*(unsigned long *)blk = (unsigned long)dcm_fp;
+	*(unsigned long *)dcm_fp = (unsigned long)blk;
+</Insert>
+<Copy StartSeek="552" EndSeek="960"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:54:18000">
+<Copy StartSeek="0" EndSeek="490"/>
+<Insert>	*blk = (unsigned long)dcm_fp;
+</Insert>
+<Copy StartSeek="538" EndSeek="977"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:54:38000">
+<Copy StartSeek="0" EndSeek="681"/>
+<Insert>	void *tmp;
+</Insert>
+<Copy StartSeek="702" EndSeek="986"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:55:6000">
+<Copy StartSeek="0" EndSeek="852"/>
+<Insert>		*tmp = tmp + 1;
+</Insert>
+<Copy StartSeek="887" EndSeek="1003"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="11:55:51000">
+<Copy StartSeek="0" EndSeek="852"/>
+<Insert>		*tmp = (unsigned long)(tmp + 1);
+</Insert>
+<Copy StartSeek="870" EndSeek="986"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:09:24000">
+<Copy StartSeek="0" EndSeek="852"/>
+<Insert>		*tmp = tmp + 1;
+</Insert>
+<Copy StartSeek="906" EndSeek="1022"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:09:40000">
+<Copy StartSeek="0" EndSeek="852"/>
+<Insert>		*tmp = (unsigned long *)((unsigned long *)tmp + 1);
+</Insert>
+<Copy StartSeek="870" EndSeek="986"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:10:5000">
+<Copy StartSeek="0" EndSeek="882"/>
+<Insert>	*(tmp + 1) = NULL;
+</Insert>
+<Copy StartSeek="899" EndSeek="983"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:10:8000">
+<Copy StartSeek="0" EndSeek="852"/>
+<Insert>		*tmp = tmp + 1;
+</Insert>
+<Copy StartSeek="872" EndSeek="985"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:11:0000">
+<Copy StartSeek="0" EndSeek="852"/>
+<Insert>		*tmp = (tmp + 1);
+</Insert>
+<Copy StartSeek="887" EndSeek="1000"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:12:18000">
+<Copy StartSeek="0" EndSeek="231"/>
+<Insert>static uint32_t dcm_blks; 	/* number of available blocks */
+</Insert>
+<Copy StartSeek="292" EndSeek="1001"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:23:9000">
+<Copy StartSeek="0" EndSeek="24"/>
+<Copy StartSeek="49" EndSeek="1026"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:25:55000">
+<Copy StartSeek="0" EndSeek="49"/>
+<Insert>//#include &lt;dpa_types.h&gt;
+//#include "dpa_cls.h"
+
+</Insert>
+<Copy StartSeek="49" EndSeek="977"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:26:5000">
+<Copy StartSeek="0" EndSeek="957"/>
+<Insert>	kfree(dcm_head);
+}
+</Insert>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:35:13000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Copy StartSeek="412" EndSeek="1136"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:18:12000">
+<Copy StartSeek="0" EndSeek="567"/>
+<Copy StartSeek="580" EndSeek="716"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="732" EndSeek="1162"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:18:23000">
+<Copy StartSeek="0" EndSeek="1083"/>
+<Copy StartSeek="1096" EndSeek="1175"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:18:28000">
+<Copy StartSeek="0" EndSeek="1083"/>
+<Insert>	dcm_dump();
+</Insert>
+<Copy StartSeek="1083" EndSeek="1162"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:18:36000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Copy StartSeek="314" EndSeek="1207"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:22:52000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>#define DCM_INC_P(p) ((char *)(p) + blk_sz)
+</Insert>
+<Copy StartSeek="314" EndSeek="1208"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:23:18000">
+<Copy StartSeek="0" EndSeek="314"/>
+<Insert>
+</Insert>
+<Copy StartSeek="359" EndSeek="1252"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:23:30000">
+<Copy StartSeek="0" EndSeek="314"/>
+<Insert>#define DCM_INC_P(p) ((char *)(p) + blk_sz)
+</Insert>
+<Copy StartSeek="359" EndSeek="1253"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:24:5000">
+<Copy StartSeek="0" EndSeek="1089"/>
+<Insert>		*tmp = (unsigned long)(tmp + 1);
+</Insert>
+<Copy StartSeek="1137" EndSeek="1266"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:26:30000">
+<Copy StartSeek="0" EndSeek="1137"/>
+<Insert>		tmp++;
+</Insert>
+<Copy StartSeek="1162" EndSeek="1165"/>
+<Copy StartSeek="1192" EndSeek="1309"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:27:26000">
+<Copy StartSeek="0" EndSeek="1192"/>
+<Insert>	*(tmp + 1) = 0;
+</Insert>
+<Copy StartSeek="1192" EndSeek="1292"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:27:29000">
+<Copy StartSeek="0" EndSeek="1165"/>
+<Insert>	(char *)tmp + blk_sz = 0;
+</Insert>
+<Copy StartSeek="1194" EndSeek="1294"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:27:40000">
+<Copy StartSeek="0" EndSeek="1165"/>
+<Insert>	((char *)tmp) + blk_sz = 0;
+</Insert>
+<Copy StartSeek="1192" EndSeek="1292"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:27:45000">
+<Copy StartSeek="0" EndSeek="1019"/>
+<Copy StartSeek="1020" EndSeek="1038"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1038" EndSeek="1292"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:28:35000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>#define DCM_NEXT_P(p) ((char *)(p) + blk_sz)
+#define DCM_INC_P(p) ((char *)(p) += blk_sz)
+
+</Insert>
+<Copy StartSeek="269" EndSeek="1201"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:29:58000">
+<Copy StartSeek="0" EndSeek="827"/>
+<Insert>	unsigned long *tmp;
+</Insert>
+<Copy StartSeek="839" EndSeek="1192"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:30:34000">
+<Copy StartSeek="0" EndSeek="938"/>
+<Insert>	tmp = dcm_head;
+</Insert>
+<Copy StartSeek="963" EndSeek="1200"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:30:42000">
+<Copy StartSeek="0" EndSeek="997"/>
+<Insert>		*tmp = (unsigned long)((char *)tmp + blk_sz);
+</Insert>
+<Copy StartSeek="1062" EndSeek="1217"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:31:5000">
+<Copy StartSeek="0" EndSeek="997"/>
+<Insert>		*(unsigned long *)tmp = (unsigned long)((char *)tmp + blk_sz);
+</Insert>
+<Copy StartSeek="1037" EndSeek="1192"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:31:13000">
+<Copy StartSeek="0" EndSeek="1037"/>
+<Insert>		(char *)tmp += blk_sz;
+</Insert>
+<Copy StartSeek="1054" EndSeek="1184"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:31:28000">
+<Copy StartSeek="0" EndSeek="1057"/>
+<Insert>	(char *)tmp + blk_sz = 0;
+</Insert>
+<Copy StartSeek="1079" EndSeek="1179"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:32:11000">
+<Copy StartSeek="0" EndSeek="1057"/>
+<Insert>	*(tmp + blk_sz) = 0;
+</Insert>
+<Copy StartSeek="1082" EndSeek="1182"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:32:16000">
+<Copy StartSeek="0" EndSeek="1057"/>
+<Insert>	*(tmp + blk_sz) = NULL;
+</Insert>
+<Copy StartSeek="1079" EndSeek="1179"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:32:20000">
+<Copy StartSeek="0" EndSeek="1057"/>
+<Insert>	*(tmp + blk_sz) = 0;
+</Insert>
+<Copy StartSeek="1082" EndSeek="1182"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:32:27000">
+<Copy StartSeek="0" EndSeek="1057"/>
+<Insert>	*(tmp + blk_sz) = NULL;
+</Insert>
+<Copy StartSeek="1079" EndSeek="1179"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:32:29000">
+<Copy StartSeek="0" EndSeek="1057"/>
+<Insert>	*(tmp + blk_sz) = 0;
+</Insert>
+<Copy StartSeek="1082" EndSeek="1182"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:32:37000">
+<Copy StartSeek="0" EndSeek="827"/>
+<Insert>	char *tmp;
+</Insert>
+<Copy StartSeek="848" EndSeek="1191"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:33:23000">
+<Copy StartSeek="0" EndSeek="947"/>
+<Insert>	tmp = (char *)dcm_head;
+</Insert>
+<Copy StartSeek="964" EndSeek="1183"/>
+</Delta>
+<Delta Version="84" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:33:40000">
+<Copy StartSeek="0" EndSeek="998"/>
+<Insert>		*(unsigned long *)tmp = tmp + blk_sz;
+</Insert>
+<Copy StartSeek="1021" EndSeek="1166"/>
+</Delta>
+<Delta Version="85" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:33:55000">
+<Copy StartSeek="0" EndSeek="998"/>
+<Insert>		*tmp = tmp + blk_sz;
+</Insert>
+<Copy StartSeek="1055" EndSeek="1200"/>
+</Delta>
+<Delta Version="86" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:34:18000">
+<Copy StartSeek="0" EndSeek="1055"/>
+<Insert>		tmp += blk_sz;
+</Insert>
+<Copy StartSeek="1089" EndSeek="1217"/>
+</Delta>
+<Delta Version="87" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:34:37000">
+<Copy StartSeek="0" EndSeek="1092"/>
+<Insert>	*(tmp + blk_sz) = NULL;
+</Insert>
+<Copy StartSeek="1134" EndSeek="1234"/>
+</Delta>
+<Delta Version="88" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:34:47000">
+<Copy StartSeek="0" EndSeek="1055"/>
+<Insert>		(unsigned char *)tmp += blk_sz;
+</Insert>
+<Copy StartSeek="1094" EndSeek="1239"/>
+</Delta>
+<Delta Version="89" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:35:45000">
+<Copy StartSeek="0" EndSeek="1055"/>
+<Insert>		tmp = (unsigned char *)tmp + blk_sz;
+</Insert>
+<Copy StartSeek="1113" EndSeek="1258"/>
+</Delta>
+<Delta Version="90" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:36:11000">
+<Copy StartSeek="0" EndSeek="1116"/>
+<Insert>	*((unsigned char *)tmp + blk_sz) = NULL;
+</Insert>
+<Copy StartSeek="1155" EndSeek="1255"/>
+</Delta>
+<Delta Version="91" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:36:25000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>void dcm_dump(void)
+{
+	printk(KERN_ERR "(%s:%d) dcm_head %p, dcm_fp %p, blks %u\n", __func__, __LINE__,
+	       dcm_head, dcm_fp, dcm_blks);
+}
+</Insert>
+<Copy StartSeek="417" EndSeek="1260"/>
+</Delta>
+<Delta Version="92" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:38:44000">
+<Copy StartSeek="0" EndSeek="417"/>
+<Copy StartSeek="418" EndSeek="1261"/>
+</Delta>
+<Delta Version="93" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:38:58000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>define dcm_dump(void) \{
+</Insert>
+<Copy StartSeek="290" EndSeek="1257"/>
+</Delta>
+<Delta Version="94" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:39:4000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>define dcm_dump() \{
+</Insert>
+<Copy StartSeek="288" EndSeek="1255"/>
+</Delta>
+<Delta Version="95" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:39:20000">
+<Copy StartSeek="0" EndSeek="567"/>
+<Insert>	dcm_dump();
+</Insert>
+<Copy StartSeek="578" EndSeek="1253"/>
+</Delta>
+<Delta Version="96" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:39:32000">
+<Copy StartSeek="0" EndSeek="567"/>
+<Insert>	dcm_dump;
+</Insert>
+<Copy StartSeek="580" EndSeek="1255"/>
+</Delta>
+<Delta Version="97" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:39:37000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>define dcm_dump \{
+</Insert>
+<Copy StartSeek="290" EndSeek="1257"/>
+</Delta>
+<Delta Version="98" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:39:46000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>define dcm_dump() \{
+</Insert>
+<Copy StartSeek="294" EndSeek="1261"/>
+</Delta>
+<Delta Version="99" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:39:56000">
+<Copy StartSeek="0" EndSeek="294"/>
+<Insert>	\ printk(KERN_ERR "(%s:%d) dcm_head %p, dcm_fp %p, blks %u\n", __func__, __LINE__,
+	\      dcm_head, dcm_fp, dcm_blks);
+</Insert>
+<Copy StartSeek="409" EndSeek="1255"/>
+</Delta>
+<Delta Version="100" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:40:3000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>define dcm_dump() 	do {\
+</Insert>
+<Copy StartSeek="291" EndSeek="1252"/>
+</Delta>
+<Delta Version="101" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:40:14000">
+<Copy StartSeek="0" EndSeek="291"/>
+<Insert>	printk(KERN_ERR "(%s:%d) dcm_head %p, dcm_fp %p, blks %u\n", __func__, __LINE__,\
+</Insert>
+<Copy StartSeek="375" EndSeek="1253"/>
+</Delta>
+<Delta Version="102" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:40:22000">
+<Copy StartSeek="0" EndSeek="375"/>
+<Insert>	dcm_head, dcm_fp, dcm_blks); \
+</Insert>
+<Copy StartSeek="408" EndSeek="1254"/>
+</Delta>
+<Delta Version="103" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:40:23000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>define dcm_dump() 	{\
+	printk(KERN_ERR "(%s:%d) dcm_head %p, dcm_fp %p, blks %u\n", __func__, __LINE__,	\
+	dcm_head, dcm_fp, dcm_blks); 	\
+}
+
+</Insert>
+<Copy StartSeek="398" EndSeek="1241"/>
+</Delta>
+<Delta Version="104" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:40:46000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>define dcm_dump()  printk(KERN_ERR "(%s:%d) dcm_head %p, dcm_fp %p, blks %u\n", __func__, __LINE__,dcm_head, dcm_fp, dcm_blks)
+</Insert>
+<Copy StartSeek="395" EndSeek="1240"/>
+</Delta>
+<Delta Version="105" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:40:55000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>define dcm_dump() printk(KERN_ERR "(%s:%d) dcm_head %p, dcm_fp %p, blks %u\n", __func__, __LINE__,dcm_head, dcm_fp, dcm_blks)
+</Insert>
+<Copy StartSeek="397" EndSeek="1242"/>
+</Delta>
+<Delta Version="106" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:40:58000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>define dcm_dump() (printk(KERN_ERR "(%s:%d) dcm_head %p, dcm_fp %p, blks %u\n", __func__, __LINE__,dcm_head, dcm_fp, dcm_blks))
+</Insert>
+<Copy StartSeek="398" EndSeek="1243"/>
+</Delta>
+<Delta Version="107" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:41:9000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>#define dcm_dump() (printk(KERN_ERR "(%s:%d) dcm_head %p, dcm_fp %p, blks %u\n", __func__, __LINE__,dcm_head, dcm_fp, dcm_blks))
+
+</Insert>
+<Copy StartSeek="405" EndSeek="406"/>
+<Copy StartSeek="407" EndSeek="1250"/>
+</Delta>
+<Delta Version="108" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:41:21000">
+<Copy StartSeek="0" EndSeek="618"/>
+<Copy StartSeek="676" EndSeek="1308"/>
+</Delta>
+<Delta Version="109" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:44:43000">
+<Copy StartSeek="0" EndSeek="618"/>
+<Insert>	printk(KERN_ERR "(%s:%d) blk %p\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="681" EndSeek="1313"/>
+</Delta>
+<Delta Version="110" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:44:47000">
+<Copy StartSeek="0" EndSeek="761"/>
+<Copy StartSeek="831" EndSeek="1383"/>
+</Delta>
+<Delta Version="111" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:49:8000">
+<Copy StartSeek="0" EndSeek="729"/>
+<Insert>	*dcm_fp = (unsigned long)blk;
+</Insert>
+<Copy StartSeek="759" EndSeek="1382"/>
+</Delta>
+<Delta Version="112" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:50:3000">
+<Copy StartSeek="0" EndSeek="759"/>
+<Insert>
+</Insert>
+<Copy StartSeek="759" EndSeek="1381"/>
+</Delta>
+<Delta Version="113" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:50:10000">
+<Copy StartSeek="0" EndSeek="729"/>
+<Insert>	dcm_fp = (unsigned long)blk;
+</Insert>
+<Copy StartSeek="744" EndSeek="1366"/>
+</Delta>
+<Delta Version="114" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:50:27000">
+<Copy StartSeek="0" EndSeek="729"/>
+<Insert>	dcm_fp = blk;
+</Insert>
+<Copy StartSeek="761" EndSeek="1383"/>
+</Delta>
+<Delta Version="115" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:50:32000">
+<Copy StartSeek="0" EndSeek="761"/>
+<Insert>	printk(KERN_ERR "(%s:%d) blk-&gt;next %p\n", __func__, __LINE__, *blk);
+</Insert>
+<Copy StartSeek="848" EndSeek="1400"/>
+</Delta>
+<Delta Version="116" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:50:44000">
+<Copy StartSeek="0" EndSeek="761"/>
+<Insert>	printk(KERN_ERR "(%s:%d) blk-&gt;next %p\n", __func__, __LINE__, *(unsigned long *)blk);
+</Insert>
+<Copy StartSeek="856" EndSeek="1408"/>
+</Delta>
+<Delta Version="117" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:51:0000">
+<Copy StartSeek="0" EndSeek="575"/>
+<Copy StartSeek="642" EndSeek="1475"/>
+</Delta>
+<Delta Version="118" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="15:56:11000">
+<Copy StartSeek="0" EndSeek="575"/>
+<Insert>	printk(KERN_ERR "(%s:%d) alloc = %p\n", __func__, __LINE__, tmp);
+</Insert>
+<Copy StartSeek="644" EndSeek="1477"/>
+</Delta>
+<Delta Version="119" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:07:24000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>#define dcm_dump() (printk(KERN_ERR "(%s:%d) dcm_head %p, dcm_fp %p, blks %u\n",  \
+</Insert>
+<Copy StartSeek="355" EndSeek="1479"/>
+</Delta>
+<Delta Version="120" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:07:38000">
+<Copy StartSeek="0" EndSeek="577"/>
+<Insert>	pr_debug(KERN_ERR "(%s:%d) alloc = %p\n", __func__, __LINE__, tmp);
+</Insert>
+<Copy StartSeek="577" EndSeek="1410"/>
+</Delta>
+<Delta Version="121" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:07:48000">
+<Copy StartSeek="0" EndSeek="564"/>
+<Insert>	dcm_dump();
+</Insert>
+<Copy StartSeek="564" EndSeek="607"/>
+<Insert>	printk(KERN_ERR "(%s:%d) blk %p\n", __func__, __LINE__, blk);
+</Insert>
+<Copy StartSeek="607" EndSeek="687"/>
+<Insert>	printk(KERN_ERR "(%s:%d) blk-&gt;next %p\n", __func__, __LINE__, (void *)*(unsigned long *)blk);
+</Insert>
+<Copy StartSeek="687" EndSeek="700"/>
+<Insert>	dcm_dump();
+}
+
+</Insert>
+<Copy StartSeek="703" EndSeek="1226"/>
+</Delta>
+<Delta Version="122" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:08:1000">
+<Copy StartSeek="0" EndSeek="269"/>
+<Insert>#define dcm_dump() (pr_debug(KERN_ERR "(%s:%d) dcm_head %p, dcm_fp %p, blks %u\n",  \
+</Insert>
+<Copy StartSeek="357" EndSeek="1228"/>
+</Delta>
+<Delta Version="123" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:08:25000">
+<Copy StartSeek="0" EndSeek="357"/>
+<Insert>				__func__, __LINE__,dcm_head, dcm_fp, dcm_blks))
+</Insert>
+<Copy StartSeek="406" EndSeek="1225"/>
+</Delta>
+</DeltaFile>

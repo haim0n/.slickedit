@@ -1,0 +1,128 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="18" Comment="" Date="2012/04/16" Time="17:25:33000" NL="\10" Encoding="text">
+<Insert>obj-m += klna.o
+klna-objs := klna_main.o klna_nc.o klna_nl.o
+
+CROSS_COMPILER ?= /export/filer/shared/tools/arm-sdk3.3-sft/bin/arm-mv5sft-linux-gnueabi-
+KSRC ?= /export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg
+INSTALL_PATH ?= /export/local/users/haimd/dist/sdk5_0_-rd/boot/
+EXTRA_CFLAGS += -Inet/8021q/ -Inet/bridge
+#EXTRA_CFLAGS += -DDEBUG
+
+all:
+	make -C $(KSRC) ARCH=arm SUBDIRS=`pwd` CROSS_COMPILE=$(CROSS_COMPILER) modules
+
+.PHONY: clean
+
+clean:
+	make -C $(KSRC) ARCH=arm SUBDIRS=`pwd` clean
+
+install: all
+	cp -i klna.ko $(INSTALL_PATH)
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/03/28" Time="15:51:6000">
+<Insert>obj-m += dpa_klna.o
+</Insert>
+<Copy StartSeek="27" EndSeek="466"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/04/15" Time="16:04:45000">
+<Insert>obj-m += dpa_klna_notify.o
+</Insert>
+<Copy StartSeek="20" EndSeek="459"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/04/15" Time="16:06:48000">
+<Insert>obj-m += dpa_klna.o
+</Insert>
+<Copy StartSeek="16" EndSeek="388"/>
+<Insert>	cp -i dpa_klna.ko /export/local/users/haimd/dist/sdk5_0_-rd/boot/
+</Insert>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/04/15" Time="16:08:1000">
+<Insert>obj-m += klna.o
+</Insert>
+<Copy StartSeek="19" EndSeek="391"/>
+<Insert>	cp -i klna.ko /export/local/users/haimd/dist/sdk5_0_-rd/boot/
+</Insert>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/04/15" Time="16:25:40000">
+<Insert>obj-m += klna_nl.o
+</Insert>
+<Copy StartSeek="29" EndSeek="238"/>
+<Insert>
+</Insert>
+<Copy StartSeek="268" EndSeek="496"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="12:22:48000">
+<Insert>obj-m += klna_nl.o klna_nc.o
+</Insert>
+<Copy StartSeek="40" EndSeek="507"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="12:23:13000">
+<Insert>obj-m += klna_nl.o klna_nc.o klna_mod.o
+</Insert>
+<Copy StartSeek="41" EndSeek="508"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="12:24:8000">
+<Insert>obj-m += klna_nl.o klna_nc.o klna_main.o
+</Insert>
+<Copy StartSeek="21" EndSeek="488"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="12:25:41000">
+<Insert>obj-m += klna_main.o
+</Insert>
+<Copy StartSeek="60" EndSeek="461"/>
+<Insert>	cp -i klna_nl.ko /export/local/users/haimd/dist/sdk5_0_-rd/boot/
+</Insert>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="12:27:47000">
+<Copy StartSeek="0" EndSeek="16"/>
+<Insert>klna-objs := klna_mod.o klna_nc.o klna_nl.o
+</Insert>
+<Copy StartSeek="61" EndSeek="525"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="12:27:57000">
+<Copy StartSeek="0" EndSeek="61"/>
+<Copy StartSeek="62" EndSeek="526"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="13:59:46000">
+<Copy StartSeek="0" EndSeek="271"/>
+<Insert>EXTRA_CFLAGS += -DKLNA_NOARP
+
+</Insert>
+<Copy StartSeek="272" EndSeek="497"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="13:59:51000">
+<Copy StartSeek="0" EndSeek="229"/>
+<Copy StartSeek="293" EndSeek="561"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="14:01:1000">
+<Copy StartSeek="0" EndSeek="498"/>
+<Insert>	cp -i klna.ko /export/local/users/haimd/dist/sdk5_0_-rd/boot/
+</Insert>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="14:01:14000">
+<Copy StartSeek="0" EndSeek="436"/>
+<Copy StartSeek="437" EndSeek="490"/>
+<Copy StartSeek="491" EndSeek="531"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="14:02:3000">
+<Copy StartSeek="0" EndSeek="491"/>
+<Insert>install:
+</Insert>
+<Copy StartSeek="504" EndSeek="535"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="14:02:18000">
+<Copy StartSeek="0" EndSeek="335"/>
+<Insert>
+</Insert>
+<Copy StartSeek="360" EndSeek="559"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="17:24:26000">
+<Copy StartSeek="0" EndSeek="335"/>
+<Insert>EXTRA_CFLAGS += -DDEBUG
+</Insert>
+<Copy StartSeek="360" EndSeek="560"/>
+</Delta>
+</DeltaFile>

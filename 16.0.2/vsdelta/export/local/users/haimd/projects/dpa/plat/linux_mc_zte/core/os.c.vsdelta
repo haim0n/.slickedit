@@ -1,0 +1,449 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="7" Comment="" Date="2013/07/17" Time="17:39:42000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+*
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+*
+* os.h
+*
+* DESCRIPTION:
+*   ADP OS abstraction layer implementation.
+*
+*******************************************************************************/
+
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/module.h&gt;
+#include &lt;linux/version.h&gt;
+#include &lt;linux/string.h&gt;
+#include &lt;linux/time.h&gt;
+#include &lt;linux/ctype.h&gt;
+#include &lt;linux/slab.h&gt;
+#include &lt;linux/vmalloc.h&gt;
+#include &lt;linux/byteorder/generic.h&gt;
+#include &lt;asm/unaligned.h&gt;
+#include &lt;linux/delay.h&gt;
+#include &lt;linux/spinlock.h&gt;
+#include &lt;linux/pci.h&gt;
+#include &lt;linux/interrupt.h&gt;
+#include &lt;linux/skbuff.h&gt;
+
+#include &lt;adp_os.h&gt;
+#include &lt;adp_log.h&gt;
+#include &lt;util/string.h&gt;
+
+#define OS_ERROR(format, args...) ADP_ERROR(format, ##args)
+#define OS_WARNING(format, args...) ADP_WARNING(format, ##args)
+#define OS_INFO(format, args...) ADP_INFO(format, ##args)
+
+
+//#define ADP_OS_DEBUG
+
+#ifdef ADP_OS_DEBUG
+  #define OS_DBG(format, args...)  printk("&lt;0&gt;"format"\n", ##args)
+#else
+  #define OS_DBG(format, args...)
+#endif
+
+/* OS layer statistics */
+typedef struct {
+  uint32_t  malloc_cnt; /* Total allocations */
+  uint32_t  free_cnt; /* Total frees */
+} adp_os_stats_t;
+
+
+/* SPA state */
+static struct {
+  bool           init; /* true if OS initialized */
+  adp_os_stats_t stats; /* Statistics */
+} adp_os_state;
+
+
+/* Memory block header */
+typedef struct {
+  unsigned long size;
+  void *mem;
+} mem_hdr_t;
+
+
+int adp_os_init(adp_os_config_t *cfg) {
+  (void) cfg;
+
+  if (!adp_os_state.init) {
+      adp_os_state.init = true;
+  }
+
+  return 0;
+}
+
+
+void adp_os_shutdown(void) {
+  if (adp_os_state.init) {
+      /* FIXME Replace to IRQ fiq_set_handler(NULL); */
+
+      adp_os_state.init = false;
+  }
+}
+
+
+int adp_os_gettimeofday(adp_timeval_t *tv, adp_timezone_t *tz) {
+  struct timeval tval;
+
+  do_gettimeofday(&amp;tval);
+  tv-&gt;tv_sec = tval.tv_sec;
+  tv-&gt;tv_usec = tval.tv_usec;
+  return 0;
+}
+
+
+void adp_os_msleep(unsigned int msec) {
+  msleep(msec);
+}
+
+
+void adp_os_log(int level, const char* format,...) {
+  va_list   argptr;
+  int32_t   len;
+  char      buf[512];
+
+  va_start( argptr, format);
+  len = 0;
+  len += adp_vsnprintf(buf+len,sizeof(buf)-len,format,argptr);
+  va_end( argptr);
+
+  switch (level) {
+    case ADP_OS_LOG_EMERG:
+      printk(KERN_EMERG "%s\n", buf);
+     break;
+    case ADP_OS_LOG_ALERT:
+      printk(KERN_ALERT "%s\n", buf);
+      break;
+    case ADP_OS_LOG_CRIT:
+      printk(KERN_CRIT "%s\n", buf);
+      break;
+    case ADP_OS_LOG_ERR:
+      printk(KERN_ERR "%s\n", buf);
+      break;
+    case ADP_OS_LOG_WARNING:
+      printk(KERN_WARNING "%s\n", buf);
+      break;
+    case ADP_OS_LOG_NOTICE:
+      printk(KERN_NOTICE "%s\n", buf);
+      break;
+    case ADP_OS_LOG_INFO:
+      printk(KERN_INFO "%s\n", buf);
+      break;
+    case ADP_OS_LOG_DEBUG:
+    default:
+      printk(KERN_DEBUG "%s\n", buf);
+      break;
+  }
+}
+
+
+void* adp_os_lock_create(void)
+{
+  spinlock_t* l = adp_os_malloc(sizeof(spinlock_t));
+
+  if (!l) {
+        return NULL;
+  }
+  spin_lock_init(l);
+  return l;
+}
+
+
+void adp_os_lock_delete(void* id)
+{
+  adp_os_free(id);
+}
+
+
+void adp_os_unlock(void* id)
+{
+  spin_unlock(id);
+}
+
+
+void adp_os_lock(void* id)
+{
+  spin_lock(id);
+}
+
+uint32_t adp_os_virt_to_phys(uint8_t* virt_addr, uint32_t size)
+{
+  return pci_map_single(NULL, virt_addr, size, PCI_DMA_TODEVICE);
+}
+
+uint32_t adp_os_phys_to_virt(uint8_t* virt_addr, uint32_t size)
+{
+  return pci_map_single(NULL, virt_addr, size, PCI_DMA_FROMDEVICE);
+}
+
+
+void* adp_os_malloc(size_t size)
+{
+  mem_hdr_t *hdr;
+
+  OS_DBG("adp_os_malloc: Trying to alloc %d bytes", size);
+
+  hdr = (mem_hdr_t *) kmalloc(size + sizeof(mem_hdr_t), GFP_KERNEL);
+  if (hdr == NULL) {
+      OS_DBG("hdr == NULL");
+      return NULL;
+  }
+
+  hdr-&gt;size = size;
+  hdr-&gt;mem = ((uint8_t*)hdr) + sizeof(mem_hdr_t);
+
+  ++adp_os_state.stats.malloc_cnt;
+
+  OS_DBG("adp_os_malloc: hdr=0x%x, mem=0x%x, %d bytes",
+         (uint32_t) hdr, (uint32_t) hdr-&gt;mem, size);
+
+  return hdr-&gt;mem;
+}
+
+void* adp_os_alloc_pages(size_t size)
+{
+  mem_hdr_t *hdr;
+  uint32_t order = get_order(size + sizeof(mem_hdr_t));
+
+  OS_DBG("adp_os_alloc_pages: Trying to alloc of order %d ", order);
+
+  hdr = (mem_hdr_t *) __get_free_pages(GFP_KERNEL, order);
+  if (hdr == NULL) {
+      OS_DBG("hdr == NULL");
+      return NULL;
+  }
+
+  hdr-&gt;size = size;
+  hdr-&gt;mem = ((uint8_t*)hdr) + sizeof(mem_hdr_t);
+	
+  ++adp_os_state.stats.malloc_cnt;
+	
+  printk("adp_os_alloc_pages: hdr=0x%x, mem=0x%x, %d bytes, order %u\n",
+         (uint32_t) hdr, (uint32_t) hdr-&gt;mem, size, order);
+
+  return hdr-&gt;mem;
+}
+
+
+void adp_os_free(void *ptr)
+{
+  mem_hdr_t *hdr = (mem_hdr_t *) ((uint8_t*)ptr - sizeof(mem_hdr_t));
+
+  OS_DBG("adp_os_free: hdr=0x%x, mem=0x%x, %lu bytes", (uint32_t) hdr, (uint32_t) hdr-&gt;mem, hdr-&gt;size); 
+
+  ++adp_os_state.stats.free_cnt;
+
+  kfree((void*) hdr);
+}
+
+void adp_os_free_pages(void *ptr)
+{
+  mem_hdr_t *hdr = (mem_hdr_t *) ((uint8_t*)ptr - sizeof(mem_hdr_t));
+
+  OS_DBG("adp_os_free_pages: hdr=0x%x, mem=0x%x, %lu bytes", (uint32_t) hdr, (uint32_t) hdr-&gt;mem, hdr-&gt;size);
+
+ ++adp_os_state.stats.free_cnt;
+	
+  free_pages((unsigned long)hdr, get_order(hdr-&gt;size + sizeof(mem_hdr_t)));
+}
+
+void* adp_os_realloc(void* ptr, size_t size) {
+  mem_hdr_t *hdr = (mem_hdr_t *) ((uint8_t*)ptr - sizeof(mem_hdr_t));
+  void      *new_ptr;
+  uint32_t   old_size = hdr-&gt;size;
+
+  new_ptr = adp_os_malloc(size);
+
+  adp_memcpy(new_ptr, ptr, old_size);
+
+  adp_os_free(ptr);
+
+  OS_DBG("adp_os_realloc: hdr=0x%x, mem=0x%x, old %d bytes, new %d bytes", (uint32_t) hdr, (uint32_t) hdr-&gt;mem, old_size, size);
+
+  return new_ptr;
+}
+
+
+/* TODO Implement generically and move to string.c */
+int adp_vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
+  return vsnprintf(buf,size,fmt,args);
+}
+
+
+int32_t adp_os_irq_alloc(uint32_t irq, adp_irq_handler_t handler, const char *name, void *dev) {
+  int32_t err;
+  if (request_irq(irq, (irq_handler_t) handler, (IRQF_DISABLED|IRQF_SAMPLE_RANDOM), name, dev)) {
+      OS_ERROR("Cannot request irq %d \n", irq);
+      err = ADP_IRQ_ALLOC_FAIL;
+  } else {
+      err = ADP_OK;
+      OS_DBG("Allocated irq %d \n", irq);
+  }
+
+  return err;
+}
+
+
+int32_t adp_os_irq_free(uint32_t irq, void *dev) {
+  free_irq(irq, dev);
+
+  return ADP_OK;
+}
+
+
+int32_t adp_os_task_init(adp_os_task_t *task, void (*handler)(unsigned long arg), unsigned long arg) {
+  *task = (adp_os_task_t) adp_os_malloc(sizeof(struct tasklet_struct));
+  if (*task == NULL) {
+      OS_ERROR("Failed to alloc tasklet object\n");
+      return ADP_OUT_OF_MEMORY;
+  }
+
+  tasklet_init((struct tasklet_struct*)*task, handler, arg);
+
+  return ADP_OK;
+}
+
+
+void adp_os_task_destroy(adp_os_task_t task) {
+  tasklet_kill((struct tasklet_struct*) task);
+  adp_os_free(task);
+}
+
+
+void adp_os_task_enable(adp_os_task_t task) {
+  tasklet_enable((struct tasklet_struct*) task);
+}
+
+
+void adp_os_task_disable(adp_os_task_t task) {
+  tasklet_disable((struct tasklet_struct*) task);
+}
+
+
+void adp_os_task_schedule(adp_os_task_t task) {
+  tasklet_hi_schedule((struct tasklet_struct*) task);
+}
+
+ /* Alignment test */
+#define ADP_OS_IS_NOT_ALIGN(ptr, align) (((uint32_t)ptr) &amp; ((align) - 1))
+
+/* Alignment to the next nearest aligned number */
+#define ADP_OS_ALIGN_UP(ptr, align)    \
+    (ADP_OS_IS_NOT_ALIGN(ptr, align) ? \
+    ((((uint32_t)ptr) + (align)) &amp; ~((align)-1)) : ((uint32_t)ptr))
+
+
+/* skb_buff marking */
+#define ADP_SKB_CB(__skb) ((__skb)-&gt;cb[47])
+#define ADP_SKB_MAGIC     (0x88)
+
+void* adp_os_pkt_native(void* os_handle) {
+  struct sk_buff *skb;
+  void *ret = NULL;
+
+  if (os_handle) {
+      skb = (struct sk_buff *) os_handle;
+      if (ADP_SKB_CB(skb) == ADP_SKB_MAGIC) {
+          ret = (void*) skb-&gt;head;
+      }
+  }
+
+  return ret;
+}
+
+
+void* adp_os_pkt_alloc(uint32_t size, uint32_t headroom, uint32_t align_size, void** os_handle, uint8_t** data) {
+  struct sk_buff *skb;
+
+  *os_handle = NULL;
+
+  skb = dev_alloc_skb(size);
+  if (skb == NULL) {
+      ADP_ERROR("Failed to alloc skb, (%d) bytes.", size);
+      return NULL;
+  }
+
+  ADP_SKB_CB(skb) = ADP_SKB_MAGIC;
+
+  skb_reserve(skb, headroom);
+  *data = (uint8_t*) ADP_OS_ALIGN_UP(skb-&gt;data, align_size);
+  skb_reserve(skb, (uint32_t) *data - (uint32_t) skb-&gt;data);
+
+  *os_handle = (void*) skb;
+
+  return (void*) skb-&gt;head;
+}
+
+
+void adp_os_pkt_free(void* os_handle) {
+  struct sk_buff *skb;
+
+  if (os_handle) {
+      skb = (struct sk_buff *) os_handle;
+      ADP_SKB_CB(skb) = 0;
+      dev_kfree_skb(skb);
+  }
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/07/14" Time="10:09:57000">
+<Copy StartSeek="0" EndSeek="4357"/>
+<Insert>	
+  OS_DBG("adp_os_alloc_pages: Trying to alloc of order %d ", 
+	 get_order(size + sizeof(mem_hdr_t)));
+</Insert>
+<Copy StartSeek="4483" EndSeek="4484"/>
+<Insert>  hdr = (mem_hdr_t *) __get_free_pages(GFP_KERNEL, get_order(size + sizeof(mem_hdr_t)));
+</Insert>
+<Copy StartSeek="4543" EndSeek="8718"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="14:23:1000">
+<Copy StartSeek="0" EndSeek="1225"/>
+<Insert>//#define ADP_OS_DEBUG
+</Insert>
+<Copy StartSeek="1246" EndSeek="8716"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="14:23:10000">
+<Copy StartSeek="0" EndSeek="1225"/>
+<Insert>#define ADP_OS_DEBUG
+</Insert>
+<Copy StartSeek="1248" EndSeek="8718"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="15:41:5000">
+<Copy StartSeek="0" EndSeek="4414"/>
+<Insert>  OS_DBG("adp_os_alloc_pages: Trying to alloc of order %d ", order);
+</Insert>
+<Copy StartSeek="4484" EndSeek="8719"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="15:41:22000">
+<Copy StartSeek="0" EndSeek="4727"/>
+<Insert>  OS_DBG("adp_os_alloc_pages: hdr=0x%x, mem=0x%x, %d bytes",
+</Insert>
+<Copy StartSeek="4790" EndSeek="8721"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="15:41:30000">
+<Copy StartSeek="0" EndSeek="4414"/>
+<Insert>  printk("adp_os_alloc_pages: Trying to alloc of order %d\n", order);
+</Insert>
+<Copy StartSeek="4483" EndSeek="4726"/>
+<Insert>  printk("adp_os_alloc_pages: hdr=0x%x, mem=0x%x, %d bytes\n",
+</Insert>
+<Copy StartSeek="4787" EndSeek="8718"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="17:39:7000">
+<Copy StartSeek="0" EndSeek="4726"/>
+<Insert>  OS_DBG("adp_os_alloc_pages: hdr=0x%x, mem=0x%x, %d bytes",
+         (uint32_t) hdr, (uint32_t) hdr-&gt;mem, size);
+</Insert>
+<Copy StartSeek="4859" EndSeek="8737"/>
+</Delta>
+</DeltaFile>

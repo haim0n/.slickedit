@@ -1,0 +1,723 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="78" Comment="" Date="2012/11/22" Time="17:27:10000" NL="\10" Encoding="text">
+<Insert>#include &lt;log/log.h&gt;
+#include &lt;util/string.h&gt;
+
+#include "dpa_cls.h"
+#include "dpa_chg.h"
+
+#include "dpa_mdf_eth.h"
+#include "dpa_mdf_ip.h"
+#include "dpa_mdf_l4.h"
+
+struct dpa_modifier {
+	void (*op)(eth_pkt_t *pkt);
+#ifdef __DPA_DEBUG__
+	char *name;
+#endif
+};
+
+static struct dpa_modifier dpa_mdf_tbl[] = {
+	{0}, 			/* DPA_MDF_MH_CHG */
+	{0},			/* DPA_MDF_MH_ADD */
+	{0},			/* DPA_MDF_MH_DEL */
+
+	{.op = &amp;dpa_mdf_eth_chg}, /* DPA_MDF_ETH_CHG */
+
+	{0},			/* DPA_MDF_VLAN_CHG */
+	{0},			/* DPA_MDF_VLAN_ADD */
+	{0},			/* DPA_MDF_VLAN_DEL */
+
+	{0},			/* DPA_MDF_PPOE_CHG */
+	{0},			/* DPA_MDF_PPOE_ADD */
+	{0},			/* DPA_MDF_PPOE_DEL */
+
+	{.op = &amp;dpa_mdf_ipv4_chg}, /* DPA_MDF_L3_V4_CHG */
+	{0},			/* DPA_MDF_L3_V6_CHG */
+
+	{.op = &amp;dpa_mdf_l4_chg},	/* DPA_MDF_L4_UDP_CHG */
+	{.op = &amp;dpa_mdf_l4_chg},	/* DPA_MDF_L4_TCP_CHG */
+};
+
+void dpa_modify_pkt(eth_pkt_t *pkt)
+{
+	struct dpa_entry *dpe = (struct dpa_entry *)pkt-&gt;dpa_handle;
+	uint32_t mod_ops = dpe-&gt;mod_ops;
+	uint32_t dpm;
+
+	while (mod_ops) {
+		dpm = dpa_fls(mod_ops) - 1;
+		dpa_mdf_tbl[dpm].op(pkt);
+	}
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="12:01:29000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Copy StartSeek="227" EndSeek="252"/>
+<Insert>
+</Insert>
+<Copy StartSeek="263" EndSeek="265"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="16:16:56000">
+<Copy StartSeek="0" EndSeek="91"/>
+<Insert>
+struct dpa_modifier {
+	void (*op)(eth_pkt_t *pkt);
+#ifdef __DPA_DEBUG__
+	char *name;
+#endif
+};
+
+</Insert>
+<Copy StartSeek="113" EndSeek="190"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="16:25:26000">
+<Copy StartSeek="0" EndSeek="113"/>
+<Copy StartSeek="114" EndSeek="191"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/11/21" Time="16:25:45000">
+<Copy StartSeek="0" EndSeek="178"/>
+<Insert>	dpm_tbl[]
+</Insert>
+<Copy StartSeek="190" EndSeek="192"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:05:15000">
+<Copy StartSeek="0" EndSeek="153"/>
+<Copy StartSeek="725" EndSeek="764"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:11:58000">
+<Copy StartSeek="0" EndSeek="114"/>
+<Copy StartSeek="224" EndSeek="874"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:40:35000">
+<Copy StartSeek="0" EndSeek="224"/>
+<Insert>struct dpa_modifier dpm_tbl[DPM_MAX];
+</Insert>
+<Copy StartSeek="258" EndSeek="259"/>
+<Copy StartSeek="262" EndSeek="873"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:41:55000">
+<Copy StartSeek="0" EndSeek="259"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="263" EndSeek="874"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:46:42000">
+<Copy StartSeek="0" EndSeek="259"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="262" EndSeek="873"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:46:48000">
+<Copy StartSeek="0" EndSeek="258"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="279" EndSeek="890"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:47:48000">
+<Copy StartSeek="0" EndSeek="258"/>
+<Insert>	0 /* */,
+	0,
+	0,
+}
+
+</Insert>
+<Copy StartSeek="492" EndSeek="1103"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:49:43000">
+<Copy StartSeek="0" EndSeek="325"/>
+<Insert>	DPM_ETH_MDFY,
+	DPM_VLAN_ADD,
+	DPM_VLAN_DEL,
+</Insert>
+<Copy StartSeek="388" EndSeek="389"/>
+<Insert>	DPM_PPOE_MDFY,
+	DPM_PPOE_ADD,
+	DPM_PPOE_DEL,
+</Insert>
+<Copy StartSeek="453" EndSeek="454"/>
+<Insert>	DPM_L3_V4_MDFY,
+	DPM_L3_V6_MDFY,
+</Insert>
+<Copy StartSeek="500" EndSeek="501"/>
+<Insert>	DPM_L4_UDP_MDFY,
+	DPM_L4_TCP_MDFY,
+</Insert>
+<Copy StartSeek="549" EndSeek="1163"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:49:56000">
+<Copy StartSeek="0" EndSeek="302"/>
+<Insert>	0,	/* DPM_MH_DEL */,
+</Insert>
+<Copy StartSeek="323" EndSeek="324"/>
+<Insert>	/* DPM_ETH_MDFY */,
+	/* DPM_VLAN_ADD */,
+	/* DPM_VLAN_DEL */,
+</Insert>
+<Copy StartSeek="393" EndSeek="1168"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:50:29000">
+<Copy StartSeek="0" EndSeek="347"/>
+<Copy StartSeek="372" EndSeek="1193"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:51:4000">
+<Copy StartSeek="0" EndSeek="419"/>
+<Insert>	/* DPM_PPOE_MDFY */,
+	/* DPM_PPOE_ADD */,
+	/* DPM_PPOE_DEL */,
+</Insert>
+<Copy StartSeek="486" EndSeek="1196"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:54:34000">
+<Copy StartSeek="0" EndSeek="487"/>
+<Insert>	/* DPM_L3_V4_MDFY */,
+</Insert>
+<Copy StartSeek="524" EndSeek="1210"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:00:5000">
+<Copy StartSeek="0" EndSeek="487"/>
+<Insert>	dpm_ipv4_mdfy,/* DPM_L3_V4_MDFY */,
+</Insert>
+<Copy StartSeek="526" EndSeek="1212"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:00:13000">
+<Copy StartSeek="0" EndSeek="487"/>
+<Insert>	&amp;dpm_ipv4_mdfy, /* DPM_L3_V4_MDFY */,
+</Insert>
+<Copy StartSeek="532" EndSeek="1218"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:00:24000">
+<Copy StartSeek="0" EndSeek="113"/>
+<Insert>
+</Insert>
+<Copy StartSeek="134" EndSeek="1238"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:09:11000">
+<Copy StartSeek="0" EndSeek="278"/>
+<Insert>	0, 	/* DPM_MH_MDFY */
+	0,	/* DPM_MH_ADD */
+	0,	/* DPM_MH_DEL */
+</Insert>
+<Copy StartSeek="349" EndSeek="350"/>
+<Insert>	0,	/* DPM_ETH_MDFY */
+</Insert>
+<Copy StartSeek="375" EndSeek="376"/>
+<Insert>	0,	/* DPM_VLAN_MDFY */
+	0,	/* DPM_VLAN_ADD */
+	0,	/* DPM_VLAN_DEL */
+</Insert>
+<Copy StartSeek="452" EndSeek="453"/>
+<Insert>	0,/* DPM_PPOE_MDFY */
+	0,/* DPM_PPOE_ADD */
+	0,/* DPM_PPOE_DEL */
+</Insert>
+<Copy StartSeek="526" EndSeek="527"/>
+<Insert>	.op = &amp;dpm_ipv4_mdfy, /* DPM_L3_V4_MDFY */,
+</Insert>
+<Copy StartSeek="574" EndSeek="1260"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:10:52000">
+<Copy StartSeek="0" EndSeek="526"/>
+<Insert>
+</Insert>
+<Copy StartSeek="535" EndSeek="1268"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:12:4000">
+<Copy StartSeek="0" EndSeek="526"/>
+<Insert>djkldjkl
+</Insert>
+<Copy StartSeek="544" EndSeek="1277"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:12:39000">
+<Copy StartSeek="0" EndSeek="1237"/>
+<Insert>
+int32_t dpm_init(void)
+{
+	dpm_tbl[];
+}
+</Insert>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:13:2000">
+<Copy StartSeek="0" EndSeek="695"/>
+<Insert>static void dpa_modify_pkt(dpa_eth_hdr_t *pkt_eth)
+</Insert>
+<Copy StartSeek="743" EndSeek="1234"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:13:31000">
+<Copy StartSeek="0" EndSeek="695"/>
+<Insert>static void dpa_modify_pkt(eth_pkt_t  *pkt_eth)
+</Insert>
+<Copy StartSeek="742" EndSeek="1233"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:13:32000">
+<Copy StartSeek="0" EndSeek="695"/>
+<Insert>static void dpa_modify_pkt(eth_pkt_t *pkt_eth)
+</Insert>
+<Copy StartSeek="738" EndSeek="1229"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:13:39000">
+<Copy StartSeek="0" EndSeek="666"/>
+<Insert>#define DPA_CLS_MARK_FWD_PKT
+static void dpa_modify_pkt(eth_pkt_t *pkt)
+{
+	uint32_t mod_ops = dpe-&gt;mod_ops;
+	struct dpa_pri_key *mt = &amp;dpe-&gt;mod.mod_tuple;
+
+	if (!mod_ops)
+		return;
+
+	if (mod_ops &amp; DPE_MOD_L2) {
+		eth_hdr_cp((uint32_t *)pkt_eth, (uint32_t *)&amp;dpe-&gt;mod.l2.dmac);
+		pkt_iph-&gt;ttl--;
+	#ifdef DPA_CLS_MARK_FWD_PKT
+		pkt_iph-&gt;tos = 3;
+	#endif
+	}
+	if (mod_ops &amp; DPE_MOD_NAT) {
+		pkt_iph-&gt;daddr = mt-&gt;dip;
+		pkt_iph-&gt;saddr = mt-&gt;sip;
+		//FIXME *(uint32_t *)pkt_l4 = *(uint32_t *)&amp;(mt-&gt;sport);
+		pkt_l4-&gt;source = mt-&gt;sport;
+		pkt_l4-&gt;dest = mt-&gt;dport;
+	}
+}
+</Insert>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:25:38000">
+<Copy StartSeek="0" EndSeek="663"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="666" EndSeek="1467"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:25:46000">
+<Copy StartSeek="0" EndSeek="526"/>
+<Insert>#error "ASDFASDF"
+</Insert>
+<Copy StartSeek="546" EndSeek="1469"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:26:55000">
+<Copy StartSeek="0" EndSeek="526"/>
+<Insert>//#error "ASDFASDF"
+</Insert>
+<Copy StartSeek="544" EndSeek="1467"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:27:9000">
+<Copy StartSeek="0" EndSeek="526"/>
+<Insert>#error "ASDFASDF"
+</Insert>
+<Copy StartSeek="526" EndSeek="1449"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:39:33000">
+<Copy StartSeek="0" EndSeek="526"/>
+<Insert>	{.op = &amp;dpm_ipv4_mdfy, /* DPM_L3_V4_MDFY */,}
+</Insert>
+<Copy StartSeek="570" EndSeek="1446"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:44:56000">
+<Copy StartSeek="0" EndSeek="526"/>
+<Copy StartSeek="527" EndSeek="1447"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:44:59000">
+<Copy StartSeek="0" EndSeek="527"/>
+<Insert>	{. = &amp;dpm_ipv4_mdfy /* DPM_L3_V4_MDFY */},
+</Insert>
+<Copy StartSeek="573" EndSeek="1449"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:45:2000">
+<Copy StartSeek="0" EndSeek="573"/>
+<Insert>	/* DPM_L3_V6_MDFY */,
+</Insert>
+<Copy StartSeek="595" EndSeek="596"/>
+<Insert>	/* DPM_L4_UDP_MDFY */,
+	/* DPM_L4_TCP_MDFY */,
+</Insert>
+<Copy StartSeek="642" EndSeek="1446"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:45:23000">
+<Copy StartSeek="0" EndSeek="677"/>
+<Insert>//static void dpa_modify_pkt(eth_pkt_t *pkt)
+//{
+//        uint32_t mod_ops = dpe-&gt;mod_ops;
+//        struct dpa_pri_key *mt = &amp;dpe-&gt;mod.mod_tuple;
+//
+//        if (!mod_ops)
+//                return;
+//
+//        if (mod_ops &amp; DPE_MOD_L2) {
+//                eth_hdr_cp((uint32_t *)pkt_eth, (uint32_t *)&amp;dpe-&gt;mod.l2.dmac);
+//                pkt_iph-&gt;ttl--;
+//        #ifdef DPA_CLS_MARK_FWD_PKT
+//                pkt_iph-&gt;tos = 3;
+//        #endif
+//        }
+//        if (mod_ops &amp; DPE_MOD_NAT) {
+//                pkt_iph-&gt;daddr = mt-&gt;dip;
+//                pkt_iph-&gt;saddr = mt-&gt;sip;
+//                //FIXME *(uint32_t *)pkt_l4 = *(uint32_t *)&amp;(mt-&gt;sport);
+//                pkt_l4-&gt;source = mt-&gt;sport;
+//                pkt_l4-&gt;dest = mt-&gt;dport;
+//        }
+</Insert>
+<Copy StartSeek="1202" EndSeek="1206"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:52:34000">
+<Copy StartSeek="0" EndSeek="1202"/>
+<Insert>//}
+</Insert>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:52:39000">
+<Copy StartSeek="0" EndSeek="646"/>
+<Insert>//#define DPA_CLS_MARK_FWD_PKT
+</Insert>
+<Copy StartSeek="675" EndSeek="1202"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:52:41000">
+<Copy StartSeek="0" EndSeek="646"/>
+<Insert>#define DPA_CLS_MARK_FWD_PKT
+</Insert>
+<Copy StartSeek="671" EndSeek="1198"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:53:5000">
+<Copy StartSeek="0" EndSeek="930"/>
+<Insert>	#ifdef DPA_CLS_MARK_FWD_PKT
+</Insert>
+<Copy StartSeek="955" EndSeek="1194"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:53:10000">
+<Copy StartSeek="0" EndSeek="709"/>
+<Copy StartSeek="771" EndSeek="1256"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:54:3000">
+<Copy StartSeek="0" EndSeek="771"/>
+<Insert>	uint32_t mod_ops = dpe-&gt;mod_ops;
+</Insert>
+<Copy StartSeek="771" EndSeek="818"/>
+<Insert>
+</Insert>
+<Copy StartSeek="855" EndSeek="1258"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:54:21000">
+<Copy StartSeek="0" EndSeek="818"/>
+<Copy StartSeek="819" EndSeek="1259"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:54:22000">
+<Copy StartSeek="0" EndSeek="818"/>
+<Insert>
+</Insert>
+<Copy StartSeek="818" EndSeek="1258"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:54:24000">
+<Copy StartSeek="0" EndSeek="854"/>
+<Insert>
+</Insert>
+<Copy StartSeek="854" EndSeek="1257"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:54:26000">
+<Copy StartSeek="0" EndSeek="852"/>
+<Insert>	
+	if (!mod_ops)
+		return;
+
+	if (mod_ops &amp; DPE_MOD_L2) {
+		eth_hdr_cp((uint32_t *)pkt_eth, (uint32_t *)&amp;dpe-&gt;mod.l2.dmac);
+		pkt_iph-&gt;ttl--;
+	#ifdef DPA_MARK_FWD_PKT
+		pkt_iph-&gt;tos = 3;
+	#endif
+	}
+	if (mod_ops &amp; DPE_MOD_NAT) {
+		pkt_iph-&gt;daddr = mt-&gt;dip;
+		pkt_iph-&gt;saddr = mt-&gt;sip;
+		//FIXME *(uint32_t *)pkt_l4 = *(uint32_t *)&amp;(mt-&gt;sport);
+		pkt_l4-&gt;source = mt-&gt;sport;
+		pkt_l4-&gt;dest = mt-&gt;dport;
+	}
+}
+</Insert>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:56:51000">
+<Copy StartSeek="0" EndSeek="1302"/>
+<Insert>		dpa_tbl[dpm].op()
+</Insert>
+<Copy StartSeek="1325" EndSeek="1330"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:56:56000">
+<Copy StartSeek="0" EndSeek="1302"/>
+<Insert>		dpa_tbl[dpm].op(pkt)
+</Insert>
+<Copy StartSeek="1326" EndSeek="1331"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="14:56:58000">
+<Copy StartSeek="0" EndSeek="886"/>
+<Insert>
+		if (mod_ops &amp; DPE_MOD_L2) {
+			eth_hdr_cp((uint32_t *)pkt_eth, (uint32_t *)&amp;dpe-&gt;mod.l2.dmac);
+			pkt_iph-&gt;ttl--;
+		#ifdef DPA_MARK_FWD_PKT
+			pkt_iph-&gt;tos = 3;
+		#endif
+		}
+		if (mod_ops &amp; DPE_MOD_NAT) {
+			pkt_iph-&gt;daddr = mt-&gt;dip;
+			pkt_iph-&gt;saddr = mt-&gt;sip;
+			//FIXME *(uint32_t *)pkt_l4 = *(uint32_t *)&amp;(mt-&gt;sport);
+			pkt_l4-&gt;source = mt-&gt;sport;
+			pkt_l4-&gt;dest = mt-&gt;dport;
+		}
+		dpm = dpa_fls(mod_ops);
+</Insert>
+<Copy StartSeek="886" EndSeek="915"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:01:25000">
+<Copy StartSeek="0" EndSeek="867"/>
+<Copy StartSeek="868" EndSeek="916"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:01:27000">
+<Copy StartSeek="0" EndSeek="867"/>
+<Insert>
+</Insert>
+<Copy StartSeek="867" EndSeek="886"/>
+<Copy StartSeek="912" EndSeek="941"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:01:58000">
+<Copy StartSeek="0" EndSeek="771"/>
+<Insert>	struct dpa_pri_key *mt = &amp;dpe-&gt;mod.mod_tuple;
+</Insert>
+<Copy StartSeek="771" EndSeek="894"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:02:9000">
+<Copy StartSeek="0" EndSeek="820"/>
+<Copy StartSeek="821" EndSeek="895"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:02:25000">
+<Copy StartSeek="0" EndSeek="646"/>
+<Insert>#define DPA_MARK_FWD_PKT
+</Insert>
+<Copy StartSeek="646" EndSeek="870"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:02:35000">
+<Copy StartSeek="0" EndSeek="815"/>
+<Insert>		dpm = dpa_fls(mod_ops);
+</Insert>
+<Copy StartSeek="845" EndSeek="874"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:03:39000">
+<Copy StartSeek="0" EndSeek="815"/>
+<Insert>		dpm = dpa_fls(mod_ops) - 1;
+</Insert>
+<Copy StartSeek="841" EndSeek="870"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:04:14000">
+<Copy StartSeek="0" EndSeek="815"/>
+<Insert>		dpm = dpa_fls(mod_ops);
+</Insert>
+<Copy StartSeek="845" EndSeek="874"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:04:45000">
+<Copy StartSeek="0" EndSeek="133"/>
+<Insert>
+</Insert>
+<Copy StartSeek="154" EndSeek="894"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:05:34000">
+<Copy StartSeek="0" EndSeek="616"/>
+<Insert>	/* DPM_L4_UDP_MDFY */
+</Insert>
+<Copy StartSeek="648" EndSeek="903"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:05:44000">
+<Copy StartSeek="0" EndSeek="616"/>
+<Insert>	{.op = },/* DPM_L4_UDP_MDFY */
+</Insert>
+<Copy StartSeek="660" EndSeek="915"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:06:55000">
+<Copy StartSeek="0" EndSeek="547"/>
+<Insert>	{.op = &amp;dpm_ipv4_mdfy /* DPM_L3_V4_MDFY */},
+</Insert>
+<Copy StartSeek="593" EndSeek="915"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:07:6000">
+<Copy StartSeek="0" EndSeek="298"/>
+<Insert>	{0}, 	/* DPM_MH_MDFY */
+	{0},	/* DPM_MH_ADD */
+	{0},	/* DPM_MH_DEL */
+</Insert>
+<Copy StartSeek="375" EndSeek="376"/>
+<Insert>	{0},	/* DPM_ETH_MDFY */
+</Insert>
+<Copy StartSeek="403" EndSeek="404"/>
+<Insert>	{0},	/* DPM_VLAN_MDFY */
+	{0},	/* DPM_VLAN_ADD */
+	{0},	/* DPM_VLAN_DEL */
+</Insert>
+<Copy StartSeek="486" EndSeek="487"/>
+<Insert>	{0},/* DPM_PPOE_MDFY */
+	{0},/* DPM_PPOE_ADD */
+	{0},/* DPM_PPOE_DEL */
+</Insert>
+<Copy StartSeek="569" EndSeek="616"/>
+<Insert>	/* DPM_L3_V6_MDFY */
+</Insert>
+<Copy StartSeek="645" EndSeek="945"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:07:47000">
+<Copy StartSeek="0" EndSeek="646"/>
+<Insert>	{.op = &amp;dpm_l4_mdfy},/* DPM_L4_UDP_MDFY */
+	/* DPM_L4_TCP_MDFY */
+</Insert>
+<Copy StartSeek="736" EndSeek="968"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:08:11000">
+<Insert>#include &lt;dpa_types.h&gt;
+</Insert>
+<Copy StartSeek="0" EndSeek="945"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:09:15000">
+<Copy StartSeek="0" EndSeek="916"/>
+<Insert>		dpa_tbl[dpm].op(pkt);
+</Insert>
+<Copy StartSeek="940" EndSeek="945"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:10:1000">
+<Copy StartSeek="0" EndSeek="241"/>
+<Insert>struct dpa_modifier dpm_tbl[] = {
+</Insert>
+<Copy StartSeek="282" EndSeek="952"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:10:5000">
+<Copy StartSeek="0" EndSeek="724"/>
+<Insert>void dpa_modify_pkt(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="760" EndSeek="952"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:12:46000">
+<Copy StartSeek="0" EndSeek="724"/>
+<Insert>void dpm_modify_pkt(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="760" EndSeek="952"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:13:5000">
+<Copy StartSeek="0" EndSeek="90"/>
+<Copy StartSeek="112" EndSeek="974"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:17:11000">
+<Copy StartSeek="0" EndSeek="382"/>
+<Insert>	{0},			/* DPM_ETH_MDFY */
+</Insert>
+<Copy StartSeek="423" EndSeek="988"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:19:33000">
+<Copy StartSeek="0" EndSeek="382"/>
+<Insert>	{.op &amp;dpm_eth_mdfy},	/* DPM_ETH_MDFY */
+</Insert>
+<Copy StartSeek="425" EndSeek="990"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:19:37000">
+<Copy StartSeek="0" EndSeek="238"/>
+<Insert>	uint32_t id;
+</Insert>
+<Copy StartSeek="238" EndSeek="976"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:26:17000">
+<Copy StartSeek="0" EndSeek="368"/>
+<Insert>	{.op = &amp;dpm_eth_mdfy},	/* DPM_ETH_MDFY */
+
+</Insert>
+<Copy StartSeek="467" EndSeek="1031"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:27:17000">
+<Copy StartSeek="0" EndSeek="368"/>
+<Insert>	{ .op = &amp;dpm_eth_mdfy,
+	#ifdef __DPA_DEBUG__
+		.name = "eth_mdfy"
+	#endif
+	},	/* DPM_ETH_MDFY */
+
+</Insert>
+<Copy StartSeek="413" EndSeek="977"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:29:0000">
+<Copy StartSeek="0" EndSeek="368"/>
+<Insert>	{ .op = &amp;dpm_eth_mdfy},	/* DPM_ETH_MDFY */
+</Insert>
+<Copy StartSeek="411" EndSeek="976"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="15:29:58000">
+<Copy StartSeek="0" EndSeek="91"/>
+<Insert>#include "dpm_eth.h"
+#include "dpm_ip.h"
+#include "dpm_l4.h"
+</Insert>
+<Copy StartSeek="164" EndSeek="261"/>
+<Insert>static struct dpa_modifier dpm_tbl[] = {
+	{0}, 			/* DPM_MH_MDFY */
+	{0},			/* DPM_MH_ADD */
+	{0},			/* DPM_MH_DEL */
+</Insert>
+<Copy StartSeek="395" EndSeek="396"/>
+<Insert>	{.op = &amp;dpm_eth_mdfy},	/* DPM_ETH_MDFY */
+</Insert>
+<Copy StartSeek="447" EndSeek="448"/>
+<Insert>	{0},			/* DPM_VLAN_MDFY */
+	{0},			/* DPM_VLAN_ADD */
+	{0},			/* DPM_VLAN_DEL */
+</Insert>
+<Copy StartSeek="542" EndSeek="543"/>
+<Insert>	{0},			/* DPM_PPOE_MDFY */
+	{0},			/* DPM_PPOE_ADD */
+	{0},			/* DPM_PPOE_DEL */
+</Insert>
+<Copy StartSeek="637" EndSeek="638"/>
+<Insert>	{.op = &amp;dpm_ipv4_mdfy}, /* DPM_L3_V4_MDFY */
+	{0},			/* DPM_L3_V6_MDFY */
+</Insert>
+<Copy StartSeek="725" EndSeek="726"/>
+<Insert>	{.op = &amp;dpm_l4_mdfy},	/* DPM_L4_UDP_MDFY */
+	{.op = &amp;dpm_l4_mdfy},	/* DPM_L4_TCP_MDFY */
+</Insert>
+<Copy StartSeek="832" EndSeek="1035"/>
+<Insert>		dpm_tbl[dpm].op(pkt);
+</Insert>
+<Copy StartSeek="1063" EndSeek="1068"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:26:27000">
+<Copy StartSeek="0" EndSeek="396"/>
+<Insert>	{.op = &amp;dpa_mdf_eth_mdfy},	/* DPA_MDF_ETH_MDFY */
+</Insert>
+<Copy StartSeek="447" EndSeek="1068"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:26:31000">
+<Copy StartSeek="0" EndSeek="68"/>
+<Insert>#include "dpa_mdfy.h"
+</Insert>
+<Copy StartSeek="89" EndSeek="305"/>
+<Insert>	{0}, 			/* DPA_MDF_MH_MDFY */
+</Insert>
+<Copy StartSeek="335" EndSeek="394"/>
+<Insert>	{.op = &amp;dpa_mdf_eth_mdfy}, /* DPA_MDF_ETH_MDFY */
+</Insert>
+<Copy StartSeek="443" EndSeek="444"/>
+<Insert>	{0},			/* DPA_MDF_VLAN_MDFY */
+</Insert>
+<Copy StartSeek="475" EndSeek="538"/>
+<Insert>	{0},			/* DPA_MDF_PPOE_MDFY */
+</Insert>
+<Copy StartSeek="569" EndSeek="632"/>
+<Insert>	{.op = &amp;dpa_mdf_ipv4_mdfy}, /* DPA_MDF_L3_V4_MDFY */
+	{0},			/* DPA_MDF_L3_V6_MDFY */
+</Insert>
+<Copy StartSeek="716" EndSeek="717"/>
+<Insert>	{.op = &amp;dpa_mdf_l4_mdfy},	/* DPA_MDF_L4_UDP_MDFY */
+	{.op = &amp;dpa_mdf_l4_mdfy},	/* DPA_MDF_L4_TCP_MDFY */
+</Insert>
+<Copy StartSeek="819" EndSeek="1055"/>
+</Delta>
+</DeltaFile>

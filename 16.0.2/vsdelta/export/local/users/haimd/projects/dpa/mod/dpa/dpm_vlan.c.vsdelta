@@ -1,0 +1,273 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="35" Comment="" Date="2012/11/22" Time="17:27:10000" NL="\10" Encoding="text">
+<Insert>#include &lt;dpa_types.h&gt;
+#include &lt;log/log.h&gt;
+#include &lt;util/string.h&gt;
+
+#include "dpa_cls.h"
+
+void dpa_mdf_vlan_chg(eth_pkt_t *pkt)
+{
+	dpa_vlan_ethhdr_t *vh = (dpa_vlan_ethhdr_t *)pkt-&gt;eth_hdr;
+	struct dpa_entry *dpe = (struct dpa_entry *)pkt-&gt;dpa_handle;
+
+	vh-&gt;h_vlan_TCI = dpe-&gt;mod.l2.vlan_tag;
+}
+
+void dpa_mdf_vlan_add(eth_pkt_t *pkt)
+{
+	/* HAIM FIXME : 
+	(uint8_t *)pkt-&gt;ip_hdr += 2;
+	(uint8_t *)pkt-&gt;l4_hdr += 2;
+	 */
+}
+
+void dpa_mdf_vlan_rem(eth_pkt_t *pkt)
+{
+
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/11/18" Time="14:43:29000">
+<Copy StartSeek="92" EndSeek="306"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/11/18" Time="14:59:11000">
+<Copy StartSeek="0" EndSeek="304"/>
+<Insert>
+
+</Insert>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/11/18" Time="15:18:19000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>static void dpm_vlan_modify(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="152" EndSeek="158"/>
+<Insert>static void dpm_vlan_add(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="215" EndSeek="221"/>
+<Insert>static void dpm_vlan_rem(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="278" EndSeek="283"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/11/18" Time="16:14:34000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpm_vlan_modify(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="150" EndSeek="281"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/11/18" Time="16:19:6000">
+<Copy StartSeek="0" EndSeek="152"/>
+<Insert>
+</Insert>
+<Copy StartSeek="164" EndSeek="292"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/11/19" Time="08:58:43000">
+<Copy StartSeek="0" EndSeek="152"/>
+<Insert>	pkt-&gt;buff 
+</Insert>
+<Copy StartSeek="191" EndSeek="319"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/11/19" Time="08:59:36000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpm_vlan_mdfy(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="152" EndSeek="321"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="11:21:9000">
+<Copy StartSeek="0" EndSeek="196"/>
+<Insert>void dpm_vlan_add(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="256" EndSeek="324"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="11:21:37000">
+<Copy StartSeek="0" EndSeek="196"/>
+<Insert>void dpm_vlan_insert(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="253" EndSeek="321"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="11:21:54000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Copy StartSeek="226" EndSeek="455"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="11:22:14000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>#ifdef __DPA_DEBUG__
+#define DPA_CLS_DBG(format, args...) DPA_DBG(format, ##args)
+#else
+#define DPA_CLS_DBG(format, args...) 
+#endif
+
+</Insert>
+<Copy StartSeek="92" EndSeek="321"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="11:22:45000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Copy StartSeek="171" EndSeek="400"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="11:51:12000">
+<Copy StartSeek="0" EndSeek="233"/>
+<Copy StartSeek="283" EndSeek="450"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="11:54:42000">
+<Copy StartSeek="0" EndSeek="283"/>
+<Insert>	pkt-&gt;buff[16] = dpe-&gt;mod.l2.vlan_tag;
+</Insert>
+<Copy StartSeek="311" EndSeek="439"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="11:54:48000">
+<Copy StartSeek="0" EndSeek="233"/>
+<Insert>	dpa_vlan_hdr_t vh = (dpa_vlan_hdr_t *)pkt-&gt;buff;
+</Insert>
+<Copy StartSeek="284" EndSeek="440"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="11:54:56000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>struct vlan_hdr {
+	__be16  h_vlan_TCI;
+	__be16  h_vlan_encapsulated_proto;
+};
+
+</Insert>
+<Copy StartSeek="92" EndSeek="205"/>
+<Insert>	vh = dpe-&gt;mod.l2.vlan_tag;
+</Insert>
+<Copy StartSeek="262" EndSeek="390"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="11:58:10000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpm_vlan_update(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="150" EndSeek="388"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="11:58:31000">
+<Copy StartSeek="0" EndSeek="203"/>
+<Insert>	vh-&gt;h_vlan_TCI |= dpe-&gt;mod.l2.vlan_tag &amp; VLAN_VID_MASK;
+</Insert>
+<Copy StartSeek="244" EndSeek="372"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="12:00:5000">
+<Copy StartSeek="0" EndSeek="152"/>
+<Insert>	dpa_vlan_hdr_t *vh = (dpa_vlan_hdr_t *)pkt-&gt;buff;
+</Insert>
+<Copy StartSeek="206" EndSeek="375"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="13:36:52000">
+<Copy StartSeek="0" EndSeek="152"/>
+<Insert>	dpa_vlan_ethhdr_t *vh = (dpa_vlan_hdr_t *)pkt-&gt;buff;
+</Insert>
+<Copy StartSeek="209" EndSeek="378"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="13:36:58000">
+<Copy StartSeek="0" EndSeek="209"/>
+<Insert>	vh-&gt;h_vlan_TCI |= dpe-&gt;mod.l2.vlan_tag;
+</Insert>
+<Copy StartSeek="265" EndSeek="393"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="13:37:31000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpm_vlan_mdfy(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="154" EndSeek="397"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="13:42:2000">
+<Copy StartSeek="0" EndSeek="272"/>
+<Copy StartSeek="452" EndSeek="577"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="13:42:9000">
+<Copy StartSeek="0" EndSeek="393"/>
+<Insert>	vh-&gt;h_vlan_TCI = dpe-&gt;mod.l2.vlan_tag &amp; VLAN_VID_MASK;
+</Insert>
+<Copy StartSeek="433" EndSeek="561"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="13:42:18000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpm_vlan_mdfy_vid(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="150" EndSeek="268"/>
+<Insert>void dpm_vlan_mdfy_vid(struct dpa_entry *dpe, eth_pkt_t *pkt)
+{
+	dpa_vlan_ethhdr_t *vh = (dpa_vlan_ethhdr_t *)pkt-&gt;buff;
+	vh-&gt;h_vlan_TCI = dpe-&gt;mod.l2.vlan_tag;
+}
+
+</Insert>
+<Copy StartSeek="269" EndSeek="394"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="13:42:39000">
+<Copy StartSeek="0" EndSeek="209"/>
+<Insert>	vh-&gt;h_vlan_TCI = dpe-&gt;mod.l2.vlan_tag &amp; VLAN_VID_MASK;
+</Insert>
+<Copy StartSeek="249" EndSeek="378"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="13:42:43000">
+<Copy StartSeek="0" EndSeek="252"/>
+<Insert>
+</Insert>
+<Copy StartSeek="252" EndSeek="377"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="13:42:47000">
+<Copy StartSeek="0" EndSeek="152"/>
+<Insert>	dpa_vlan_ethhdr_t *vh = (dpa_vlan_ethhdr_t *)pkt-&gt;buff;
+</Insert>
+<Copy StartSeek="212" EndSeek="380"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="15:53:54000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpm_vlan_mdfy(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="127" EndSeek="232"/>
+<Insert>void dpm_vlan_add(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="266" EndSeek="272"/>
+<Insert>void dpm_vlan_rem(struct dpa_entry *dpe, eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="306" EndSeek="311"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="16:39:14000">
+<Copy StartSeek="0" EndSeek="189"/>
+<Copy StartSeek="252" EndSeek="374"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/11/20" Time="16:39:46000">
+<Copy StartSeek="0" EndSeek="331"/>
+<Copy StartSeek="391" EndSeek="392"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="395" EndSeek="434"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:52:28000">
+<Copy StartSeek="0" EndSeek="391"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="394" EndSeek="433"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:52:33000">
+<Copy StartSeek="0" EndSeek="331"/>
+<Copy StartSeek="349" EndSeek="409"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="417" EndSeek="456"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="11:52:53000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpm_vlan_mdfy(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="131" EndSeek="299"/>
+<Insert>void dpm_vlan_add(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="337" EndSeek="425"/>
+<Insert>void dpm_vlan_rem(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="463" EndSeek="468"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:25:41000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>void dpa_mdf_vlan_mdfy(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="130" EndSeek="467"/>
+</Delta>
+</DeltaFile>

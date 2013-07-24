@@ -1,0 +1,1132 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="51" Comment="" Date="2013/04/09" Time="11:53:44000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* os.h
+*
+* DESCRIPTION:
+*   DPA OS abstraction layer implementation.
+*
+*******************************************************************************/
+
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/module.h&gt;
+#include &lt;linux/version.h&gt;
+#include &lt;linux/string.h&gt;
+#include &lt;linux/time.h&gt;
+#include &lt;linux/ctype.h&gt;
+#include &lt;linux/slab.h&gt;
+#include &lt;linux/vmalloc.h&gt;
+#include &lt;linux/byteorder/generic.h&gt;
+#include &lt;asm/unaligned.h&gt;
+#include &lt;linux/delay.h&gt;
+#include &lt;linux/spinlock.h&gt;
+#include &lt;linux/pci.h&gt;
+#include &lt;linux/interrupt.h&gt;
+
+
+#include &lt;dpa_os.h&gt;
+#include &lt;util/mem.h&gt;
+#include &lt;util/string.h&gt;
+#include &lt;util/cache_ops.h&gt;
+#include &lt;log/log.h&gt;
+
+
+#define OS_ERROR(format, args...) DPA_ERROR(format, ##args)
+#define OS_WARNING(format, args...) DPA_WARNING(format, ##args)
+#define OS_INFO(format, args...) DPA_INFO(format, ##args)
+
+
+#define DPA_OS_DEBUG
+
+#ifdef DPA_OS_DEBUG
+  #define OS_DBG(format, args...)  DPA_DBG(format, ##args)
+#else
+  #define OS_DBG(format, args...)
+#endif
+
+/* OS layer statistics */
+typedef struct {
+  uint32_t  malloc_cnt; /* Total allocations */
+  uint32_t  free_cnt; /* Total frees */
+} dpa_os_stats_t;
+
+
+/* SPA state */
+static struct {
+  bool           init; /* true if OS initialized */
+  dpa_os_stats_t stats; /* Statistics */
+} dpa_os_state;
+
+
+/* Memory block header */
+typedef struct {
+  unsigned long size;
+  void *mem;
+} mem_hdr_t;
+
+
+int dpa_os_init(dpa_os_config_t *cfg) {
+  (void) cfg;
+
+  if (cfg == NULL) {
+      return -1;
+  }
+
+  /* FIXME Replace to IRQ fiq_set_handler(dpa_os_isr); */
+
+  if (!dpa_os_state.init) {
+      dpa_os_state.init = true;
+  }
+
+  return 0;
+}
+
+
+void dpa_os_shutdown(void) {
+  if (dpa_os_state.init) {
+      /* FIXME Replace to IRQ fiq_set_handler(NULL); */
+
+      dpa_os_state.init = false;
+  }
+}
+
+
+int dpa_os_gettimeofday(dpa_timeval_t *tv, dpa_timezone_t *tz) {
+  struct timeval tval;
+
+  do_gettimeofday(&amp;tval);
+  tv-&gt;tv_sec = tval.tv_sec;
+  tv-&gt;tv_usec = tval.tv_usec;
+  return 0;
+}
+
+
+void dpa_os_msleep(unsigned int msec) {
+  msleep(msec);
+}
+
+
+void dpa_os_log(int level, const char* format,...) {
+  va_list   argptr;
+  int32_t   len;
+  char      buf[512];
+
+  va_start( argptr, format);
+  len = 0;
+  len += dpa_vsnprintf(buf+len,sizeof(buf)-len,format,argptr);
+  va_end( argptr);
+
+  switch (level) {
+    case DPA_OS_LOG_EMERG:
+      printk(KERN_EMERG "%s\n", buf);
+     break;
+    case DPA_OS_LOG_ALERT:
+      printk(KERN_ALERT "%s\n", buf);
+      break;
+    case DPA_OS_LOG_CRIT:
+      printk(KERN_CRIT "%s\n", buf);
+      break;
+    case DPA_OS_LOG_ERR:
+      printk(KERN_ERR "%s\n", buf);
+      break;
+    case DPA_OS_LOG_WARNING:
+      printk(KERN_WARNING "%s\n", buf);
+      break;
+    case DPA_OS_LOG_NOTICE:
+      printk(KERN_NOTICE "%s\n", buf);
+      break;
+    case DPA_OS_LOG_INFO:
+      printk(KERN_INFO "%s\n", buf);
+      break;
+    case DPA_OS_LOG_DEBUG:
+    default:
+      printk(KERN_DEBUG "%s\n", buf);
+      break;
+  }
+}
+
+
+void* dpa_os_lock_create(void)
+{
+  spinlock_t* l = dpa_os_malloc(sizeof(spinlock_t));
+
+  if (!l) {
+    return NULL;
+  }
+  spin_lock_init(l);
+  return l;
+}
+
+
+void dpa_os_lock_delete(void* id)
+{
+  dpa_os_free(id);
+}
+
+
+void dpa_os_unlock(void* id)
+{
+  spin_unlock(id);
+}
+
+
+void dpa_os_lock(void* id)
+{
+  spin_lock(id);
+}
+
+uint32_t dpa_os_virt_to_phys(uint8_t* virt_addr, uint32_t size)
+{
+  return pci_map_single(NULL, virt_addr, size, PCI_DMA_TODEVICE);
+}
+
+uint32_t dpa_os_phys_to_virt(uint8_t* virt_addr, uint32_t size)
+{
+  return pci_map_single(NULL, virt_addr, size, PCI_DMA_FROMDEVICE);
+}
+
+
+void* dpa_os_malloc(size_t size) {
+  mem_hdr_t *hdr;
+
+  OS_DBG("dpa_os_malloc: Trying to alloc %d bytes", size);
+
+#ifdef __DPA_MEM_PAGE_ALLOC__
+  hdr = (mem_hdr_t *) __get_free_pages(GFP_KERNEL, get_order(size + sizeof(mem_hdr_t)));
+#else
+  hdr = (mem_hdr_t *) kmalloc(size + sizeof(mem_hdr_t), GFP_KERNEL);
+#endif /* __DPA_MEM_PAGE_ALLOC__ */
+
+  if (hdr == NULL) {
+      OS_DBG("hdr == NULL");
+      return NULL;
+  }
+
+  hdr-&gt;size = size;
+  hdr-&gt;mem = ((uint8_t*)hdr) + sizeof(mem_hdr_t);
+
+  ++dpa_os_state.stats.malloc_cnt;
+
+  OS_DBG("dpa_os_malloc: hdr=0x%x, mem=0x%x, %d bytes",
+         (uint32_t) hdr, (uint32_t) hdr-&gt;mem, size);
+
+  return hdr-&gt;mem;
+}
+
+
+void dpa_os_free(void *ptr) {
+  mem_hdr_t *hdr = (mem_hdr_t *) ((uint8_t*)ptr - sizeof(mem_hdr_t));
+
+  OS_DBG("dpa_os_free: hdr=0x%x, mem=0x%x, %d bytes", (uint32_t) hdr, (uint32_t) hdr-&gt;mem, hdr-&gt;size);
+
+  ++dpa_os_state.stats.free_cnt;
+
+#ifdef __DPA_MEM_PAGE_ALLOC__
+  free_pages((unsigned long)hdr, get_order(hdr-&gt;size + sizeof(mem_hdr_t)));
+#else
+  kfree((void*) hdr);
+#endif /* __DPA_MEM_PAGE_ALLOC__ */
+}
+
+
+void* dpa_os_realloc(void* ptr, size_t size) {
+  mem_hdr_t *hdr = (mem_hdr_t *) ((uint8_t*)ptr - sizeof(mem_hdr_t));
+  void      *new_ptr;
+  uint32_t   old_size = hdr-&gt;size;
+  
+  new_ptr = dpa_os_malloc(size);
+  
+  dpa_memcpy(new_ptr, ptr, old_size);
+
+  dpa_os_free(ptr);
+  
+  OS_DBG("dpa_os_realloc: hdr=0x%x, mem=0x%x, old %d bytes, new %d bytes", (uint32_t) hdr, (uint32_t) hdr-&gt;mem, old_size, size);
+
+  return new_ptr;
+}
+
+
+
+/* TODO Implement generically and move to string.c */
+int dpa_vsnprintf(char *buf, size_t size, const char *fmt, va_list args) {
+  return vsnprintf(buf,size,fmt,args);
+}
+
+
+int32_t dpa_os_irq_alloc(uint32_t irq, dpa_irq_handler_t handler, const char *name, void *dev) {
+  int32_t err;
+  if (request_irq(irq, (irq_handler_t) handler, (IRQF_DISABLED|IRQF_SAMPLE_RANDOM), name, dev)) {
+      OS_ERROR("Cannot request irq %d \n", irq);
+      err = DPA_IRQ_ALLOC_FAIL;
+  } else {
+      err = DPA_OK;
+      OS_DBG("Allocated irq %d \n", irq);
+  }
+  
+  return err;
+}
+
+
+int32_t dpa_os_irq_free(uint32_t irq, void *dev) {
+  free_irq(irq, dev);
+
+  return DPA_OK;
+}
+
+uint32_t dpa_ntohl(uint32_t val)
+{
+#ifdef __DPA_CPU_LE__
+  return (((val&amp;0x000000FF)&lt;&lt;24)+((val&amp;0x0000FF00)&lt;&lt;8)+ ((val&amp;0x00FF0000)&gt;&gt;8)+((val&amp;0xFF000000)&gt;&gt;24));    
+#else
+  return val;
+#endif
+
+}
+
+uint32_t dpa_htonl(uint32_t val)
+{
+#ifdef __DPA_CPU_LE__
+  return (((val&amp;0x000000FF)&lt;&lt;24)+((val&amp;0x0000FF00)&lt;&lt;8)+ ((val&amp;0x00FF0000)&gt;&gt;8)+((val&amp;0xFF000000)&gt;&gt;24));  
+#else
+  return val;
+#endif
+}
+
+uint16_t dpa_ntohs(uint16_t val)
+{
+#ifdef __DPA_CPU_LE__
+  return (uint16_t)(((uint16_t)(val &amp; 0xFF) &lt;&lt; 8) + ((uint16_t)(val &amp; 0xFF00) &gt;&gt; 8));
+#else
+  return val;
+#endif
+}
+
+uint16_t dpa_htons(uint16_t val)
+{
+#ifdef __DPA_CPU_LE__
+  return (uint16_t)(((uint16_t)(val &amp; 0xFF) &lt;&lt; 8) + ((uint16_t)(val &amp; 0xFF00) &gt;&gt; 8));  
+#else
+  return val;
+#endif
+}
+
+uint64_t dpa_ntohll(uint64_t val)
+{
+#ifdef __DPA_CPU_LE__
+  return (((uint64_t)dpa_ntohl(val))&lt;&lt;32) + (uint64_t)dpa_ntohl(val&gt;&gt;32);
+#else
+  return val;
+#endif
+}
+
+uint64_t dpa_htonll(uint64_t val)
+{
+#ifdef __DPA_CPU_LE__
+  return (((uint64_t)dpa_htonl(val)) &lt;&lt;32) + (uint64_t)dpa_htonl(val&gt;&gt;32);
+#else
+  return val;
+#endif
+}
+
+/* 
+#if defined(__DPA_CPU_BE__)
+
+#define htons(A) (A)
+#define htonl(A) (A)
+#define ntohs(A) (A)
+#define ntohl(A) (A)
+
+#elif defined(LITTLE_ENDIAN) &amp;&amp; !defined(BIG_ENDIAN)
+
+#define htons(A) ((((uint16)(A) &amp; 0xff00) &gt;&gt; 8) | \
+(((uint16)(A) &amp; 0x00ff) &lt;&lt; 8))
+#define htonl(A) ((((uint32)(A) &amp; 0xff000000) &gt;&gt; 24) | \
+(((uint32)(A) &amp; 0x00ff0000) &gt;&gt; 8) | \
+(((uint32)(A) &amp; 0x0000ff00) &lt;&lt; 8) | \
+(((uint32)(A) &amp; 0x000000ff) &lt;&lt; 24))
+#define ntohs htons
+#define ntohl htohl
+
+#else
+
+#error "Either BIG_ENDIAN or LITTLE_ENDIAN must be #defined, but not both."
+
+#endif 
+*/
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/08/19" Time="17:19:24000">
+<Copy StartSeek="0" EndSeek="8337"/>
+<Insert>  uint32_t cause;
+  (void) irq;
+  (void) dev;
+</Insert>
+<Copy StartSeek="8383" EndSeek="9629"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/08/19" Time="17:31:12000">
+<Copy StartSeek="0" EndSeek="8337"/>
+<Insert>//uint32_t cause;
+</Insert>
+<Copy StartSeek="8354" EndSeek="9628"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/08/20" Time="10:35:57000">
+<Copy StartSeek="0" EndSeek="8354"/>
+<Insert>//(void) irq;
+//(void) dev;
+</Insert>
+<Copy StartSeek="8380" EndSeek="9626"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/08/20" Time="10:37:44000">
+<Copy StartSeek="0" EndSeek="8337"/>
+<Insert>	uint32_t cause;
+	(void) irq;
+	(void) dev;
+</Insert>
+<Copy StartSeek="8383" EndSeek="9629"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/08/20" Time="10:37:50000">
+<Copy StartSeek="0" EndSeek="3042"/>
+<Insert>  if (cfg == NULL) {
+      return -1;
+  }
+
+  fiq_set_handler(dpa_os_isr);
+</Insert>
+<Copy StartSeek="3118" EndSeek="9631"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/08/20" Time="12:05:12000">
+<Copy StartSeek="0" EndSeek="3256"/>
+<Insert>      fiq_set_handler(NULL);
+</Insert>
+<Copy StartSeek="3285" EndSeek="9631"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/08/20" Time="12:05:22000">
+<Copy StartSeek="0" EndSeek="3042"/>
+<Insert>//if (cfg == NULL) {
+//    return -1;
+//}
+//
+</Insert>
+<Copy StartSeek="3085" EndSeek="8337"/>
+<Insert>  uint32_t cause;
+</Insert>
+<Copy StartSeek="8369" EndSeek="8749"/>
+<Insert>  /* Currently not using GMAC2 and timer */
+</Insert>
+<Copy StartSeek="8783" EndSeek="8938"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8946" EndSeek="9330"/>
+<Insert>#endif
+
+</Insert>
+<Copy StartSeek="9330" EndSeek="9632"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/08/20" Time="12:13:20000">
+<Copy StartSeek="0" EndSeek="7565"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7565" EndSeek="7622"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7680" EndSeek="9688"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/08/20" Time="12:18:47000">
+<Copy StartSeek="0" EndSeek="7622"/>
+<Insert>int32_t dpa_os_irq_alloc(uint32_t irq, void *priv)
+{
+
+}
+
+
+</Insert>
+<Copy StartSeek="7622" EndSeek="9630"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/08/20" Time="12:20:14000">
+<Copy StartSeek="0" EndSeek="1554"/>
+<Insert>#define BRIDGE_INT_TIMER0_MASK     (1 &lt;&lt; 0)
+#define BRIDGE_INT_TIMER1_MASK     (1 &lt;&lt; 1)
+#define BRIDGE_INT_TIMER2_MASK     (1 &lt;&lt; 6)
+#define BRIDGE_INT_TIMER3_MASK     (1 &lt;&lt; 7)
+
+#define DPA_BRIDGE_INT_TIMER_MASK  BRIDGE_INT_TIMER2_MASK
+
+
+</Insert>
+<Copy StartSeek="1626" EndSeek="2341"/>
+<Insert>void timer_empty_handler(void);
+int32_t eth_empty_handler(uint8_t port);
+</Insert>
+<Copy StartSeek="2449" EndSeek="2955"/>
+<Insert>//fiq_set_handler(dpa_os_isr);
+</Insert>
+<Copy StartSeek="2986" EndSeek="3124"/>
+<Insert>//    fiq_set_handler(NULL);
+</Insert>
+<Copy StartSeek="3153" EndSeek="3699"/>
+<Insert>  case DPA_OS_LOG_EMERG:
+    printk(KERN_EMERG "%s\n", buf);
+   break;
+  case DPA_OS_LOG_ALERT:
+    printk(KERN_ALERT "%s\n", buf);
+    break;
+  case DPA_OS_LOG_CRIT:
+    printk(KERN_CRIT "%s\n", buf);
+    break;
+  case DPA_OS_LOG_ERR:
+    printk(KERN_ERR "%s\n", buf);
+    break;
+  case DPA_OS_LOG_WARNING:
+    printk(KERN_WARNING "%s\n", buf);
+    break;
+  case DPA_OS_LOG_NOTICE:
+    printk(KERN_NOTICE "%s\n", buf);
+    break;
+  case DPA_OS_LOG_INFO:
+    printk(KERN_INFO "%s\n", buf);
+    break;
+  case DPA_OS_LOG_DEBUG:
+  default:
+    printk(KERN_DEBUG "%s\n", buf);
+    break;
+</Insert>
+<Copy StartSeek="4333" EndSeek="7485"/>
+<Copy StartSeek="7486" EndSeek="7543"/>
+<Copy StartSeek="7544" EndSeek="7949"/>
+<Insert>void timer_empty_handler(void) {
+}
+
+</Insert>
+<Copy StartSeek="8064" EndSeek="8065"/>
+<Insert>int32_t eth_empty_handler(uint8_t port) {
+</Insert>
+<Copy StartSeek="8119" EndSeek="8134"/>
+<Copy StartSeek="8193" EndSeek="8194"/>
+<Insert>  return 0;
+}
+
+
+</Insert>
+<Copy StartSeek="8194" EndSeek="8313"/>
+<Insert>extern void eth_recv_all(void);
+
+</Insert>
+<Copy StartSeek="8313" EndSeek="8418"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="8449" EndSeek="8590"/>
+<Insert>      cause &amp;= ~ETH_CAUSE_TH_RXTX_IRQ_BIT_MASK(0);
+  }
+</Insert>
+<Copy StartSeek="8595" EndSeek="8690"/>
+<Insert>      cause &amp;= ~ETH_CAUSE_TH_RXTX_IRQ_BIT_MASK(1);
+  }
+  
+</Insert>
+<Copy StartSeek="8695" EndSeek="8948"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="8949" EndSeek="9007"/>
+<Insert>      if (cause_bridge &amp; DPA_BRIDGE_INT_TIMER_MASK) {
+          cause_bridge &amp;= ~DPA_BRIDGE_INT_TIMER_MASK;
+          cause &amp;= ~BRIDGE_INT_CAUSE_MASK;
+          DPA_REG_WRITE(BRIDGE_INT_CAUSE_REG, cause_bridge);
+          timer_handler();
+      } else {
+      }
+  }
+
+</Insert>
+<Copy StartSeek="9469" EndSeek="9771"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:41:27000">
+<Copy StartSeek="0" EndSeek="8567"/>
+<Copy StartSeek="8585" EndSeek="8685"/>
+<Copy StartSeek="8703" EndSeek="9807"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:41:55000">
+<Copy StartSeek="0" EndSeek="9096"/>
+<Copy StartSeek="9118" EndSeek="9829"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:43:14000">
+<Copy StartSeek="0" EndSeek="8418"/>
+<Insert>  static uint32_t in_isr = 0;
+</Insert>
+<Copy StartSeek="8441" EndSeek="9822"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:43:27000">
+<Copy StartSeek="0" EndSeek="8418"/>
+<Insert>  uint32_t in_isr = 0;
+</Insert>
+<Copy StartSeek="8450" EndSeek="9831"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:43:41000">
+<Copy StartSeek="0" EndSeek="9528"/>
+<Insert>
+</Insert>
+<Copy StartSeek="9542" EndSeek="9844"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:43:55000">
+<Copy StartSeek="0" EndSeek="8518"/>
+<Copy StartSeek="8567" EndSeek="9893"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:44:47000">
+<Copy StartSeek="0" EndSeek="8534"/>
+<Insert>    *(uint32_t *)0 = 0x6666;
+</Insert>
+<Copy StartSeek="8567" EndSeek="9897"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:44:51000">
+<Copy StartSeek="0" EndSeek="8312"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8349" EndSeek="8454"/>
+<Insert>  volatile uint32_t in_isr = 0;
+</Insert>
+<Copy StartSeek="8458" EndSeek="9905"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:46:24000">
+<Copy StartSeek="0" EndSeek="8454"/>
+<Insert>  ;
+
+</Insert>
+<Copy StartSeek="8455" EndSeek="9901"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:46:27000">
+<Copy StartSeek="0" EndSeek="8455"/>
+<Copy StartSeek="8469" EndSeek="9915"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:46:35000">
+<Copy StartSeek="0" EndSeek="8455"/>
+<Insert>  in_isr = 0;
+</Insert>
+<Copy StartSeek="8469" EndSeek="9915"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:46:39000">
+<Copy StartSeek="0" EndSeek="8455"/>
+<Insert>  in_isr = 1;
+</Insert>
+<Copy StartSeek="8469" EndSeek="9915"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:46:59000">
+<Copy StartSeek="0" EndSeek="8640"/>
+<Insert>      in_isr = 1;
+</Insert>
+<Copy StartSeek="8640" EndSeek="8663"/>
+<Insert>  }
+
+</Insert>
+<Copy StartSeek="8685" EndSeek="8686"/>
+<Copy StartSeek="8687" EndSeek="9915"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:48:47000">
+<Copy StartSeek="0" EndSeek="8758"/>
+<Insert>      in_isr = 1;
+</Insert>
+<Copy StartSeek="8758" EndSeek="8781"/>
+<Insert>  }
+
+</Insert>
+<Copy StartSeek="8804" EndSeek="9915"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:48:50000">
+<Copy StartSeek="0" EndSeek="8640"/>
+<Insert>      eth0_handler(0);
+</Insert>
+<Copy StartSeek="8640" EndSeek="8658"/>
+<Insert>  }
+
+</Insert>
+<Copy StartSeek="8685" EndSeek="8686"/>
+<Copy StartSeek="8687" EndSeek="8758"/>
+<Insert>      eth1_handler(1);
+</Insert>
+<Copy StartSeek="8758" EndSeek="8776"/>
+<Insert>  }
+
+</Insert>
+<Copy StartSeek="8804" EndSeek="9915"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:49:2000">
+<Copy StartSeek="0" EndSeek="8312"/>
+<Insert>static volatile uint32_t in_isr = 0;
+</Insert>
+<Copy StartSeek="8342" EndSeek="9908"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="18:55:1000">
+<Copy StartSeek="0" EndSeek="8312"/>
+<Insert>volatile uint32_t in_isr = 0;
+</Insert>
+<Copy StartSeek="8313" EndSeek="8418"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8450" EndSeek="9910"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="19:00:17000">
+<Copy StartSeek="0" EndSeek="8418"/>
+<Insert>  volatile uint32_t in_isr = 0;
+</Insert>
+<Copy StartSeek="8446" EndSeek="9906"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="19:00:34000">
+<Copy StartSeek="0" EndSeek="8446"/>
+<Copy StartSeek="8447" EndSeek="9907"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="19:00:35000">
+<Copy StartSeek="0" EndSeek="8418"/>
+<Insert>  volatile uint32_t in_isr;
+</Insert>
+<Copy StartSeek="8446" EndSeek="9907"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="19:00:46000">
+<Copy StartSeek="0" EndSeek="8418"/>
+<Insert>  uint32_t volatile in_isr;
+</Insert>
+<Copy StartSeek="8441" EndSeek="9902"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="19:00:57000">
+<Copy StartSeek="0" EndSeek="8418"/>
+<Insert>  int volatile in_isr;
+</Insert>
+<Copy StartSeek="8441" EndSeek="9902"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="19:00:59000">
+<Copy StartSeek="0" EndSeek="8312"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8342" EndSeek="8447"/>
+<Insert>  volatile int in_isr;
+
+</Insert>
+<Copy StartSeek="8448" EndSeek="9908"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="19:01:22000">
+<Copy StartSeek="0" EndSeek="8312"/>
+<Insert>volatile uint32_t in_isr = 0;
+</Insert>
+<Copy StartSeek="8313" EndSeek="8418"/>
+<Insert>
+  in_isr = 0;
+</Insert>
+<Copy StartSeek="8421" EndSeek="8488"/>
+<Insert>  if (in_isr) {
+    *(uint32_t *)0 = 0xdeadbeef;
+  }
+</Insert>
+<Copy StartSeek="8488" EndSeek="8539"/>
+<Insert>      in_isr = 1;
+</Insert>
+<Copy StartSeek="8539" EndSeek="8639"/>
+<Insert>      in_isr = 1;
+</Insert>
+<Copy StartSeek="8639" EndSeek="9032"/>
+<Insert>          in_isr = 1;
+</Insert>
+<Copy StartSeek="9032" EndSeek="9440"/>
+<Insert>  in_isr = 0;
+</Insert>
+<Copy StartSeek="9441" EndSeek="9743"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/08/29" Time="19:01:30000">
+<Copy StartSeek="0" EndSeek="3726"/>
+<Insert>      printk(KERN_EMERG "%s\n", buf);
+</Insert>
+<Copy StartSeek="3762" EndSeek="3801"/>
+<Insert>      printk(KERN_ALERT "%s\n", buf);
+</Insert>
+<Copy StartSeek="3837" EndSeek="3876"/>
+<Insert>      printk(KERN_CRIT "%s\n", buf);
+</Insert>
+<Copy StartSeek="3911" EndSeek="3949"/>
+<Insert>      printk(KERN_ERR "%s\n", buf);
+</Insert>
+<Copy StartSeek="3983" EndSeek="4025"/>
+<Insert>      printk(KERN_WARNING "%s\n", buf);
+</Insert>
+<Copy StartSeek="4063" EndSeek="4104"/>
+<Insert>      printk(KERN_NOTICE "%s\n", buf);
+</Insert>
+<Copy StartSeek="4141" EndSeek="4180"/>
+<Insert>      printk(KERN_INFO "%s\n", buf);
+</Insert>
+<Copy StartSeek="4215" EndSeek="4268"/>
+<Insert>      printk(KERN_DEBUG "%s\n", buf);
+</Insert>
+<Copy StartSeek="4304" EndSeek="6153"/>
+<Insert>#define MSAR_CPU_DDR_L2_CLCK_EXTRACT(sar0, sar1)  ((sar0 &gt;&gt; 1) &amp; 0x3F)
+</Insert>
+<Copy StartSeek="6218" EndSeek="6916"/>
+<Insert>  uint32_t i, sar0, sar1, clock_satr, res;
+</Insert>
+<Copy StartSeek="6953" EndSeek="7046"/>
+<Insert>  sar1 = DPA_REG_READ(MPP_SAMPLE_AT_RESET(1));
+  clock_satr = MSAR_CPU_DDR_L2_CLCK_EXTRACT(sar0, sar1);
+
+</Insert>
+<Copy StartSeek="7098" EndSeek="9662"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/12/16" Time="09:15:48000">
+<Copy StartSeek="0" EndSeek="3726"/>
+<Insert>      printk(KERN_EMERG "%s", buf);
+</Insert>
+<Copy StartSeek="3764" EndSeek="3803"/>
+<Insert>      printk(KERN_ALERT "%s", buf);
+</Insert>
+<Copy StartSeek="3841" EndSeek="3880"/>
+<Insert>      printk(KERN_CRIT "%s", buf);
+</Insert>
+<Copy StartSeek="3917" EndSeek="3955"/>
+<Insert>      printk(KERN_ERR "%s", buf);
+</Insert>
+<Copy StartSeek="3991" EndSeek="4033"/>
+<Insert>      printk(KERN_WARNING "%s", buf);
+</Insert>
+<Copy StartSeek="4073" EndSeek="4114"/>
+<Insert>      printk(KERN_NOTICE "%s", buf);
+</Insert>
+<Copy StartSeek="4153" EndSeek="4192"/>
+<Insert>      printk(KERN_INFO "%s", buf);
+</Insert>
+<Copy StartSeek="4229" EndSeek="4282"/>
+<Insert>      printk(KERN_DEBUG "%s", buf);
+</Insert>
+<Copy StartSeek="4320" EndSeek="9678"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/12/16" Time="10:30:6000">
+<Copy StartSeek="0" EndSeek="950"/>
+<Insert>#include &lt;arch/arm/mach-feroceon-kw2/include/mach/irqs.h&gt;
+
+</Insert>
+<Copy StartSeek="951" EndSeek="1252"/>
+<Insert>/* IRQ related constants */
+#define BRIDGE_INT_CAUSE_BIT                   BRIDGE_IRQ_NUM
+#define BRIDGE_INT_CAUSE_MASK                 (1 &lt;&lt; BRIDGE_INT_CAUSE_BIT)
+#define ETH_CAUSE_TH_RXTX_IRQ_BIT_MASK(port)  (1 &lt;&lt; NET_TH_RXTX_IRQ_NUM(port))
+
+#define BRIDGE_INT_TIMER_MASK(x)   (1 &lt;&lt; (4 + x)) /* Timer 2 and 3 */
+
+
+//#define DPA_OS_DEBUG
+
+</Insert>
+<Copy StartSeek="1275" EndSeek="1402"/>
+<Insert>/* LSP exported routines */
+
+extern int fiq_alloc(unsigned int irq);
+extern void fiq_free(unsigned int irq);
+extern void fiq_set_handler(irq_handler_t handler);
+
+</Insert>
+<Copy StartSeek="1402" EndSeek="1739"/>
+<Insert>  uint32_t size;
+  void    *mem;
+</Insert>
+<Copy StartSeek="1774" EndSeek="1789"/>
+<Insert>/* Prototypes */
+static inline void timer_empty_handler(uint32_t timer);
+static inline void eth_empty_handler(uint8_t port);
+irqreturn_t dpa_os_isr(int irq, void* dev);
+
+/* Default timer handler, overriden by apps */
+static dpa_os_timer_handler_t timer_handler = timer_empty_handler;
+
+/* Default ethernet port poll handlers, overriden by apps */
+static dpa_os_eth_handler_t eth0_handler = eth_empty_handler;
+static dpa_os_eth_handler_t eth1_handler = eth_empty_handler;
+static dpa_os_eth_handler_t eth2_handler = eth_empty_handler;
+
+</Insert>
+<Copy StartSeek="1789" EndSeek="1887"/>
+<Insert>  fiq_set_handler(dpa_os_isr);
+</Insert>
+<Copy StartSeek="1945" EndSeek="2083"/>
+<Insert>      fiq_set_handler(NULL);
+</Insert>
+<Copy StartSeek="2139" EndSeek="3954"/>
+<Insert>   mem_hdr_t *hdr;
+</Insert>
+<Copy StartSeek="3972" EndSeek="3973"/>
+<Insert>   hdr = (mem_hdr_t *) kmalloc(size + sizeof(mem_hdr_t), GFP_KERNEL);
+   hdr-&gt;size = size;
+   hdr-&gt;mem = ((uint8_t*)hdr) + sizeof(mem_hdr_t);
+ 
+</Insert>
+<Copy StartSeek="4409" EndSeek="4444"/>
+<Insert>  
+  OS_DBG("dpa_os_malloc: hdr=0x%x, mem=0x%x, %d bytes", 
+</Insert>
+<Copy StartSeek="4501" EndSeek="4578"/>
+<Copy StartSeek="4991" EndSeek="5418"/>
+<Insert>void dpa_os_free(void *ptr) {
+  mem_hdr_t *hdr = (mem_hdr_t *) ((uint8_t*)ptr - sizeof(mem_hdr_t));
+  
+  OS_DBG("dpa_os_free: hdr=0x%x, mem=0x%x, %d bytes", (uint32_t) hdr, (uint32_t) hdr-&gt;mem, hdr-&gt;size);
+
+  ++dpa_os_state.stats.free_cnt;
+  kfree((void*) hdr);
+}
+
+
+</Insert>
+<Copy StartSeek="5419" EndSeek="5591"/>
+<Insert>#define MSAR_CPU_DDR_L2_CLCK_EXTRACT(sar0)  ((sar0 &gt;&gt; 1) &amp; 0x3F)
+#define MPP_SAMPLE_AT_RESET(id)     (0x18230 + (id * 4))
+
+typedef struct {
+  uint32_t satr_val; /* Sample @ Reset register value */
+  uint32_t cpu_clk; /* CPU clock in MHz */
+  uint32_t ddr_clk; /* DDR clock in MHz */
+  uint32_t l2_clk; /* CPU DDR clock ratio */
+} cpu_arm_clk;
+
+
+/* CPU SysClock/DDR L2  */
+static cpu_arm_clk cpu_arm_clk_tbl[] =
+  {{31, 1200000000, 400000000, 480000000},
+   {32, 1200000000, 400000000, 400000000},
+   {36, 1600000000, 533000000, 533000000},
+   {37, 1600000000, 400000000, 533000000},
+   {21, 800000000,  400000000, 400000000},
+   {24, 1000000000, 400000000, 400000000},
+   {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF}};
+</Insert>
+<Copy StartSeek="6074" EndSeek="6076"/>
+<Insert>uint32_t dpa_os_get_sys_clock(void) {
+  uint32_t i, sar0, clock_satr, res;
+
+  res = 0;
+
+  /* Read S@R registers value */
+  sar0 = DPA_REG_READ(MPP_SAMPLE_AT_RESET(0));
+  clock_satr = MSAR_CPU_DDR_L2_CLCK_EXTRACT(sar0);
+
+  /* Search for a matching entry */
+  i = 0;
+  while (cpu_arm_clk_tbl[i].satr_val != 0xFFFFFFFF) {
+    if (cpu_arm_clk_tbl[i].satr_val == clock_satr) {
+        res = cpu_arm_clk_tbl[i].ddr_clk;
+        break;
+    }
+    i++;
+  }
+
+  return res;
+}
+
+
+void dpa_os_fiq_alloc(uint32_t irq) {
+  fiq_alloc(irq);
+}
+
+
+void dpa_os_fiq_free(uint32_t irq) {
+  fiq_free(irq);
+}
+
+
+void dpa_os_eth_set_handler(uint8_t port, dpa_os_eth_handler_t h) {
+  switch (port) {
+    case 0: eth0_handler = (h != NULL) ? h : eth_empty_handler;
+      break;
+
+    case 1: eth1_handler = (h != NULL) ? h : eth_empty_handler;
+      break;
+
+    case 2: eth2_handler = (h != NULL) ? h : eth_empty_handler;
+      break;
+
+    default: DPA_ERROR("Port out of range (%d) setting poll handler.", port);
+  }
+}
+
+static inline void timer_empty_handler(uint32_t timer) {
+  DPA_DBG("Empty HW timer (%d) handler called", timer);
+}
+
+
+static inline void eth_empty_handler(uint8_t port) {
+  (void) port;
+  DPA_DBG("Empty eth handler called, port (%d)", port);
+}
+
+
+void dpa_os_timer_set_handler(dpa_os_timer_handler_t h) {
+  timer_handler = (h != NULL) ? h : timer_empty_handler;
+}
+
+
+irqreturn_t dpa_os_isr(int irq, void* dev) {
+  uint32_t cause, cause_bridge;
+  (void) irq;
+  (void) dev;
+  
+  cause = DPA_REG_READ(MV_IRQ_CAUSE_LOW_REG);
+
+  /* GMAC port 0 */
+  if (cause &amp; ETH_CAUSE_TH_RXTX_IRQ_BIT_MASK(0)) {
+      eth0_handler(0);
+  }
+
+
+  /* GMAC port 1 */
+  if (cause &amp; ETH_CAUSE_TH_RXTX_IRQ_BIT_MASK(1)) {
+      eth1_handler(1);
+  }
+
+  /* Currently not using GMAC2 */
+#if 0
+  /* GMAC port 2 */
+  if (cause &amp; ETH_CAUSE_TH_RXTX_IRQ_BIT_MASK(2)) {
+      eth0_handler(2);
+      cause &amp;= ~ETH_CAUSE_TH_RXTX_IRQ_BIT_MASK(2);
+  }
+#endif
+
+  /* HW Timer */
+  if (cause &amp; BRIDGE_INT_CAUSE_MASK) {
+
+      cause_bridge = DPA_REG_READ(BRIDGE_INT_CAUSE_REG);
+
+      if (cause_bridge &amp; BRIDGE_INT_TIMER_MASK(2)) {
+          timer_handler(2);
+          cause_bridge &amp;= ~BRIDGE_INT_TIMER_MASK(2);
+      }
+
+      DPA_REG_WRITE(BRIDGE_INT_CAUSE_REG, cause_bridge);
+
+      /* Ignoring interrupts from other timers as we know they
+      originate from IRQ interrupt line. We can (and probably should) 
+      provide a generic implementation which will require reading 
+      main interrupt controller FIQ interrupt mask. */
+  }
+
+  return IRQ_HANDLED;
+}
+
+</Insert>
+<Copy StartSeek="6076" EndSeek="6115"/>
+<Insert>  return ntohl(netlong);
+</Insert>
+<Copy StartSeek="6146" EndSeek="6190"/>
+<Insert>  return ntohs(netshort);
+}
+</Insert>
+<Copy StartSeek="6265" EndSeek="6306"/>
+<Insert>  return htonl(hostlong);
+</Insert>
+<Copy StartSeek="6338" EndSeek="6383"/>
+<Insert>  return htons(hostshort);
+</Insert>
+<Copy StartSeek="6416" EndSeek="6418"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="20:40:27000">
+<Copy StartSeek="0" EndSeek="6224"/>
+<Insert>	return ((__force __u16)(__be16)(x));
+</Insert>
+<Copy StartSeek="6269" EndSeek="6425"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="20:40:39000">
+<Copy StartSeek="0" EndSeek="6073"/>
+<Insert>
+
+
+uint32_t dpa_ntohl(uint32_t netlong) {
+  return -1; //ntohl(netlong);
+}
+
+uint16_t dpa_ntohs(uint16_t netshort)  {
+  //return -1; //ntohs(netshort);
+	return ((__force __u16)(__be16)(netshort));
+}
+
+uint32_t dpa_htonl(uint32_t hostlong)  {
+  return -1; //htonl(hostlong);
+}
+
+uint16_t dpa_htons(uint16_t hostshort)  {
+  return -1; //htons(hostshort);
+}
+</Insert>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="20:56:0000">
+<Copy StartSeek="0" EndSeek="6073"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:06:15000">
+<Copy StartSeek="0" EndSeek="6073"/>
+<Copy StartSeek="6074" EndSeek="7128"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:10:3000">
+<Copy StartSeek="0" EndSeek="6515"/>
+<Copy StartSeek="6538" EndSeek="7151"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:23:26000">
+<Copy StartSeek="0" EndSeek="971"/>
+<Copy StartSeek="994" EndSeek="7174"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:26:43000">
+<Copy StartSeek="0" EndSeek="971"/>
+<Insert>#include &lt;dpa_types.h&gt;
+</Insert>
+<Copy StartSeek="971" EndSeek="7151"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:27:18000">
+<Copy StartSeek="0" EndSeek="6630"/>
+<Copy StartSeek="6643" EndSeek="7164"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:27:41000">
+<Copy StartSeek="0" EndSeek="6074"/>
+<Copy StartSeek="6095" EndSeek="7185"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:31:20000">
+<Copy StartSeek="0" EndSeek="6074"/>
+<Insert>#ifdef _DPA_CPU_BE__
+</Insert>
+<Copy StartSeek="6074" EndSeek="7164"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:31:37000">
+<Copy StartSeek="0" EndSeek="6109"/>
+<Insert>#ifdef _DPA_CPU_LE__
+</Insert>
+<Copy StartSeek="6131" EndSeek="7165"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:31:47000">
+<Copy StartSeek="0" EndSeek="6304"/>
+<Insert>#ifdef _DPA_CPU_LE__
+</Insert>
+<Copy StartSeek="6326" EndSeek="6496"/>
+<Insert>#ifdef _DPA_CPU_LE__
+</Insert>
+<Copy StartSeek="6518" EndSeek="6705"/>
+<Insert>#ifdef _DPA_CPU_LE__
+</Insert>
+<Copy StartSeek="6727" EndSeek="6881"/>
+<Insert>#ifdef _DPA_CPU_LE__
+</Insert>
+<Copy StartSeek="6903" EndSeek="7043"/>
+<Insert>#ifdef _DPA_CPU_LE__
+</Insert>
+<Copy StartSeek="7065" EndSeek="7170"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:32:6000">
+<Copy StartSeek="0" EndSeek="6518"/>
+<Insert>#error "LITTLE ENDIAN"
+</Insert>
+<Copy StartSeek="6518" EndSeek="6610"/>
+<Insert>#error "BUG"
+</Insert>
+<Copy StartSeek="6610" EndSeek="7134"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:32:19000">
+<Copy StartSeek="0" EndSeek="7134"/>
+</Delta>
+</DeltaFile>

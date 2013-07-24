@@ -1,0 +1,2482 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="152" Comment="" Date="2013/02/24" Time="17:48:51000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* dpa_api.c
+*
+* Description:
+*       Marvell Data Path Acceleration Engine API
+*
+*/
+
+#include &lt;dpa.h&gt;
+#include &lt;dpa/dpa.h&gt;
+#include &lt;dpa_types.h&gt;
+#include &lt;dpa_os.h&gt;
+#include &lt;eth/eth.h&gt;
+#include &lt;xml/ezxml.h&gt;
+#include &lt;log/log.h&gt;
+#include &lt;spa/spa.h&gt;
+#include &lt;util/string.h&gt;
+#include &lt;util/queue.h&gt;
+#include &lt;util/mem.h&gt;
+#include &lt;util/timer.h&gt;
+#include &lt;util/cache_ops.h&gt;
+
+#include "event.h"
+#include "version.h"
+#include "config.h"
+#include "dpa_cls.h"
+
+#include &lt;perf_cnt.h&gt;
+
+#include &lt;dpa/../../platform/linux_kernel_space/eth/eth_regs.h&gt;
+
+#define DPA_IS_INITIALIZED_OR_RETURN_ERROR \
+  do { if (!dpa_is_init()) { \
+      return DPA_NOT_INIT; } \
+  } while (0)
+  
+#ifdef __DPA_CHECK_MARVELL_CPU__
+#define DPA_ERROR_IF_NOT_MARVELL_CPU() \
+do { \
+  uint32_t reg_val = 0;                                           \
+   __asm volatile ("mrc p15, 0, %0, c0, c0, 0" : "=r" (reg_val)); \
+   reg_val &gt;&gt;= 24; \
+   if (reg_val != 0x56 &amp;&amp; reg_val != 0x41) {\
+       return -1; \
+   }\
+} while (0)
+#else
+#define DPA_ERROR_IF_NOT_MARVELL_CPU()
+#endif
+
+/* Time interval, microseconds, of HW timer */
+#define DPA_TIMER_DURATION_USEC (100)
+
+/* HW timer number */
+#define DPA_TIMER_ID            (2)
+
+/* Prototypes */
+void dpa_pkt_rx(eth_pkt_t* pkt);
+void dpa_rx_done(uint8_t port);
+void dpa_tx_done(uint8_t port, uint32_t sent);
+static inline eth_pkt_t *dpa_get_pkt_tx(uint32_t priority);
+int printk(const char * fmt, ...);
+
+/* Platform-specific routines */
+extern eth_pkt_t *__dpa_pkt_alloc(uint32_t size);
+extern eth_pkt_t *__dpa_pkt_wrap(void *data, uint32_t size, void *os_handle);
+extern void __dpa_pkt_free(eth_pkt_t* pkt);
+
+/* DPA API state */
+
+
+
+typedef enum {
+  DPA_STATUS_SHUTDOWN,
+  DPA_STATUS_INIT_IN_PROGRESS,
+  DPA_STATUS_INIT,
+  DPA_STATUS_SHUTDOWN_IN_PROGRESS
+} dpa_status_t;
+
+
+typedef struct {
+  dpa_status_t     status; /* Initialization state */
+  dpa_config_t     config; /* Platform configuration */
+  queue_t         *spa_txq[DPA_PKT_PRI_NUM]; /* Outgoing queues */
+  queue_t         *spa_txq_done; /* Temp Tx Q for slow path packets */
+  eth_ops_t        eth_ops; /* Ethernet operations */
+  dpa_pkt_stats_t  pkt_stats; /* Packet buffer stats */
+
+#ifdef __DPA_MEM_LOG__
+  dpa_pkt_alloc_stats_t pkt_alloc_stats; /* Memory stats */
+#endif /* __DPA_MEM_LOG__ */
+} dpa_state_t;
+
+static dpa_state_t dpa_state =
+  {.status = DPA_STATUS_SHUTDOWN,
+   .spa_txq = {NULL},
+   .spa_txq_done = NULL,
+   .eth_ops = {.pkt_alloc = dpa_pkt_alloc,
+               .pkt_free = dpa_pkt_free,
+               .pkt_rx = dpa_pkt_rx,
+               .rx_done = dpa_rx_done,
+               .tx_done = dpa_tx_done}};
+
+
+
+/******************************************************
+ *   DPA utility routines
+ */
+
+/* Terminate Ethernet layer */
+int32_t dpa_eth_shutdown(void) {
+  uint32_t i, err;
+  eth_config_t *cfg;
+  
+  err = DPA_OK;
+  
+  for (i = 0; i &lt; DPA_ETH_MAX_PORT_NUM; i++) {
+       cfg = &amp;dpa_state.config.eth[i];
+       if (cfg-&gt;status) {
+           eth_shutdown(cfg-&gt;port);
+       }
+  }
+
+  return err;
+}
+
+/* Init DPA enabled interfaces */
+int32_t dpa_eth_init(void) {
+  uint32_t i, err;
+  eth_config_t *cfg;
+
+  err = DPA_OK;
+
+  for (i = 0; i &lt; DPA_ETH_MAX_PORT_NUM; i++) {
+       cfg = &amp;dpa_state.config.eth[i];
+       if (cfg-&gt;status) {
+           cfg-&gt;ops = dpa_state.eth_ops;
+           if ((err = eth_init(cfg))) {
+               break;
+           }
+       }
+  }
+
+  return err;
+}
+
+
+/* Transmit slow path packets. Handle highest priority packets first */
+void dpa_slow_path_tx(void) {
+  eth_pkt_t* pkt;
+  int32_t pri;
+
+  for (pri = DPA_PKT_PRI_MAX; pri &gt;= DPA_PKT_PRI_MIN; pri--) {
+       while ((pkt = dpa_get_pkt_tx(pri)) != NULL) {
+
+          pkt-&gt;queue = 0; /* TODO dpa_qos2queue(pkt); */
+          pkt-&gt;cmd = NETA_TX_FLZ_DESC_MASK | NETA_TX_L4_CSUM_NOT | NETA_TX_PKT_OFFSET_MASK(ETH_MH_SIZE);
+          eth_pkt_tx(pkt);
+          queue_put(dpa_state.spa_txq_done, pkt);
+
+          dpa_state.pkt_stats.lcl_tx_pkts++;
+       }
+  }
+}
+
+
+/* Init slow path interface */
+int32_t dpa_slow_path_init(void) {
+  uint32_t i;
+  int32_t err;
+  eth_config_t *cfg;
+
+  /* Temp queue for transmited packets from slow path */
+  dpa_state.spa_txq_done = queue_create(SPA_TX_QUEUE_SIZE);
+  if (dpa_state.spa_txq_done == NULL) {
+      DPA_ERROR("Can't alloc temp Tx done queue of size (%d)", SPA_TX_QUEUE_SIZE);
+      err = DPA_OUT_OF_MEMORY;
+      goto fail;
+  }
+
+  /* Slow path Tx queues */
+  for (i = 0; i &lt; DPA_PKT_PRI_NUM; i++) {
+       dpa_state.spa_txq[i] = queue_create(SPA_TX_QUEUE_SIZE);
+       if (dpa_state.spa_txq[i] == NULL) {
+           DPA_ERROR("Can't alloc Tx queue (%d) of size (%d)", i, SPA_TX_QUEUE_SIZE);
+           err = DPA_OUT_OF_MEMORY;
+           goto fail;
+       }
+  }
+
+  /* Slow path adapter */
+  if ((err = spa_init())) {
+      goto fail;
+  }
+
+  for (i = 0; i &lt; DPA_ETH_MAX_PORT_NUM; i++) {
+       cfg = &amp;dpa_state.config.eth[i];
+       if (cfg-&gt;status &amp;&amp; (err = spa_port_install(cfg-&gt;port))) {
+            DPA_ERROR("Can't hijack slow path port (%d)", cfg-&gt;port);
+            goto fail;
+       }
+  }
+
+  return DPA_OK;
+
+fail:
+  return err;
+}
+
+/* Terminate slow path interface */
+void dpa_slow_path_shutdown() {
+  eth_pkt_t *pkt;
+  uint32_t   i;
+
+  /* Slow path adapter */
+  spa_shutdown();
+
+  /* Tx queues */
+  for (i = 0; i &lt; DPA_PKT_PRI_NUM; i++) {
+       if (dpa_state.spa_txq[i] != NULL) {
+           while ((pkt = queue_get(dpa_state.spa_txq[i])) != NULL) {
+              dpa_pkt_free(pkt);
+           }
+           queue_destroy(dpa_state.spa_txq[i]);
+           dpa_state.spa_txq[i] = NULL;
+       }
+  }
+
+  /* Tx done queue */
+  if (dpa_state.spa_txq_done != NULL) {
+      while ((pkt = queue_get(dpa_state.spa_txq_done)) != NULL) {
+              dpa_pkt_free(pkt);
+      }
+      queue_destroy(dpa_state.spa_txq_done);
+      dpa_state.spa_txq_done = NULL;
+  }
+}
+
+
+eth_pkt_t *dpa_pkt_alloc(uint32_t size) {
+  eth_pkt_t *pkt = __dpa_pkt_alloc(size);
+
+#ifdef __DPA_MEM_LOG__
+  if (pkt != NULL) {
+      dpa_state.pkt_alloc_stats.alloc_pkts++;
+      dpa_state.pkt_alloc_stats.fast_path_alloc_pkts++;
+  }
+#endif /* __DPA_MEM_LOG__ */
+  return pkt;
+}
+
+
+eth_pkt_t *dpa_pkt_wrap(void *data, uint32_t size, void *os_handle) {
+  eth_pkt_t *pkt = __dpa_pkt_wrap(data, size, os_handle);
+
+#ifdef __DPA_MEM_LOG__
+  if (pkt != NULL) {
+      dpa_state.pkt_alloc_stats.alloc_pkts++;
+      dpa_state.pkt_alloc_stats.slow_path_alloc_pkts++;
+  }
+#endif /* __DPA_MEM_LOG__ */
+
+  return pkt;
+}
+
+
+void dpa_pkt_free(eth_pkt_t* pkt) {
+#ifdef __DPA_MEM_LOG__
+  dpa_state.pkt_alloc_stats.free_pkts++;
+  if (ETH_IS_PKT_FAST_PATH(pkt)) {
+      dpa_state.pkt_alloc_stats.fast_path_free_pkts++;
+  } else {
+      dpa_state.pkt_alloc_stats.slow_path_free_pkts++;
+  }
+#endif /* __DPA_MEM_LOG__ */
+
+  __dpa_pkt_free(pkt);
+}
+
+
+/* Enable/disable interrupts on DPA enabled interfaces */
+void dpa_eth_irq_enable(bool enable) {
+  uint32_t i;
+  eth_config_t *cfg;
+
+  for (i = 0; i &lt; DPA_ETH_MAX_PORT_NUM; i++) {
+       cfg = &amp;dpa_state.config.eth[i];
+       if (cfg-&gt;status) {
+           enable ? eth_irq_enable(cfg-&gt;port) : eth_irq_disable(cfg-&gt;port);
+       }
+  }
+}
+
+
+#ifdef __DPA_MEM_LOG__
+void dpa_print_pkt_alloc_stats(void) {
+  DPA_INFO("Packet buffer memory statistics (total/fast path/slow path):"
+           " allocated  (%d/%d/%d), freed (%d/%d/%d)",
+           dpa_state.pkt_alloc_stats.alloc_pkts,
+           dpa_state.pkt_alloc_stats.fast_path_alloc_pkts,
+           dpa_state.pkt_alloc_stats.slow_path_alloc_pkts,
+           dpa_state.pkt_alloc_stats.free_pkts,
+           dpa_state.pkt_alloc_stats.fast_path_free_pkts,
+           dpa_state.pkt_alloc_stats.slow_path_free_pkts);
+}
+#endif /* __DPA_MEM_LOG__ */
+
+
+
+/******************************************************
+ *   DPA processing routines 
+ */
+
+/* End of Rx batch */
+void dpa_rx_done(uint8_t port) {
+  
+  /* Forward pkts to slow path */
+  spa_rx_done(port);
+  
+  /* Transmit pkts from slow path */
+  dpa_slow_path_tx();
+}
+
+/* Called by Ethernet driver when xmit done */
+void dpa_tx_done(uint8_t port, uint32_t sent) {
+  register eth_pkt_t* pkt;
+  
+  /* Return packet to slow path for freeing */
+  while ((pkt = queue_get(dpa_state.spa_txq_done)) != NULL) {
+    /* FIXME Not handling the case when SPA xmit done Q is full!
+       And we can't free it in data path context. Should add an extra temp Q for this */
+    spa_pkt_tx_done(pkt);
+  }
+}
+
+/* Get next packet to transmit from slow path */
+static inline eth_pkt_t *dpa_get_pkt_tx(uint32_t priority) {
+  return (eth_pkt_t *) queue_get(dpa_state.spa_txq[priority]);
+}
+
+
+
+#if defined (__DPA_MODE_DPA__)
+
+/* Full DPA flow */
+void dpa_pkt_rx(eth_pkt_t* pkt) {
+  /* Classify and modify */
+  if (dpa_cls_rx(pkt) == DPE_FWD) {
+      /* Fast path */
+      pkt-&gt;cmd |= NETA_TX_FLZ_DESC_MASK | NETA_TX_PKT_OFFSET_MASK(ETH_MH_SIZE);
+      pkt-&gt;status = ETH_PKT_STATUS_FWD;
+//    dpa_state.pkt_stats.fwd_pkts++;
+   } else { 
+      /* Drop */
+      if (spa_rx_queue_is_full(pkt-&gt;prio)) {
+          pkt-&gt;status = ETH_PKT_STATUS_DROP;
+          dpa_state.pkt_stats.dropped_pkts++;
+      } else { /* Slow path */
+          pkt-&gt;status = ETH_PKT_STATUS_LCL;
+          dpa_state.pkt_stats.lcl_rx_pkts++;
+          spa_pkt_rx(pkt, pkt-&gt;prio);
+      }
+   }
+}
+
+#elif defined (__DPA_MODE_SLOW_PATH__)
+
+/* All goes to slow path */
+void dpa_pkt_rx(eth_pkt_t* pkt) {
+  if (spa_rx_queue_is_full(DPA_PKT_PRI_MIN)) {
+      pkt-&gt;status = ETH_PKT_STATUS_DROP;
+      dpa_state.pkt_stats.dropped_pkts++;
+  } else {
+      pkt-&gt;status = ETH_PKT_STATUS_LCL;
+      dpa_state.pkt_stats.lcl_rx_pkts++;
+      spa_pkt_rx(pkt, DPA_PKT_PRI_MIN);
+  }
+}
+
+#elif defined (__DPA_MODE_FWD__)
+
+/* All packets sent to alternate port unmodified */
+void dpa_pkt_rx(eth_pkt_t* pkt) {
+  /* Base performance test: Just flip the ports */
+  pkt-&gt;port ^= 0x1;
+  pkt-&gt;queue = 0;
+  pkt-&gt;cmd = NETA_TX_FLZ_DESC_MASK | NETA_TX_L4_CSUM_NOT | NETA_TX_PKT_OFFSET_MASK(ETH_MH_SIZE);
+  pkt-&gt;status = ETH_PKT_STATUS_FWD;
+  dpa_state.pkt_stats.fwd_pkts++;
+}
+
+#else
+  #error "Please define DPA mode"
+#endif
+
+
+/******************************************************
+ *   DPA Internal API implementation
+ */
+
+/* Append slow path packet to transmit queue. Caller must also wake-up
+   the fast path thread via dpa_tx_start */
+int32_t dpa_pkt_tx(eth_pkt_t *pkt, uint32_t priority) {
+  if (!dpa_tx_queue_ready(priority)) {
+      return DPA_QUEUE_IS_FULL;
+  }
+
+  /* Catch pkt on its way out for auto-learning */
+#if defined (__DPA_MODE_DPA__)
+  dpa_cls_tx(pkt);
+#endif
+
+  queue_put(dpa_state.spa_txq[priority], (void*) pkt);
+
+  return DPA_OK;
+}
+
+/* Fire-up fast path context timer if pending pkts */
+int32_t dpa_tx_start(void) {
+  /* FIXME Make sure packets get to DPA transmit ! */
+
+  return DPA_OK;
+}
+
+bool dpa_tx_queue_ready(uint32_t priority) {
+  return (dpa_is_init() &amp;&amp; !queue_is_full(dpa_state.spa_txq[priority]));
+}
+
+
+/* Redeem packet buffer to ethernet pool */
+int32_t dpa_pkt_reclaim(eth_pkt_t *pkt) {
+  eth_pkt_t *new_pkt;
+
+  if (!dpa_is_init() /* TODO May remove this check since checking in eth_pkt_pool_is_full */
+      || eth_pkt_pool_is_full(pkt-&gt;pool_id)) {
+      return DPA_OK;
+  }
+
+  /* Original pkt preserved since it will be handled in slow path */
+  new_pkt = dpa_pkt_alloc(pkt-&gt;alloc_size);
+  if (new_pkt == NULL) {
+      DPA_ERROR("Can't alloc pkt for eth port (%d)", pkt-&gt;pool_id);
+      return DPA_OUT_OF_MEMORY;
+  }
+
+  new_pkt-&gt;pool_id = pkt-&gt;pool_id;
+  eth_pkt_put(new_pkt);
+
+  return DPA_OK;
+}
+
+
+/******************************************************
+ *   DPA Public API implementation
+ */
+
+const char* dpa_get_version(void)
+{
+  static char buf[256] = {0};
+#ifdef __DPA_RUNTIME_DEBUG__
+  const char* debug="DEBUG";
+#else
+  const char* debug="";
+#endif
+
+  dpa_snprintf(buf,sizeof(buf), "Version: %u.%02u.%02u Date: %s %s %s",
+               dpa_version_major,
+               dpa_version_minor,
+               dpa_version_revision,
+               dpa_version_build_date,
+               dpa_version_build_time,
+               debug);
+  return buf;
+}
+
+
+int32_t dpa_init(const char* dpa_config_str) {
+  int32_t err;
+  ezxml_t xml_cfg = NULL;
+  const char* xml_error_string;
+
+  DPA_ERROR_IF_NOT_MARVELL_CPU();
+
+  DPA_INFO("DPA initialization started");
+  
+  if (dpa_config_str == NULL) {
+      return DPA_INVALID_PARAM;
+  }
+
+  /* Already initialized */
+  if (dpa_is_init()) {
+      DPA_INFO("Already initialized, will shut down first");
+      dpa_shutdown();
+  }
+
+  dpa_state.status = DPA_STATUS_INIT_IN_PROGRESS;
+
+  /* Configuration */
+  if (!(xml_cfg = ezxml_parse_str((char*)dpa_config_str, dpa_strlen((char*)dpa_config_str)))) {
+      err = DPA_CONFIG_ERROR;
+      goto fail;
+  }
+
+  xml_error_string = ezxml_error(xml_cfg);
+  if (xml_error_string &amp;&amp; xml_error_string[0] != '\0') {
+      DPA_ERROR("Parsing error in XML file: %s",xml_error_string);
+      err = DPA_CONFIG_ERROR;
+      goto fail;
+  }
+
+  if ((err = dpa_config_parse(xml_cfg, &amp;dpa_state.config))) {
+      goto fail;
+  }
+
+  /* OS primitives */
+  if ((err = dpa_os_init(&amp;dpa_state.config.os))) {
+      goto fail;
+  }
+
+  /* Slow path interface */
+  if ((err = dpa_slow_path_init())) {
+      goto fail;
+  }
+
+  /* Ethernet driver */
+  if ((err = dpa_eth_init())) {
+      goto fail;
+  }
+
+  /* Classifier */
+  if ((err = dpa_cls_init())) {
+      goto fail;
+  }
+
+  /* Statistics */
+  dpa_stats_reset();
+
+  ezxml_free(xml_cfg);
+  xml_cfg = NULL;
+
+  dpa_state.status = DPA_STATUS_INIT;
+
+  DPA_INFO("DPA initialized successfully");
+
+  /* Unmask ethernet interrupts */
+  dpa_eth_irq_enable(true);
+
+  return DPA_OK;
+
+fail:
+  if (xml_cfg) {
+      ezxml_free(xml_cfg);
+  }
+
+  DPA_ERROR("DPA initialized failed");
+
+  dpa_shutdown();
+
+  return err;
+}
+
+
+bool dpa_is_init(void) {
+  return (dpa_state.status == DPA_STATUS_INIT);
+}
+
+
+int32_t dpa_shutdown(void) {
+
+  /* Mask ethernet interrupts */
+  dpa_eth_irq_enable(false);
+
+  dpa_state.status = DPA_STATUS_SHUTDOWN_IN_PROGRESS;
+
+  /* Classifier */
+  dpa_cls_exit();
+
+  /* Ethernet driver */
+  dpa_eth_shutdown();
+
+  /* Slow path interface */
+  dpa_slow_path_shutdown();
+
+  /* OS primitives */
+  dpa_os_shutdown();
+
+  dpa_state.status = DPA_STATUS_SHUTDOWN;
+
+#ifdef __DPA_MEM_LOG__
+  dpa_print_pkt_alloc_stats();
+  dpa_mem_print_stats();
+#endif /* __DPA_MEM_LOG__ */
+
+  return DPA_OK;
+}
+
+
+int32_t dpa_stats_get(dpa_stats_t *stats) {
+  uint32_t i;
+  DPA_IS_INITIALIZED_OR_RETURN_ERROR;
+  
+  if (stats == NULL) {
+      return DPA_INVALID_PARAM;
+  }
+
+  dpa_memset(stats, 0, sizeof(*stats));
+  dpa_memcpy(&amp;stats-&gt;pkt, &amp;dpa_state.pkt_stats, sizeof(stats-&gt;pkt));
+#ifdef __DPA_MEM_LOG__
+  dpa_memcpy(&amp;stats-&gt;pkt_alloc, &amp;dpa_state.pkt_alloc_stats, sizeof(stats-&gt;pkt_alloc));
+#endif
+  for (i = 0; i &lt; DPA_ETH_MAX_PORT_NUM; i++) {
+       eth_config_t *cfg = &amp;dpa_state.config.eth[i];
+       if (cfg-&gt;status) {
+           eth_stats_get(cfg-&gt;port, &amp;stats-&gt;eth[cfg-&gt;port]);
+       }
+  }
+
+  return DPA_OK;
+}
+
+
+int32_t dpa_stats_reset(void) {
+  int port;
+
+  dpa_memset(&amp;dpa_state.pkt_stats, 0, sizeof(dpa_state.pkt_stats));
+#ifdef __DPA_MEM_LOG__
+  dpa_memset(&amp;dpa_state.pkt_alloc_stats, 0, sizeof(dpa_state.pkt_alloc_stats));
+#endif /* __DPA_MEM_LOG__ */
+  for (port = 0; port &lt; DPA_ETH_MAX_PORT_NUM; port++) {
+       eth_stats_reset(port);
+  }
+
+  PERF_COUNTER_RESET(0);
+  PERF_COUNTER_START(0, C0_RETIRED_INSTRUCTION /*C0_ICACHE_READ_LATENCY*/ /*PERF_COUNTER_TYPE_CYCLE_COUNT*/);
+
+  return DPA_OK;
+}
+
+
+
+int32_t dpa_table_flush(void) {
+  dpa_cls_cmd_clean();
+  
+  return DPA_OK;
+}
+
+
+static inline char* dpa_event_mask_to_string(dpa_event_mask_t mask) {
+  static char buf[128];
+
+  return buf;
+}
+
+
+int32_t dpa_register_events(dpa_event_mask_t mask, dpa_event_handler_t* event_handler) {
+  DPA_IS_INITIALIZED_OR_RETURN_ERROR;
+  
+  dpa_event_set(mask, event_handler);
+
+  return DPA_OK;
+}
+
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/08/09" Time="17:32:18000">
+<Copy StartSeek="0" EndSeek="15658"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15664" EndSeek="16738"/>
+<Insert>
+</Insert>
+<Copy StartSeek="16745" EndSeek="16817"/>
+<Insert>
+</Insert>
+<Copy StartSeek="16823" EndSeek="17142"/>
+<Insert>
+</Insert>
+<Copy StartSeek="17149" EndSeek="18119"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:18:37000">
+<Copy StartSeek="0" EndSeek="15585"/>
+<Copy StartSeek="15591" EndSeek="15664"/>
+<Insert>#if 0
+</Insert>
+<Copy StartSeek="15665" EndSeek="16739"/>
+<Insert>#endif
+</Insert>
+<Copy StartSeek="16740" EndSeek="16812"/>
+<Insert>#if 0
+</Insert>
+<Copy StartSeek="16813" EndSeek="18109"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:19:25000">
+<Copy StartSeek="0" EndSeek="15585"/>
+<Insert>#if 0
+</Insert>
+<Copy StartSeek="15586" EndSeek="15601"/>
+<Copy StartSeek="15607" EndSeek="18110"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:19:41000">
+<Copy StartSeek="0" EndSeek="15585"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15585" EndSeek="18109"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:19:49000">
+<Copy StartSeek="0" EndSeek="15537"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15573" EndSeek="18144"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:20:22000">
+<Copy StartSeek="0" EndSeek="15556"/>
+<Insert>char pkt[PKT_SZ]
+</Insert>
+<Copy StartSeek="15574" EndSeek="18145"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:20:30000">
+<Copy StartSeek="0" EndSeek="15537"/>
+<Insert>#define PKT_SZ 128
+char *pkt[PKT_SZ]
+</Insert>
+<Copy StartSeek="15537" EndSeek="18108"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:23:5000">
+<Copy StartSeek="0" EndSeek="851"/>
+<Insert>
+</Insert>
+<Copy StartSeek="878" EndSeek="15625"/>
+<Copy StartSeek="15643" EndSeek="18152"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:28:25000">
+<Copy StartSeek="0" EndSeek="15625"/>
+<Insert>  get_perf_pkt();
+</Insert>
+<Copy StartSeek="15665" EndSeek="18174"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:28:52000">
+<Copy StartSeek="0" EndSeek="15665"/>
+<Copy StartSeek="15732" EndSeek="18241"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:30:7000">
+<Copy StartSeek="0" EndSeek="15719"/>
+<Copy StartSeek="15737" EndSeek="18259"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:30:34000">
+<Copy StartSeek="0" EndSeek="15719"/>
+<Copy StartSeek="15743" EndSeek="18283"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:30:48000">
+<Copy StartSeek="0" EndSeek="15563"/>
+<Copy StartSeek="15631" EndSeek="15787"/>
+<Insert>  dpa_cls_rx(perf_pkt);
+</Insert>
+<Copy StartSeek="15790" EndSeek="18330"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:31:27000">
+<Copy StartSeek="0" EndSeek="15603"/>
+<Insert>        dpa_cls_rx(pkt);
+}
+
+</Insert>
+<Copy StartSeek="15704" EndSeek="18403"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:31:55000">
+<Copy StartSeek="0" EndSeek="15632"/>
+<Insert>        do {
+                dpa_cls_rx(pkt);
+        } while (i--);
+</Insert>
+<Copy StartSeek="15705" EndSeek="18407"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:32:46000">
+<Copy StartSeek="0" EndSeek="15654"/>
+<Insert>                        dpa_cls_rx(pkt);
+</Insert>
+<Copy StartSeek="15687" EndSeek="18399"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:32:50000">
+<Copy StartSeek="0" EndSeek="15632"/>
+<Copy StartSeek="15633" EndSeek="18400"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:32:52000">
+<Copy StartSeek="0" EndSeek="15857"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="15887" EndSeek="18427"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:34:0000">
+<Copy StartSeek="0" EndSeek="15655"/>
+<Copy StartSeek="15685" EndSeek="18457"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:41:40000">
+<Copy StartSeek="0" EndSeek="15655"/>
+<Insert>                DPA_INFO("");
+</Insert>
+<Copy StartSeek="15684" EndSeek="18456"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:52:14000">
+<Copy StartSeek="0" EndSeek="15655"/>
+<Insert>                DPA_ERR("");
+</Insert>
+<Copy StartSeek="15686" EndSeek="18458"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:52:23000">
+<Copy StartSeek="0" EndSeek="15655"/>
+<Insert>                DPA_ERROR("");
+</Insert>
+<Copy StartSeek="15722" EndSeek="18494"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:52:45000">
+<Copy StartSeek="0" EndSeek="15655"/>
+<Insert>                printk(KERN_ERR "(%s:%d) \n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="15714" EndSeek="15862"/>
+<Copy StartSeek="15898" EndSeek="18522"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:54:11000">
+<Copy StartSeek="0" EndSeek="15862"/>
+<Copy StartSeek="15863" EndSeek="18523"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:54:12000">
+<Copy StartSeek="0" EndSeek="15655"/>
+<Insert>                printk( "(%s:%d) \n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="15693" EndSeek="18502"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:54:23000">
+<Copy StartSeek="0" EndSeek="15980"/>
+<Insert>  return -1;
+</Insert>
+<Copy StartSeek="15993" EndSeek="18502"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:54:50000">
+<Copy StartSeek="0" EndSeek="15563"/>
+<Insert>void dpa_perf_measure(eth_pkt_t *pkt)
+{
+        unsigned int i = 10;
+
+        while (i--) {
+                DPA_INFO("M %u\n",i);
+                dpa_cls_rx(pkt);
+        }
+}
+
+</Insert>
+<Copy StartSeek="15563" EndSeek="15666"/>
+<Insert>  DPA_INFO("start measurements\n");
+</Insert>
+<Copy StartSeek="15666" EndSeek="18290"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:58:28000">
+<Copy StartSeek="0" EndSeek="15768"/>
+<Insert>  return -5;
+</Insert>
+<Copy StartSeek="15780" EndSeek="18289"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="14:59:11000">
+<Copy StartSeek="0" EndSeek="15768"/>
+<Insert>  return 0;
+</Insert>
+<Copy StartSeek="15781" EndSeek="18290"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:16:54000">
+<Copy StartSeek="0" EndSeek="15768"/>
+<Insert>  return -1;
+</Insert>
+<Copy StartSeek="15780" EndSeek="18289"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:19:55000">
+<Copy StartSeek="0" EndSeek="17444"/>
+<Copy StartSeek="17450" EndSeek="17970"/>
+<Insert>
+</Insert>
+<Copy StartSeek="17977" EndSeek="18301"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:21:4000">
+<Copy StartSeek="0" EndSeek="17443"/>
+<Insert>
+</Insert>
+<Copy StartSeek="17443" EndSeek="18300"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="15:21:11000">
+<Copy StartSeek="0" EndSeek="851"/>
+<Insert>#include "dpa_cls_perf.h"
+
+</Insert>
+<Copy StartSeek="852" EndSeek="6538"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="6539" EndSeek="6655"/>
+<Insert>       
+</Insert>
+<Copy StartSeek="6656" EndSeek="6740"/>
+<Insert>          
+</Insert>
+<Copy StartSeek="6846" EndSeek="10752"/>
+<Copy StartSeek="10753" EndSeek="11846"/>
+<Copy StartSeek="11890" EndSeek="11947"/>
+<Insert>  /*pkt-&gt;port ^= 0x1;
+</Insert>
+<Copy StartSeek="11967" EndSeek="12084"/>
+<Insert>  return;*/
+
+</Insert>
+<Copy StartSeek="12109" EndSeek="12859"/>
+<Insert>
+</Insert>
+<Copy StartSeek="12866" EndSeek="13543"/>
+<Insert>
+</Insert>
+<Copy StartSeek="13543" EndSeek="14778"/>
+<Insert>      return DPA_NOT_INITIALIZED;
+</Insert>
+<Copy StartSeek="14805" EndSeek="15676"/>
+<Copy StartSeek="15677" EndSeek="15739"/>
+<Insert>  eth_pkt_t *perf_pkt = get_perf_pkt();
+
+  if ((err = dpa_cls_init())) {
+      return err;
+  }
+  dpa_perf_measure(perf_pkt);
+  dpa_cls_exit();
+  return 0;
+#if 0
+</Insert>
+<Copy StartSeek="15739" EndSeek="16892"/>
+<Insert>  if ((err = dpa_cls_init())) {
+</Insert>
+<Copy StartSeek="16926" EndSeek="16943"/>
+<Insert>  }
+</Insert>
+<Copy StartSeek="16949" EndSeek="17269"/>
+<Insert>#endif
+</Insert>
+<Copy StartSeek="17270" EndSeek="17394"/>
+<Insert>#if 0
+</Insert>
+<Copy StartSeek="17395" EndSeek="17915"/>
+<Insert>#endif
+</Insert>
+<Copy StartSeek="17916" EndSeek="18240"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/08/12" Time="16:13:39000">
+<Copy StartSeek="0" EndSeek="852"/>
+<Copy StartSeek="877" EndSeek="1794"/>
+<Insert>extern eth_pkt_t *__dpa_pkt_wrap(void *data, uint32_t size, void *os_handle);
+</Insert>
+<Copy StartSeek="1889" EndSeek="6725"/>
+<Insert>          pkt-&gt;queue = 0; /* TODO dpa_qos2queue(pkt); */
+</Insert>
+<Copy StartSeek="6782" EndSeek="7945"/>
+<Insert>eth_pkt_t *dpa_pkt_wrap(void *data, uint32_t size, void *os_handle) {
+  eth_pkt_t *pkt = __dpa_pkt_wrap(data, size, os_handle);
+</Insert>
+<Copy StartSeek="8098" EndSeek="10820"/>
+<Copy StartSeek="10821" EndSeek="10855"/>
+<Insert>
+</Insert>
+<Copy StartSeek="11291" EndSeek="11327"/>
+<Copy StartSeek="11433" EndSeek="12316"/>
+<Copy StartSeek="12320" EndSeek="12433"/>
+<Insert>  dpa_slow_path_tx();
+</Insert>
+<Copy StartSeek="12457" EndSeek="12462"/>
+<Insert>#if 0
+</Insert>
+<Copy StartSeek="12469" EndSeek="12503"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="12504" EndSeek="12708"/>
+<Insert>#endif 
+</Insert>
+<Copy StartSeek="12715" EndSeek="14514"/>
+<Insert>  //dpa_wake_up();
+</Insert>
+<Copy StartSeek="14531" EndSeek="16444"/>
+<Insert>  DPA_INFO("DPA initialization started.");
+</Insert>
+<Copy StartSeek="16486" EndSeek="16660"/>
+<Insert>      DPA_INFO("Already initialized, will shut down first.");
+</Insert>
+<Copy StartSeek="16721" EndSeek="17501"/>
+<Insert>  /*if ((err = dpa_cls_init())) {
+</Insert>
+<Copy StartSeek="17533" EndSeek="17550"/>
+<Insert>  }*/
+</Insert>
+<Copy StartSeek="17554" EndSeek="17677"/>
+<Insert>  DPA_INFO("DPA %s", dpa_get_version());
+</Insert>
+<Copy StartSeek="17721" EndSeek="17859"/>
+<Copy StartSeek="17899" EndSeek="18390"/>
+<Insert>  DPA_INFO("DPA shutdown complete.");
+
+</Insert>
+<Copy StartSeek="18390" EndSeek="18849"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="09:26:16000">
+<Copy StartSeek="0" EndSeek="11327"/>
+<Insert>      pkt-&gt;cmd |= NETA_TX_FLZ_DESC_MASK | NETA_TX_PKT_OFFSET_MASK(ETH_MH_SIZE) | NETA_TX_IP_CSUM_MASK;
+</Insert>
+<Copy StartSeek="11435" EndSeek="18854"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="09:37:18000">
+<Copy StartSeek="0" EndSeek="11435"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="11477" EndSeek="18893"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="10:00:30000">
+<Copy StartSeek="0" EndSeek="11435"/>
+<Insert>      DPA_DBG("pkt-&gt;cmd %#x\n",pkt-&gt;cmd);
+</Insert>
+<Copy StartSeek="11478" EndSeek="18894"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="10:00:33000">
+<Copy StartSeek="0" EndSeek="11478"/>
+<Copy StartSeek="11522" EndSeek="18938"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="10:04:13000">
+<Copy StartSeek="0" EndSeek="11435"/>
+<Insert>      DPA_DBG("pkt-&gt;cmd %#x\n", pkt-&gt;cmd);
+</Insert>
+<Copy StartSeek="11481" EndSeek="18941"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="10:11:59000">
+<Copy StartSeek="0" EndSeek="11481"/>
+<Insert>      DPA_INFO("pkt-&gt;cmd %#x\n", pkt-&gt;cmd);
+</Insert>
+<Copy StartSeek="11481" EndSeek="18897"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="10:12:0000">
+<Copy StartSeek="0" EndSeek="11327"/>
+<Insert>      pkt-&gt;cmd |= NETA_TX_FLZ_DESC_MASK | NETA_TX_PKT_OFFSET_MASK(ETH_MH_SIZE) /*| NETA_TX_IP_CSUM_MASK */;
+      printk("&lt;0&gt; pkt-&gt;cmd %#x\n", pkt-&gt;cmd);
+</Insert>
+<Copy StartSeek="11442" EndSeek="18858"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="10:14:42000">
+<Copy StartSeek="0" EndSeek="11327"/>
+<Insert>//    pkt-&gt;cmd |= NETA_TX_FLZ_DESC_MASK | NETA_TX_PKT_OFFSET_MASK(ETH_MH_SIZE) /*| NETA_TX_IP_CSUM_MASK */;
+      
+</Insert>
+<Copy StartSeek="11484" EndSeek="18900"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="10:18:54000">
+<Copy StartSeek="0" EndSeek="11327"/>
+<Insert>        pkt-&gt;cmd |= NETA_TX_FLZ_DESC_MASK | NETA_TX_PKT_OFFSET_MASK(ETH_MH_SIZE) /*| NETA_TX_IP_CSUM_MASK */;
+        DPA_ERROR("pkt-&gt;cmd %#x\n", pkt-&gt;cmd);
+</Insert>
+<Copy StartSeek="11476" EndSeek="18892"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/08/23" Time="02:11:58000">
+<Copy StartSeek="0" EndSeek="11432"/>
+<Insert>      DPA_ERROR("pkt-&gt;cmd %#x\n",pkt-&gt;cmdl)
+</Insert>
+<Copy StartSeek="11476" EndSeek="18892"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/08/23" Time="02:12:0000">
+<Copy StartSeek="0" EndSeek="11327"/>
+<Insert>      pkt-&gt;cmd = NETA_TX_FLZ_DESC_MASK | NETA_TX_PKT_OFFSET_MASK(ETH_MH_SIZE) | NETA_TX_IP_CSUM_MASK;
+</Insert>
+<Copy StartSeek="11430" EndSeek="18893"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/08/23" Time="02:16:46000">
+<Copy StartSeek="0" EndSeek="11327"/>
+<Insert>      pkt-&gt;cmd |= NETA_TX_FLZ_DESC_MASK | NETA_TX_PKT_OFFSET_MASK(ETH_MH_SIZE) | NETA_TX_IP_CSUM_MASK;
+</Insert>
+<Copy StartSeek="11407" EndSeek="18870"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/08/23" Time="02:17:52000">
+<Copy StartSeek="0" EndSeek="11410"/>
+<Insert>      DPA_ERROR("pkt-&gt;cmd %#x\n",pkt-&gt;cmd);
+</Insert>
+<Copy StartSeek="11410" EndSeek="18826"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/08/23" Time="02:20:50000">
+<Copy StartSeek="0" EndSeek="852"/>
+<Insert>//#include "perf_cnt.h"
+</Insert>
+<Copy StartSeek="874" EndSeek="1486"/>
+<Insert>#define DPA_TIMER_DURATION_USEC (500 * 1000)
+</Insert>
+<Copy StartSeek="1524" EndSeek="1525"/>
+<Copy StartSeek="1571" EndSeek="1668"/>
+<Insert>void dpa_tx_timer_handler(void);
+eth_pkt_t *dpa_get_pkt_tx(uint32_t priority);
+</Insert>
+<Copy StartSeek="1763" EndSeek="2007"/>
+<Insert>typedef struct {
+  uint32_t rx_pkts;
+  uint32_t tx_pkts;
+  uint32_t rx_dropped_pkts;
+  uint32_t tx_dropped_pkts;
+  uint32_t fast_path_rx_pkts;
+  uint32_t fast_path_tx_pkts;
+  uint32_t slow_path_rx_pkts;
+  uint32_t slow_path_tx_pkts;
+} dpa_pkt_stats_t;
+
+
+typedef struct {
+  uint32_t alloc_pkts;
+  uint32_t free_pkts;
+  uint32_t fast_path_alloc_pkts;
+  uint32_t fast_path_free_pkts;
+  uint32_t slow_path_alloc_pkts;
+  uint32_t slow_path_free_pkts;
+} dpa_pkt_alloc_stats_t;
+
+
+
+</Insert>
+<Copy StartSeek="2010" EndSeek="3214"/>
+<Insert>  for (i = 0; i &lt; ETH_MAX_PORT_NUM; i++) {
+</Insert>
+<Copy StartSeek="3261" EndSeek="3300"/>
+<Insert>       if (cfg-&gt;port != 0xFF) {
+</Insert>
+<Copy StartSeek="3326" EndSeek="3517"/>
+<Insert>  for (i = 0; i &lt; ETH_MAX_PORT_NUM; i++) {
+</Insert>
+<Copy StartSeek="3564" EndSeek="3603"/>
+<Insert>       if (cfg-&gt;port != 0xFF) {
+</Insert>
+<Copy StartSeek="3629" EndSeek="3777"/>
+<Insert>/* Statistics */
+void dpa_stats_reset(void) {
+  dpa_memset(&amp;dpa_state.pkt_stats, 0, sizeof(dpa_state.pkt_stats));
+}
+
+</Insert>
+<Copy StartSeek="3913" EndSeek="3914"/>
+<Copy StartSeek="4554" EndSeek="4670"/>
+<Insert>
+</Insert>
+<Copy StartSeek="4695" EndSeek="5398"/>
+<Insert>  for (i = 0; i &lt; ETH_MAX_PORT_NUM; i++) {
+</Insert>
+<Copy StartSeek="5445" EndSeek="5484"/>
+<Insert>       if (cfg-&gt;port != 0xFF &amp;&amp; (err = spa_port_install(cfg-&gt;port))) {
+</Insert>
+<Copy StartSeek="5549" EndSeek="5678"/>
+<Insert>  dpa_state.timer_val = DPA_TIMER_DURATION_USEC * dpa_os_get_sys_clock() / 1000;
+  if ((err = timer_init(dpa_tx_timer_handler))) {
+</Insert>
+<Copy StartSeek="5837" EndSeek="5920"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6002" EndSeek="6168"/>
+<Insert>  timer_shutdown();
+</Insert>
+<Copy StartSeek="6199" EndSeek="6824"/>
+<Insert>/* Transmit slow path packets. Handle highest priority packets first */
+void dpa_slow_path_tx(void) {
+  eth_pkt_t* pkt;
+  int32_t pri;
+
+  for (pri = DPA_PKT_PRI_MAX; pri &gt;= DPA_PKT_PRI_MIN; pri--) {
+       while ((pkt = dpa_get_pkt_tx(pri)) != NULL) {
+
+          dpa_cls_tx(pkt);
+          pkt-&gt;queue = 7; /* TODO dpa_qos2queue(pkt); */
+          pkt-&gt;cmd = NETA_TX_FLZ_DESC_MASK | NETA_TX_L4_CSUM_NOT | NETA_TX_PKT_OFFSET_MASK(ETH_MH_SIZE);
+
+          if (eth_pkt_tx(pkt) == DPA_OK) {
+              //DPA_ERROR("&lt;0&gt; Moving pkt to ETH, size %d bytes", pkt-&gt;size);
+              dpa_state.pkt_stats.tx_pkts++;
+              dpa_state.pkt_stats.slow_path_tx_pkts++;
+          } else {
+              //DPA_ERROR("&lt;0&gt; FAILED to move pkt to ETH, size %d bytes", pkt-&gt;size);
+              dpa_state.pkt_stats.tx_dropped_pkts++;
+          }
+
+          queue_put(dpa_state.spa_txq_done, pkt);
+       }
+  }
+}
+
+
+/* Wake-up timer to notify of pending slow path packets */
+void dpa_tx_timer_handler(void) {
+
+  //DPA_ERROR("****************");
+  
+  
+  //DPA_ERROR("DO NOTHING");
+  /* Forward packets to ethernet driver */
+  dpa_slow_path_tx();
+
+  /* Actual transmit */
+  eth_tx_all();
+
+  //DPA_ERROR("**************** AFTER");
+}
+
+
+</Insert>
+<Copy StartSeek="6824" EndSeek="7908"/>
+<Insert>  for (i = 0; i &lt; ETH_MAX_PORT_NUM; i++) {
+</Insert>
+<Copy StartSeek="7955" EndSeek="7994"/>
+<Insert>       if (cfg-&gt;port != 0xFF) {
+</Insert>
+<Copy StartSeek="8020" EndSeek="8669"/>
+<Insert>void dpa_print_pkt_stats(void) {
+  DPA_INFO("Packet buffer statistics (total/errors/fast path/slow path):"
+           " Rx (%d/%d/%d/%d), Tx (%d/%d/%d/%d)",
+           dpa_state.pkt_stats.rx_pkts,
+           dpa_state.pkt_stats.rx_dropped_pkts,
+           dpa_state.pkt_stats.fast_path_rx_pkts,
+           dpa_state.pkt_stats.slow_path_rx_pkts,
+           dpa_state.pkt_stats.tx_pkts,
+           dpa_state.pkt_stats.tx_dropped_pkts,
+           dpa_state.pkt_stats.fast_path_tx_pkts,
+           dpa_state.pkt_stats.slow_path_tx_pkts);
+}
+
+/* Fire DAP context timer event */
+void dpa_wake_up(void) {
+  timer_stop();
+  timer_start(dpa_state.timer_val);
+}
+
+
+</Insert>
+<Copy StartSeek="8670" EndSeek="8896"/>
+<Insert>  eth_pkt_t* pkt;
+</Insert>
+<Copy StartSeek="8923" EndSeek="9222"/>
+<Insert>eth_pkt_t *dpa_get_pkt_tx(uint32_t priority) {
+</Insert>
+<Copy StartSeek="9283" EndSeek="9351"/>
+<Insert>void dpa_pkt_rx(eth_pkt_t* pkt) {
+  /*dpa_entry_states st;
+  uint32_t cpu_cycles = 0;
+  static uint32_t cnt = 0;
+  static uint32_t total_cpu_cycles = 0;
+ 
+  PERF_COUNTER_RESET(0);
+  PERF_COUNTER_START(0, PERF_COUNTER_TYPE_CYCLE_COUNT);
+
+  st = dpa_cls_rx(pkt);
+
+  PERF_END(cpu_cycles, 0);
+
+  total_cpu_cycles += cpu_cycles;
+  if (++cnt == 10) {
+      DPA_ERROR("====================== CPU cycles %d", total_cpu_cycles);
+      cnt = 0;
+      total_cpu_cycles = 0;
+  }*/
+
+</Insert>
+<Copy StartSeek="9472" EndSeek="9508"/>
+<Copy StartSeek="9530" EndSeek="9610"/>
+<Insert>  
+      /* Fast forward */
+      if (eth_pkt_tx(pkt) != DPA_OK) {
+          dpa_state.pkt_stats.rx_dropped_pkts++;
+          goto slow_path_tx;
+      }
+
+      dpa_state.pkt_stats.tx_pkts++;
+      dpa_state.pkt_stats.fast_path_tx_pkts++;
+   } else {
+      /* Slow Path */
+</Insert>
+<Copy StartSeek="9718" EndSeek="9769"/>
+<Insert>          DPA_ERROR("Slow p[ath Rx queue is full, pkt dropped, port (%d), size (%d)", 
+                    pkt-&gt;port, pkt-&gt;size);
+          dpa_state.pkt_stats.rx_dropped_pkts++;
+          goto slow_path_tx;
+      }
+
+      if (eth_pkt_lease(pkt)) {
+          DPA_ERROR("Can't lease pkt, port (%d), size (%d)", pkt-&gt;port, pkt-&gt;size);
+          dpa_state.pkt_stats.rx_dropped_pkts++;
+          goto slow_path_tx;
+      }
+</Insert>
+<Copy StartSeek="10079" EndSeek="10080"/>
+<Copy StartSeek="10364" EndSeek="10404"/>
+<Insert>      dpa_state.pkt_stats.rx_pkts++;
+      dpa_state.pkt_stats.slow_path_rx_pkts++;
+  }
+
+slow_path_tx:
+  ;
+  /* Transmit pending slow path packets */
+  /* FIXME ???? Shall it be only called from dpa_timer_handler ??? */
+  //dpa_slow_path_tx();
+}
+
+
+
+#if 0 
+</Insert>
+<Copy StartSeek="10497" EndSeek="10531"/>
+<Insert>
+#if 0
+</Insert>
+<Copy StartSeek="10531" EndSeek="10602"/>
+<Copy StartSeek="10620" EndSeek="10717"/>
+<Insert>  eth_pkt_tx(pkt);
+
+  return;
+#endif
+
+#if 0
+  eth_hdr_t  *eth_hdr;
+  uint16_t    ether_type, udp_port;
+  static uint32_t timestamp = 0;
+
+  dpa_state.pkt_stats.rx_pkts++;
+
+  /* Assuming packet header is already invalidated */
+  eth_hdr = (eth_hdr_t*) (pkt-&gt;buff + pkt-&gt;offset);
+
+  /* Sample read from 2 cache lines */
+  ether_type = eth_hdr-&gt;type;
+  udp_port = *(uint16_t*) (pkt-&gt;buff + pkt-&gt;offset + 0x22);
+
+
+  /****Test***/
+  /****** Modify &amp; Transmit *******/
+  
+  /* Sample modify of 2 cache lines */
+  eth_hdr-&gt;da[3] = 0x78;
+  eth_hdr-&gt;da[4] = 0x51;
+  eth_hdr-&gt;da[5] = 0x93;
+
+  /* Sample modify of 2 cache lines */
+  *(uint32_t*) (pkt-&gt;buff + 2 /* ETH_MH_SIZE */ + 0x30) = timestamp;
+  pkt-&gt;port = 1;
+  pkt-&gt;queue = 0; /* TODO dpa_qos2queue(pkt); */
+  
+  
+  eth_pkt_tx(pkt);
+  timestamp++;
+#endif
+
+  /****Test*** all packets go to slow path */
+  if (spa_rx_queue_is_full(DPA_PKT_PRI_MIN)) {
+      DPA_ERROR("Slow p[ath Rx queue is full, pkt dropped, port (%d), size (%d)", 
+                pkt-&gt;port, pkt-&gt;size);
+      dpa_state.pkt_stats.rx_dropped_pkts++;
+      return;
+  }
+
+  if (eth_pkt_lease(pkt)) {
+      DPA_ERROR("Can't lease pkt, port (%d), size (%d)", pkt-&gt;port, pkt-&gt;size);
+      dpa_state.pkt_stats.rx_dropped_pkts++;
+      return;
+  }
+
+  spa_pkt_rx(pkt, DPA_PKT_PRI_MIN);
+  dpa_state.pkt_stats.slow_path_rx_pkts++;
+
+  /* Transmit pending slow path packets */
+  /* FIXME ???? Shall it be only called from dpa_timer_handler ??? */
+  dpa_slow_path_tx();
+}
+</Insert>
+<Copy StartSeek="10830" EndSeek="10838"/>
+<Copy StartSeek="10839" EndSeek="11141"/>
+<Copy StartSeek="11212" EndSeek="11268"/>
+<Insert>  dpa_wake_up();
+
+</Insert>
+<Copy StartSeek="11389" EndSeek="11409"/>
+<Copy StartSeek="11410" EndSeek="11618"/>
+<Insert>
+#ifdef __DPA_SKB_PKT_BUFF__
+</Insert>
+<Copy StartSeek="11618" EndSeek="11641"/>
+<Insert>  /* No need to alloc if shutting down */
+  if (!dpa_is_init()) {
+      return DPA_OK;
+  }
+
+  if (eth_pkt_pool_is_full(pkt-&gt;pool_id)) {
+</Insert>
+<Copy StartSeek="11781" EndSeek="11802"/>
+<Insert>  } 
+</Insert>
+<Copy StartSeek="11806" EndSeek="11920"/>
+<Insert>
+</Insert>
+<Copy StartSeek="11920" EndSeek="12127"/>
+<Copy StartSeek="12130" EndSeek="12131"/>
+<Insert>#else
+
+  /* Don't allow during shutdown */
+  if (!dpa_is_init()) {
+      dpa_pkt_free(pkt);
+      return DPA_NOT_INIT;
+  }
+
+  /* Return back to pool, since the slow path recvs skb copy */
+  if (!eth_pkt_put(pkt)) {
+       DPA_ERROR("Can't redeem pkt for eth port (%d), pool is full",
+                  pkt-&gt;pool_id);
+       dpa_pkt_free(pkt);
+       return DPA_QUEUE_IS_FULL;
+  } 
+
+  return DPA_OK;
+#endif /* __DPA_SKB_PKT_BUFF__ */
+}
+
+
+</Insert>
+<Copy StartSeek="12131" EndSeek="14896"/>
+<Insert>  dpa_print_pkt_stats();
+
+</Insert>
+<Copy StartSeek="15940" EndSeek="16264"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/09/10" Time="15:10:10000">
+<Copy StartSeek="0" EndSeek="10108"/>
+<Insert>void dpa_pkt_rx(eth_pkt_t* pkt) {
+</Insert>
+<Copy StartSeek="10149" EndSeek="16271"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/09/10" Time="15:10:27000">
+<Copy StartSeek="0" EndSeek="10504"/>
+<Insert>void dpa_pkt_rx(eth_pkt_t* pkt) {
+</Insert>
+<Copy StartSeek="10545" EndSeek="16278"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/09/10" Time="15:10:30000">
+<Copy StartSeek="0" EndSeek="11022"/>
+<Insert>int32_t dpa_pkt_tx(eth_pkt_t *pkt, uint32_t priority) {
+</Insert>
+<Copy StartSeek="11085" EndSeek="16285"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/09/10" Time="15:10:35000">
+<Copy StartSeek="0" EndSeek="9403"/>
+<Insert>static void dpa_pkt_rx(eth_pkt_t* pkt) {
+</Insert>
+<Copy StartSeek="9451" EndSeek="16292"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/09/10" Time="15:11:18000">
+<Copy StartSeek="0" EndSeek="1588"/>
+<Insert>void dpa_pkt_rx(eth_pkt_t* pkt);
+</Insert>
+<Copy StartSeek="1628" EndSeek="16299"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/09/10" Time="15:20:17000">
+<Copy StartSeek="0" EndSeek="11036"/>
+<Insert>static int32_t dpa_pkt_tx(eth_pkt_t *pkt, uint32_t priority) {
+</Insert>
+<Copy StartSeek="11092" EndSeek="16292"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/09/10" Time="15:20:33000">
+<Copy StartSeek="0" EndSeek="9410"/>
+<Insert>static inline void dpa_pkt_rx(eth_pkt_t* pkt) {
+</Insert>
+<Copy StartSeek="9444" EndSeek="16278"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/09/10" Time="15:44:55000">
+<Copy StartSeek="0" EndSeek="1588"/>
+<Insert>static void dpa_pkt_rx(eth_pkt_t* pkt);
+</Insert>
+<Copy StartSeek="1621" EndSeek="16271"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/09/10" Time="15:46:40000">
+<Copy StartSeek="0" EndSeek="9973"/>
+<Insert>          spa_pkt_rx(pkt, DPA_PKT_PRI_MIN);
+      }
+   }
+}
+
+</Insert>
+<Copy StartSeek="10111" EndSeek="16349"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/10/04" Time="20:43:6000">
+<Copy StartSeek="0" EndSeek="9973"/>
+<Insert>          if (spa_pkt_rx(pkt, DPA_PKT_PRI_MIN) == DPA_QUEUE_IS_FULL)
+                  DPA_ERROR("spa_pkt_rx is full\n");
+      }
+   }
+}
+
+</Insert>
+<Copy StartSeek="10657" EndSeek="16895"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="16:37:42000">
+<Copy StartSeek="0" EndSeek="10506"/>
+<Insert>                                             pkt-&gt;os_handle + pkt-&gt;offset + pkt_size - 1);
+</Insert>
+<Copy StartSeek="10598" EndSeek="16896"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="16:37:56000">
+<Copy StartSeek="0" EndSeek="9975"/>
+<Insert>           skb = (struct sk_buff *)pkt-&gt;os_handle;
+            if (skb == NULL) {
+                DPA_ERROR("Associated skb NULL, pkt dropped");
+                dpa_pkt_rx_done(pkt);
+                dpa_pkt_free(pkt);
+                continue;
+            }
+
+            skb-&gt;data += pkt-&gt;offset; /* Marvell Header, 2B */
+            skb-&gt;tail += (pkt-&gt;size + pkt-&gt;offset);
+            skb-&gt;len = pkt-&gt;size;
+            skb-&gt;ip_summed = CHECKSUM_NONE;
+
+
+
+</Insert>
+<Copy StartSeek="10176" EndSeek="16642"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="16:38:12000">
+<Copy StartSeek="0" EndSeek="769"/>
+<Insert>
+</Insert>
+<Copy StartSeek="797" EndSeek="16669"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="16:39:14000">
+<Copy StartSeek="0" EndSeek="797"/>
+<Copy StartSeek="798" EndSeek="16670"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="16:39:15000">
+<Copy StartSeek="0" EndSeek="10204"/>
+<Insert>          dcache_l1_l2_invalidate_multi_line(pkt-&gt;os_handle + pkt-&gt;offset, 
+                                             pkt-&gt;os_handle + pkt-&gt;offset + pkt-&gt;size - 1);
+</Insert>
+<Copy StartSeek="10294" EndSeek="16592"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="16:49:42000">
+<Copy StartSeek="0" EndSeek="10001"/>
+<Insert>
+
+//         skb = (struct sk_buff *)pkt-&gt;os_handle;
+//          skb-&gt;data += pkt-&gt;offset; /* Marvell Header, 2B */
+//          skb-&gt;tail += (pkt-&gt;size + pkt-&gt;offset);
+//          skb-&gt;len = pkt-&gt;size;
+
+          dcache_l1_l2_invalidate_multi_line(pkt-&gt;eth_hdr, pkt-&gt;eth_hdr + pkt-&gt;size - 1);
+</Insert>
+<Copy StartSeek="10001" EndSeek="16299"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="10:44:10000">
+<Copy StartSeek="0" EndSeek="769"/>
+<Insert>#include &lt;util/cache_ops.h&gt;
+
+</Insert>
+<Copy StartSeek="770" EndSeek="16271"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="10:44:23000">
+<Copy StartSeek="0" EndSeek="769"/>
+<Insert>
+</Insert>
+<Copy StartSeek="798" EndSeek="1575"/>
+<Insert>#define DPA_TIMER_ID 2
+</Insert>
+<Copy StartSeek="1611" EndSeek="2999"/>
+<Copy StartSeek="3038" EndSeek="3857"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3857" EndSeek="4349"/>
+<Insert>          
+</Insert>
+<Copy StartSeek="4350" EndSeek="8830"/>
+<Insert>/* Called by Ethernet driver when xmit done. Return packet to slow path for freeing */
+</Insert>
+<Copy StartSeek="8878" EndSeek="8953"/>
+<Insert>
+</Insert>
+<Copy StartSeek="9003" EndSeek="10180"/>
+<Insert>static void dpa_pkt_rx(eth_pkt_t* pkt) {
+  if (spa_rx_queue_is_full(DPA_PKT_PRI_MIN)) {
+</Insert>
+<Copy StartSeek="10266" EndSeek="10574"/>
+<Insert>static void dpa_pkt_rx(eth_pkt_t* pkt) {
+</Insert>
+<Copy StartSeek="10608" EndSeek="11141"/>
+<Insert>
+</Insert>
+<Copy StartSeek="11141" EndSeek="11268"/>
+<Copy StartSeek="11299" EndSeek="11318"/>
+<Insert>
+</Insert>
+<Copy StartSeek="11326" EndSeek="11382"/>
+<Insert>  /* Fire-up fast path context timer */
+  //timer_stop(DPA_TIMER_ID);
+  timer_start(DPA_TIMER_ID, dpa_state.timer_val);
+
+</Insert>
+<Copy StartSeek="11382" EndSeek="11402"/>
+<Insert>
+</Insert>
+<Copy StartSeek="11747" EndSeek="11913"/>
+<Insert>int32_t dpa_pkt_rx_done(eth_pkt_t *pkt) {
+</Insert>
+<Copy StartSeek="11955" EndSeek="16197"/>
+<Copy StartSeek="16333" EndSeek="16737"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="14:46:49000">
+<Copy StartSeek="0" EndSeek="10214"/>
+<Insert>  if (1 || spa_rx_queue_is_full(DPA_PKT_PRI_MIN)) {
+</Insert>
+<Copy StartSeek="10261" EndSeek="16732"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="14:46:52000">
+<Copy StartSeek="0" EndSeek="9790"/>
+<Insert>      if (spa_rx_queue_is_full(DPA_PKT_PRI_MIN)) {
+</Insert>
+<Copy StartSeek="9844" EndSeek="16735"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="14:47:36000">
+<Copy StartSeek="0" EndSeek="9516"/>
+<Copy StartSeek="9555" EndSeek="16774"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="14:51:20000">
+<Copy StartSeek="0" EndSeek="9555"/>
+<Copy StartSeek="9573" EndSeek="16792"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="14:51:38000">
+<Copy StartSeek="0" EndSeek="9992"/>
+<Copy StartSeek="10087" EndSeek="16887"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="14:52:26000">
+<Copy StartSeek="0" EndSeek="10086"/>
+<Insert>
+</Insert>
+<Copy StartSeek="10086" EndSeek="16886"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="14:52:27000">
+<Copy StartSeek="0" EndSeek="10074"/>
+<Insert>          }
+</Insert>
+<Copy StartSeek="10115" EndSeek="16915"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="14:56:5000">
+<Copy StartSeek="0" EndSeek="9992"/>
+<Insert>          if (count == 10000) {
+</Insert>
+<Copy StartSeek="10026" EndSeek="16917"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="14:56:57000">
+<Copy StartSeek="0" EndSeek="9847"/>
+<Insert>      if (1||spa_rx_queue_is_full(DPA_PKT_PRI_MIN)) {
+</Insert>
+<Copy StartSeek="9898" EndSeek="16914"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="14:58:30000">
+<Copy StartSeek="0" EndSeek="9556"/>
+<Insert>        count++;
+</Insert>
+<Copy StartSeek="9556" EndSeek="10128"/>
+<Copy StartSeek="10270" EndSeek="17039"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="15:02:16000">
+<Copy StartSeek="0" EndSeek="10166"/>
+<Insert>                      DPA_ERROR("spa_rx_queue_full");
+</Insert>
+<Copy StartSeek="10219" EndSeek="17038"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="15:02:24000">
+<Copy StartSeek="0" EndSeek="9620"/>
+<Copy StartSeek="9745" EndSeek="17163"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="15:02:47000">
+<Copy StartSeek="0" EndSeek="9654"/>
+<Insert>                  DPA_ERROR("spa_rx_slow_path");
+</Insert>
+<Copy StartSeek="9696" EndSeek="9737"/>
+<Insert>
+</Insert>
+<Copy StartSeek="9737" EndSeek="17155"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="15:03:2000">
+<Copy StartSeek="0" EndSeek="9556"/>
+<Copy StartSeek="9573" EndSeek="17172"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="15:03:7000">
+<Copy StartSeek="0" EndSeek="9516"/>
+<Insert>        static unsigned int count = 0;
+
+        count++;
+</Insert>
+<Copy StartSeek="9516" EndSeek="9580"/>
+<Insert>          if (count == 1000000) {
+                  DPA_ERROR("fast_path");
+                  count = 0;
+          }
+</Insert>
+<Copy StartSeek="9580" EndSeek="9932"/>
+<Insert>          if (count == 1000000) {
+                  DPA_ERROR("spa_rx_queue_full");
+                  count = 0;
+          }
+</Insert>
+<Copy StartSeek="9932" EndSeek="9963"/>
+<Insert>              if (count == 1000000) {
+                      DPA_ERROR("spa_rx_slow_path");
+                      count = 0;
+              }
+
+</Insert>
+<Copy StartSeek="9963" EndSeek="16732"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="17:54:55000">
+<Copy StartSeek="0" EndSeek="9790"/>
+<Insert>      if (spa_rx_queue_is_full(DPA_PKT_PRI_MIN)) {
+</Insert>
+<Copy StartSeek="9835" EndSeek="16726"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="18:01:36000">
+<Copy StartSeek="0" EndSeek="10046"/>
+<Insert>          spa_pkt_rx(pkt, DPA_PKT_PRI_MIN);
+</Insert>
+<Copy StartSeek="10084" EndSeek="16720"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="18:01:47000">
+<Copy StartSeek="0" EndSeek="11730"/>
+<Insert>bool dpa_tx_queue_ready(uint32_t priority) {
+</Insert>
+<Copy StartSeek="11781" EndSeek="16726"/>
+</Delta>
+<Delta Version="84" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="12:05:44000">
+<Copy StartSeek="0" EndSeek="11730"/>
+<Insert>bool dpa_tx_queue_ready(dpa_pkt_prio_t priority) {
+</Insert>
+<Copy StartSeek="11775" EndSeek="16720"/>
+</Delta>
+<Delta Version="85" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="12:06:3000">
+<Copy StartSeek="0" EndSeek="16416"/>
+<Insert>
+</Insert>
+<Copy StartSeek="16501" EndSeek="16804"/>
+</Delta>
+<Delta Version="86" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="19:06:27000">
+<Copy StartSeek="0" EndSeek="16448"/>
+<Copy StartSeek="16449" EndSeek="16479"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="16479" EndSeek="16802"/>
+</Delta>
+<Delta Version="87" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="19:06:35000">
+<Copy StartSeek="0" EndSeek="16448"/>
+<Insert>
+</Insert>
+<Copy StartSeek="16448" EndSeek="16478"/>
+<Copy StartSeek="16479" EndSeek="16802"/>
+</Delta>
+<Delta Version="88" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="19:06:38000">
+<Copy StartSeek="0" EndSeek="16416"/>
+<Insert>int32_t dpa_table_flush(void) {
+</Insert>
+<Copy StartSeek="16447" EndSeek="16801"/>
+</Delta>
+<Delta Version="89" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="19:06:47000">
+<Copy StartSeek="0" EndSeek="9926"/>
+<Copy StartSeek="9964" EndSeek="16839"/>
+</Delta>
+<Delta Version="90" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="09:57:3000">
+<Copy StartSeek="0" EndSeek="8181"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8181" EndSeek="16838"/>
+</Delta>
+<Delta Version="91" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="09:58:24000">
+<Copy StartSeek="0" EndSeek="9925"/>
+<Insert>          eth_irq_disable(pkt-&gt;port);
+</Insert>
+<Copy StartSeek="9962" EndSeek="16837"/>
+</Delta>
+<Delta Version="92" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:00:22000">
+<Copy StartSeek="0" EndSeek="9925"/>
+<Insert>          dpa_eth_irq_enable(false);
+</Insert>
+<Copy StartSeek="9998" EndSeek="16873"/>
+</Delta>
+<Delta Version="93" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:03:40000">
+<Copy StartSeek="0" EndSeek="4619"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="4649" EndSeek="4650"/>
+<Copy StartSeek="4651" EndSeek="16901"/>
+</Delta>
+<Delta Version="94" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:10:52000">
+<Copy StartSeek="0" EndSeek="1769"/>
+<Copy StartSeek="1807" EndSeek="16939"/>
+</Delta>
+<Delta Version="95" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:18:20000">
+<Copy StartSeek="0" EndSeek="2804"/>
+<Insert>static dpa_state_t dpa_state =
+  {.status = DPA_STATUS_SHUTDOWN,
+</Insert>
+<Copy StartSeek="2871" EndSeek="3078"/>
+<Insert>               .tx_done = dpa_tx_done}};
+
+</Insert>
+<Copy StartSeek="3120" EndSeek="3121"/>
+<Copy StartSeek="3122" EndSeek="8250"/>
+<Copy StartSeek="8251" EndSeek="16558"/>
+<Insert>int32_t dpa_table_dump(void) {
+  dpa_cls_cmd_dump_entries();
+
+  return DPA_OK;
+}
+
+</Insert>
+<Copy StartSeek="16559" EndSeek="16862"/>
+</Delta>
+<Delta Version="96" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:54:4000">
+<Copy StartSeek="0" EndSeek="2918"/>
+<Insert>   .eth_ops = {.pkt_alloc = dpa_pkt_alloc,
+               .pkt_free = dpa_pkt_free,
+               .pkt_rx = dpa_pkt_rx,
+               .rx_done = spa_rx_done,
+               .tx_done = dpa_tx_done}
+</Insert>
+<Copy StartSeek="3117" EndSeek="16862"/>
+</Delta>
+<Delta Version="97" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:54:17000">
+<Copy StartSeek="0" EndSeek="2871"/>
+<Copy StartSeek="2887" EndSeek="16878"/>
+</Delta>
+<Delta Version="98" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:54:36000">
+<Copy StartSeek="0" EndSeek="3128"/>
+<Insert>   }
+</Insert>
+<Copy StartSeek="3146" EndSeek="16891"/>
+</Delta>
+<Delta Version="99" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:56:53000">
+<Copy StartSeek="0" EndSeek="3128"/>
+<Insert>           .
+</Insert>
+<Copy StartSeek="3162" EndSeek="16912"/>
+</Delta>
+<Delta Version="100" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:57:1000">
+<Copy StartSeek="0" EndSeek="10118"/>
+<Copy StartSeek="10149" EndSeek="16943"/>
+</Delta>
+<Delta Version="101" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:57:47000">
+<Copy StartSeek="0" EndSeek="10118"/>
+<Insert>          irq_throttle = true;
+</Insert>
+<Copy StartSeek="10167" EndSeek="16961"/>
+</Delta>
+<Delta Version="102" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:58:13000">
+<Copy StartSeek="0" EndSeek="8297"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="8348" EndSeek="8349"/>
+<Copy StartSeek="8350" EndSeek="10167"/>
+<Insert>          dpa_state.eth_ops.irq_throttle = true;
+</Insert>
+<Copy StartSeek="10178" EndSeek="16972"/>
+</Delta>
+<Delta Version="103" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:59:25000">
+<Copy StartSeek="0" EndSeek="8297"/>
+<Insert>        dpa_state.eth_ops.irq_throttle = enable;
+</Insert>
+<Copy StartSeek="8340" EndSeek="16966"/>
+</Delta>
+<Delta Version="104" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:59:29000">
+<Copy StartSeek="0" EndSeek="8095"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8149" EndSeek="8350"/>
+<Insert>  dpa_state.eth_ops.irq_throttle = enable;
+</Insert>
+<Copy StartSeek="8353" EndSeek="16979"/>
+</Delta>
+<Delta Version="105" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="10:59:52000">
+<Copy StartSeek="0" EndSeek="8095"/>
+<Insert>  if (enable == dpa_state.eth_ops.irq_throttle) {
+  }
+</Insert>
+<Copy StartSeek="8095" EndSeek="8296"/>
+<Insert>  
+}
+</Insert>
+<Copy StartSeek="8342" EndSeek="8343"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8350" EndSeek="16972"/>
+</Delta>
+<Delta Version="106" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:00:56000">
+<Copy StartSeek="0" EndSeek="8296"/>
+<Insert>  dpa_state.eth_ops.irq_throttle = enable;
+</Insert>
+<Copy StartSeek="8340" EndSeek="16973"/>
+</Delta>
+<Delta Version="107" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:00:58000">
+<Copy StartSeek="0" EndSeek="8296"/>
+<Copy StartSeek="8297" EndSeek="8344"/>
+<Insert>
+  
+}
+
+
+</Insert>
+<Copy StartSeek="8348" EndSeek="16970"/>
+</Delta>
+<Delta Version="108" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:01:1000">
+<Copy StartSeek="0" EndSeek="8296"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8296" EndSeek="8340"/>
+<Insert>  
+}
+</Insert>
+<Copy StartSeek="8343" EndSeek="8344"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8344" EndSeek="16966"/>
+</Delta>
+<Delta Version="109" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:01:3000">
+<Copy StartSeek="0" EndSeek="8095"/>
+<Copy StartSeek="8096" EndSeek="16967"/>
+</Delta>
+<Delta Version="110" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:01:7000">
+<Copy StartSeek="0" EndSeek="8297"/>
+<Insert>  dpa_state.eth_ops.irq_throttle = !enable;
+</Insert>
+<Copy StartSeek="8300" EndSeek="16926"/>
+</Delta>
+<Delta Version="111" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:02:32000">
+<Copy StartSeek="0" EndSeek="3128"/>
+<Insert>           .irq_throttle = false,
+</Insert>
+<Copy StartSeek="3161" EndSeek="16925"/>
+</Delta>
+<Delta Version="112" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:02:53000">
+<Copy StartSeek="0" EndSeek="8095"/>
+<Copy StartSeek="8150" EndSeek="8351"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="8395" EndSeek="17021"/>
+</Delta>
+<Delta Version="113" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:04:8000">
+<Copy StartSeek="0" EndSeek="8351"/>
+<Insert>  dpa_state.eth_ops.irq_throttle = !enable;
+</Insert>
+<Copy StartSeek="8393" EndSeek="17019"/>
+</Delta>
+<Delta Version="114" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:04:23000">
+<Copy StartSeek="0" EndSeek="8351"/>
+<Insert>  dpa_state.eth_ops.irq_enable = !enable;
+</Insert>
+<Copy StartSeek="8392" EndSeek="17018"/>
+</Delta>
+<Delta Version="115" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:04:24000">
+<Copy StartSeek="0" EndSeek="8095"/>
+<Insert>  if (enable == dpa_state.eth_ops.irq_throttle;) {
+</Insert>
+<Copy StartSeek="8143" EndSeek="17015"/>
+</Delta>
+<Delta Version="116" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:04:38000">
+<Copy StartSeek="0" EndSeek="8095"/>
+<Insert>  if (enable == dpa_state.eth_ops.irq_enable) {
+  }
+</Insert>
+<Copy StartSeek="8159" EndSeek="17027"/>
+</Delta>
+<Delta Version="117" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:04:43000">
+<Copy StartSeek="0" EndSeek="8159"/>
+<Copy StartSeek="8200" EndSeek="8401"/>
+<Insert>  dpa_state.eth_ops.irq_enable = enable;
+</Insert>
+<Copy StartSeek="8404" EndSeek="17030"/>
+</Delta>
+<Delta Version="118" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:05:25000">
+<Copy StartSeek="0" EndSeek="3128"/>
+<Insert>           .irq_throttle = true,
+</Insert>
+<Copy StartSeek="3160" EndSeek="17029"/>
+</Delta>
+<Delta Version="119" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:07:20000">
+<Copy StartSeek="0" EndSeek="3094"/>
+<Insert>           .tx_done = dpa_tx_done
+</Insert>
+<Copy StartSeek="3129" EndSeek="17030"/>
+</Delta>
+<Delta Version="120" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:09:7000">
+<Copy StartSeek="0" EndSeek="1769"/>
+<Insert>void dpa_eth_irq_enable(bool enable);
+</Insert>
+<Copy StartSeek="1814" EndSeek="8027"/>
+<Insert>void dpa_eth_irq_enable(bool enable) {
+</Insert>
+<Copy StartSeek="8073" EndSeek="8415"/>
+<Insert>  
+}
+</Insert>
+<Copy StartSeek="8418" EndSeek="8419"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8419" EndSeek="10163"/>
+<Insert>          dpa_eth_irq_enable(false); /* mask those pesky irqs for now */
+          
+</Insert>
+<Copy StartSeek="10275" EndSeek="17069"/>
+</Delta>
+<Delta Version="121" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:20:16000">
+<Copy StartSeek="0" EndSeek="10163"/>
+<Insert>          /* mask those pesky irqs untill tx unleashes some queue space */
+</Insert>
+<Copy StartSeek="10256" EndSeek="17087"/>
+</Delta>
+<Delta Version="122" Comment="" NL="\10" Encoding="text" Date="2012/10/22" Time="11:20:58000">
+<Copy StartSeek="0" EndSeek="1769"/>
+<Insert>static void dpa_eth_irq_enable(bool enable);
+</Insert>
+<Copy StartSeek="1769" EndSeek="2766"/>
+<Insert>static dpa_state_t dpa_state = {
+   .status = DPA_STATUS_SHUTDOWN,
+   /*.config */
+</Insert>
+<Copy StartSeek="2831" EndSeek="2878"/>
+<Insert>   .eth_ops = {
+           .pkt_alloc = dpa_pkt_alloc,
+           .pkt_free = dpa_pkt_free,
+           .pkt_rx = dpa_pkt_rx,
+           .rx_done = spa_rx_done,
+           .tx_done = dpa_tx_done,
+           .irq_enable = false,
+   }
+};
+
+
+</Insert>
+<Copy StartSeek="3081" EndSeek="4619"/>
+<Insert>  dpa_eth_irq_enable(true);
+}
+</Insert>
+<Copy StartSeek="4622" EndSeek="4623"/>
+<Insert>
+</Insert>
+<Copy StartSeek="4623" EndSeek="7902"/>
+<Insert>static void dpa_eth_irq_enable(bool enable) {
+</Insert>
+<Copy StartSeek="7941" EndSeek="7977"/>
+<Insert>  if (enable == dpa_state.eth_ops.irq_enable)
+          return;
+  dpa_state.eth_ops.irq_enable = enable;
+</Insert>
+<Copy StartSeek="7977" EndSeek="9926"/>
+<Insert>          /* mask those pesky irqs untill dpa_tx_timer_handler unleashes some queue space */
+          dpa_eth_irq_enable(false);
+</Insert>
+<Copy StartSeek="9926" EndSeek="13206"/>
+<Insert>  dpa_state.status = DPA_STATUS_INIT_IN_PROGRESS;
+
+</Insert>
+<Copy StartSeek="13206" EndSeek="13414"/>
+<Copy StartSeek="13465" EndSeek="14576"/>
+<Insert>  DPA_ERROR("DPA initialized failed");
+</Insert>
+<Copy StartSeek="14624" EndSeek="16729"/>
+</Delta>
+<Delta Version="123" Comment="" NL="\10" Encoding="text" Date="2012/11/25" Time="17:29:18000">
+<Copy StartSeek="0" EndSeek="13004"/>
+<Insert>
+</Insert>
+<Copy StartSeek="13022" EndSeek="14593"/>
+<Insert>  DPA_ERROR("DPA initialized failed; %u", err);
+</Insert>
+<Copy StartSeek="14632" EndSeek="14668"/>
+<Insert>
+</Insert>
+<Copy StartSeek="16002" EndSeek="16079"/>
+<Insert>
+</Insert>
+<Copy StartSeek="16097" EndSeek="16602"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="16942" EndSeek="18425"/>
+</Delta>
+<Delta Version="124" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="10:58:7000">
+<Copy StartSeek="0" EndSeek="14674"/>
+<Insert>int32_t dpa_init(const char* dpa_config_str) {
+  int32_t err;
+  ezxml_t xml_cfg = NULL;
+  const char* xml_error_string;
+
+  DPA_ERROR_IF_NOT_MARVELL_CPU();
+
+  DPA_INFO("DPA initialization started");
+  
+  if (dpa_config_str == NULL) {
+      return DPA_INVALID_PARAM;
+  }
+</Insert>
+<Copy StartSeek="14936" EndSeek="14937"/>
+<Insert>  /* Already initialized */
+  if (dpa_is_init()) {
+      DPA_INFO("Already initialized, will shut down first");
+      dpa_shutdown();
+  }
+
+  dpa_state.status = DPA_STATUS_INIT_IN_PROGRESS;
+
+  /* Configuration */
+  if (!(xml_cfg = ezxml_parse_str((char*)dpa_config_str, dpa_strlen((char*)dpa_config_str)))) {
+      err = DPA_CONFIG_ERROR;
+      goto fail;
+  }
+
+  xml_error_string = ezxml_error(xml_cfg);
+  if (xml_error_string &amp;&amp; xml_error_string[0] != '\0') {
+      DPA_ERROR("Parsing error in XML file: %s",xml_error_string);
+      err = DPA_CONFIG_ERROR;
+      goto fail;
+  }
+
+  if ((err = dpa_config_parse(xml_cfg, &amp;dpa_state.config))) {
+      goto fail;
+  }
+
+  /* Classifier */
+  if ((err = dpa_cls_init())) {
+      goto fail;
+  }
+
+  /* Statistics */
+  dpa_stats_reset();
+
+  ezxml_free(xml_cfg);
+  xml_cfg = NULL;
+
+  dpa_state.status = DPA_STATUS_INIT;
+
+  DPA_INFO("DPA initialized successfully");
+
+  return DPA_OK;
+
+fail:
+  if (xml_cfg) {
+      ezxml_free(xml_cfg);
+  }
+
+  DPA_ERROR("DPA initialized failed");
+
+  dpa_shutdown();
+
+  return err;
+}
+#endif
+
+</Insert>
+<Copy StartSeek="14937" EndSeek="17359"/>
+</Delta>
+<Delta Version="125" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:10:26000">
+<Copy StartSeek="0" EndSeek="14910"/>
+<Insert>
+}
+</Insert>
+<Copy StartSeek="14912" EndSeek="17358"/>
+</Delta>
+<Delta Version="126" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:10:27000">
+<Copy StartSeek="0" EndSeek="13004"/>
+<Insert>#ifndef HAIM_PERF
+</Insert>
+<Copy StartSeek="13033" EndSeek="14923"/>
+<Insert>#endif /* HAIM_PERF */
+</Insert>
+<Copy StartSeek="14957" EndSeek="15034"/>
+<Insert>#ifndef HAIM_PERF
+</Insert>
+<Copy StartSeek="15063" EndSeek="15568"/>
+<Insert>#else /* HAIM_PERF */
+</Insert>
+<Copy StartSeek="15601" EndSeek="15895"/>
+<Insert>#endif /* HAIM_PERF */
+</Insert>
+<Copy StartSeek="15929" EndSeek="17413"/>
+</Delta>
+<Delta Version="127" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:10:45000">
+<Copy StartSeek="0" EndSeek="14780"/>
+<Insert>         if ((err = dpa_cls_init())) {
+</Insert>
+<Copy StartSeek="14817" EndSeek="14846"/>
+<Insert>         }
+</Insert>
+<Copy StartSeek="14846" EndSeek="17400"/>
+</Delta>
+<Delta Version="128" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:11:11000">
+<Copy StartSeek="0" EndSeek="14908"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="14934" EndSeek="17424"/>
+</Delta>
+<Delta Version="129" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:37:38000">
+<Copy StartSeek="0" EndSeek="14909"/>
+<Insert>         return DPA_OK
+</Insert>
+<Copy StartSeek="14933" EndSeek="17425"/>
+</Delta>
+<Delta Version="130" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:37:47000">
+<Copy StartSeek="0" EndSeek="879"/>
+<Insert>
+</Insert>
+<Copy StartSeek="906" EndSeek="17451"/>
+</Delta>
+<Delta Version="131" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:38:39000">
+<Copy StartSeek="0" EndSeek="14758"/>
+<Insert>         eth_pkt_t *perf_pkt = get_perf_pkt();
+
+         if ((err = dpa_cls_init()))
+                 return err;
+         dpa_perf_measure(perf_pkt);
+         dpa_cls_exit();
+
+         return DPA_OK;
+}
+</Insert>
+<Copy StartSeek="14920" EndSeek="17410"/>
+</Delta>
+<Delta Version="132" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="11:39:18000">
+<Copy StartSeek="0" EndSeek="14705"/>
+<Insert>#else
+</Insert>
+<Copy StartSeek="14738" EndSeek="17437"/>
+</Delta>
+<Delta Version="133" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:09:24000">
+<Copy StartSeek="0" EndSeek="15791"/>
+<Insert>#ifdef __DPA_MEM_LOG__
+  dpa_print_pkt_alloc_stats();
+  dpa_mem_print_stats();
+#endif /* __DPA_MEM_LOG__ */
+
+</Insert>
+<Copy StartSeek="15791" EndSeek="17328"/>
+</Delta>
+<Delta Version="134" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:10:44000">
+<Copy StartSeek="0" EndSeek="15625"/>
+<Insert>int32_t dpa_shutdown(void) {
+
+</Insert>
+<Copy StartSeek="15655" EndSeek="17328"/>
+</Delta>
+<Delta Version="135" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:10:49000">
+<Copy StartSeek="0" EndSeek="15654"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15654" EndSeek="17327"/>
+</Delta>
+<Delta Version="136" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:10:51000">
+<Copy StartSeek="0" EndSeek="15708"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15708" EndSeek="15745"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15745" EndSeek="17325"/>
+</Delta>
+<Delta Version="137" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:11:17000">
+<Copy StartSeek="0" EndSeek="15787"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15787" EndSeek="17324"/>
+</Delta>
+<Delta Version="138" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:11:18000">
+<Copy StartSeek="0" EndSeek="15787"/>
+<Copy StartSeek="15788" EndSeek="17325"/>
+</Delta>
+<Delta Version="139" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="14:11:19000">
+<Copy StartSeek="0" EndSeek="879"/>
+<Insert>#include "dpa_cls_perf.h"
+
+</Insert>
+<Copy StartSeek="880" EndSeek="13004"/>
+<Insert>#ifndef DPA_CLS_PERF_MEASURE
+</Insert>
+<Copy StartSeek="13005" EndSeek="14651"/>
+<Insert>#else /* DPA_CLS_PERF_MEASURE */
+int32_t dpa_init(const char* dpa_config_str)
+{
+	int32_t err;
+	eth_pkt_t *perf_pkt = get_perf_pkt();
+
+	if ((err = dpa_cls_init()))
+		return err;
+	dpa_perf_measure(perf_pkt);
+	dpa_cls_exit();
+
+	return DPA_OK;
+}
+#endif /* DPA_CLS_PERF_MEASURE */
+
+</Insert>
+<Copy StartSeek="14653" EndSeek="14729"/>
+<Insert>#ifndef DPA_CLS_PERF_MEASURE
+</Insert>
+<Copy StartSeek="14730" EndSeek="15235"/>
+<Insert>#else /* DPA_CLS_PERF_MEASURE */
+int32_t dpa_shutdown(void)
+{
+  dpa_state.status = DPA_STATUS_SHUTDOWN_IN_PROGRESS;
+  /* Classifier */
+  dpa_cls_exit();
+  dpa_state.status = DPA_STATUS_SHUTDOWN;
+
+  return DPA_OK;
+}
+#endif /* DPA_CLS_PERF_MEASURE */
+
+</Insert>
+<Copy StartSeek="15237" EndSeek="16720"/>
+</Delta>
+<Delta Version="140" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="14:34:35000">
+<Copy StartSeek="0" EndSeek="1888"/>
+<Insert>extern eth_pkt_t *__dpa_pkt_wrap(void *data, uint32_t size, uint32_t offset, void *os_handle);
+</Insert>
+<Copy StartSeek="1966" EndSeek="7158"/>
+<Insert>eth_pkt_t *dpa_pkt_wrap(void *data, uint32_t size, uint32_t offset, void *os_handle) {
+  eth_pkt_t *pkt = __dpa_pkt_wrap(data, size, offset, os_handle);
+</Insert>
+<Copy StartSeek="7286" EndSeek="10955"/>
+<Insert>/* Append slow path packet to transmit queue and wake-up DPA thread */
+</Insert>
+<Copy StartSeek="11070" EndSeek="16722"/>
+</Delta>
+<Delta Version="141" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="09:03:30000">
+<Copy StartSeek="0" EndSeek="16418"/>
+<Copy StartSeek="16494" EndSeek="16798"/>
+</Delta>
+<Delta Version="142" Comment="" NL="\10" Encoding="text" Date="2013/01/07" Time="15:29:0000">
+<Copy StartSeek="0" EndSeek="16449"/>
+<Insert>  dpa_cls_dump_all();
+</Insert>
+<Copy StartSeek="16471" EndSeek="16798"/>
+</Delta>
+<Delta Version="143" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="12:13:23000">
+<Copy StartSeek="0" EndSeek="16418"/>
+<Insert>int32_t dpa_table_dump(void) {
+//dpa_cls_dump_all();
+  
+  return DPA_OK;
+}
+
+
+</Insert>
+<Copy StartSeek="16419" EndSeek="16722"/>
+</Delta>
+<Delta Version="144" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="10:38:14000">
+<Copy StartSeek="0" EndSeek="1662"/>
+<Copy StartSeek="1694" EndSeek="2581"/>
+<Insert>  uint32_t         timer_val; /* Timeout to wait after slow path Tx */
+
+</Insert>
+<Copy StartSeek="2582" EndSeek="2943"/>
+<Insert>               .rx_done = spa_rx_done,
+</Insert>
+<Copy StartSeek="2982" EndSeek="3025"/>
+<Copy StartSeek="3026" EndSeek="3521"/>
+<Insert>   
+</Insert>
+<Copy StartSeek="3522" EndSeek="4354"/>
+<Insert>/* Wake-up timer to notify of pending slow path packets */
+void dpa_tx_timer_handler(void *cookie) {
+  /* Forward packets to ethernet driver */
+  dpa_slow_path_tx();
+
+  /* Actual transmit */
+  eth_tx_all();
+}
+
+
+</Insert>
+<Copy StartSeek="4354" EndSeek="4470"/>
+<Insert>  timer_params_t timer;
+
+</Insert>
+<Copy StartSeek="4471" EndSeek="5432"/>
+<Insert>  /* Wake-up timer */
+  timer.id = DPA_TIMER_ID;
+  timer.mode = TIMER_MODE_FIQ;
+  timer.handler = dpa_tx_timer_handler;
+  timer.cookie = NULL;
+  if ((err = timer_create(&amp;timer))) {
+      DPA_ERROR("Can't init Tx timer, port (%d)", cfg-&gt;port);
+      goto fail;
+  }
+  dpa_state.timer_val = DPA_TIMER_DURATION_USEC * dpa_os_get_sys_clock() / 1000;
+
+</Insert>
+<Copy StartSeek="5432" EndSeek="5576"/>
+<Insert>  /* Wake-up timer */
+  timer_destroy(DPA_TIMER_ID);
+
+</Insert>
+<Copy StartSeek="5576" EndSeek="8112"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8290" EndSeek="10888"/>
+<Copy StartSeek="10942" EndSeek="10971"/>
+<Insert>  uint32_t pri;
+</Insert>
+<Copy StartSeek="11025" EndSeek="11026"/>
+<Insert>  /* Fire-up fast path context timer if pending pkts */
+  for (pri = DPA_PKT_PRI_MIN; pri &lt; DPA_PKT_PRI_MAX; pri++) {
+      if (!queue_is_empty(dpa_state.spa_txq[pri])) {
+          timer_start(DPA_TIMER_ID, dpa_state.timer_val);
+          return DPA_OK;
+      }
+  }
+
+  return DPA_QUEUE_IS_EMPTY;
+}
+
+</Insert>
+<Copy StartSeek="11046" EndSeek="15732"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15819" EndSeek="16122"/>
+</Delta>
+<Delta Version="145" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="14:59:17000">
+<Copy StartSeek="0" EndSeek="15766"/>
+<Insert>  dpa_cls_cmd_bypass_dpa(on);
+</Insert>
+<Copy StartSeek="15794" EndSeek="16120"/>
+</Delta>
+<Delta Version="146" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="14:59:33000">
+<Copy StartSeek="0" EndSeek="15732"/>
+<Insert>int32_t dpa_mode(uint32_t mode) {
+</Insert>
+<Copy StartSeek="15770" EndSeek="16124"/>
+</Delta>
+<Delta Version="147" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:00:1000">
+<Copy StartSeek="0" EndSeek="15770"/>
+<Insert>  dpa_cls_cmd_bypass_dpa();
+</Insert>
+<Copy StartSeek="15796" EndSeek="16122"/>
+</Delta>
+<Delta Version="148" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:21:31000">
+<Copy StartSeek="0" EndSeek="15770"/>
+<Insert>  dpa_cls_cmd_fwd_mode();
+</Insert>
+<Copy StartSeek="15800" EndSeek="16126"/>
+</Delta>
+<Delta Version="149" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:42:16000">
+<Copy StartSeek="0" EndSeek="9181"/>
+<Insert>      dpa_state.pkt_stats.fwd_pkts++;
+</Insert>
+<Copy StartSeek="9219" EndSeek="15732"/>
+<Insert>int32_t dpa_fwd_mode(uint32_t mode) {
+  dpa_cls_cmd_fwd_mode(mode);
+  
+  return DPA_OK;
+}
+
+</Insert>
+<Copy StartSeek="15733" EndSeek="16036"/>
+</Delta>
+<Delta Version="150" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="17:41:49000">
+<Copy StartSeek="0" EndSeek="9181"/>
+<Insert>//    dpa_state.pkt_stats.fwd_pkts++;
+</Insert>
+<Copy StartSeek="9219" EndSeek="16036"/>
+</Delta>
+<Delta Version="151" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="17:48:25000">
+<Copy StartSeek="0" EndSeek="9181"/>
+<Insert>      dpa_state.pkt_stats.fwd_pkts++;
+</Insert>
+<Copy StartSeek="9219" EndSeek="16036"/>
+</Delta>
+</DeltaFile>

@@ -1,0 +1,62 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="2" Comment="" Date="2013/04/08" Time="20:05:31000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* log.h
+*
+* Description:
+*       DPA log subsystem.
+*
+*/
+
+#ifndef _LOG_API_H_
+#define _LOG_API_H_
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include &lt;dpa_os.h&gt;
+
+#define DPA_FOR_LEVEL(level,format, ...) \
+  dpa_os_log(level,format, ## __VA_ARGS__)
+
+#define DPA_LOG(level, format, ...) \
+  DPA_FOR_LEVEL(level, "DPA[%d] %s(%d): "format, level, __FUNCTION__, __LINE__, ## __VA_ARGS__);
+
+#define DPA_DBG(format, ...) DPA_LOG(DPA_OS_LOG_DEBUG, format, ## __VA_ARGS__)
+#define DPA_ERROR(format, ...) DPA_LOG(DPA_OS_LOG_ERR, format, ## __VA_ARGS__) 
+#define DPA_INFO(format, ...) DPA_LOG(DPA_OS_LOG_INFO, format, ## __VA_ARGS__)
+#define DPA_FATAL(format, ...) DPA_LOG(DPA_OS_LOG_CRIT, format, ## __VA_ARGS__)
+#define DPA_WARNING(format, ...) DPA_LOG(DPA_OS_LOG_WARNING, format, ## __VA_ARGS__)
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/07/22" Time="18:14:8000">
+<Copy StartSeek="0" EndSeek="708"/>
+<Insert>  DPA_FOR_LEVEL(level, "DPA[%d] %s(%d): "format, level, __FUNCTION__, __LINE__, ## __VA_ARGS__);
+</Insert>
+<Copy StartSeek="807" EndSeek="1249"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="20:05:23000">
+<Copy StartSeek="0" EndSeek="708"/>
+<Insert>  DPA_FOR_LEVEL(level, "\nDPA[%d] %s(%d): "format, level, __FUNCTION__, __LINE__, ## __VA_ARGS__);
+</Insert>
+<Copy StartSeek="805" EndSeek="1247"/>
+</Delta>
+</DeltaFile>

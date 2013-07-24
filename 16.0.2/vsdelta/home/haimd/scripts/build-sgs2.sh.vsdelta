@@ -1,0 +1,413 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="32" Comment="" Date="2012/01/26" Time="11:21:17000" NL="\10" Encoding="text">
+<Insert>#!/bin/bash -e
+
+
+CROSS="/export/filer/shared/tools/arm-cs2011.09/bin/arm-none-linux-gnueabi-"
+INITRAMFS_PATH="/export/local/users/haimd/initramfs/out"
+
+FAST=$(grep -c processor /proc/cpuinfo)
+LOC=$1
+
+case "${LOC}" in
+fast)
+    [ -z "$LOC" ] &amp;&amp; LOC="haim"
+    VER=$(grep "Linux kernel" .config |awk '{print $5}')
+
+    echo "Building kernel ${VER}[${LOC}]"
+    make ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} -j${FAST}
+
+    echo "Building initramfs"
+    if ![ -d $INITRAMFS_PATH ]; then
+	echo "invalide initramfs path: $INITRAMFS_PATH"
+	exit 1
+    fi
+    rm -f $INITRAMFS_PATH/lib/modules/*.ko
+    TMP_ROOT=$(mktemp)
+    echo "TMP_ROOT $TMP_ROOT"
+    make ARCH=arm modules_install INSTALL_MOD_PATH=${TMP_ROOT}
+    if ![ $? -eq 0 ]; then
+	echo "error make modules_install INSTALL_MOD_PATH=$TMP_ROOT"
+	exit 2
+    fi
+    for mod in $(find $TMP_ROOT/lib/modules/ -type f -name "*.ko"); do 
+	cp -i $mod $INITRAMFS_PATH/
+    done
+
+    "echo merge initramfs to zImage"
+    make ARCH=arm -j${FAST}
+    ;;
+esac
+
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:43:55000">
+<Copy StartSeek="0" EndSeek="16"/>
+<Insert>#CROSS="/opt/arm-2007q3/bin/arm-none-linux-gnueabi-"
+#CROSS="/scratchbox/compilers/cs2007q3-glibc2.5-arm5/bin/arm-none-linux-gnueabi-"
+#CROSS="/opt/arm-sdk3.2-vfp/bin/arm-mv5vfp-linux-gnueabi-"
+#CROSS="/opt/arm-sdk3.2-sft/bin/arm-mv5sft-linux-gnueabi-"
+#CROSS="/export/filer/shared/tools/arm-sdk3.2-sft/bin/arm-mv5sft-linux-gnueabi-"
+</Insert>
+<Copy StartSeek="16" EndSeek="96"/>
+<Insert>#CROSS="/export/work/users/seugene/sdk/ct-ng/targets/arm-mv5sft-linux-gnueabi/cross/bin/arm-mv5sft-linux-gnueabi-"
+#CROSS="/home/shared/cross2008q3/bin/arm-none-linux-gnueabi-"
+#CROSS="/opt/arm-mtl2009q3-18-sft/bin/arm-marvell-linux-gnueabi-"
+#CROSS="/opt/arm-cs2008q3/bin/arm-none-linux-gnueabi-"
+
+</Insert>
+<Copy StartSeek="97" EndSeek="6645"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:44:23000">
+<Copy StartSeek="0" EndSeek="16"/>
+<Insert>CROSS="/export/filer/shared/tools/arm-sdk3.3-sft/bin/arm-mv5sft-linux-gnueabi-"
+
+</Insert>
+<Copy StartSeek="95" EndSeek="6643"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:46:35000">
+<Copy StartSeek="0" EndSeek="94"/>
+<Insert>
+</Insert>
+<Copy StartSeek="94" EndSeek="6642"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:46:40000">
+<Copy StartSeek="0" EndSeek="610"/>
+<Insert>menu)
+    make ARCH=arm menuconfig
+    ;;
+deb)
+    debuild -eFLAVOR=orion5x -eCROSS_COMPILE=${CROSS} -b -aarmel
+    # --prepend-path=${CROSSPATH}
+    ;;
+oldfast)
+    [ -z "$LOC" ] &amp;&amp; LOC="custom"
+    make LOCALVERSION="-${LOC}" ARCH=arm oldconfig
+    VER=$(cat .config | grep "Linux kernel" | cut -f5 -d' ')
+
+    echo "Building linux-${VER}[${LOC}]"
+    make -j${FAST} ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} zImage
+    cp -f arch/arm/boot/zImage vmlinuz-${VER}
+    cp -f vmlinux vmlinux-${VER}
+    cp -f .config config-${VER}
+    $(dirname $0)/uImage.sh vmlinuz-${VER}
+    ;;
+</Insert>
+<Copy StartSeek="611" EndSeek="6051"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:47:43000">
+<Copy StartSeek="0" EndSeek="805"/>
+<Insert>    make -j${FAST} ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} uImage
+</Insert>
+<Copy StartSeek="879" EndSeek="6044"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:48:59000">
+<Copy StartSeek="0" EndSeek="610"/>
+<Insert>
+</Insert>
+<Copy StartSeek="610" EndSeek="924"/>
+<Insert>    #$(dirname $0)/uImage.sh vmlinuz-${VER}
+    cp -f arch/arm/boot/uImage uImage-${VER}
+    cp -f vmlinux vmlinux-${VER}
+    cp -f .config config-${VER}
+    make -j${FAST} ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} modules
+    [ -e install ] &amp;&amp; rm -Rf install
+    make ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} INSTALL_MOD_PATH=install/modules modules_install
+    tar -C install/modules -cjf uImage-${VER}-modules.tar.bz2 .
+    make ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} INSTALL_HDR_PATH=install/headers/usr/src headers_install
+    mv install/headers/usr/src/include install/headers/usr/src/linux
+    tar -C install/headers -cjf uImage-${VER}-headers.tar.bz2 .
+    ;;
+ufast)
+    [ -z "$LOC" ] &amp;&amp; LOC="custom"
+    make LOCALVERSION="-${LOC}" ARCH=arm oldconfig
+    VER=$(cat .config | grep "Linux kernel" | cut -f5 -d' ')
+
+    echo "Building linux-${VER}[${LOC}]"
+    make -j${FAST} ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} uImage
+    cp -f arch/arm/boot/zImage vmlinuz-${VER}
+    cp -f arch/arm/boot/uImage uImage-${VER}
+    cp -f vmlinux vmlinux-${VER}
+    cp -f .config config-${VER}
+    make -j${FAST} ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} modules
+    rm -Rf install
+    make ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} INSTALL_MOD_PATH=install/modules modules_install
+    tar -C install/modules -cjf uImage-${VER}-modules.tar.bz2 .
+    make ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} INSTALL_HDR_PATH=install/headers/usr/src headers_install
+    mv install/headers/usr/src/include install/headers/usr/src/linux
+    tar -C install/headers -cjf uImage-${VER}-headers.tar.bz2 .
+    ;;
+slow)
+    [ -z "$LOC" ] &amp;&amp; LOC="custom"
+    make LOCALVERSION="-${LOC}" ARCH=arm oldconfig
+    VER=$(cat .config | grep "Linux kernel" | cut -f5 -d' ')
+
+    echo "Building linux-${VER}[${LOC}]"
+    make ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} uImage
+    cp -f arch/arm/boot/zImage vmlinuz-${VER}
+    #$(dirname $0)/uImage.sh vmlinuz-${VER}
+    cp -f arch/arm/boot/uImage uImage-${VER}
+    cp -f vmlinux vmlinux-${VER}
+    cp -f .config config-${VER}
+    make ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} modules
+    rm -Rf install
+    make ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} INSTALL_MOD_PATH=install/modules modules_install
+    tar -C install/modules -cjf uImage-${VER}-modules.tar.bz2 .
+    make ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} INSTALL_HDR_PATH=install/headers/usr/src headers_install
+    mv install/headers/usr/src/include install/headers/usr/src/linux
+    tar -C install/headers -cjf uImage-${VER}-headers.tar.bz2 .
+    ;;
+uslow)
+    [ -z "$LOC" ] &amp;&amp; LOC="custom"
+    make LOCALVERSION="-${LOC}" ARCH=arm oldconfig
+    VER=$(cat .config | grep "Linux kernel" | cut -f5 -d' ')
+
+    echo "Building linux-${VER}[${LOC}]"
+    make ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} uImage
+    cp -f arch/arm/boot/zImage vmlinuz-${VER}
+    cp -f arch/arm/boot/uImage uImage-${VER}
+    cp -f vmlinux vmlinux-${VER}
+    cp -f .config config-${VER}
+    make ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} modules
+    rm -Rf install
+    make ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} INSTALL_MOD_PATH=install modules_install
+    tar -C install -cjf uImage-${VER}-modules.tar.bz2 .
+    ;;
+pack)
+    [ -z "$LOC" ] &amp;&amp; LOC="custom"
+    VER=$(cat .config | grep "Linux kernel" | cut -f5 -d' ')
+    echo "Packing linux-${VER}[${LOC}]"
+    cp -f arch/arm/boot/zImage vmlinuz-${VER}
+    cp -f vmlinux vmlinux-${VER}
+    cp -f .config config-${VER}
+    $(dirname $0)/uImage.sh vmlinuz-${VER}
+    rm -Rf install
+    tar -C install -cjf uImage-${VER}-modules.tar.bz2 .
+    ;;
+clear)
+    echo "Cleaning linux-${VER}[${LOC}]"
+    #git reset --hard
+    make clean
+    make mrproper
+    #git clean -df
+    ;;
+patch)
+    [ -z "$LOC" ] &amp;&amp; LOC="custom"
+    VER=$(cat .config | grep "Linux kernel" | cut -f5 -d' ')
+    echo "Creatig patch for linux-${VER}[${LOC}]"
+    get_base_version
+    git-diff ${BASE_VERSION} HEAD &gt; linux-${VER}.patch
+    ;;
+archive)
+    if [ -z "${2}" ]; then
+	DIST="linux-${VER}"
+	HEAD="HEAD"
+    else
+	if [ -z "$(echo ${2} | grep '^v')" ]; then
+	    DIST="linux-${2}"
+	else
+	    DIST="linux-$(echo ${2} | cut -f2 -dv)"
+	fi
+	HEAD="${2}"
+    fi
+    echo "Creating tarball distribution [${DIST}] from [${HEAD}]"
+    git archive --format=tar --prefix=${DIST}/ ${HEAD} &gt; ${DIST}.tar
+    if [ -e "$(which 7z)" ]; then
+        echo "Bzip2(by 7z)"
+        ext="bz2"
+        7z -tbzip2 a -mx=7 -mpass=3 -mmt=on ${DIST}.tar.bz2 ${DIST}.tar &amp;&amp; rm ${DIST}.tar
+    elif [ -e "$(which bzip)" ]; then
+        echo "bzip2"
+        ext="bz2"
+        bzip2 ${DIST}.tar
+    elif [ -e "$(which gzip)" ]; then
+        echo "gzip"
+        ext="gz"
+        gzip ${DIST}.tar
+    fi
+    echo "Final distribution tarball should be in [${DIST}.tar.${ext}]"
+    ;;
+#*defconfig)
+#    make ARCH=arm ${LOC}
+#    ;;
+#clean)
+#    make ARCH=arm clean
+#    ;;
+*)
+    [ -z "$LOC" ] &amp;&amp; LOC="custom"
+    make LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS} ARCH=arm $1
+</Insert>
+<Copy StartSeek="924" EndSeek="938"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:53:34000">
+<Copy StartSeek="0" EndSeek="616"/>
+<Insert>    [ -z "$LOC" ] &amp;&amp; LOC="custom"
+</Insert>
+<Copy StartSeek="648" EndSeek="936"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:53:50000">
+<Copy StartSeek="0" EndSeek="648"/>
+<Insert>    make LOCALVERSION="-${LOC}" ARCH=arm oldconfig
+</Insert>
+<Copy StartSeek="689" EndSeek="926"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:54:12000">
+<Copy StartSeek="0" EndSeek="648"/>
+<Insert>    make LOCALVERSION="-${LOC}" ARCH=arm
+</Insert>
+<Copy StartSeek="648" EndSeek="709"/>
+<Insert>
+</Insert>
+<Copy StartSeek="756" EndSeek="931"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:54:16000">
+<Copy StartSeek="0" EndSeek="648"/>
+<Insert>    VER=$(cat .config | grep "Linux kernel" | cut -f5 -d' ')
+</Insert>
+<Copy StartSeek="703" EndSeek="925"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:54:29000">
+<Copy StartSeek="0" EndSeek="648"/>
+<Insert>    VER=$(grep "Linux kernel" .config | cut -f5 -d' ')
+</Insert>
+<Copy StartSeek="705" EndSeek="927"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:55:24000">
+<Copy StartSeek="0" EndSeek="705"/>
+<Insert>    make LOCALVERSION="-${LOC}" ARCH=arm
+</Insert>
+<Copy StartSeek="754" EndSeek="935"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:55:36000">
+<Copy StartSeek="0" EndSeek="705"/>
+<Insert>    make LOCALVERSION="-${LOC}" ARCH=arm -j$FAST
+</Insert>
+<Copy StartSeek="756" EndSeek="937"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:55:40000">
+<Copy StartSeek="0" EndSeek="705"/>
+<Insert>    make LOCALVERSION="-${LOC}" ARCH=arm -j${FAST}
+    
+
+</Insert>
+<Copy StartSeek="710" EndSeek="825"/>
+<Copy StartSeek="826" EndSeek="886"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:56:12000">
+<Copy StartSeek="0" EndSeek="705"/>
+<Insert>    
+</Insert>
+<Copy StartSeek="706" EndSeek="882"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:56:14000">
+<Copy StartSeek="0" EndSeek="822"/>
+<Copy StartSeek="852" EndSeek="912"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:56:25000">
+<Copy StartSeek="0" EndSeek="94"/>
+<Copy StartSeek="152" EndSeek="970"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:56:59000">
+<Copy StartSeek="0" EndSeek="910"/>
+<Copy StartSeek="997" EndSeek="1057"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="10:58:18000">
+<Copy StartSeek="0" EndSeek="996"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1013" EndSeek="1073"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="11:08:14000">
+<Copy StartSeek="0" EndSeek="1013"/>
+<Copy StartSeek="1098" EndSeek="1158"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="11:09:26000">
+<Copy StartSeek="0" EndSeek="1097"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1119" EndSeek="1179"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="11:09:47000">
+<Copy StartSeek="0" EndSeek="1097"/>
+<Insert>    if ![ $? -eq 0 ];
+</Insert>
+<Copy StartSeek="1205" EndSeek="1265"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="11:11:6000">
+<Copy StartSeek="0" EndSeek="1013"/>
+<Copy StartSeek="1056" EndSeek="1246"/>
+<Insert>	
+    cp -f arch/arm/boot/zImage vmlinuz-${VER}
+</Insert>
+<Copy StartSeek="1361" EndSeek="1375"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="11:13:20000">
+<Copy StartSeek="0" EndSeek="1356"/>
+<Insert>    
+</Insert>
+<Copy StartSeek="1356" EndSeek="1370"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="11:13:24000">
+<Copy StartSeek="0" EndSeek="1237"/>
+<Insert>    done
+</Insert>
+<Copy StartSeek="1244" EndSeek="1368"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="11:13:30000">
+<Copy StartSeek="0" EndSeek="1004"/>
+<Insert>    done
+</Insert>
+<Copy StartSeek="1011" EndSeek="1366"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="11:13:32000">
+<Copy StartSeek="0" EndSeek="199"/>
+<Insert>function get_base_version {
+    BASE_VERSION=""
+    for i in VERSION PATCHLEVEL SUBLEVEL EXTRAVERSION; do
+	I=$(cat Makefile | grep "^${i}" | awk '{print $3}')
+	echo "!!!${I}!!!$(echo ${I} | cut -f1 -d'-')!!!$(echo ${I} | cut -f1 -d'_')"
+        if [ ! -z "${BASE_VERSION}" ]; then
+	    BASE_VERSION=${BASE_VERSION}.${I}
+	else
+	    BASE_VERSION=${I}
+	fi
+    done
+    echo "Baseline version: [${BASE_VERSION}]"
+    #[ -z "${BASE_VERSION}" ] &amp;&amp; exit 1
+}
+
+</Insert>
+<Copy StartSeek="200" EndSeek="915"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="11:13:48000">
+<Copy StartSeek="0" EndSeek="313"/>
+<Insert>    echo "Building linux-${VER}[${LOC}]"
+</Insert>
+<Copy StartSeek="355" EndSeek="916"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="11:14:13000">
+<Copy StartSeek="0" EndSeek="355"/>
+<Insert>    make -j${FAST} ARCH=arm LOCALVERSION="-${LOC}" CROSS_COMPILE=${CROSS}
+</Insert>
+<Copy StartSeek="429" EndSeek="916"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="11:14:34000">
+<Copy StartSeek="0" EndSeek="627"/>
+<Copy StartSeek="658" EndSeek="947"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="11:19:33000">
+<Copy StartSeek="0" EndSeek="657"/>
+<Insert>
+</Insert>
+<Copy StartSeek="657" EndSeek="932"/>
+<Copy StartSeek="998" EndSeek="1012"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="11:20:35000">
+<Copy StartSeek="0" EndSeek="657"/>
+<Insert>    make ARCH=arm modules_install INSTALL_MOD_PATH=$TMP_ROOT
+</Insert>
+<Copy StartSeek="720" EndSeek="1014"/>
+</Delta>
+</DeltaFile>

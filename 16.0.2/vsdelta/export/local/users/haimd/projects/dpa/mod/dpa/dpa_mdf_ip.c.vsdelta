@@ -1,0 +1,905 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="87" Comment="" Date="2013/04/23" Time="13:19:27000" NL="\10" Encoding="text">
+<Insert>#include &lt;dpa_types.h&gt;
+#include &lt;log/log.h&gt;
+#include &lt;util/string.h&gt;
+
+#include "dpa_cls.h"
+#include "dpa_mdf_ip.h"
+
+void dpa_mdf_ipv4_chg(eth_pkt_t *pkt)
+{
+	dpa_ip_hdr_t *iph = pkt-&gt;ip_hdr;
+	struct dpa_entry *dpe = (struct dpa_entry *)pkt-&gt;dpa_handle;
+	struct dpa_pri_key *mt = &amp;dpe-&gt;mod.mod_tuple;
+
+	iph-&gt;saddr = mt-&gt;sip;
+	iph-&gt;daddr = mt-&gt;dip;
+	iph-&gt;ttl--;
+}
+
+void inline dpa_mdf_ipv4_ttl(eth_pkt_t *pkt)
+{
+	pkt-&gt;ip_hdr-&gt;ttl--;
+}
+
+/* fragment pkt and store all frags inside the same pkt_buffer like so:
+        org: eth|ip|ip_data.............|tail.......|
+        mod: eth|ip|ip_data_1|eth|ip|ip_data2..|tail|
+ 
+   _assumes_ that we have enough tailroom for the fragments */
+void dpa_mdf_ipv4_fragment(eth_pkt_t *pkt)
+{
+	struct dpa_entry *dpe = (struct dpa_entry *)pkt-&gt;dpa_handle;
+	uint32 ip_mtu = dpe-&gt;ip_mtu;
+	dpa_ip_hdr_t *iph = pkt-&gt;ip_hdr;
+	uint32_t ip_data_len = iph-&gt;tot_len - (iph-&gt;ihl&lt;&lt;2);
+
+	uint16_t frag_off = 0;
+	iph-&gt;tot_len = htons(first_len);
+	iph-&gt;frag_off = htons(IP_MF);
+
+	do {
+		iph-&gt;tot_len = 
+		frag-&gt;h.raw = frag-&gt;data;
+		frag-&gt;nh.raw = __skb_push(frag, hlen);
+		memcpy(frag-&gt;nh.raw, iph, hlen);
+		iph = frag-&gt;nh.iph;
+		iph-&gt;tot_len = htons(frag-&gt;len);
+		ip_copy_metadata(frag, skb);
+		if (offset == 0)
+			ip_options_fragment(frag);
+		offset += skb-&gt;len - hlen;
+		iph-&gt;frag_off = htons(offset&gt;&gt;3);
+		if (frag-&gt;next != NULL)
+			iph-&gt;frag_off |= htons(IP_MF);
+		ip_data_len -= ip_mtu;
+		frag_off += ip_mtu;
+	} while (ip_data_len &gt; 0);
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/11/22" Time="17:27:10000">
+<Copy StartSeek="0" EndSeek="116"/>
+<Copy StartSeek="422" EndSeek="606"/>
+<Copy StartSeek="631" EndSeek="808"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:21:53000">
+<Copy StartSeek="0" EndSeek="606"/>
+<Insert>	DPA_MDF_DBG("org_src ")
+</Insert>
+<Copy StartSeek="727" EndSeek="904"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:23:11000">
+<Copy StartSeek="0" EndSeek="606"/>
+<Insert>	DPA_MDF_DBG("org_src:" NIPQUAD_FMT "new_src:" NIPQUAD_FMT , 
+</Insert>
+<Copy StartSeek="667" EndSeek="903"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:23:11000">
+<Copy StartSeek="0" EndSeek="606"/>
+<Insert>	DPA_MDF_DBG("org_src:" NIPQUAD_FMT "new_src:" NIPQUAD_FMT, 
+</Insert>
+<Copy StartSeek="719" EndSeek="955"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:23:42000">
+<Copy StartSeek="0" EndSeek="770"/>
+<Copy StartSeek="821" EndSeek="1006"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:23:51000">
+<Copy StartSeek="0" EndSeek="797"/>
+<Insert>		    NIPQUAD(mt-&gt;dip),
+		    )
+</Insert>
+<Copy StartSeek="822" EndSeek="999"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:23:54000">
+<Copy StartSeek="0" EndSeek="718"/>
+<Insert>
+</Insert>
+<Copy StartSeek="718" EndSeek="998"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:23:56000">
+<Copy StartSeek="0" EndSeek="821"/>
+<Copy StartSeek="822" EndSeek="999"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:23:58000">
+<Copy StartSeek="0" EndSeek="116"/>
+<Copy StartSeek="250" EndSeek="1133"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:25:1000">
+<Copy StartSeek="0" EndSeek="91"/>
+<Copy StartSeek="112" EndSeek="137"/>
+<Insert>#ifdef __DPA_DEBUG__
+#define DPA_CLS_DBG(format, args...) DPA_DBG(format, ##args)
+#else
+#define DPA_CLS_DBG(format, args...) 
+#endif
+
+</Insert>
+<Copy StartSeek="138" EndSeek="1021"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:25:49000">
+<Copy StartSeek="0" EndSeek="137"/>
+<Insert>
+</Insert>
+<Copy StartSeek="137" EndSeek="1020"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:25:50000">
+<Copy StartSeek="0" EndSeek="627"/>
+<Insert>	DPA_MDF_DBG("org_src:" NIPQUAD_FMT "new_src:" NIPQUAD_FMT
+		    "org_dst:" NIPQUAD_FMT "new_dst:" NIPQUAD_FMT,
+</Insert>
+<Copy StartSeek="743" EndSeek="1024"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:26:28000">
+<Copy StartSeek="0" EndSeek="627"/>
+<Insert>	DPA_MDF_DBG("org_src: " NIPQUAD_FMT "new_src: " NIPQUAD_FMT
+		    "org_dst: " NIPQUAD_FMT "new_dst: " NIPQUAD_FMT,
+</Insert>
+<Copy StartSeek="745" EndSeek="1026"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:27:3000">
+<Copy StartSeek="0" EndSeek="689"/>
+<Insert>		    "org_dst: " NIPQUAD_FMT " new_dst: " NIPQUAD_FMT,
+</Insert>
+<Copy StartSeek="746" EndSeek="1027"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:27:22000">
+<Copy StartSeek="0" EndSeek="983"/>
+<Insert>void dpa_mdf_ipv6_chg(eth_pkt_t *pkt)
+{
+
+}
+
+</Insert>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:28:30000">
+<Copy StartSeek="0" EndSeek="982"/>
+<Insert>
+</Insert>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:28:32000">
+<Copy StartSeek="0" EndSeek="627"/>
+<Insert>	DPA_MDF_DBG("org_src: " NIPQUAD_FMT " new_src: " NIPQUAD_FMT
+		    " org_dst: " NIPQUAD_FMT " new_dst: " NIPQUAD_FMT,
+		    NIPQUAD(iph-&gt;saddr),
+		    NIPQUAD(mt-&gt;sip),
+		    NIPQUAD(iph-&gt;daddr),
+		    NIPQUAD(mt-&gt;dip));
+
+</Insert>
+<Copy StartSeek="711" EndSeek="843"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:53:43000">
+<Copy StartSeek="0" EndSeek="757"/>
+<Copy StartSeek="841" EndSeek="927"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:53:54000">
+<Copy StartSeek="0" EndSeek="627"/>
+<Insert>	DPA_MDF_DBGA_DBG("pkt_src %x pkt_dst %x", pkt-&gt;ip_hdr-&gt;saddr, pkt-&gt;ip_hdr-&gt;daddr);
+</Insert>
+<Copy StartSeek="710" EndSeek="756"/>
+<Insert>	DPA_MDF_DBGA_DBG("mod_src %x mod_dst %x", pkt-&gt;ip_hdr-&gt;saddr, pkt-&gt;ip_hdr-&gt;daddr);
+</Insert>
+<Copy StartSeek="839" EndSeek="925"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:54:11000">
+<Copy StartSeek="0" EndSeek="627"/>
+<Insert>	DPA_MDF_DBG_DBG("pkt_src %x pkt_dst %x", pkt-&gt;ip_hdr-&gt;saddr, pkt-&gt;ip_hdr-&gt;daddr);
+</Insert>
+<Copy StartSeek="706" EndSeek="752"/>
+<Insert>	DPA_MDF_DBG_DBG("mod_src %x mod_dst %x", pkt-&gt;ip_hdr-&gt;saddr, pkt-&gt;ip_hdr-&gt;daddr);
+</Insert>
+<Copy StartSeek="831" EndSeek="917"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="16:54:15000">
+<Copy StartSeek="0" EndSeek="627"/>
+<Insert>	DPA_MDF_DBG("pkt_src %x pkt_dst %x", pkt-&gt;ip_hdr-&gt;saddr, pkt-&gt;ip_hdr-&gt;daddr);
+</Insert>
+<Copy StartSeek="627" EndSeek="673"/>
+<Insert>	DPA_MDF_DBG("mod_src %x mod_dst %x", pkt-&gt;ip_hdr-&gt;saddr, pkt-&gt;ip_hdr-&gt;daddr);
+</Insert>
+<Copy StartSeek="673" EndSeek="759"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:14:18000">
+<Copy StartSeek="0" EndSeek="91"/>
+<Insert>#include "dpa_mdf.h"
+</Insert>
+<Copy StartSeek="91" EndSeek="116"/>
+<Insert>#define MAC_PFMT(mac) mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
+#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+
+#define NIPQUAD(addr) \
+  ((unsigned char *)&amp;addr)[0], \
+  ((unsigned char *)&amp;addr)[1], \
+  ((unsigned char *)&amp;addr)[2], \
+  ((unsigned char *)&amp;addr)[3]
+#define NIPQUAD_FMT "%u.%u.%u.%u"
+
+</Insert>
+<Copy StartSeek="116" EndSeek="432"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/11/26" Time="17:14:38000">
+<Copy StartSeek="0" EndSeek="359"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="408" EndSeek="477"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="12:16:58000">
+<Copy StartSeek="0" EndSeek="383"/>
+<Insert>	iph-&gt;tos = 33
+</Insert>
+<Copy StartSeek="399" EndSeek="478"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="12:16:59000">
+<Copy StartSeek="0" EndSeek="383"/>
+<Insert>	iph-&gt;tos = 33;
+</Insert>
+<Copy StartSeek="398" EndSeek="477"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="12:18:8000">
+<Copy StartSeek="0" EndSeek="359"/>
+<Insert>#ifdef DPA_MARK_FWD_PKT
+	iph-&gt;tos = 3;
+#endif
+}
+
+</Insert>
+<Copy StartSeek="362" EndSeek="431"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/12/04" Time="10:22:3000">
+<Copy StartSeek="0" EndSeek="432"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2013/04/21" Time="12:26:58000">
+<Copy StartSeek="0" EndSeek="478"/>
+<Insert>	pkt-&gt;ip_hdr-&gt;ttl--;
+}</Insert>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2013/04/21" Time="12:27:49000">
+<Copy StartSeek="0" EndSeek="433"/>
+<Insert>void dpa_mdf_ipv4_fragment(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="481" EndSeek="6109"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2013/04/21" Time="16:14:10000">
+<Copy StartSeek="0" EndSeek="433"/>
+<Insert>void dpa_mdf_ipv4_fragment(eth_pkt_t *pkt, mtu)
+</Insert>
+<Copy StartSeek="477" EndSeek="6105"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2013/04/21" Time="16:14:32000">
+<Copy StartSeek="0" EndSeek="433"/>
+<Insert>void dpa_ipv4_fragment(eth_pkt_t *pkt, mtu)
+{
+	struct iphdr *iph;
+	int raw = 0;
+	int ptr;
+	struct net_device *dev;
+	struct sk_buff *skb2;
+	unsigned int mtu, hlen, left, len, ll_rs, pad;
+	int offset;
+	__be16 not_last_frag;
+	struct rtable *rt = (struct rtable*)skb-&gt;dst;
+	int err = 0;
+
+	dev = rt-&gt;u.dst.dev;
+
+	/*
+	 *	Point into the IP datagram header.
+	 */
+
+	iph = skb-&gt;nh.iph;
+
+	if (unlikely((iph-&gt;frag_off &amp; htons(IP_DF)) &amp;&amp; !skb-&gt;local_df)) {
+		IP_INC_STATS(IPSTATS_MIB_FRAGFAILS);
+		icmp_send(skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED,
+			  htonl(dst_mtu(&amp;rt-&gt;u.dst)));
+		kfree_skb(skb);
+		return -EMSGSIZE;
+	}
+
+	/*
+	 *	Setup starting values.
+	 */
+
+	hlen = iph-&gt;ihl * 4;
+	mtu = dst_mtu(&amp;rt-&gt;u.dst) - hlen;	/* Size of data space */
+	IPCB(skb)-&gt;flags |= IPSKB_FRAG_COMPLETE;
+
+	/* When frag_list is given, use it. First, check its validity:
+	 * some transformers could create wrong frag_list or break existing
+	 * one, it is not prohibited. In this case fall back to copying.
+	 *
+	 * LATER: this step can be merged to real generation of fragments,
+	 * we can switch to copy when see the first bad fragment.
+	 */
+	if (skb_shinfo(skb)-&gt;frag_list) {
+		struct sk_buff *frag;
+		int first_len = skb_pagelen(skb);
+
+		if (first_len - hlen &gt; mtu ||
+		    ((first_len - hlen) &amp; 7) ||
+		    (iph-&gt;frag_off &amp; htons(IP_MF|IP_OFFSET)) ||
+		    skb_cloned(skb))
+			goto slow_path;
+
+		for (frag = skb_shinfo(skb)-&gt;frag_list; frag; frag = frag-&gt;next) {
+			/* Correct geometry. */
+			if (frag-&gt;len &gt; mtu ||
+			    ((frag-&gt;len &amp; 7) &amp;&amp; frag-&gt;next) ||
+			    skb_headroom(frag) &lt; hlen)
+			    goto slow_path;
+
+			/* Partially cloned skb? */
+			if (skb_shared(frag))
+				goto slow_path;
+
+			BUG_ON(frag-&gt;sk);
+			if (skb-&gt;sk) {
+				sock_hold(skb-&gt;sk);
+				frag-&gt;sk = skb-&gt;sk;
+				frag-&gt;destructor = sock_wfree;
+			}
+			skb-&gt;truesize -= frag-&gt;truesize;
+		}
+
+		/* Everything is OK. Generate! */
+
+		err = 0;
+		offset = 0;
+		frag = skb_shinfo(skb)-&gt;frag_list;
+		skb_shinfo(skb)-&gt;frag_list = NULL;
+		skb-&gt;data_len = first_len - skb_headlen(skb);
+		skb-&gt;len = first_len;
+		iph-&gt;tot_len = htons(first_len);
+		iph-&gt;frag_off = htons(IP_MF);
+		ip_send_check(iph);
+
+		for (;;) {
+			/* Prepare header of the next frame,
+			 * before previous one went down. */
+			if (frag) {
+				frag-&gt;ip_summed = CHECKSUM_NONE;
+				frag-&gt;h.raw = frag-&gt;data;
+				frag-&gt;nh.raw = __skb_push(frag, hlen);
+				memcpy(frag-&gt;nh.raw, iph, hlen);
+				iph = frag-&gt;nh.iph;
+				iph-&gt;tot_len = htons(frag-&gt;len);
+				ip_copy_metadata(frag, skb);
+				if (offset == 0)
+					ip_options_fragment(frag);
+				offset += skb-&gt;len - hlen;
+				iph-&gt;frag_off = htons(offset&gt;&gt;3);
+				if (frag-&gt;next != NULL)
+					iph-&gt;frag_off |= htons(IP_MF);
+				/* Ready, complete checksum */
+				ip_send_check(iph);
+			}
+
+			err = output(skb);
+
+			if (!err)
+				IP_INC_STATS(IPSTATS_MIB_FRAGCREATES);
+			if (err || !frag)
+				break;
+
+			skb = frag;
+			frag = skb-&gt;next;
+			skb-&gt;next = NULL;
+		}
+
+		if (err == 0) {
+			IP_INC_STATS(IPSTATS_MIB_FRAGOKS);
+			return 0;
+		}
+
+		while (frag) {
+			skb = frag-&gt;next;
+			kfree_skb(frag);
+			frag = skb;
+		}
+		IP_INC_STATS(IPSTATS_MIB_FRAGFAILS);
+		return err;
+	}
+
+slow_path:
+	left = skb-&gt;len - hlen;		/* Space per frame */
+	ptr = raw + hlen;		/* Where to start from */
+
+	/* for bridged IP traffic encapsulated inside f.e. a vlan header,
+	 * we need to make room for the encapsulating header
+	 */
+	pad = nf_bridge_pad(skb);
+	ll_rs = LL_RESERVED_SPACE_EXTRA(rt-&gt;u.dst.dev, pad);
+	mtu -= pad;
+
+	/*
+	 *	Fragment the datagram.
+	 */
+
+	offset = (ntohs(iph-&gt;frag_off) &amp; IP_OFFSET) &lt;&lt; 3;
+	not_last_frag = iph-&gt;frag_off &amp; htons(IP_MF);
+
+	/*
+	 *	Keep copying data until we run out.
+	 */
+
+	while(left &gt; 0)	{
+		len = left;
+		/* IF: it doesn't fit, use 'mtu' - the data space left */
+		if (len &gt; mtu)
+			len = mtu;
+		/* IF: we are not sending upto and including the packet end
+		   then align the next start on an eight byte boundary */
+		if (len &lt; left)	{
+			len &amp;= ~7;
+		}
+		/*
+		 *	Allocate buffer.
+		 */
+
+		if ((skb2 = alloc_skb(len+hlen+ll_rs, GFP_ATOMIC)) == NULL) {
+			NETDEBUG(KERN_INFO "IP: frag: no memory for new fragment!\n");
+			err = -ENOMEM;
+			goto fail;
+		}
+
+		/*
+		 *	Set up data on packet
+		 */
+
+		ip_copy_metadata(skb2, skb);
+		skb_reserve(skb2, ll_rs);
+		skb_put(skb2, len + hlen);
+		skb2-&gt;nh.raw = skb2-&gt;data;
+		skb2-&gt;h.raw = skb2-&gt;data + hlen;
+
+		/*
+		 *	Charge the memory for the fragment to any owner
+		 *	it might possess
+		 */
+
+		if (skb-&gt;sk)
+			skb_set_owner_w(skb2, skb-&gt;sk);
+
+		/*
+		 *	Copy the packet header into the new buffer.
+		 */
+
+		memcpy(skb2-&gt;nh.raw, skb-&gt;data, hlen);
+
+		/*
+		 *	Copy a block of the IP datagram.
+		 */
+		if (skb_copy_bits(skb, ptr, skb2-&gt;h.raw, len))
+			BUG();
+		left -= len;
+
+		/*
+		 *	Fill in the new header fields.
+		 */
+		iph = skb2-&gt;nh.iph;
+		iph-&gt;frag_off = htons((offset &gt;&gt; 3));
+
+		/* ANK: dirty, but effective trick. Upgrade options only if
+		 * the segment to be fragmented was THE FIRST (otherwise,
+		 * options are already fixed) and make it ONCE
+		 * on the initial skb, so that all the following fragments
+		 * will inherit fixed options.
+		 */
+		if (offset == 0)
+			ip_options_fragment(skb);
+
+		/*
+		 *	Added AC : If we are fragmenting a fragment that's not the
+		 *		   last fragment then keep MF on each bit
+		 */
+		if (left &gt; 0 || not_last_frag)
+			iph-&gt;frag_off |= htons(IP_MF);
+		ptr += len;
+		offset += len;
+
+		/*
+		 *	Put this fragment into the sending queue.
+		 */
+		iph-&gt;tot_len = htons(len + hlen);
+
+		ip_send_check(iph);
+
+		err = output(skb2);
+		if (err)
+			goto fail;
+
+		IP_INC_STATS(IPSTATS_MIB_FRAGCREATES);
+	}
+	kfree_skb(skb);
+	IP_INC_STATS(IPSTATS_MIB_FRAGOKS);
+	return err;
+
+fail:
+	kfree_skb(skb);
+	IP_INC_STATS(IPSTATS_MIB_FRAGFAILS);
+	return err;
+}
+</Insert>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2013/04/21" Time="16:14:38000">
+<Copy StartSeek="0" EndSeek="432"/>
+<Insert>
+
+</Insert>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2013/04/21" Time="16:14:42000">
+<Copy StartSeek="0" EndSeek="432"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:17:33000">
+<Copy StartSeek="0" EndSeek="478"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="560" EndSeek="562"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:18:3000">
+<Copy StartSeek="0" EndSeek="540"/>
+<Insert>	uint32 mtu = pkt-&gt;
+</Insert>
+<Copy StartSeek="566" EndSeek="568"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:18:32000">
+<Copy StartSeek="0" EndSeek="540"/>
+<Insert>	uint32 mtu = dpe-&gt;ip_mtu
+</Insert>
+<Copy StartSeek="567" EndSeek="569"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:18:34000">
+<Copy StartSeek="0" EndSeek="567"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:18:36000">
+<Copy StartSeek="0" EndSeek="567"/>
+<Insert>
+</Insert>
+<Copy StartSeek="601" EndSeek="604"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:18:57000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:19:16000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:20:9000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Insert>	if (pkt-&gt;size) {
+</Insert>
+<Copy StartSeek="630" EndSeek="636"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:24:9000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Insert>	if (iph-&gt;tot_len &lt;= mtu) {
+	}
+</Insert>
+<Copy StartSeek="638" EndSeek="641"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:24:17000">
+<Copy StartSeek="0" EndSeek="639"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:25:11000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Insert>	if (iph-&gt;tot_len &lt;= mtu)
+</Insert>
+<Copy StartSeek="648" EndSeek="662"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:25:32000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Insert>	if (iph-&gt;tot_len &lt;= mtu || iph-&gt;frag_off &amp; )
+</Insert>
+<Copy StartSeek="662" EndSeek="676"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:25:53000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Copy StartSeek="666" EndSeek="740"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:27:20000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Insert>	/* HAIM FIXME : dump this packet before the modifier chain  */
+	if (iph-&gt;tot_len &lt;= mtu || (iph-&gt;frag_off &amp; htons(IP_DF)))
+</Insert>
+<Copy StartSeek="629" EndSeek="640"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:28:4000">
+<Copy StartSeek="0" EndSeek="771"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:28:7000">
+<Copy StartSeek="0" EndSeek="540"/>
+<Insert>	uint32 mtu = dpe-&gt;ip_mtu;
+</Insert>
+<Copy StartSeek="578" EndSeek="785"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:29:58000">
+<Copy StartSeek="0" EndSeek="540"/>
+<Insert>	uint32 mtu = dpa_ntohs(dpe-&gt;ip_mtu);
+</Insert>
+<Copy StartSeek="567" EndSeek="774"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:30:10000">
+<Copy StartSeek="0" EndSeek="603"/>
+<Insert>	if (iph-&gt;tot_len &lt;= mtu)
+</Insert>
+<Copy StartSeek="640" EndSeek="785"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:30:18000">
+<Copy StartSeek="0" EndSeek="782"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:31:33000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Insert>
+</Insert>
+<Copy StartSeek="602" EndSeek="783"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:31:40000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Insert>	if (dpa_ntohs(iph-&gt;tot_len) &lt;= mtu)
+		return;
+
+	/* HAIM FIXME : dump this packet before the modifier chain  */
+	if (iph-&gt;frag_off &amp; htons(IP_DF))
+		DPA_DBG("DF flag is set !");
+
+}
+</Insert>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:31:56000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:37:31000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:40:12000">
+<Copy StartSeek="0" EndSeek="625"/>
+<Insert>	frag = skb_shinfo(skb)-&gt;frag_list;
+	skb_shinfo(skb)-&gt;frag_list = NULL;
+	skb-&gt;data_len = first_len - skb_headlen(skb);
+	skb-&gt;len = first_len;
+</Insert>
+<Copy StartSeek="625" EndSeek="1458"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="11:41:21000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Insert>	err = 0;
+</Insert>
+<Copy StartSeek="602" EndSeek="680"/>
+<Insert>	ip_send_check(iph);
+
+</Insert>
+<Copy StartSeek="681" EndSeek="1427"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:38:40000">
+<Copy StartSeek="0" EndSeek="785"/>
+<Insert>			frag-&gt;ip_summed = CHECKSUM_NONE;
+</Insert>
+<Copy StartSeek="785" EndSeek="1163"/>
+<Insert>			/* Ready, complete checksum */
+			ip_send_check(iph);
+		}
+
+</Insert>
+<Copy StartSeek="1168" EndSeek="1334"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:43:19000">
+<Copy StartSeek="0" EndSeek="681"/>
+<Insert>	for (;;) {
+</Insert>
+<Copy StartSeek="687" EndSeek="1328"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:43:33000">
+<Copy StartSeek="0" EndSeek="1323"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="1344" EndSeek="1346"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:43:41000">
+<Copy StartSeek="0" EndSeek="1323"/>
+<Insert>	} while (left_data)
+</Insert>
+<Copy StartSeek="1350" EndSeek="1352"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:43:49000">
+<Copy StartSeek="0" EndSeek="1323"/>
+<Insert>	} while (left_ip_payload)
+</Insert>
+<Copy StartSeek="1345" EndSeek="1347"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:43:55000">
+<Copy StartSeek="0" EndSeek="1323"/>
+<Insert>	} while (ip_payload)
+</Insert>
+<Copy StartSeek="1346" EndSeek="1348"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:44:0000">
+<Copy StartSeek="0" EndSeek="601"/>
+<Insert>
+	offset = 0;
+</Insert>
+<Copy StartSeek="672" EndSeek="1405"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:44:57000">
+<Copy StartSeek="0" EndSeek="601"/>
+<Insert>	uint32_t ip_data_len = iph-&gt;tot_len - (iph-&gt;ihl &lt;&lt; 2);
+</Insert>
+<Copy StartSeek="656" EndSeek="1404"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:45:6000">
+<Copy StartSeek="0" EndSeek="601"/>
+<Insert>	uint32_t ip_data_len = iph-&gt;tot_len - (iph-&gt;ihl&lt;&lt; 2);
+</Insert>
+<Copy StartSeek="655" EndSeek="1403"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:45:16000">
+<Copy StartSeek="0" EndSeek="656"/>
+<Insert>		offset = 0;
+</Insert>
+<Copy StartSeek="678" EndSeek="1411"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:45:26000">
+<Copy StartSeek="0" EndSeek="656"/>
+<Insert>	uint16_t offset = 0;
+</Insert>
+<Copy StartSeek="681" EndSeek="1414"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:45:32000">
+<Copy StartSeek="0" EndSeek="656"/>
+<Insert>	uint16_t ip_offset = 0;
+</Insert>
+<Copy StartSeek="680" EndSeek="1413"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:46:12000">
+<Copy StartSeek="0" EndSeek="433"/>
+<Copy StartSeek="493" EndSeek="1473"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:46:54000">
+<Copy StartSeek="0" EndSeek="433"/>
+<Insert>/* assume that we have enough tailroom for the fragments */
+</Insert>
+<Copy StartSeek="678" EndSeek="1658"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:50:22000">
+<Copy StartSeek="0" EndSeek="1472"/>
+<Insert>		err = output(skb);
+
+		if (!err)
+			IP_INC_STATS(IPSTATS_MIB_FRAGCREATES);
+		if (err || !frag)
+			break;
+
+		skb = frag;
+		frag = skb-&gt;next;
+		skb-&gt;next = NULL;
+</Insert>
+<Copy StartSeek="1472" EndSeek="1497"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:53:30000">
+<Copy StartSeek="0" EndSeek="1471"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1493" EndSeek="1518"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:53:46000">
+<Copy StartSeek="0" EndSeek="785"/>
+<Insert>	uint32 mtu = dpe-&gt;ip_mtu;
+</Insert>
+<Copy StartSeek="815" EndSeek="1474"/>
+<Insert>		ip_data_len -= mtu;
+</Insert>
+<Copy StartSeek="1499" EndSeek="1524"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:53:54000">
+<Copy StartSeek="0" EndSeek="1499"/>
+<Insert>	} while (ip_data_len)
+</Insert>
+<Copy StartSeek="1526" EndSeek="1528"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:54:8000">
+<Copy StartSeek="0" EndSeek="1499"/>
+<Copy StartSeek="1521" EndSeek="1550"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:54:40000">
+<Copy StartSeek="0" EndSeek="1078"/>
+<Insert>		if (frag) {
+</Insert>
+<Copy StartSeek="1081" EndSeek="1459"/>
+<Insert>		}
+</Insert>
+<Copy StartSeek="1459" EndSeek="1535"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:55:40000">
+<Copy StartSeek="0" EndSeek="1506"/>
+<Insert>	} while (ip_data_len &gt; 0)
+</Insert>
+<Copy StartSeek="1534" EndSeek="1536"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:56:2000">
+<Copy StartSeek="0" EndSeek="1078"/>
+<Insert>		
+			frag-&gt;h.raw = frag-&gt;data;
+			frag-&gt;nh.raw = __skb_push(frag, hlen);
+			memcpy(frag-&gt;nh.raw, iph, hlen);
+			iph = frag-&gt;nh.iph;
+			iph-&gt;tot_len = htons(frag-&gt;len);
+			ip_copy_metadata(frag, skb);
+			if (offset == 0)
+				ip_options_fragment(frag);
+			offset += skb-&gt;len - hlen;
+			iph-&gt;frag_off = htons(offset&gt;&gt;3);
+			if (frag-&gt;next != NULL)
+				iph-&gt;frag_off |= htons(IP_MF);
+</Insert>
+<Copy StartSeek="1445" EndSeek="1522"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:56:7000">
+<Copy StartSeek="0" EndSeek="1078"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1078" EndSeek="1521"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="13:56:11000">
+<Copy StartSeek="0" EndSeek="1000"/>
+<Insert>		/* Prepare header of the next frame,
+		 * before previous one went down. */
+</Insert>
+<Copy StartSeek="1060" EndSeek="1503"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="16:04:17000">
+<Copy StartSeek="0" EndSeek="1015"/>
+<Insert>		/* Prepare header of the next frame */
+</Insert>
+<Copy StartSeek="1051" EndSeek="1498"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="16:04:28000">
+<Copy StartSeek="0" EndSeek="1051"/>
+<Insert>		 
+</Insert>
+<Copy StartSeek="1051" EndSeek="1494"/>
+</Delta>
+<Delta Version="84" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="16:04:31000">
+<Copy StartSeek="0" EndSeek="1015"/>
+<Insert>		/* Prepare header of the frame */
+</Insert>
+<Copy StartSeek="1015" EndSeek="1458"/>
+</Delta>
+<Delta Version="85" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="16:04:33000">
+<Copy StartSeek="0" EndSeek="1000"/>
+<Insert>		iph-&gt;tot_len
+</Insert>
+<Copy StartSeek="1016" EndSeek="1459"/>
+</Delta>
+<Delta Version="86" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="16:35:54000">
+<Copy StartSeek="0" EndSeek="1000"/>
+<Insert>		iph-&gt;tot_len 
+</Insert>
+<Copy StartSeek="1018" EndSeek="1461"/>
+</Delta>
+</DeltaFile>

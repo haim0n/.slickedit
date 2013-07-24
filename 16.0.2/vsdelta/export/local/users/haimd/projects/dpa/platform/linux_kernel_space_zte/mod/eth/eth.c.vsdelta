@@ -1,0 +1,1228 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="0" Comment="" Date="2013/05/22" Time="14:39:12000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+*
+* eth.c
+*
+* DESCRIPTION:
+*     Ethernet device driver implementation.
+*
+*******************************************************************************/
+
+
+
+#include &lt;linux/kernel.h&gt; /* FIXME Remove and fix types */
+#include &lt;linux/interrupt.h&gt;
+
+#include &lt;dpa_os.h&gt;
+#include &lt;eth/eth.h&gt;
+#include &lt;util/queue.h&gt;
+#include &lt;util/string.h&gt;
+#include &lt;util/mem.h&gt;
+#include &lt;util/cache_ops.h&gt;
+#include &lt;log/log.h&gt;
+#include "eth_regs.h"
+
+#include &lt;perf_cnt.h&gt;
+
+//#define ETH_DEBUG
+
+#define ETH_ERROR(format, args...)  DPA_ERROR(format, ##args)
+#define ETH_INFO(format, args...) DPA_INFO(format, ##args)
+
+#ifdef ETH_DEBUG
+#define ETH_DBG(format, args...)  printk(format"\n", ##args)
+#else
+  #define ETH_DBG(format, args...) 
+#endif
+
+/* Maximum number of physical Rx queues per port */
+#define ETH_MAX_RXQ_NUM     8
+
+/* Maximum number of physical Rx queues per port */
+#define ETH_MAX_TXQ_NUM     8
+
+/* Maximum number of descriptors per Rx queue */
+#define ETH_MAX_RX_DESC_NUM 1024
+
+/* Maximum number of descriptors per Tx queue */
+#define ETH_MAX_TX_DESC_NUM 1024
+
+/* Maximum MTU */
+#define ETH_MAX_MTU 2048 /* NOTE: ZTE MC_SFU requirement */
+
+/* Rx fraem size: MTU + 2 (Marvell Header) + 4 (VLAN) + 14 (MAC hdr) + 4 (CRC) */
+#define ETH_FRAME_SIZE(mtu) \
+    MEM_ALIGN_UP((mtu) + 2 + 4 + 14 /* ETH header */ + 4, CPU_D_CACHE_LINE_SIZE)
+
+/* Buffer headroom size */
+#define ETH_FRAME_PAD 64
+
+/* Total Rx packet buffer size */
+#define ETH_PKT_SIZE(mtu) (ETH_FRAME_SIZE(mtu) + ETH_FRAME_PAD)
+
+/* Maximum time to wait for Tx complete on shutdown, mseconds */
+#define ETH_TX_COMPLETE_TIMEOUT 100
+
+/* Maximum number of packets buffers in a pool per port */
+#define ETH_MAX_PKT_POOL_SIZE (ETH_MAX_RXQ_NUM * (ETH_MAX_RX_DESC_NUM + 16))
+
+/* Rx interrupt mask */
+#define ETH_RX_INTR_MASK  (((1 &lt;&lt; ETH_MAX_RXQ_NUM) - 1) &lt;&lt; NETA_CAUSE_RXQ_OCCUP_DESC_OFFS)
+
+/* Descriptors ring */
+typedef struct {
+  uint8_t port;
+  uint8_t queue;
+  void    *mem;
+  uint32_t mem_size;
+  uint32_t first;
+  uint32_t last;
+  uint32_t next;
+  uint32_t num;
+  uint32_t pending;
+} eth_ring_t;
+
+
+/* Ethernet port */
+
+struct eth_port_t;
+
+typedef struct eth_port eth_port_t;
+
+struct eth_port {
+  bool             init; /* true if initialized */
+  uint8_t          port; /* Physical port number */
+  uint8_t          rxq_num; /* Number of Rx queues */
+  uint8_t          txq_num; /* Number of Tx queues */
+  uint32_t         mtu; /* MTU */
+  uint32_t         irq; /* Interrupt number */
+  uint32_t         hw_cmd; /* HW command spec for Gunit */
+  uint32_t         rx_desc_num; /* Number of Rx descriptors */
+  uint32_t         tx_desc_num; /* Number of Tx descriptors */
+  eth_ops_t        ops; /* Callbacks */
+  eth_ring_t      *rxq[ETH_MAX_RXQ_NUM]; /* Rx packet buffer rings */
+  eth_ring_t      *txq[ETH_MAX_TXQ_NUM]; /* Tx packet buffer rings */
+  queue_t         *pkt_pool; /* Rx packet buffers */
+  uint32_t         pkt_size; /* Size of packet buffers in pkt_pool */
+  uint32_t         pkt_pool_size; /* Required size of the packet pool */
+  dpa_eth_stats_t  stats; /* Port statistics */
+  uint32_t         txq_pending; /* bit-mask per queue with any pending pkts */
+  eth_port_t      *next; /* Linked list */
+};
+
+
+/* Available Ethernet ports. Not all can be active (initialized) */
+static eth_port_t eth_ports[DPA_ETH_MAX_PORT_NUM];
+static eth_port_t *eth0 = &amp;eth_ports[0];
+static eth_port_t *eth1 = &amp;eth_ports[1];
+static eth_port_t *eth2 = &amp;eth_ports[2];
+
+extern void dump_data(uint8_t *data, int len);
+
+
+/************************ Neta helpers ****************/
+
+static inline void eth_neta_rxq_set_offset(int port, int queue, int offset) {
+  uint32_t val;
+
+  val = DPA_REG_READ(NETA_RXQ_CONFIG_REG(port, queue));
+  val &amp;= ~NETA_RXQ_PACKET_OFFSET_ALL_MASK;
+
+  val |= NETA_RXQ_PACKET_OFFSET_MASK(offset &gt;&gt; 3);
+
+  DPA_REG_WRITE(NETA_RXQ_CONFIG_REG(port, queue), val);
+}
+
+/* Get number of sent descriptors */
+static inline uint32_t eth_neta_txq_get_sent_desc_num(uint8_t port, uint8_t txp, uint8_t queue) {
+  uint32_t val;
+  int      sent;
+
+  val = DPA_REG_READ(NETA_TXQ_STATUS_REG(port, txp, queue));
+  sent = (val &amp; NETA_TXQ_SENT_DESC_MASK) &gt;&gt; NETA_TXQ_SENT_DESC_OFFS;
+
+  return sent;
+}
+
+
+/* Decrement sent descriptors counter */
+static inline void eth_neta_dec_sent_desc_num(uint8_t port, uint8_t txp, uint8_t queue, uint32_t sent) {
+  uint32_t val;
+
+  /* Only 255 TX descriptors can be updated at once */
+  while (sent &gt; 0xFF) {
+    val = (0xFF &lt;&lt; NETA_TXQ_DEC_SENT_OFFS);
+    DPA_REG_WRITE(NETA_TXQ_UPDATE_REG(port, txp, queue), val);
+    sent = sent - 0xFF;
+  }
+
+  val = (sent &lt;&lt; NETA_TXQ_DEC_SENT_OFFS);
+  DPA_REG_WRITE(NETA_TXQ_UPDATE_REG(port, txp, queue), val);
+}
+
+
+/* Get number of pending Tx descriptors */
+static inline uint32_t eth_neta_txq_get_pending_desc_num(uint8_t port, uint8_t txp, uint8_t queue)
+{
+  uint32_t val;
+
+  val = DPA_REG_READ(NETA_TXQ_STATUS_REG(port, txp, queue));
+
+  return (val &amp; NETA_TXQ_PENDING_DESC_MASK) &gt;&gt; NETA_TXQ_PENDING_DESC_OFFS;
+}
+
+
+/* Get number of sent descriptors and descrement. Number of sent descriptors is returned. */
+static inline uint32_t eth_neta_txq_update_sent_desc(uint8_t port, uint8_t txp, uint8_t queue) {
+  uint32_t sent;
+
+  /* Get number of sent descriptors */
+  sent = eth_neta_txq_get_sent_desc_num(port, txp, queue);
+  
+  /* Decrement sent descriptors counter */
+  if (sent) {
+      eth_neta_dec_sent_desc_num(port, txp, queue, sent);
+  }
+  
+  return sent;
+}
+
+/* Update HW with number of TX descriptors to be sent */
+static inline void eth_neta_txq_pendind_desc_add(uint8_t port, uint8_t txp, 
+                                                 uint8_t queue, uint8_t pend_desc_num)
+{
+  uint32_t val;
+
+  /* Only 255 descriptors can be added at once - we don't check it for performance */
+  /* Assume caller process TX desriptors in quanta less than 256 */
+  val = (pend_desc_num &lt;&lt; NETA_TXQ_ADD_PENDING_OFFS);
+  DPA_REG_WRITE(NETA_TXQ_UPDATE_REG(port, txp, queue), val);
+}
+
+
+/* Enable/disable Rx queue */
+static inline void eth_neta_rxq_enable(uint8_t port, uint8_t queue, bool enable) {
+  uint32_t q_map = (1 &lt;&lt; queue);
+  if (!enable) {
+      q_map = q_map &lt;&lt; ETH_RXQ_DISABLE_OFFSET;
+  }
+  
+  DPA_REG_WRITE(ETH_RX_QUEUE_COMMAND_REG(port), q_map);
+}
+
+/* Enable/disable Tx queue */
+static inline void eth_neta_txq_enable(uint8_t port, uint8_t queue, bool enable) {
+  uint32_t q_map = (1 &lt;&lt; queue);
+  
+  if (!enable) {
+      q_map = q_map &lt;&lt; ETH_TXQ_DISABLE_OFFSET;
+  }
+
+  DPA_REG_WRITE(ETH_TX_QUEUE_COMMAND_REG(port, 0), q_map);
+}
+
+/* Get number of RX descriptors occupied by received packets */
+static inline int32_t eth_neta_rxq_get_busy_desc_num(int port, int queue) {
+  uint32_t val;
+
+  val = DPA_REG_READ(NETA_RXQ_STATUS_REG(port, queue));
+
+  return (val &amp; NETA_RXQ_OCCUPIED_DESC_ALL_MASK) &gt;&gt; NETA_RXQ_OCCUPIED_DESC_OFFS;
+}
+
+
+/* Decrement number of occupied descriptors, increment number of Non-occupied descriptors.
+   Both are combined into simngle parameter rx_filled */
+static inline void eth_neta_rxq_desc_num_update(uint32_t port, uint32_t queue, uint32_t rx_filled) {
+  uint32_t val;
+
+  if (rx_filled &lt;= 0xFF) {
+      val = (rx_filled &lt;&lt; NETA_RXQ_DEC_OCCUPIED_OFFS) | (rx_filled &lt;&lt; NETA_RXQ_ADD_NON_OCCUPIED_OFFS);
+      DPA_REG_WRITE(NETA_RXQ_STATUS_UPDATE_REG(port, queue), val);
+      return;
+  }
+
+  /* Only 255 descriptors can be added at once */
+  while (rx_filled &gt; 0) {
+    if (rx_filled &lt;= 0xFF) {
+      val = (rx_filled &lt;&lt; NETA_RXQ_DEC_OCCUPIED_OFFS) | (rx_filled &lt;&lt; NETA_RXQ_ADD_NON_OCCUPIED_OFFS);
+      rx_filled = 0;
+    } else {
+      val = (0xFF &lt;&lt; NETA_RXQ_DEC_OCCUPIED_OFFS) | (0xFF &lt;&lt; NETA_RXQ_ADD_NON_OCCUPIED_OFFS);
+      rx_filled -= 0xFF;
+    }
+    DPA_REG_WRITE(NETA_RXQ_STATUS_UPDATE_REG(port, queue), val);
+  }
+}
+
+static inline uint32_t eth_neta_get_next_tx_desc_num(uint8_t port, uint8_t txp,
+                                                     uint8_t queue) {
+   return DPA_REG_READ(NETA_TXQ_INDEX_REG(port, txp, queue));
+}
+
+static inline uint32_t eth_neta_get_next_rx_desc_num(uint8_t port, uint8_t queue) {
+   return DPA_REG_READ(NETA_RXQ_INDEX_REG(port, queue));
+}
+
+/* Disabel HW Buffer Managament */
+static inline uint32_t eth_neta_rxq_bm_disable(uint8_t port, uint8_t queue)
+{
+  uint32_t val;
+
+  val = DPA_REG_READ(NETA_RXQ_CONFIG_REG(port, queue));
+  val &amp;= ~NETA_RXQ_HW_BUF_ALLOC_MASK;
+  DPA_REG_WRITE(NETA_RXQ_CONFIG_REG(port, queue), val);
+
+  return DPA_OK;
+}
+
+/* Set buffer size for Rx descriptors */
+static inline uint32_t eth_neta_rxq_set_buff_size(uint8_t port, uint8_t queue,
+                                                  uint32_t buff_size) {
+  uint32_t val;
+  
+  val = DPA_REG_READ(NETA_RXQ_SIZE_REG(port, queue));
+  val &amp;= ~NETA_RXQ_BUF_SIZE_MASK;
+  val |= ((buff_size &gt;&gt; 3) &lt;&lt; NETA_RXQ_BUF_SIZE_OFFS);
+  DPA_REG_WRITE(NETA_RXQ_SIZE_REG(port, queue), val);
+
+  return DPA_OK;
+}
+
+/* Add number of descriptors are ready to receive new packets */
+static inline void eth_neta_rxq_add_non_occup_desc(uint8_t port, uint8_t queue,
+                                                   uint32_t rx_desc_num) {
+  uint32_t val;
+
+  /* Only 255 descriptors can be added at once */
+  while (rx_desc_num &gt; 0xFF) {
+    val = (0xFF &lt;&lt; NETA_RXQ_ADD_NON_OCCUPIED_OFFS);
+    DPA_REG_WRITE(NETA_RXQ_STATUS_UPDATE_REG(port, queue), val);
+    rx_desc_num = rx_desc_num - 0xFF;
+  }
+  val = (rx_desc_num &lt;&lt; NETA_RXQ_ADD_NON_OCCUPIED_OFFS);
+  DPA_REG_WRITE(NETA_RXQ_STATUS_UPDATE_REG(port, queue), val);
+}
+
+
+/* Get pointer to next Rx descriptor to be processed by SW */
+/* TODO Optimize */
+static inline eth_rx_desc_t *eth_rxq_next_desc(eth_ring_t *rxq)
+{
+  uint32_t curr = rxq-&gt;next;
+
+  if ((rxq-&gt;next += NETA_DESC_ALIGNED_SIZE) &gt; rxq-&gt;last) {
+      rxq-&gt;next = rxq-&gt;first;
+  }
+
+  return (eth_rx_desc_t *) curr;
+}
+
+
+/* Get pointer to next Tx descriptor to be processed by HW */
+static inline eth_tx_desc_t *eth_txq_next_desc(eth_ring_t *txq)
+{
+  uint32_t curr = txq-&gt;next;
+  
+  if ((txq-&gt;next += NETA_DESC_ALIGNED_SIZE) &gt; txq-&gt;last) {
+      txq-&gt;next = txq-&gt;first;
+  }
+
+  return (eth_tx_desc_t *) curr;
+}
+
+
+static inline bool eth_pkt_pool_is_empty(eth_port_t *p) {
+  return queue_is_empty(p-&gt;pkt_pool);
+}
+
+
+/* Attach new packet buffer to rx descriptor */
+static inline int32_t eth_rx_desc_refill(eth_port_t *p, eth_rx_desc_t *rx_desc) {
+  register eth_pkt_t *pkt = (eth_pkt_t*) queue_get(p-&gt;pkt_pool);
+  if (pkt == NULL) {
+      return DPA_OUT_OF_MEMORY;
+  }
+
+  rx_desc-&gt;buf_cookie = (uint32_t) pkt;
+  rx_desc-&gt;buf_phys_addr = pkt-&gt;buff_dma;
+  pkt-&gt;rx_desc = rx_desc;
+
+  dcache_clean_single_line((uint32_t) rx_desc);
+
+  return DPA_OK;
+}
+
+
+/* Invalidate pending Rx descriptors */
+static inline void eth_rx_desc_invalidate(eth_ring_t *rxq, uint32_t rx_pending) {
+  register uint32_t curr = rxq-&gt;next;
+  register uint32_t top = curr + NETA_DESC_ALIGNED_SIZE * (rx_pending - 1);
+
+  if (top &lt;= rxq-&gt;last) {
+      dcache_invalidate_multi_line(curr, top);
+      /* FIXME Found to cause instability under high traffic  
+      for (addr = curr; addr &lt;= top; addr += 32) {
+          _PLD(addr);
+      }*/
+  } else {
+      dcache_invalidate_multi_line(curr, rxq-&gt;last);
+      /* FIXME Found to cause instability under high traffic
+      for (addr = curr; addr &lt;= rxq-&gt;last; addr += 32) {
+          _PLD(addr);
+      }*/
+      dcache_invalidate_multi_line(rxq-&gt;first, top - NETA_DESC_ALIGNED_SIZE * rxq-&gt;num);
+      /* FIXME Found to cause instability under high traffic
+      for (addr = rxq-&gt;first; addr &lt;= top - NETA_DESC_ALIGNED_SIZE * rxq-&gt;num; addr += 32) {
+          _PLD(addr);
+      }*/
+  }
+}
+
+/* Reset port statistics */
+void eth_stats_reset(uint8_t port) {
+ if (port &lt; DPA_ETH_MAX_PORT_NUM) {
+     dpa_memset(&amp;eth_ports[port].stats, 0, sizeof(dpa_eth_stats_t));
+ }
+}
+
+/* Suspend the Rx queue and deallocate */
+static void eth_rxq_shutdown(eth_port_t *p, uint8_t queue) {
+
+  eth_ring_t    *rxq;
+  eth_rx_desc_t *rx_desc;
+  uint32_t       rx_pending, i;
+
+  if (queue &gt; (ETH_MAX_RXQ_NUM - 1)) {
+      ETH_ERROR("Rx ring number out of range, q (%d), port (%d).", queue, p-&gt;port);
+      return;
+  }
+
+  rxq = p-&gt;rxq[queue];
+
+  /* Not initialized */
+  if (rxq == NULL) {
+      return;
+  }
+
+  if (rxq-&gt;mem != NULL) {
+      /* Disable recv, flush pending Rx descriptors */
+      eth_neta_rxq_enable(rxq-&gt;port, rxq-&gt;queue, false);
+      rx_pending = eth_neta_rxq_get_busy_desc_num(rxq-&gt;port, rxq-&gt;queue);
+
+      while (rx_pending--) {
+        rx_desc = eth_rxq_next_desc(rxq);
+      }
+      eth_neta_rxq_desc_num_update(rxq-&gt;port, rxq-&gt;queue, rx_pending);
+
+      /* Free associated packets */
+      for (i = 0; i &lt; rxq-&gt;num; i++) {
+          rx_desc = (eth_rx_desc_t*) (rxq-&gt;first + i * NETA_DESC_ALIGNED_SIZE);
+          if (rx_desc-&gt;buf_cookie != 0) {
+              p-&gt;ops.pkt_free((eth_pkt_t*) rx_desc-&gt;buf_cookie);
+          }
+      }
+
+      /* Clear Rx descriptors queue starting address and size */
+      DPA_REG_WRITE(NETA_RXQ_BASE_ADDR_REG(rxq-&gt;port, rxq-&gt;queue), 0);
+      DPA_REG_WRITE(NETA_RXQ_SIZE_REG(rxq-&gt;port, rxq-&gt;queue), 0);
+
+      /* Free the ring */
+      DPA_FREE(rxq-&gt;mem);
+  }
+
+  DPA_FREE(rxq);
+  p-&gt;rxq[queue] = NULL;
+}
+
+
+/* Init Rx ring for queue */
+static int32_t eth_rxq_init(eth_port_t *p, uint8_t queue) {
+  eth_ring_t    *rxq;
+  eth_rx_desc_t *rx_desc;
+  int32_t        err, i, next_rx_num;
+  uint32_t       dma;
+
+  if (queue &gt; (ETH_MAX_RXQ_NUM - 1)) {
+      ETH_ERROR("Rx ring number out of range, q (%d), port (%d).", queue, p-&gt;port);
+      return DPA_INTERNAL_ERROR;
+  }
+
+  if (p-&gt;rxq[queue] != NULL) {
+      ETH_ERROR("Rx ring already allocated, q (%d), port (%d).", queue, p-&gt;port);
+      return DPA_INTERNAL_ERROR;
+  }
+
+  /* Alloc queue meta-data */
+  rxq = DPA_MALLOC(sizeof(eth_ring_t));
+  if (rxq == NULL) {
+      ETH_ERROR("Can't allocate Rx ring, q (%d), port (%d).", queue, p-&gt;port);
+      err = DPA_OUT_OF_MEMORY;
+      goto fail;
+  }
+  dpa_memset(rxq, 0, sizeof(eth_ring_t));
+
+  p-&gt;rxq[queue] = rxq;
+  rxq-&gt;port = p-&gt;port;
+  rxq-&gt;queue = queue;
+
+   /* Rx descriptors */
+  rxq-&gt;mem_size = (p-&gt;rx_desc_num * NETA_DESC_ALIGNED_SIZE) + CPU_D_CACHE_LINE_SIZE;
+  rxq-&gt;mem = DPA_MALLOC(rxq-&gt;mem_size);
+  if (rxq-&gt;mem == NULL) {
+      ETH_ERROR("Can't allocate Rx descriptors, q (%d), port (%d).", queue, p-&gt;port);
+      err =  DPA_OUT_OF_MEMORY;
+      goto fail;
+  }
+
+  /* Reset the ring */
+  dpa_memset(rxq-&gt;mem, 0, rxq-&gt;mem_size);
+  rxq-&gt;num = p-&gt;rx_desc_num;
+  rxq-&gt;first = MEM_ALIGN_UP((uint32_t) rxq-&gt;mem, CPU_D_CACHE_LINE_SIZE);
+  rxq-&gt;last = rxq-&gt;first + NETA_DESC_ALIGNED_SIZE * (rxq-&gt;num - 1);
+
+  /* Fix of a glitch resulting in skipping non filled descriptors upon reinit */
+  next_rx_num = eth_neta_get_next_rx_desc_num(p-&gt;port, queue);
+
+  rxq-&gt;next = rxq-&gt;first + NETA_DESC_ALIGNED_SIZE * next_rx_num;
+
+  ETH_DBG("Next to use Rx desc (%d), q (%d), port (%d)",
+            next_rx_num, queue, p-&gt;port);
+
+  /* Rx descriptors starting address */
+  dma = dpa_os_virt_to_phys((uint8_t*)rxq-&gt;first, NETA_DESC_ALIGNED_SIZE * rxq-&gt;num);
+  DPA_REG_WRITE(NETA_RXQ_BASE_ADDR_REG(p-&gt;port, queue), dma);
+  DPA_REG_WRITE(NETA_RXQ_SIZE_REG(p-&gt;port, queue), rxq-&gt;num);
+
+  eth_neta_rxq_set_offset(p-&gt;port, queue, 0 /* headroom */);
+
+  /* Refill the Rx descriptors with buffers from the pool */
+  eth_neta_rxq_bm_disable(p-&gt;port, queue);
+  for (i = 0; i &lt; rxq-&gt;num; i++) {
+      rx_desc = (eth_rx_desc_t*) (rxq-&gt;first + i * NETA_DESC_ALIGNED_SIZE);
+      dpa_memset(rx_desc, 0, sizeof(eth_rx_desc_t));
+
+      err = eth_rx_desc_refill(p, rx_desc);
+      if (err) {
+          goto fail;
+      }
+  }
+  eth_neta_rxq_set_buff_size(p-&gt;port, queue, p-&gt;pkt_size);
+  eth_neta_rxq_add_non_occup_desc(p-&gt;port, queue, rxq-&gt;num);
+
+  /* TODO Move to open() */
+  eth_neta_rxq_enable(rxq-&gt;port, rxq-&gt;queue, true);
+
+  return DPA_OK;
+
+fail:
+  eth_rxq_shutdown(p, queue);
+
+  return err;
+}
+
+
+/* Complete Tx pending packets and deallocate the queue */
+static void eth_txq_shutdown(eth_port_t *p, uint8_t queue) {
+  eth_ring_t *txq;
+  uint32_t tx_pending, elapsed;
+
+  if (queue &gt; (ETH_MAX_TXQ_NUM - 1)) {
+      ETH_ERROR("Tx ring number out of range, q (%d), port (%d).", queue, p-&gt;port);
+      return;
+  }
+
+  txq = p-&gt;txq[queue];
+  
+  /* Not init */
+  if (txq == NULL) {
+      return;
+  }
+
+  if (txq-&gt;mem != NULL) {
+    /* Complete pending Tx */
+    elapsed = 0;
+    while (elapsed &lt; ETH_TX_COMPLETE_TIMEOUT &amp;&amp; 
+           (tx_pending = eth_neta_txq_get_pending_desc_num(txq-&gt;port, 0 /* txp */, txq-&gt;queue))) {
+      elapsed += 1;
+      dpa_os_msleep(1);
+    }
+
+    if (tx_pending) {
+        ETH_ERROR("Exceeded Tx complete timeout (%d) ms, (%d) decsriptors pending in port (%d), queue (%d)).", 
+                  ETH_TX_COMPLETE_TIMEOUT, tx_pending, txq-&gt;port, txq-&gt;queue);
+    }
+
+    eth_neta_txq_enable(txq-&gt;port, txq-&gt;queue, false);
+  
+    /* Zero out sent descriptors */
+    eth_neta_txq_update_sent_desc(txq-&gt;port, 0 /* txp */, txq-&gt;queue); 
+  
+    /* Set minimum bandwidth */
+    DPA_REG_WRITE(NETA_TXQ_TOKEN_CNTR_REG(txq-&gt;port, 0 /* txp */, txq-&gt;queue), 0);
+  
+    /* Reset Tx descriptors queue starting address and size */
+    DPA_REG_WRITE(NETA_TXQ_BASE_ADDR_REG(txq-&gt;port, 0 /* txp */, txq-&gt;queue), 0);
+    DPA_REG_WRITE(NETA_TXQ_SIZE_REG(txq-&gt;port, 0 /* txp */, txq-&gt;queue), 0);
+
+    /* Free the ring memory */
+    DPA_FREE(txq-&gt;mem);
+  }
+
+  DPA_FREE(txq);
+  p-&gt;txq[queue] = NULL;
+}
+
+
+static uint32_t eth_txq_init(eth_port_t *p, uint8_t queue) {
+  eth_ring_t    *txq;
+  int32_t        err;
+  uint32_t       dma, i;
+  eth_tx_desc_t *tx_desc;
+
+  if (queue &gt; (ETH_MAX_TXQ_NUM - 1)) {
+      ETH_ERROR("Tx ring number out of range, q (%d), port (%d).", queue, p-&gt;port);
+      return DPA_INTERNAL_ERROR;
+  }
+
+  if (p-&gt;txq[queue] != NULL) {
+      ETH_ERROR("Tx ring already allocated, q (%d), port (%d).", queue, p-&gt;port);
+      return DPA_INTERNAL_ERROR;
+  }
+
+  /* Alloc queue meta-data */
+  txq = DPA_MALLOC(sizeof(eth_ring_t));
+  if (txq == NULL) {
+      ETH_ERROR("Can't allocate Tx ring, q (%d), port (%d).", queue, p-&gt;port);
+      err = DPA_OUT_OF_MEMORY;
+      goto fail;
+  }
+
+  dpa_memset(txq, 0, sizeof(eth_ring_t));
+
+  p-&gt;txq[queue] = txq;
+  txq-&gt;port = p-&gt;port;
+  txq-&gt;queue = queue;
+
+   /* Memory for Tx descriptors */
+  txq-&gt;mem_size = (p-&gt;tx_desc_num * NETA_DESC_ALIGNED_SIZE) + CPU_D_CACHE_LINE_SIZE;
+  txq-&gt;mem = DPA_MALLOC(txq-&gt;mem_size);
+  if (txq-&gt;mem == NULL) {
+      ETH_ERROR("Can't allocate Tx descriptors, q (%d), port (%d).", queue, p-&gt;port);
+      err = DPA_OUT_OF_MEMORY;
+      goto fail;
+  }
+
+  /* Reset the ring */
+  dpa_memset(txq-&gt;mem, 0, txq-&gt;mem_size);
+  txq-&gt;num = p-&gt;tx_desc_num;
+
+  txq-&gt;first = MEM_ALIGN_UP((uint32_t) txq-&gt;mem, CPU_D_CACHE_LINE_SIZE);
+  txq-&gt;last = txq-&gt;first + NETA_DESC_ALIGNED_SIZE * (txq-&gt;num - 1);
+  txq-&gt;next = txq-&gt;first + NETA_DESC_ALIGNED_SIZE * eth_neta_get_next_tx_desc_num(p-&gt;port, 0, queue);
+
+  for (i = 0; i &lt; txq-&gt;num; i++) {
+      tx_desc = (eth_tx_desc_t*) (txq-&gt;first + i * NETA_DESC_ALIGNED_SIZE);
+      tx_desc-&gt;hw_cmd = p-&gt;hw_cmd;
+  }
+
+  ETH_DBG("Next to use Tx desc (%d), q (%d), port (%d)", 
+          eth_neta_get_next_tx_desc_num(p-&gt;port, 0, queue), queue, p-&gt;port);
+
+  /* Maximum bandwidth */
+  DPA_REG_WRITE(NETA_TXQ_TOKEN_CNTR_REG(p-&gt;port, 0 /* txp */, queue), NETA_TXQ_TOKEN_CNTR_MAX);
+
+  /* Tx descriptors ring starting address */
+  dma = dpa_os_virt_to_phys((uint8_t*)txq-&gt;first, NETA_DESC_ALIGNED_SIZE * txq-&gt;num);
+  DPA_REG_WRITE(NETA_TXQ_BASE_ADDR_REG(p-&gt;port, 0 /* txp */, queue), dma);
+                
+                
+  DPA_REG_WRITE(NETA_TXQ_SIZE_REG(p-&gt;port, 0 /* txp */, queue), NETA_TXQ_DESC_NUM_MASK(p-&gt;tx_desc_num));
+  
+  /* TODO Move to open() */
+  eth_neta_txq_enable(txq-&gt;port, txq-&gt;queue, true);
+
+  return DPA_OK;
+
+fail:
+  eth_txq_shutdown(p, queue);
+
+  return err;
+}
+
+
+/* Transmit pending packets on all queues */
+static inline void eth_tx(eth_port_t *p) {
+  register eth_ring_t *txq;
+  register uint8_t     queue;
+  register uint32_t    sent = 0;
+  register uint8_t     port = p-&gt;port;
+  register uint32_t    txq_pending = p-&gt;txq_pending;
+ 
+  /* Transmit */
+  while (txq_pending) {
+    queue = dpa_fls(txq_pending) - 1;
+
+    txq = p-&gt;txq[queue];
+
+    eth_neta_txq_pendind_desc_add(p-&gt;port, 0 /* txp */, queue, txq-&gt;pending);
+    txq_pending ^= (1 &lt;&lt; queue);
+    txq-&gt;pending = 0;
+    sent += eth_neta_txq_update_sent_desc(port, 0 /* txp */, queue);
+  }
+
+  p-&gt;txq_pending  = 0;
+  
+  if (sent) {
+      p-&gt;ops.tx_done(port, sent);
+  }
+}
+
+
+/* Return Rx descriptors back to HW  */
+static inline void eth_rx_desc_return(eth_port_t *p, uint8_t queue) {
+  register uint32_t *rx_pending = &amp;p-&gt;rxq[queue]-&gt;pending;
+
+  /* Rx queue must be refilled by now */
+  eth_neta_rxq_desc_num_update(p-&gt;port, queue, *rx_pending /* Processed &amp; newly added */);
+  *rx_pending = 0;
+}
+
+
+/* Remove all pkts from all ports all queues and return rx decsriptors */
+void eth_recv_all(void) {
+   uint32_t rx_pending, i, q;
+      
+   for (i = 0; i &lt; DPA_ETH_MAX_PORT_NUM; i++) {
+       for (q = 0; q &lt; ETH_MAX_RXQ_NUM; q++) {
+            rx_pending = eth_neta_rxq_get_busy_desc_num(i, q);
+            if (rx_pending) {
+                printk("&lt;0&gt;ETH: recved %d pkts, port %d, q %d\n", rx_pending, i, q);
+            }
+            eth_neta_rxq_desc_num_update(i, q, rx_pending);
+        }
+   }
+}
+
+
+/* Recv packets from queue */
+static inline void eth_rx(eth_port_t *p, uint8_t queue) {
+  register eth_ring_t    *rxq;
+  register eth_rx_desc_t *rx_desc;
+  register eth_pkt_t     *pkt;
+  register uint8_t       *phy_hdr;
+  register uint8_t        port = p-&gt;port;
+  uint32_t                rx_pending, rx_status;
+
+  rxq = p-&gt;rxq[queue];
+
+  if ((rxq-&gt;pending = (rx_pending = eth_neta_rxq_get_busy_desc_num(port, queue)))) {
+
+    ETH_DBG("q = %d, rxq-&gt;pending = %d", queue, rxq-&gt;pending);
+
+    /* Invalidate pending Rx descriptors */
+    /* FIXME Found to cause instability under high traffic */
+    //eth_rx_desc_invalidate(rxq, rx_pending);
+          
+    do {
+      /* Next Rx descriptor */
+      rx_desc = eth_rxq_next_desc(rxq);
+      
+      dcache_invalidate_single_line((uint32_t)rx_desc);
+
+      ETH_DBG("rx_desc = 0x%x, status = 0x%x", (uint32_t)rx_desc, rx_desc-&gt;status);
+      
+      rx_status = rx_desc-&gt;status;
+
+      if (((rx_status &amp; NETA_RX_FL_DESC_MASK) != NETA_RX_FL_DESC_MASK) ||
+          (rx_status &amp; NETA_RX_ES_MASK)) {
+
+          ETH_DBG("Error recving pkt, rx_status (0x%x), port (%d)",
+                   rx_status, p-&gt;port);
+          p-&gt;stats.rx_errors++;
+          /* Descriptor stays with the same buffer, no need to refill */
+          continue;
+      }
+
+      /* Recved pkt meta-data and body */
+      pkt = (eth_pkt_t *) rx_desc-&gt;buf_cookie;
+      phy_hdr = pkt-&gt;phy_hdr = pkt-&gt;buff;
+      pkt-&gt;phy_hdr_dma = pkt-&gt;buff_dma;
+
+      /* Invalidate &amp; preload pkt header */
+      dcache_invalidate_double_line((uint32_t)(phy_hdr));
+
+      pkt-&gt;status = ETH_PKT_STATUS_NONE;
+      pkt-&gt;port = port;
+      pkt-&gt;queue = queue;
+      pkt-&gt;size = (rx_desc-&gt;data_size - (ETH_CRC_SIZE + ETH_MH_SIZE));
+      pkt-&gt;eth_hdr = (dpa_eth_hdr_t*)(phy_hdr + ETH_MH_SIZE);
+#ifdef CONFIG_MV_ETH_PNC
+      pkt-&gt;ip_hdr = (dpa_ip_hdr_t*) (phy_hdr + NETA_RX_GET_IPHDR_OFFSET(rx_desc));
+#else
+  if (NETA_RX_IS_VLAN(pkt-&gt;rx_desc))
+      pkt-&gt;ip_hdr = (dpa_ip_hdr_t*) (pkt-&gt;phy_hdr + MV_ETH_MH_SIZE + sizeof(dpa_vlan_ethhdr_t));
+  else
+      pkt-&gt;ip_hdr = (dpa_ip_hdr_t*) (pkt-&gt;phy_hdr + MV_ETH_MH_SIZE + sizeof(dpa_eth_hdr_t));
+      /* HAIM FIXME : add parsing for pppoe &amp;&amp; DVLAN */
+#endif
+      ETH_DBG("Recvd pkt size port %d, desc bytes %d, %d bytes",
+               port, rx_desc-&gt;data_size, pkt-&gt;size);
+
+#if 0
+      dcache_invalidate_multi_line((uint32_t)pkt-&gt;eth_hdr, pkt-&gt;size - 1);
+      ETH_DBG("____ PORT %d, %d _____** RX ** size=%d", p-&gt;port, queue, pkt-&gt;size);
+      dump_data(pkt-&gt;eth_hdr, 32);
+#endif
+
+      /* Drop if in panic mode */
+      if (eth_pkt_pool_is_empty(p)) {
+          p-&gt;stats.rx_dropped++;
+          continue;
+      }
+
+      /* Forward pkt for handling */
+      p-&gt;ops.pkt_rx(pkt);
+      switch (pkt-&gt;status) {
+        case ETH_PKT_STATUS_FWD:
+          eth_pkt_tx(pkt);
+          break;
+        case ETH_PKT_STATUS_LCL:
+          /* Must succeed */
+          eth_rx_desc_refill(p, rx_desc); 
+          break;
+
+        default:
+          p-&gt;stats.rx_dropped++;
+          continue;
+      }
+
+      p-&gt;stats.rx_pkts++;
+      p-&gt;stats.rx_bytes += pkt-&gt;size;
+
+    } while (--rx_pending);
+
+    p-&gt;ops.rx_done(port);
+  }
+}
+
+
+/* Transmit pending packets on all active ports */
+inline void eth_tx_all(void) {
+  /* Complete cache write to DDR */
+  dcache_drain_write_buffer();
+
+  /* FIXME Make optimized loop for eth0 ... eth3 */
+  if (eth0-&gt;init) {
+      eth_tx(eth0);
+  }
+
+  if (eth1-&gt;init) {
+      eth_tx(eth1);
+  }
+  
+  if (eth2-&gt;init) {
+      eth_tx(eth2);
+  }
+}
+
+
+
+/* Receive packets from port active queues */
+dpa_irqreturn_t eth_poll(int32_t irq, void *dev) {
+  register eth_port_t *p = (eth_port_t *) dev;
+  register uint32_t cause, cause_save;
+
+  ETH_DBG("eth_poll, irq %d", irq);
+  
+  //eth_irq_disable(p-&gt;port);
+  cause = DPA_REG_READ(NETA_INTR_NEW_CAUSE_REG(p-&gt;port)) &amp; MV_ETH_RX_INTR_MASK;
+  cause_save = cause = (cause &gt;&gt; NETA_CAUSE_RXQ_OCCUP_DESC_OFFS) &amp; ((1 &lt;&lt; ETH_MAX_RXQ_NUM) - 1);
+   
+  /* TODO Handle link control &amp; tx events */
+  /* TODO Add budget */
+  
+  /* Recv packets */
+  while (cause) {
+    register uint8_t rx_queue = fls(cause) - 1;
+    eth_rx(p, rx_queue);
+    cause ^= (1 &lt;&lt; rx_queue);
+  }
+
+  /* Transmit pending packets on all ports */
+  eth_tx_all();
+
+  /* Return rx decriptors to GUnit */
+  cause = cause_save;
+  while (cause) {
+    register uint8_t rx_queue = fls(cause) - 1;
+    eth_rx_desc_return(p, rx_queue);
+    cause ^= (1 &lt;&lt; rx_queue);
+  }
+
+  //eth_irq_enable(p-&gt;port);
+
+  return DPA_IRQ_HANDLED;
+}
+
+
+/* Schedule packet for transmission */
+int32_t eth_pkt_tx(eth_pkt_t* pkt) {
+  register eth_port_t    *p = &amp;eth_ports[pkt-&gt;port];
+  register uint8_t       queue = pkt-&gt;queue;
+  register eth_ring_t    *txq = p-&gt;txq[queue];
+  register eth_tx_desc_t *tx_desc;
+
+  tx_desc = eth_txq_next_desc(txq);
+
+  if (tx_desc == NULL) {
+     p-&gt;stats.tx_dropped++;
+
+     return DPA_OUT_OF_TXQ_DESC;
+  }
+
+  tx_desc-&gt;command = pkt-&gt;cmd;
+  p-&gt;stats.tx_bytes += tx_desc-&gt;data_size = pkt-&gt;size;
+  tx_desc-&gt;buf_phys_addr = pkt-&gt;phy_hdr_dma;
+
+  /* Clean the Tx descriptor */
+  dcache_clean_single_line((uint32_t)tx_desc);
+
+  /* Clean &amp; invalidate the header. On Rx will not need to invalidate */
+  dcache_clean_invalidate_double_line((uint32_t)pkt-&gt;phy_hdr);
+
+  txq-&gt;pending++;
+  p-&gt;txq_pending |= (1 &lt;&lt; queue);
+  /* NOTE pkt need not be returned to the pkt_pool:
+   Case A. Fast Path origin: it's already owned by Rx descriptor;
+   Case B. Slow Path origin: the owner is DPA Slow Path bridge being responsible
+           for pkt dealloc */
+
+  p-&gt;stats.tx_pkts++;
+  p-&gt;stats.tx_bytes += pkt-&gt;size;
+
+  return DPA_OK;
+}
+
+
+/* Redeem buffer back to pool.
+   Normally, called from a slow path context */
+int32_t eth_pkt_put(eth_pkt_t* pkt) {
+  eth_port_t *p;
+
+  if (ETH_IS_PKT_FAST_PATH(pkt)) {
+      p = &amp;eth_ports[pkt-&gt;pool_id];
+      if (p-&gt;init &amp;&amp; p-&gt;pkt_size == pkt-&gt;alloc_size) {
+          return queue_put(p-&gt;pkt_pool, pkt);
+      }
+  }
+
+  ETH_ERROR("Invalid port (%d) state, size (%d) or pool id  (%d) for redeemed pkt.",
+             pkt-&gt;pool_id, pkt-&gt;alloc_size, pkt-&gt;pool_id);
+
+  return DPA_INVALID_PARAM;
+}
+
+
+/* Get port statistics */
+int32_t eth_stats_get(uint8_t port, dpa_eth_stats_t *stats) {
+  if (port &gt; (DPA_ETH_MAX_PORT_NUM - 1)) {
+      ETH_DBG("Port (%d) out of range.", port);
+      return DPA_INVALID_PARAM;
+  }
+
+  dpa_memcpy(stats, &amp;eth_ports[port].stats, sizeof(dpa_eth_stats_t));
+
+  return DPA_OK;
+}
+
+
+/* Create packet buffers pool */
+static inline int32_t eth_pkt_pool_create(eth_port_t *p) {
+  uint32_t i;
+  
+  if (p-&gt;pkt_pool != NULL) {
+      ETH_ERROR("Packet pool already created, port (%d).", p-&gt;port);
+      return DPA_INTERNAL_ERROR;
+  }
+
+  p-&gt;pkt_pool = queue_create(p-&gt;pkt_pool_size);
+  if (p-&gt;pkt_pool == NULL) {
+      ETH_ERROR("Out of memory allocating packet pool, port (%d).", p-&gt;port);
+      return DPA_OUT_OF_MEMORY;
+  }
+  
+  for (i = 0; i &lt; p-&gt;pkt_pool_size; i++) {
+  
+       /* Custom alloc */
+       eth_pkt_t *pkt = p-&gt;ops.pkt_alloc(p-&gt;pkt_size);
+       if (pkt == NULL) {
+           ETH_ERROR("Out of memory allocating packet pool buffers, port (%d).", p-&gt;port);
+           return DPA_OUT_OF_MEMORY;
+       }
+
+       /* Consistency */
+      if (pkt-&gt;buff_dma == 0 || pkt-&gt;buff == NULL || pkt-&gt;alloc_size &lt; p-&gt;pkt_size) {
+          ETH_ERROR("Invalid allocated packet returned, port (%d).", p-&gt;port);
+          p-&gt;ops.pkt_free(pkt);
+          return DPA_INTERNAL_ERROR;
+      }
+
+      /* Invalidate cache for packet header and add to pool */
+      dcache_invalidate_double_line(MEM_ALIGN_DOWN((uint32_t)pkt-&gt;buff, CPU_D_CACHE_LINE_SIZE));
+      pkt-&gt;port = pkt-&gt;pool_id = p-&gt;port;
+      if (!queue_put(p-&gt;pkt_pool, pkt)) { /* Theoretical, can't fail */
+          ETH_ERROR("Can't add buffer to packet pool, port (%d).", p-&gt;port);
+          p-&gt;ops.pkt_free(pkt);
+          return DPA_INTERNAL_ERROR;
+      }
+  }
+
+  return DPA_OK;
+}
+
+/* Destroy packet buffers pool */
+static inline int32_t eth_pkt_pool_destroy(eth_port_t *p) {
+  eth_pkt_t *pkt;
+  
+  if (p-&gt;pkt_pool == NULL) {
+      ETH_ERROR("Packet pool already NULL, port (%d).", p-&gt;port);
+      return DPA_INTERNAL_ERROR;
+  }
+
+  while ((pkt = (eth_pkt_t *)queue_get(p-&gt;pkt_pool)) != NULL) {
+      p-&gt;ops.pkt_free(pkt);
+  }
+
+  queue_destroy(p-&gt;pkt_pool);
+  p-&gt;pkt_pool = NULL;
+
+  return DPA_OK;
+}
+
+/* Status of a port packet pool */
+bool eth_pkt_pool_is_full(uint8_t port) {
+  bool rc = true;
+
+  if (ETH_PORT_VALID(port)) {
+      eth_port_t *p = &amp;eth_ports[port];
+      if (p-&gt;init) {
+          rc = queue_is_full(p-&gt;pkt_pool);
+      }
+  }
+
+  return rc;
+}
+
+/* Init Ethernet port. Allocate Rx &amp; Tx rings and packet buffer pool */
+int32_t eth_init(eth_config_t *cfg) {
+  eth_port_t *p;
+  uint32_t err, queue;
+
+  ETH_DBG("Port (%d) init started.", cfg-&gt;port);
+  
+  /* Validate params */
+  if (cfg-&gt;port &gt; (DPA_ETH_MAX_PORT_NUM - 1)) {
+      ETH_ERROR("Port (%d) out of range.", cfg-&gt;port);
+      err = DPA_INVALID_PARAM;
+      goto fail;
+  }
+  
+  p = &amp;eth_ports[cfg-&gt;port];
+
+  if (p-&gt;init) {
+      ETH_DBG("Port (%d) already initialized.", cfg-&gt;port);
+      goto ok;
+  }
+
+  if (cfg-&gt;rxq_num &gt; ETH_MAX_RXQ_NUM) {
+      ETH_ERROR("Rx queue number invalid (%d), port (%d).", cfg-&gt;rxq_num, cfg-&gt;port);
+      err = DPA_INVALID_PARAM;
+      goto fail;
+  }
+
+  if (cfg-&gt;txq_num &gt; ETH_MAX_TXQ_NUM) {
+      ETH_ERROR("Tx queue number invalid (%d), port (%d).", cfg-&gt;txq_num, cfg-&gt;port);
+      err = DPA_INVALID_PARAM;
+      goto fail;
+  }
+
+  if (cfg-&gt;rx_desc_num &gt; ETH_MAX_RX_DESC_NUM) {
+      ETH_ERROR("Rx descriptors number invalid(%d), port (%d).",
+                cfg-&gt;rx_desc_num, cfg-&gt;port);
+      err = DPA_INVALID_PARAM;
+      goto fail;
+  }
+
+  if (cfg-&gt;tx_desc_num &gt; ETH_MAX_TX_DESC_NUM) {
+      ETH_ERROR("Tx descriptors number invalid (%d), port (%d).",
+                cfg-&gt;tx_desc_num, cfg-&gt;port);
+      err = DPA_INVALID_PARAM;
+      goto fail;
+  }
+
+  if (cfg-&gt;pkt_pool_size &gt; ETH_MAX_PKT_POOL_SIZE ||
+      cfg-&gt;pkt_pool_size &lt; cfg-&gt;rx_desc_num) {
+      ETH_ERROR("Packet pool size invalid (%d), port (%d).",
+                cfg-&gt;pkt_pool_size, cfg-&gt;port);
+      err = DPA_INVALID_PARAM;
+      goto fail;
+  }
+
+  if (cfg-&gt;mtu &gt; ETH_MAX_MTU) {
+      ETH_ERROR("MTU (%d) invalid, port (%d).", cfg-&gt;mtu, cfg-&gt;port);
+      err = DPA_INVALID_PARAM;
+      goto fail;
+  }
+
+  if (cfg-&gt;ops.pkt_alloc == NULL || cfg-&gt;ops.pkt_free == NULL ||
+      cfg-&gt;ops.pkt_rx == NULL || cfg-&gt;ops.rx_done == NULL ||
+      cfg-&gt;ops.tx_done == NULL) {
+      ETH_ERROR("NULL callback(s), port (%d).", cfg-&gt;port);
+      err = DPA_INVALID_PARAM;
+      goto fail;
+  }
+
+  p-&gt;port = cfg-&gt;port;
+  p-&gt;rxq_num = cfg-&gt;rxq_num;
+  p-&gt;txq_num = cfg-&gt;txq_num;
+  p-&gt;rx_desc_num = cfg-&gt;rx_desc_num;
+  p-&gt;tx_desc_num = cfg-&gt;tx_desc_num;
+  p-&gt;txq_pending = 0;
+  p-&gt;mtu = cfg-&gt;mtu;
+  p-&gt;pkt_size = ETH_PKT_SIZE(cfg-&gt;mtu);
+  p-&gt;pkt_pool_size = cfg-&gt;pkt_pool_size;
+  p-&gt;hw_cmd = 0;
+  p-&gt;ops = cfg-&gt;ops;
+  p-&gt;irq = NET_TH_RXTX_IRQ_NUM(cfg-&gt;port);
+  
+  ETH_DBG("Using IRQ %d for port %d", p-&gt;irq, cfg-&gt;port);
+
+  /* Register IRQ handler */
+  eth_irq_disable(cfg-&gt;port);
+  err = dpa_os_irq_alloc(p-&gt;irq, eth_poll, "dpa_eth", p);
+  if (err) {
+      goto fail;
+  }
+
+  /* Create Rx packet pool */
+  err = eth_pkt_pool_create(p);
+  if (err) {
+      goto fail;
+  }
+
+  /* Alloc Rx rings */
+  for (queue = 0; queue &lt; p-&gt;rxq_num; queue++) {  
+      err = eth_rxq_init(p, queue);
+      if (err) {
+          goto fail;
+      }
+  }
+
+  /* Alloc Tx rings */
+  for (queue = 0; queue &lt; p-&gt;txq_num; queue++) {
+      err = eth_txq_init(p, queue);
+      if (err) {
+          goto fail;
+      }
+  }
+
+  /* Stats */
+  eth_stats_reset(p-&gt;port);
+
+  p-&gt;init = true;
+
+ok:
+  ETH_DBG("Eth port %d init Ok.", cfg-&gt;port);
+
+  return DPA_OK;
+
+fail:
+  eth_shutdown(cfg-&gt;port);
+
+  return err;
+}
+
+
+/* Uninitialize port. Deallocate Rx &amp; Tx rings and packet buffer pool */
+int32_t eth_shutdown(uint8_t port) {
+  
+  eth_port_t *p;
+  uint32_t err, queue;
+  bool is_init;
+  
+  if (port &gt; (DPA_ETH_MAX_PORT_NUM - 1)) {
+      ETH_ERROR("Port (%d) out of range.", port);
+      err = DPA_INVALID_PARAM;
+      goto fail;
+  }
+
+  p = &amp;eth_ports[port];
+
+  if (p-&gt;init) {
+      eth_irq_disable(port);
+
+      /* Release IRQ handler */
+      dpa_os_irq_free(p-&gt;irq, p);
+
+      ETH_DBG("Port (%d) shutdown started.", port);
+  }
+
+  /* Dealloc Tx rings. Must be done prior to Tx rings as some Tx still pending */
+  for (queue = 0; queue &lt; p-&gt;txq_num; queue++) {
+       eth_txq_shutdown(p, queue);
+  }
+
+  /* Dealloc Rx rings */
+  for (queue = 0; queue &lt; p-&gt;rxq_num; queue++) {
+       eth_rxq_shutdown(p, queue);
+  }
+
+
+  /* Destroy Rx packet pool */
+  if (p-&gt;pkt_pool != NULL) {
+      eth_pkt_pool_destroy(p);
+  }
+
+  is_init = p-&gt;init;
+  p-&gt;init = false;
+  
+  if (is_init) {
+      ETH_DBG("Port (%d) shutdown Ok.", port);
+  }
+
+  return DPA_OK;
+
+fail:
+  return err;
+}
+
+
+
+/* Unmask Rx interrupts */
+void eth_irq_enable(uint8_t port) {
+  DPA_REG_WRITE(NETA_INTR_NEW_MASK_REG(port), MV_ETH_RX_INTR_MASK);
+  ETH_DBG("Port (%d) interrupts enabled", port);
+}
+
+/* Mask Rx interrupts */
+void eth_irq_disable(uint8_t port) {
+  DPA_REG_WRITE(NETA_INTR_NEW_MASK_REG(port), 0);
+    
+  ETH_DBG("Port (%d) interrupts disabled", port);
+}
+
+
+
+</Insert>
+</MostRecent>
+</DeltaFile>

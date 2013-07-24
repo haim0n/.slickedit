@@ -1,0 +1,1292 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="70" Comment="" Date="2013/06/20" Time="00:01:17000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* zte_api_fast.c
+*
+* DESCRIPTION:
+*   ZTE API Fast implementation.
+* 
+*******************************************************************************/
+
+#include &lt;dpa.h&gt;
+#include &lt;util/string.h&gt;
+#include &lt;util/byte_order.h&gt;
+#include &lt;log/log.h&gt;
+#include &lt;zte/zte_api_fast.h&gt;
+#include &lt;eth/eth.h&gt;
+#include &lt;dpa_frwd.h&gt;
+#include &lt;dpa_mdf.h&gt;
+
+
+#define ZTE_API_FAST_DEBUG
+
+#define ZTE_API_FAST_ERROR(format, args...) DPA_ERROR(format, ##args)
+
+#ifdef ZTE_API_FAST_DEBUG
+  #define ZTE_API_FAST_DBG(format, args...)  DPA_ERROR(format"\n", ##args)
+#else
+  #define ZTE_API_FAST_DBG(format, args...)
+#endif
+
+
+#define ZTE_API_LOCK_OR_RETURN     \
+do {                               \
+  if (zte_api_lock == NULL)        \
+        return ZTE_INTERNAL_ERROR; \
+  dpa_os_lock(zte_api_lock);       \
+} while (0)
+
+#define ZTE_API_UNLOCK         \
+do {                           \
+  dpa_os_unlock(zte_api_lock); \
+} while (0)
+
+/*******************************************************************************
+ * Globals
+ */
+
+/* API protection spinlock */
+static void *zte_api_lock;
+
+/* QoS queue configuration */
+static ZTE_L3_HARDFAST_QOS_QUEUE_CFG zte_qos_queue_cfg[ZTE_QOS_QUEUE_NUM];
+
+/* QoS queue priority configuration */
+static ZTE_L3_HARDFAST_QOS_QUEUE_PRIORITY_CFG zte_qos_queue_pri_cfg[ZTE_QOS_QUEUE_NUM];
+
+/* Egress policer configuration */
+static ZTE_L3_HARDFAST_EGRESS_POLICER_CFG zte_egress_policer_cfg;
+
+/*******************************************************************************
+* Internal utility routines
+*/
+
+static inline void pri_key_init(ZTE_L3_HARDFAST_TUPLE *zte_tuple,
+    struct dpa_pri_key *key)
+{
+  key-&gt;sip = zte_tuple-&gt;sip.ip;
+  key-&gt;dip = zte_tuple-&gt;dip.ip;
+  key-&gt;protocol = zte_tuple-&gt;protocol;
+  key-&gt;sport = zte_tuple-&gt;sport;
+  key-&gt;dport = zte_tuple-&gt;dport;
+}
+
+
+static inline int zte_api_fast_l3_addr_cmp(ZTE_NETFF_IP *addr1, ZTE_NETFF_IP *addr2)
+{
+  /* FIXME Support IPv4 &amp; IPv6 generically */
+  return (addr1-&gt;ip - addr2-&gt;ip);
+}
+
+
+static inline int zte_api_fast_l3_session_validate(ZTE_L3_HARDFAST_SESSION *session)
+{
+  return 0;
+}
+
+/*******************************************************************************
+* Public ZTE Fast API 
+*/
+
+const char* zte_api_fast_l3_get_version(void)
+{
+  return dpa_get_version();
+}
+
+
+int zte_api_fast_l3_init_lib(void) {
+  if (zte_api_lock != NULL) {
+      ZTE_API_FAST_ERROR("API lock already intitialized");
+      return ZTE_INTERNAL_ERROR;
+  }
+
+  zte_api_lock = dpa_os_lock_create();
+  if (zte_api_lock == NULL) {
+      ZTE_API_FAST_ERROR("Can't create API lock");
+      return ZTE_OUT_OF_MEMORY;
+  }
+
+  return ZTE_OK;
+}
+
+int zte_api_fast_l3_shutdown_lib(void) {
+  if (zte_api_lock == NULL) {
+      ZTE_API_FAST_ERROR("Can't destroy NULL API lock");
+      return ZTE_INTERNAL_ERROR;
+  }
+  
+  dpa_os_lock_delete(zte_api_lock);
+  zte_api_lock = NULL;
+  
+  return ZTE_OK;
+}
+
+
+int zte_api_fast_l3_init(ZTE_L3_HARDFAST_INIT_CFG *cfg)
+{
+  int err, i;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  /* Core engine */
+  err = dpa_init();
+
+  /* Setting the defaults, however, not enabling until explicit app request 
+     to do so. */
+  if (err == ZTE_OK) {
+       /* Qos queue */
+       for (i = 0; i &lt; ZTE_QOS_QUEUE_NUM; i++) {
+            /* Basic */
+            zte_qos_queue_cfg[i].qos_queue = ETH_MAX_RXQ_NUM;
+            zte_qos_queue_cfg[i].length = ZTE_QOS_QUEUE_LEN_DEF;
+            zte_qos_queue_cfg[i].queue = ZTE_QOS_QUEUE_HW_QUEUE_DEF;
+
+            /* Priority mode */
+            zte_qos_queue_pri_cfg[i].qos_queue = i;
+            zte_qos_queue_pri_cfg[i].mode = ZTE_PRIORITY_MODE_DEF;
+            zte_qos_queue_pri_cfg[i].weight = ZTE_PRIORITY_WEIGHT_DEF;
+       }
+
+       /* Egress policer configuration */
+       err = zte_api_fast_l3_set_egress_policer_cfg(&amp;zte_egress_policer_cfg);
+  }
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_port_add(ZTE_L3_HARDFAST_PORT_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = dpa_port_add(cfg-&gt;port);
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_port_del(unsigned char port)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err =  dpa_port_del(port);
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_shutdown(void)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = dpa_shutdown();
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_session_add(ZTE_L3_HARDFAST_SESSION *session)
+{
+  struct dpa_flow *dpf = NULL;
+  struct dpa_pri_key key;
+  int err = DPA_FAIL;
+
+  ZTE_API_LOCK_OR_RETURN;
+  
+  if (!dpa_is_init()) {
+      err = DPA_NOT_INIT;
+      goto error;
+  }
+
+  pri_key_init(&amp;session-&gt;tuple, &amp;key);
+
+  if (dpa_frwd_flow_find(&amp;key)) {
+        err = DPA_FLOW_EXISTS;
+        goto error;
+  }
+  
+  if (zte_api_fast_l3_session_validate(session)) {
+        err = DPA_INVALID_PARAM;
+        goto error;
+  }
+
+  dpf = dpa_frwd_flow_alloc();
+  if (!dpf) {
+        err = DPA_OUT_OF_MEMORY;
+        goto error;
+  }
+  
+  /* Construct DPA flow from ZTE session spec */
+  dpf-&gt;key = key;
+  dpf-&gt;mod.ops = 0;
+  
+  /* Drop */
+  if (session-&gt;rcqueue == ZTE_ACTION_DROP) {
+      dpf-&gt;state = DPF_DROP;
+      goto success;
+  }
+
+  /* DSCP update */
+  if (session-&gt;dscpremark) { 
+        dpf-&gt;mod.ops |= DPA_MDF_IP_V4_DSCP_CNG_BIT;
+        ZTE_API_FAST_DBG("dscp update 0x%x: NOT IMPLEMENTED", session-&gt;dscpvalue);
+        err = DPA_NOT_IMPL;
+        goto error;
+  }
+
+  /* Routing */
+  if (session-&gt;l3num != 2) {
+        /* TTL */
+        dpf-&gt;mod.ops |= DPA_MDF_IP_V4_TTL;
+        ZTE_API_FAST_DBG("ttl--");
+
+        /* MACs */
+        dpa_memcpy(dpf-&gt;mod.l2.dmac, session-&gt;gwmac, sizeof(dpf-&gt;mod.l2.dmac));
+        dpa_memcpy(dpf-&gt;mod.l2.smac, session-&gt;smac, sizeof(dpf-&gt;mod.l2.smac));
+        dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_IP); /* FIXME Now assuming it's IPv4 pkt */
+        dpf-&gt;mod.ops |= DPA_MDF_ETH_CHG;
+        ZTE_API_FAST_DBG("smac, dmac update");
+
+        /* NAT */
+        if (zte_api_fast_l3_addr_cmp(&amp;session-&gt;tuple.sip, &amp;session-&gt;natip)) {
+            /* S-NAT */
+            if (session-&gt;direction == ZTE_DIR_UPLINK) {
+                  dpf-&gt;mod.mod_tuple.sip = session-&gt;natip.ip;
+                  dpf-&gt;mod.mod_tuple.sport = session-&gt;natport;
+                  dpf-&gt;mod.mod_tuple.dip = session-&gt;tuple.dip.ip; /* FIXME */
+                  dpf-&gt;mod.mod_tuple.dport = session-&gt;tuple.dport; /* FIXME */ 
+                  dpf-&gt;mod.ops |= DPA_MDF_IP_V4_CHG | DPA_MDF_L4_CHG;
+                  ZTE_API_FAST_DBG("snat: sip "DPA_NIPQUAD_FMT", sport %u", 
+                        DPA_NIPQUAD(dpf-&gt;mod.mod_tuple.sip), dpa_ntohs(dpf-&gt;mod.mod_tuple.sport));
+            } else /* D-NAT */ {
+                  dpf-&gt;mod.mod_tuple.dip = session-&gt;natip.ip;
+                  dpf-&gt;mod.mod_tuple.dport = session-&gt;natport;
+                  dpf-&gt;mod.mod_tuple.sip = session-&gt;tuple.sip.ip; /* FIXME */
+                  dpf-&gt;mod.mod_tuple.sport = session-&gt;tuple.sport; /* FIXME */ 
+                  dpf-&gt;mod.ops |= DPA_MDF_IP_V4_CHG | DPA_MDF_L4_CHG;
+                  ZTE_API_FAST_DBG("dnat: dip "DPA_NIPQUAD_FMT", dport %u", 
+                        DPA_NIPQUAD(dpf-&gt;mod.mod_tuple.dip), dpa_ntohs(dpf-&gt;mod.mod_tuple.dport));
+            }
+        }
+
+  }
+
+  /* VLAN handling FIXME Implement double VLAN + PPPoE */
+  switch (session-&gt;l2length) {
+    case 14: /* No VLAN */
+      /* Add PPPoE */
+      if (session-&gt;direction == ZTE_DIR_UPLINK &amp;&amp; 
+          session-&gt;sessionid != ZTE_NO_PARAM) {
+                  ZTE_API_FAST_DBG("pppoe add sesionid %#x", dpa_ntohs(session-&gt;sessionid));
+                  dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_PPP_SES);
+                  dpf-&gt;mod.l2.pppoe_sid = session-&gt;sessionid;
+                  dpf-&gt;mod.ops |= DPA_MDF_PPPOE_ADD;
+      }
+      break;
+      /* Add VLAN */
+      if (session-&gt;outervlan != ZTE_NO_PARAM) {
+            dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_8021Q);
+            dpf-&gt;mod.l2.vlan_id = session-&gt;outervlan;
+            dpf-&gt;mod.ops |= DPA_MDF_VLAN_ADD;
+            ZTE_API_FAST_DBG("vlan add: %u", dpa_ntohs(dpf-&gt;mod.l2.vlan_id));
+      }
+    case 18: /* Single VLAN tag */
+      /* Delete VLAN */
+      if (session-&gt;outervlan == ZTE_NO_PARAM) {
+            dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_IP);
+            dpf-&gt;mod.ops |= DPA_MDF_VLAN_DEL;
+            ZTE_API_FAST_DBG("vlan del");
+      } else  { /* Change VLAN */
+            dpf-&gt;mod.l2.vlan_id = session-&gt;outervlan;
+            dpf-&gt;mod.ops |= DPA_MDF_VLAN_CHG;
+            ZTE_API_FAST_DBG("vlan chg: to %u", dpa_ntohs(session-&gt;outervlan));
+      } 
+      break;
+
+    case 22: /* Double VLAN or PPPoE header */
+      if (!session-&gt;isppp || session-&gt;direction == ZTE_DIR_UPLINK) {
+          ZTE_API_FAST_DBG("isppp: %u dir %u,double vlan: NOT IMPLEMENTED",session-&gt;isppp, session-&gt;direction);
+          err = DPA_NOT_IMPL;
+          goto error;
+      } else {
+          if (session-&gt;sessionid == ZTE_NO_PARAM &amp;&amp; session-&gt;direction == ZTE_DIR_DOWNLINK) {
+                  ZTE_API_FAST_DBG("pppoe del");
+                  dpf-&gt;mod.ops |= DPA_MDF_PPPOE_DEL;
+          } else {
+                  ZTE_API_FAST_DBG("Invalid pppoe params: l2len %u, sid %#x, dir %u",
+                                   session-&gt;l2length, session-&gt;sessionid, session-&gt;direction);
+                  err = DPA_INVALID_PARAM;
+                  goto error;
+          }
+      }
+      break;
+
+    case 26: /* VLAN + PPPoE header */
+      if (session-&gt;sessionid != ZTE_NO_PARAM &amp;&amp;
+          session-&gt;outervlan != ZTE_NO_PARAM) {
+              ZTE_API_FAST_DBG("Invalid params: l2len %u, sid %#x, outervlan %#x",
+                                   session-&gt;l2length, session-&gt;sessionid, session-&gt;outervlan);
+                  err = DPA_INVALID_PARAM;
+                  goto error;
+      }
+      if (session-&gt;outervlan == ZTE_NO_PARAM &amp;&amp; 
+          session-&gt;sessionid == ZTE_NO_PARAM &amp;&amp;
+          session-&gt;isppp) {
+              ZTE_API_FAST_DBG("vlan del, pppoe del");
+              /* HAIM FIXME : assuming IPV4 */
+              dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_IP);
+              dpf-&gt;mod.ops |= DPA_MDF_VLAN_DEL;
+              dpf-&gt;mod.ops |= DPA_MDF_PPPOE_DEL;
+      }
+      else if (session-&gt;sessionid == ZTE_NO_PARAM &amp;&amp; session-&gt;isppp) {
+              ZTE_API_FAST_DBG("pppoe del");
+              dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_8021Q);
+              dpf-&gt;mod.ops |= DPA_MDF_PPPOE_DEL;
+      } else if (session-&gt;outervlan == ZTE_NO_PARAM) {
+              ZTE_API_FAST_DBG("vlan del");
+              dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_PPP_SES);
+              dpf-&gt;mod.ops |= DPA_MDF_VLAN_DEL;
+      }
+      break;
+
+    default:
+      ZTE_API_FAST_ERROR("Invalid l2length %u:", session-&gt;l2length);
+      err = DPA_INVALID_PARAM;
+      goto error;
+  }
+
+  dpf-&gt;state = DPF_FWD;
+
+success:
+  dpf-&gt;mod.tx_port = session-&gt;channel;
+  dpf-&gt;mod.tx_queue = zte_qos_queue_cfg[session-&gt;queue].queue;
+
+  /* Add to offload table, effective immediately */
+  dpa_frwd_flow_add(dpf);
+
+  ZTE_API_UNLOCK;
+
+  return DPA_OK;
+
+error:
+  if (dpf) {
+        dpa_frwd_flow_free(dpf);
+  }
+
+  ZTE_API_UNLOCK;
+ 
+  return err;
+}
+
+
+
+int zte_api_fast_l3_mc_session_set(ZTE_L3_HARDFAST_MC_SESSION *session)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = DPA_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+
+int zte_api_fast_l3_session_del(ZTE_L3_HARDFAST_TUPLE *tuple)
+{
+  struct dpa_pri_key key;
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      err = DPA_NOT_INIT;
+      goto error;
+  }
+
+  pri_key_init(tuple, &amp;key);
+  err = dpa_frwd_flow_remove(&amp;key);
+
+error:
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+int zte_api_fast_l3_session_use(ZTE_L3_HARDFAST_TUPLE *tuple, unsigned char *status)
+{
+  struct dpa_pri_key key;
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      err = DPA_NOT_INIT;
+      goto error;
+  }
+
+  pri_key_init(tuple, &amp;key);
+  err = dpa_frwd_flow_is_alive(&amp;key);
+
+  ZTE_API_UNLOCK;
+
+error:
+  return err;
+}
+
+
+
+int zte_api_fast_l3_mc_session_use(ZTE_L3_HARDFAST_MC_TUPLE *tuple, unsigned char *status)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = DPA_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_session_clr(void) {
+  int err = DPA_OK;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      err = DPA_NOT_INIT;
+      goto error;
+  }
+
+  dpa_frwd_clean_all();
+  ZTE_API_UNLOCK;
+
+error:
+  return err;
+}
+
+
+int zte_api_fast_l3_mc_session_clr(void)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = DPA_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_session_stat(ZTE_L3_HARDFAST_TUPLE *tuple, ZTE_L3_HARDFAST_STAT *stat)
+{
+  struct dpa_pri_key key;
+  dpa_flow_stats_t stats;
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      err = DPA_NOT_INIT;
+      goto error;
+  }
+
+  pri_key_init(tuple, &amp;key);
+
+  /* FIXME 1) Make 64 bit stats 2) Make thread-safe */ 
+  err = dpa_frwd_flow_get_stats(&amp;key, &amp;stats);
+  if (err == DPA_OK) {
+        stat-&gt;rxpkt = stats.rx_pkts;
+        stat-&gt;txpkt = stats.tx_pkts;
+        stat-&gt;rxbyte = stats.rx_bytes;
+        stat-&gt;txbyte = stats.tx_bytes;
+        stat-&gt;rxerror = stats.rx_errors;
+        stat-&gt;txerror = stats.tx_errors;
+  }
+
+  ZTE_API_UNLOCK;
+
+error:
+  return err;
+}
+
+int zte_api_fast_l3_mc_session_stat(ZTE_L3_HARDFAST_MC_TUPLE *tuple, ZTE_L3_HARDFAST_STAT *stat)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = DPA_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+
+
+int zte_api_fast_l3_set_rx_queue_cfg(ZTE_L3_HARDFAST_RX_QUEUE_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = DPA_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_rx_queue_cfg(ZTE_L3_HARDFAST_RX_QUEUE_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = DPA_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_set_ingress_policer_cfg(ZTE_L3_HARDFAST_INGRESS_POLICER_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = DPA_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_ingress_policer_cfg(ZTE_L3_HARDFAST_INGRESS_POLICER_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = DPA_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_set_rcqueue_cfg(ZTE_L3_HARDFAST_RCQUEUE_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = DPA_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_rcqueue_cfg(ZTE_L3_HARDFAST_RCQUEUE_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = DPA_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_set_qos_queue_cfg(ZTE_L3_HARDFAST_QOS_QUEUE_CFG *cfg)
+{
+  int err = ZTE_OK;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      ZTE_API_FAST_ERROR("Can't set Qos queue cfg, not initialized.");
+      err = ZTE_NOT_INIT;
+  } else  if (cfg-&gt;qos_queue &gt; ZTE_QOS_QUEUE_NUM - 1 ||
+              cfg-&gt;queue &gt; ETH_MAX_RXQ_NUM - 1 ) {
+      ZTE_API_FAST_ERROR("Can't set Qos queue cfg, params invalid.");
+      err = ZTE_INVALID_PARAM;
+  } else {
+      zte_qos_queue_cfg[cfg-&gt;qos_queue] = *cfg;
+  }
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_qos_queue_cfg(ZTE_L3_HARDFAST_QOS_QUEUE_CFG *cfg)
+{
+  int err = ZTE_OK;
+
+  ZTE_API_LOCK_OR_RETURN;
+  
+  if (!dpa_is_init()) {
+      ZTE_API_FAST_ERROR("Can't set Qos queue cfg, not initialized.");
+      err = ZTE_NOT_INIT;
+  } else  if (cfg-&gt;qos_queue &gt; ZTE_QOS_QUEUE_NUM -1) {
+      ZTE_API_FAST_ERROR("Can't set Qos queue cfg, params invalid.");
+      err = ZTE_INVALID_PARAM;
+  } else {
+      *cfg = zte_qos_queue_cfg[cfg-&gt;qos_queue];
+  }
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+
+int zte_api_fast_l3_set_qos_queue_priority_cfg(ZTE_L3_HARDFAST_QOS_QUEUE_PRIORITY_CFG *cfg)
+{
+  int err = ZTE_OK;
+  uint8_t queue;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      ZTE_API_FAST_ERROR("Can't set Qos queue scheduler cfg, not initialized.");
+      err = ZTE_NOT_INIT;
+  } else  if (cfg-&gt;qos_queue &gt; ZTE_QOS_QUEUE_NUM - 1) {
+      ZTE_API_FAST_ERROR("Can't set Qos queue priority, invalid queue (%d).",
+                         cfg-&gt;qos_queue);
+      err = ZTE_INVALID_PARAM;
+  } else {
+      /* HW queue */
+      queue = zte_qos_queue_cfg[cfg-&gt;qos_queue].queue;
+
+      if (cfg-&gt;mode == ZTE_PRIORITY_MODE_SP) {
+          err = eth_txq_strict_pri_set(ETH_PORT_PON, 0 /* txp */, queue);
+      } else {
+          err = eth_txq_wrr_pri_set(ETH_PORT_PON, 0 /* txp */, queue, cfg-&gt;weight);
+      }
+
+      /* Update only if succeeded */
+      if (err == DPA_OK) {
+          zte_qos_queue_pri_cfg[cfg-&gt;qos_queue] = *cfg; 
+      }
+  }
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_qos_queue_priority_cfg(ZTE_L3_HARDFAST_QOS_QUEUE_PRIORITY_CFG *cfg)
+{
+  int err = ZTE_OK;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      ZTE_API_FAST_ERROR("Can't get Qos queue priority, not initialized.");
+      err = ZTE_NOT_INIT;
+  } else  if (cfg-&gt;qos_queue &gt; ZTE_QOS_QUEUE_NUM -1) {
+      ZTE_API_FAST_ERROR("Can't get Qos queue priority, invalid queue (%d).", 
+                         cfg-&gt;qos_queue);
+      err = ZTE_INVALID_PARAM;
+  } else {
+      *cfg = zte_qos_queue_pri_cfg[cfg-&gt;qos_queue];
+  }
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+
+/* FIXME How to program no-rate limit */
+int zte_api_fast_l3_set_egress_policer_cfg(ZTE_L3_HARDFAST_EGRESS_POLICER_CFG *cfg)
+{
+  int err = ZTE_OK;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      ZTE_API_FAST_ERROR("Can't set egress policer cfg, not initialized.");
+      err = ZTE_NOT_INIT;
+  } else if (cfg-&gt;rate_limit) { /* 0 - no rate limit */ 
+      err = eth_egress_rate_set(ETH_PORT_PON, 0 /* txp */, cfg-&gt;rate_limit);
+      if (err == DPA_OK) {
+          err = eth_egress_burst_size_set(ETH_PORT_PON, 0 /* txp */, cfg-&gt;burst_size);
+      }
+  }
+
+  if (err == DPA_OK) {
+      zte_egress_policer_cfg = *cfg;
+  }
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_egress_policer_cfg(ZTE_L3_HARDFAST_EGRESS_POLICER_CFG *cfg)
+{
+  int err = ZTE_OK;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      ZTE_API_FAST_ERROR("Can't get egress policer cfg, not initialized.");
+      err = ZTE_NOT_INIT;
+  } else {
+     *cfg = zte_egress_policer_cfg;
+  }
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_set_except_path_cfg(ZTE_L3_HARDFAST_EXCEPT_PATH_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = DPA_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_except_path_cfg(ZTE_L3_HARDFAST_EXCEPT_PATH_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = DPA_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="11:21:45000">
+<Copy StartSeek="0" EndSeek="6646"/>
+<Insert>          ZTE_API_FAST_DBG("pppoe del: NOT IMPLEMENTED");
+</Insert>
+<Copy StartSeek="6732" EndSeek="16632"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="12:46:27000">
+<Copy StartSeek="0" EndSeek="6646"/>
+<Insert>          ZTE_API_FAST_DBG("pppoe del");
+          dpf-&gt;mod.ops |= DPA_MDF_PPPOE_DEL;
+</Insert>
+<Copy StartSeek="6823" EndSeek="16723"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="12:53:36000">
+<Copy StartSeek="0" EndSeek="6800"/>
+<Insert>          }
+          
+</Insert>
+<Copy StartSeek="6944" EndSeek="16844"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="12:53:57000">
+<Copy StartSeek="0" EndSeek="6868"/>
+<Copy StartSeek="6930" EndSeek="16906"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="12:54:13000">
+<Copy StartSeek="0" EndSeek="6646"/>
+<Insert>          if (session-&gt;sessionid == ZTE_NO_PARAM) {
+</Insert>
+<Copy StartSeek="6740" EndSeek="6842"/>
+<Insert>          } else {
+</Insert>
+<Copy StartSeek="6903" EndSeek="16990"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="12:57:23000">
+<Copy StartSeek="0" EndSeek="7067"/>
+<Insert>          }
+          
+          err = DPA_NOT_IMPL;
+          goto error;
+</Insert>
+<Copy StartSeek="7171" EndSeek="17019"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="12:57:54000">
+<Copy StartSeek="0" EndSeek="7086"/>
+<Copy StartSeek="7237" EndSeek="17170"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="12:59:10000">
+<Copy StartSeek="0" EndSeek="7086"/>
+<Insert>                  ZTE_API_FAST_DBG("Invalid pppoe params: sid %u, dir %u",
+                                   session-&gt;sessionid, session-&gt;direction);
+</Insert>
+<Copy StartSeek="7266" EndSeek="17199"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="12:59:39000">
+<Copy StartSeek="0" EndSeek="6952"/>
+<Insert>                  dpf-&gt;mod.l2.pppoe_sid = session-&gt;sessionid;
+</Insert>
+<Copy StartSeek="7025" EndSeek="17210"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="13:00:13000">
+<Copy StartSeek="0" EndSeek="6402"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6407" EndSeek="17214"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="13:00:59000">
+<Copy StartSeek="0" EndSeek="6402"/>
+<Insert>asdf
+</Insert>
+<Copy StartSeek="6403" EndSeek="17210"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="13:01:4000">
+<Copy StartSeek="0" EndSeek="6842"/>
+<Insert>          } else if (session-&gt;direction == ZTE_DIR_UPLINK) {
+                  ZTE_API_FAST_DBG("pppoe add");
+                  dpf-&gt;mod.l2.pppoe_sid = dpa_ntohs(session-&gt;sessionid);
+                  dpf-&gt;mod.ops |= DPA_MDF_PPPOE_ADD;
+</Insert>
+<Copy StartSeek="6842" EndSeek="16974"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="13:29:5000">
+<Copy StartSeek="0" EndSeek="5897"/>
+<Copy StartSeek="6168" EndSeek="17245"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="13:29:44000">
+<Copy StartSeek="0" EndSeek="5897"/>
+<Copy StartSeek="5919" EndSeek="17267"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="13:31:42000">
+<Copy StartSeek="0" EndSeek="5919"/>
+<Insert>      if (session-&gt;direction == ZTE_DIR_UPLINK &amp;&amp; session-&gt;sessionid != ZTE_NO_PARAM) {
+</Insert>
+<Copy StartSeek="6018" EndSeek="17278"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="13:31:59000">
+<Copy StartSeek="0" EndSeek="6823"/>
+<Insert>          ZTE_API_FAST_DBG("double vlan: NOT IMPLEMENTED");
+</Insert>
+<Copy StartSeek="6908" EndSeek="17303"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="14:18:55000">
+<Copy StartSeek="0" EndSeek="6823"/>
+<Insert>          ZTE_API_FAST_DBG("isppp: %u,double vlan: NOT IMPLEMENTED",session-&gt;isppp);
+</Insert>
+<Copy StartSeek="6935" EndSeek="17330"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="14:19:16000">
+<Copy StartSeek="0" EndSeek="6018"/>
+<Insert>                  ZTE_API_FAST_DBG("pppoe add");
+</Insert>
+<Copy StartSeek="6098" EndSeek="17361"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="14:54:21000">
+<Copy StartSeek="0" EndSeek="7521"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7535" EndSeek="17374"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="14:54:59000">
+<Copy StartSeek="0" EndSeek="6018"/>
+<Insert>                  ZTE_API_FAST_DBG("pppoe add sesionid %u",session-&gt;sessionid);
+</Insert>
+<Copy StartSeek="6108" EndSeek="17384"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="14:56:39000">
+<Copy StartSeek="0" EndSeek="6018"/>
+<Insert>                  ZTE_API_FAST_DBG("pppoe add sesionid %u",dpa_ntohs(session-&gt;sessionid);
+</Insert>
+<Copy StartSeek="6109" EndSeek="17385"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="14:56:51000">
+<Copy StartSeek="0" EndSeek="6018"/>
+<Insert>                  ZTE_API_FAST_DBG("pppoe add sesionid %u",dpa_ntohs(session-&gt;sessionid));
+</Insert>
+<Copy StartSeek="6110" EndSeek="17386"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="16:40:8000">
+<Copy StartSeek="0" EndSeek="6110"/>
+<Insert>                  dpf-&gt;mod.l2.pppoe_sid = dpa_ntohs(session-&gt;sessionid);
+</Insert>
+<Copy StartSeek="6172" EndSeek="17375"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="16:40:29000">
+<Copy StartSeek="0" EndSeek="6018"/>
+<Insert>                  ZTE_API_FAST_DBG("pppoe add sesionid %u", dpa_ntohs(session-&gt;sessionid));
+</Insert>
+<Copy StartSeek="6111" EndSeek="17376"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="16:51:58000">
+<Copy StartSeek="0" EndSeek="6111"/>
+<Copy StartSeek="6182" EndSeek="17447"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="17:12:22000">
+<Copy StartSeek="0" EndSeek="5463"/>
+<Copy StartSeek="7500" EndSeek="9781"/>
+<Insert>  /* DSCP update */
+  if (session-&gt;dscpremark) { 
+        dpf-&gt;mod.ops |= DPA_MDF_IP_V4_DSCP_CNG_BIT;
+        ZTE_API_FAST_DBG("dscp update 0x%x: NOT IMPLEMENTED", session-&gt;dscpvalue);
+        err = DPA_NOT_IMPL;
+        goto error;
+  }
+
+  /* Routing */
+  if (session-&gt;l3num != 2) {
+        /* TTL */
+        dpf-&gt;mod.ops |= DPA_MDF_IP_V4_TTL;
+        ZTE_API_FAST_DBG("ttl--");
+
+        /* MACs */
+        dpa_memcpy(dpf-&gt;mod.l2.dmac, session-&gt;gwmac, sizeof(dpf-&gt;mod.l2.dmac));
+        dpa_memcpy(dpf-&gt;mod.l2.smac, session-&gt;smac, sizeof(dpf-&gt;mod.l2.smac));
+        dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_IP); /* FIXME Now assuming it's IPv4 pkt */
+        dpf-&gt;mod.ops |= DPA_MDF_ETH_CHG;
+        ZTE_API_FAST_DBG("smac, dmac update");
+
+        /* NAT */
+        if (zte_api_fast_l3_addr_cmp(&amp;session-&gt;tuple.sip, &amp;session-&gt;natip)) {
+            /* S-NAT */
+            if (session-&gt;direction == ZTE_DIR_UPLINK) {
+                  dpf-&gt;mod.mod_tuple.sip = session-&gt;natip.ip;
+                  dpf-&gt;mod.mod_tuple.sport = session-&gt;natport;
+                  dpf-&gt;mod.mod_tuple.dip = session-&gt;tuple.dip.ip; /* FIXME */
+                  dpf-&gt;mod.mod_tuple.dport = session-&gt;tuple.dport; /* FIXME */ 
+                  dpf-&gt;mod.ops |= DPA_MDF_IP_V4_CHG | DPA_MDF_L4_CHG;
+                  ZTE_API_FAST_DBG("snat: sip "DPA_NIPQUAD_FMT", sport %u", 
+                        DPA_NIPQUAD(dpf-&gt;mod.mod_tuple.sip), dpa_ntohs(dpf-&gt;mod.mod_tuple.sport));
+            } else /* D-NAT */ {
+                  dpf-&gt;mod.mod_tuple.dip = session-&gt;natip.ip;
+                  dpf-&gt;mod.mod_tuple.dport = session-&gt;natport;
+                  dpf-&gt;mod.mod_tuple.sip = session-&gt;tuple.sip.ip; /* FIXME */
+                  dpf-&gt;mod.mod_tuple.sport = session-&gt;tuple.sport; /* FIXME */ 
+                  dpf-&gt;mod.ops |= DPA_MDF_IP_V4_CHG | DPA_MDF_L4_CHG;
+                  ZTE_API_FAST_DBG("dnat: dip "DPA_NIPQUAD_FMT", dport %u", 
+                        DPA_NIPQUAD(dpf-&gt;mod.mod_tuple.dip), dpa_ntohs(dpf-&gt;mod.mod_tuple.dport));
+            }
+        }
+  }
+
+</Insert>
+<Copy StartSeek="9781" EndSeek="17446"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="17:17:59000">
+<Copy StartSeek="0" EndSeek="7496"/>
+<Insert>  }
+</Insert>
+<Copy StartSeek="7502" EndSeek="17448"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2013/06/18" Time="17:18:9000">
+<Copy StartSeek="0" EndSeek="8850"/>
+<Insert>    case 22: /* Double VLAN or PPPoE header */
+</Insert>
+<Copy StartSeek="8912" EndSeek="17463"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="22:51:11000">
+<Copy StartSeek="0" EndSeek="8850"/>
+<Insert>    case 22: /* Double VLAN or PPPoE header or VLAN + PPPoE*/
+</Insert>
+<Copy StartSeek="8913" EndSeek="17464"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="22:51:40000">
+<Copy StartSeek="0" EndSeek="9357"/>
+<Insert>          } else {
+</Insert>
+<Copy StartSeek="9416" EndSeek="17504"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="22:53:6000">
+<Copy StartSeek="0" EndSeek="8850"/>
+<Insert>    case 22: /* Double VLAN or PPPoE header or VLAN + PPPoE */
+</Insert>
+<Copy StartSeek="8897" EndSeek="9341"/>
+<Insert>          } else if (session-&gt;outervlan == ZTE_NO_PARAM) {
+</Insert>
+<Copy StartSeek="9360" EndSeek="17448"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="22:55:3000">
+<Copy StartSeek="0" EndSeek="9647"/>
+<Copy StartSeek="9688" EndSeek="17489"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="22:56:26000">
+<Copy StartSeek="0" EndSeek="9686"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="10030" EndSeek="17831"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="22:57:58000">
+<Copy StartSeek="0" EndSeek="9772"/>
+<Insert>              ZTE_API_FAST_DBG("Invalid pppoe params: l2len %u, sid %u, dir %u",
+</Insert>
+<Copy StartSeek="9847" EndSeek="17825"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="22:58:57000">
+<Copy StartSeek="0" EndSeek="9772"/>
+<Insert>              ZTE_API_FAST_DBG("Invalid params: l2len %u, sid %u, dir %u",
+                                   session-&gt;l2length, session-&gt;sessionid, session-&gt;direction);
+</Insert>
+<Copy StartSeek="9948" EndSeek="17831"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="22:59:11000">
+<Copy StartSeek="0" EndSeek="9360"/>
+<Insert>                  ZTE_API_FAST_DBG("Invalid pppoe params: l2len %u, sid %u, dir %u",
+</Insert>
+<Copy StartSeek="9446" EndSeek="9773"/>
+<Insert>              ZTE_API_FAST_DBG("Invalid params: l2len %u, sid %u, outervlan %u",
+</Insert>
+<Copy StartSeek="9856" EndSeek="17834"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="22:59:31000">
+<Copy StartSeek="0" EndSeek="10032"/>
+<Insert>
+</Insert>
+<Copy StartSeek="10046" EndSeek="17847"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:01:13000">
+<Copy StartSeek="0" EndSeek="10024"/>
+<Insert>      }
+</Insert>
+<Copy StartSeek="10228" EndSeek="18043"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:02:25000">
+<Copy StartSeek="0" EndSeek="10166"/>
+<Copy StartSeek="10230" EndSeek="10284"/>
+<Insert>      }
+</Insert>
+<Copy StartSeek="10347" EndSeek="18162"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:03:22000">
+<Copy StartSeek="0" EndSeek="10039"/>
+<Copy StartSeek="10199" EndSeek="18322"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:04:57000">
+<Copy StartSeek="0" EndSeek="10105"/>
+<Insert>                               dpa_ntohs(session-&gt;sessionid), dpa_ntohs(session-&gt;outervlan));
+</Insert>
+<Copy StartSeek="10230" EndSeek="18353"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:05:10000">
+<Copy StartSeek="0" EndSeek="10039"/>
+<Insert>              ZTE_API_FAST_DBG("pppoe add sid %#x, vlan add %u", 
+</Insert>
+<Copy StartSeek="10104" EndSeek="18352"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:05:31000">
+<Copy StartSeek="0" EndSeek="9687"/>
+<Insert>      if (session-&gt;sessionid != ZTE_NO_PARAM &amp;&amp; session-&gt;outervlan != ZTE_NO_PARAM) {
+</Insert>
+<Copy StartSeek="9802" EndSeek="18381"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:06:4000">
+<Copy StartSeek="0" EndSeek="10323"/>
+<Insert>                    dpf-&gt;mod.l2.vlan_id = session-&gt;outervlan;
+                    dpf-&gt;mod.l2.pppoe_sid = session-&gt;sessionid;
+                    dpf-&gt;mod.ops |= DPA_MDF_VLAN_ADD;
+                    dpf-&gt;mod.ops |= DPA_MDF_PPPOE_ADD;
+</Insert>
+<Copy StartSeek="10534" EndSeek="18357"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:11:30000">
+<Copy StartSeek="0" EndSeek="9687"/>
+<Insert>      if (session-&gt;sessionid != ZTE_NO_PARAM &amp;&amp; session-&gt;outervlan != ZTE_NO_PARAM &amp;&amp;
+</Insert>
+<Copy StartSeek="9783" EndSeek="18367"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:11:55000">
+<Copy StartSeek="0" EndSeek="9687"/>
+<Insert>      if (session-&gt;sessionid != ZTE_NO_PARAM ||
+          session-&gt;outervlan != ZTE_NO_PARAM ||
+          !session-&gt;isppp) {
+</Insert>
+<Copy StartSeek="9783" EndSeek="18338"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:13:43000">
+<Copy StartSeek="0" EndSeek="10034"/>
+<Insert>      } else {
+</Insert>
+<Copy StartSeek="10089" EndSeek="18378"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:14:53000">
+<Copy StartSeek="0" EndSeek="10089"/>
+<Insert>              ZTE_API_FAST_DBG("pppoe add sid %#x, vlan add %u",
+</Insert>
+<Copy StartSeek="10133" EndSeek="18357"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:15:46000">
+<Copy StartSeek="0" EndSeek="10089"/>
+<Insert>              ZTE_API_FAST_DBG("pppoe del",
+                               dpa_ntohs(session-&gt;sessionid),
+                               dpa_ntohs(session-&gt;outervlan));
+</Insert>
+<Copy StartSeek="10134" EndSeek="18233"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:16:3000">
+<Copy StartSeek="0" EndSeek="10199"/>
+<Insert>              dpf-&gt;mod.l2.vlan_id = session-&gt;outervlan;
+              dpf-&gt;mod.l2.pppoe_sid = session-&gt;sessionid;
+              dpf-&gt;mod.ops |= DPA_MDF_VLAN_ADD;
+              dpf-&gt;mod.ops |= DPA_MDF_PPPOE_ADD;
+      }
+</Insert>
+<Copy StartSeek="10256" EndSeek="18071"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:17:3000">
+<Copy StartSeek="0" EndSeek="10034"/>
+<Insert>      } else if (session-&gt;sessionid == ZTE_NO_PARAM) {
+</Insert>
+<Copy StartSeek="10090" EndSeek="18072"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:18:15000">
+<Copy StartSeek="0" EndSeek="10257"/>
+<Copy StartSeek="10472" EndSeek="18287"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:18:33000">
+<Copy StartSeek="0" EndSeek="10349"/>
+<Insert>              dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_8021Q);
+</Insert>
+<Copy StartSeek="10416" EndSeek="18289"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:20:3000">
+<Copy StartSeek="0" EndSeek="10416"/>
+<Insert>              dpf-&gt;mod.ops |= DPA_MDF_PPPOE_DEL;
+</Insert>
+<Copy StartSeek="10464" EndSeek="18288"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:20:24000">
+<Copy StartSeek="0" EndSeek="10472"/>
+<Insert>
+</Insert>
+<Copy StartSeek="10472" EndSeek="18287"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:20:29000">
+<Copy StartSeek="0" EndSeek="10042"/>
+<Insert>      if (session-&gt;sessionid == ZTE_NO_PARAM) {
+              ZTE_API_FAST_DBG("pppoe del");
+              dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_8021Q);
+              dpf-&gt;mod.ops |= DPA_MDF_PPPOE_DEL;
+      }
+</Insert>
+<Copy StartSeek="10042" EndSeek="10257"/>
+<Copy StartSeek="10472" EndSeek="18287"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:22:15000">
+<Copy StartSeek="0" EndSeek="10042"/>
+<Insert>      if (session-&gt;outervlan == ZTE_NO_PARAM) {
+              ZTE_API_FAST_DBG("vlan del");
+</Insert>
+<Copy StartSeek="10193" EndSeek="18346"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:23:14000">
+<Copy StartSeek="0" EndSeek="10193"/>
+<Insert>              dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_PPP_SES);
+</Insert>
+<Copy StartSeek="10255" EndSeek="18341"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:23:29000">
+<Copy StartSeek="0" EndSeek="10139"/>
+<Insert>              ZTE_API_FAST_DBG("vlan del, vlan del");
+</Insert>
+<Copy StartSeek="10194" EndSeek="18342"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:23:43000">
+<Copy StartSeek="0" EndSeek="10304"/>
+<Insert>      }
+</Insert>
+<Copy StartSeek="10361" EndSeek="18391"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:24:4000">
+<Copy StartSeek="0" EndSeek="10091"/>
+<Insert>          session-&gt;sessionid == ZTE_NO_PARAM) {
+</Insert>
+<Copy StartSeek="10157" EndSeek="10379"/>
+<Insert>      if (session-&gt;sessionid == ZTE_NO_PARAM) {
+</Insert>
+<Copy StartSeek="10432" EndSeek="18414"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:25:0000">
+<Copy StartSeek="0" EndSeek="10091"/>
+<Insert>          session-&gt;sessionid == ZTE_NO_PARAM &amp;&amp; session-&gt;isppp) {
+</Insert>
+<Copy StartSeek="10167" EndSeek="18424"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:25:18000">
+<Copy StartSeek="0" EndSeek="10222"/>
+<Insert>              dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_IP);
+</Insert>
+<Copy StartSeek="10317" EndSeek="18457"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:25:56000">
+<Copy StartSeek="0" EndSeek="10222"/>
+<Insert>              dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_IP); /* HAIM FIXME : assuming IPV4 */
+</Insert>
+<Copy StartSeek="10331" EndSeek="18471"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:26:7000">
+<Copy StartSeek="0" EndSeek="10648"/>
+<Copy StartSeek="10861" EndSeek="18684"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:27:7000">
+<Copy StartSeek="0" EndSeek="10747"/>
+<Insert>              dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_8021Q);
+</Insert>
+<Copy StartSeek="10814" EndSeek="18686"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:27:14000">
+<Copy StartSeek="0" EndSeek="10814"/>
+<Insert>              dpf-&gt;mod.ops |= DPA_MDF_PPPOE_DEL;
+</Insert>
+<Copy StartSeek="10862" EndSeek="18685"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:27:29000">
+<Copy StartSeek="0" EndSeek="10436"/>
+<Insert>      else if (session-&gt;sessionid == ZTE_NO_PARAM) {
+</Insert>
+<Copy StartSeek="10522" EndSeek="18718"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:28:6000">
+<Copy StartSeek="0" EndSeek="10436"/>
+<Insert>      else if (session-&gt;sessionid == ZTE_NO_PARAM &amp;&amp;
+               session-&gt;isppp) {
+</Insert>
+<Copy StartSeek="10507" EndSeek="18703"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2013/06/19" Time="23:28:12000">
+<Copy StartSeek="0" EndSeek="7618"/>
+<Insert>      /* Add VLAN */
+      if (session-&gt;outervlan != ZTE_NO_PARAM) {
+            dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_8021Q);
+            dpf-&gt;mod.l2.vlan_id = session-&gt;outervlan;
+            dpf-&gt;mod.ops |= DPA_MDF_VLAN_ADD;
+            ZTE_API_FAST_DBG("vlan add: %u", dpa_ntohs(dpf-&gt;mod.l2.vlan_id));
+      }
+</Insert>
+<Copy StartSeek="7618" EndSeek="8039"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8357" EndSeek="18702"/>
+</Delta>
+</DeltaFile>

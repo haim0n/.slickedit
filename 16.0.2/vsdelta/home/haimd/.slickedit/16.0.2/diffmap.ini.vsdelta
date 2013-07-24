@@ -1,0 +1,1511 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="136" Comment="" Date="2013/02/24" Time="17:53:20000" NL="\10" Encoding="utf8">
+<Insert>[Mappings]
+///
+/export/local/users/haimd/projects/dpa.modifier_dev_vlan_for_merge//export/local/users/haimd/projects//export/local/users/haimd/projects/dpa/
+/export/local/users/haimd/projects/dpa//export/local/users/haimd/projects/dpa.modifier_dev_vlan_for_merge/
+/export/local/users/haimd/projects/dpa.phy_hdr//export/local/users/haimd/projects//export/local/users/haimd/projects/dpa/
+/export/local/users/haimd/projects//home/maxk/work//home/maxk/work/
+/export/local/users/haimd/projects/kw2/linux-2.6.32.11-lsp-3.1.0-tdm-zarlink-fiq//export/local/users/haimd/linux.git//export/local/users/maxk/linux/
+/export/local/users/haimd/projects/dpa/mod//home/maxk/work/dpa/mod/dpa/
+/export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls//export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls/dcm/
+/export/local/users/haimd/projects/dpa/mod/dpa//export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls/
+/export/local/users/haimd/GT-I9100_Kernel.speedmod/GT-I9100_Kernel.speedmod-21//export/local/users/haimd/GT-I9100_Kernel.speedmod/GT-I9100_Kernel.speedmod-21/arch/arm/configs/
+/export/local/users/haimd/linux/linux-2.6.32.11//export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/
+/export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/
+/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/configs//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/configs/
+/export/local/users/haimd/GT-I9100_Kernel.speedmod-19//export/local/users/haimd/GT-I9100_Kernel.speedmod-19/arch/arm/configs/
+/export/local/users/haimd/GT-I9100_Kernel.speedmod-18//export/local/users/haimd/GT-I9100_Kernel.speedmod-19/
+/local/ws.710//tmp//local/ws.702/
+/tmp//local/ws.710/xsl/kernel/2.6.34//local/ws-613/xsl/kernel/2.4.33/linux/drivers/block/
+/local/ws.710/xsl/src/kernel/iptables_decisions.new//local/ws.710/xsl/src/kernel/iptables_decisions/
+/local/ws.710/xsl/src/kernel/iptables_decisions_mstr.new//local/ws.710/xsl/src/kernel/iptables_decisions_mstr/
+/local/ws.702//local/ws.710/
+/local/ws.710/xsl/src/kernel/kpepd-old//local/ws.710/xsl/src/kernel/kpepd//local/ws.710/xsl/src/kernel/kpepd/
+/local/ws.632//local/ws.702//local/ws.710//local/ws.701GA/
+/local/ws.630GA.newgen.keep/xsl/src/kernel/mb8760-watchdog-and-bypass-v04//local/ws.630GA.newgen.keep/xsl/src/kernel/mb8760-misc-drv-v05//local/ws.630GA.newgen.keep/xsl/src/kernel/mb8760-misc-drv-v05/
+/local/ws.710_newcvs//local/ws.800/
+/local/ws.800/xsl/kernel/2.6.34/drivers/net//local/ws.710_newcvs/xsl/src/kernel/
+/local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libTUNLS//local/ws.710_newcvs/xsl/src/kernel/iptables_udp_encaps/libUDPENCAPS//local/ws.710_newcvs/xsl/src/kernel/iptables_udp_encaps/libudpencaps/
+/local/ws.710_newcvs/xsl/src/kernel/iptables_caching_decisions/libcachingdecisions//local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libTUNLS//local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libtunls//local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libtunls/
+/local/ws.710_newcvs/xsl/src/user/generic/scripts/mng/caswell//local/ws.710_newcvs/xsl/src/kernel/bypass-caswell-1.8.0/script/addressing/
+/local/ws.631//local/ws.632//local/ws.631_118//tmp/
+/local/ws.631_118//local/ws.632//local/ws.631/
+/local/ws.631_118/xsl/src/kernel/kpepd//users/haimd/tmp/
+/tmp/614b111//tmp/631b118/
+/local/ws.gd/multitcp_latest//local/ws.631MultiTcp/
+/local/ws.gd/multitcp_630b104//local/ws.gd/multitcp_latest//local/ws.gd/multitcp_latest/
+/local/ws.gd/multitcp_630b100//local/ws.gd/multitcp_latest//local/ws.gd/multitcp_630b104/
+/local/ws.800//local/ws.800.clean/
+/local/ws.701BetaTwo//local/ws.800//local/ws.701GA/
+/local/ws.630GA/xsl/src/kernel/bypass-caswell//local/ws.701GA/xsl/src/kernel/bypass-caswell-1.6/
+/local/ws.800/xsl/kernel/2.6.34//local/ws.800/xsl/kernel/2.4.33/linux//local/ws.800/xsl/kernel/2.6.33/
+/local/ws.701beta2/xsl/kernel/2.4.33/linux//local/ws.800/xsl/kernel/2.6.34/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel//mnt/flash/root/
+/local/chroot/OS/centos5.5/local/ws.800/xsl/kernel/linux-2.6.34//local/chroot/OS/centos5.5/local/ws.800/xsl/kernel/2.6.34/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v02//local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v03/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v03//local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v02/
+/local/ws.630GA//local/ws.701beta2//local/ws.701beta2/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/linux//local/linux-2.4.21-37.EL//local/chroot/OS/centos3/local/linux-2.4.33.3//local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/spec/
+/local/chroot/OS/centos3/local/ws.630GA//local/ws.701beta2/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/bypass-caswell.softirq//local/ws.701beta2/xsl/src/kernel/bypass-caswell/
+/local/ws.630GA/xsl/kernel/2.4.33/linux//local/chroot/OS/centos3/local/linux-2.4.33.3//local/chroot/OS/centos3/local/linux-2.4.33.3/
+/local/ws.630GA/xsl/kernel/2.4.33/linux/drivers/net//local/chroot/OS/centos3/local/linux-2.4.33.3/
+/home/haimd/downloads/software/kernel/linux-2.4.21//local/ws.630GA/xsl/kernel/2.4.33/linux/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/spec//local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/linux/
+/local/ws.630//local/ws.701///local/ws.701//local/chroot/OS/centos3/local/ws.630GA//local/ws.630GA//local/l7dcn//local/l7dcn/
+/local/chroot/OS/centos3/local/ws.701//local/ws.630GA//local/ws.siteqos/
+/local/ws.630-i2c//local/ws.630b591/
+/local/chroot/OS/centos3/local/ws.630/xsl/kernel/2.4.33/linux//home/haimd/downloads/software/kernel/linux-2.4.37.7//home/haimd/downloads/software/kernel/linux-2.4.37.7/
+/local/chroot/OS/centos3/local/ws.630/xsl/kernel/2.4.33/linux/drivers/scsi//home/haimd/downloads/software/kernel/linux-2.6.20/drivers/ata/
+/local/ws.630/xsl/kernel/2.4.33/linux//tmp/new/
+/local/chroot/OS/centos3/local/ws.630b591/xsl/src/kernel/network-bypass-1.4.0.b2//users/eganor/bypass-caswell/
+/local/chroot/OS/centos3/local/ws.630b591/xsl/src/kernel/bypass-caswell//local/chroot/OS/centos3/local/ws.630b591/xsl/src/kernel/bypass-caswell/network-bypass-1.4.0.b2/driver/
+/local/ws.siteqos//local/ws.701//local/chroot/OS/centos3/local/ws.701//local/ws.630/
+/local/chroot/OS/centos3/local/ws.siteqos//tmp//local/ws.sitepsd//local/chroot/OS/centos3/local/ws.sitepsd/
+/local/ws.sitepsd//local/ws.siteqos/
+/local/chroot/OS/centos3/local/ws.sitepsd//local/chroot/OS/centos3/local/ws.siteqos/
+/home/haimd/projects/debug_mm_slab_8192/kernel//home/haimd/projects/debug_mm_slab_8192/kernel/dbg_mm/
+/local/ws.630/xsl/kernel/2.4.33/old//local/ws.630/xsl/kernel/2.4.33/new/
+/local/ws.630/xsl/src/kernel/iptables_limit_rdp/rdp_queries//local/ws.630/xsl/src/kernel/iptables_limit_http/http_queries/
+/local/ws.630/xsl/src/kernel/iptables_limit_ftp/ftp_queries//local/ws.630/xsl/src/kernel/iptables_limit_rdp/rdp_queries//local/ws.630/xsl/src/kernel/iptables_limit_http/http_queries/
+/local/ws.siteqos/xsl/src/kernel/qos//local/ws.siteqos/xsl/kernel/2.4.33/linux/net/sched/
+/local/l7dcn//local/ws.630//local/ws.630/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/libDECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/libdecisions/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/DECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/decisions/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/libdecisions//local/l7dcn/xsl/src/kernel/iptables_decisions/libDECISIONS/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/decisions//local/l7dcn/xsl/src/kernel/iptables_decisions/DECISIONS/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/old_target/libDECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/libdecisions/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/old_target/DECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/decisions/
+/tmp/l7decision//local/ws.630//local/ws.630/
+/local/ws.630/xsl/src/kernel/iptables_decisions/DECISIONS//home/haimd/downloads/software/decisions//home/haimd/downloads/software/decisions/
+/local/ws.630/xsl/src/kernel/iptables_decisions/libDECISIONS//home/haimd/downloads/software/decisions/
+/local/ws.630/xsl/src/kernel/iptables_decisions//home/haimd/downloads/software/decisions/
+/local/ws.630/xsl/kernel/2.4.33/linux/include/linux/netfilter_ipv4//home/haimd/downloads/software/decisions/
+/home/haimd/downloads/software/kernel/cciss-2.4.64-7//local/ws-613/xsl/kernel/2.4.33/linux/
+/local/ws-613//local/ws-612//local/ws-630_ftp_limit/
+/local/ws-613/xsl/kernel/2.4.33/linux/drivers/block//tmp/
+/local/ws-630/xsl/kernel/2.4.33/linux/drivers/block//tmp/
+/local/ws-613_v613_366//local/ws-613///local/ws-613/
+/local/ws-630_dyn_proc_new//local/ws-630_dyn_proc//local/ws-630_dyn_proc/
+/local/ws-613/xsl/kernel/2.4.33/linux/drivers/net/sk98lin//local/ws-613/xsl_old/kernel/2.4.33/linux/drivers/net/sk98lin_haim_old/
+/local/ws-630/xsl/kernel/2.4.33/linux/old//local/ws-630/xsl/kernel/2.4.33/linux/new/
+/local/ws-630//local/ws-613///local/ws-612b607//local/ws-630_new_co/
+/local/ws-612//local/ws-630_updated//local/ws-630//local/ws-630/
+/tmp/old//tmp/new//tmp/new/
+/users/haimd//local/ws-612b604/xsl/kernel/2.4.33/linux/net/ipv4/
+/users/eganor//local/ws-612b604/xsl/kernel/2.4.33/linux/net/ipv4/
+/local/ws-630/xsl/kernel/2.4.33/linux/net/ipv4//users/eganor/
+/local/ws-630/patches/old//local/ws-630/patches/new/
+/local/ws-630/xsl//local/ws-630_new_co/xsl//
+/local/xsl//local/ws-630/xsl//
+/local//local/ws-630/
+/local/ws-630-239//local/ws-630//
+/local/ws-630-231//local/ws-630-239/
+[Path1History]
+/export/local/users/haimd/projects/dpa/mod/dpa/dpa.c
+/export/local/users/haimd/projects/dpa/platform/linux_kernel_space/eth/eth.c
+/export/local/users/haimd/projects/dpa.modifier_dev_vlan_for_merge/dpa/
+/export/local/users/haimd/projects/dpa.modifier_dev_vlan_for_merge/
+/export/local/users/haimd/projects/dpa/
+/export/local/users/haimd/projects/dpa.phy_hdr/dpa/
+/export/local/users/haimd/projects/dpa.phy_hdr/
+apc_boot
+net/core/filter.c
+include/linux/filter.h
+[Path2History]
+/export/local/users/haimd/projects/dpa/mod/dpa/dpa.c
+/export/local/users/haimd/projects/dpa/platform/linux_kernel_space/eth/eth.c
+/export/local/users/haimd/projects/dpa/
+/export/local/users/haimd/projects/dpa.modifier_dev_vlan_for_merge/
+/home/maxk/work/dpa/
+apc_boot.bak
+/export/local/users/haimd/linux.git/net/core/filter.c
+/export/local/users/haimd/linux.git/include/linux/filter.h
+/export/local/users/maxk/linux/arch/arm/plat-feroceon/mv_drivers_lsp/mv_neta/net_dev/mv_netdev.c
+/home/maxk/work/dpa/mod/dpa/
+[VSDiffGeometry]
+x=0
+y=27
+width=1678
+height=966
+window_state=N
+def_diff_options=131072
+def_diff_edit_options=104
+[DiffSetupGeometry]
+x=292
+y=189
+width=929
+height=663
+def_diff_options=131072
+def_diff_edit_options=104
+[FilespecsHistory]
+*
+*.c *.h
+*.c
+*.c; *.h
+[MFDiffGeometry]
+x=0
+y=27
+width=1678
+height=966
+def_diff_options=131072
+def_diff_edit_options=104
+[ExcludeFilespecsHistory]
+*.o
+Entries Tag
+Entries
+*.o Entries* Repository* Tag* Root* CVS* .depend*
+*CVS*
+CVS
+*.o Entries* Repository* Tag* Root* CVS*
+*.o Entries* Repository* Tag*; Root* CVS*;
+*.o; Entries; Repository; Tag; Root;
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="utf8" Date="2012/01/01" Time="16:34:55000">
+<Copy StartSeek="0" EndSeek="8111"/>
+<Copy StartSeek="8147" EndSeek="8323"/>
+<Insert>iptables_decisions.new/DECISIONS/ipt_DECISIONS.c
+</Insert>
+<Copy StartSeek="8323" EndSeek="9169"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="10:20:1000">
+<Copy StartSeek="0" EndSeek="8338"/>
+<Copy StartSeek="8383" EndSeek="8597"/>
+<Insert>/local/ws.800/xsl/kernel/2.6.34/drivers/net/
+</Insert>
+<Copy StartSeek="8597" EndSeek="9169"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="10:20:1000">
+<Copy StartSeek="0" EndSeek="8618"/>
+<Insert>y=25
+width=1274
+height=948
+</Insert>
+<Copy StartSeek="8645" EndSeek="9169"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="10:38:38000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="122" EndSeek="9280"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="11:27:39000">
+<Copy StartSeek="0" EndSeek="8222"/>
+<Copy StartSeek="8278" EndSeek="8470"/>
+<Insert>config-el5.filtered
+</Insert>
+<Copy StartSeek="8470" EndSeek="9316"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="11:27:39000">
+<Copy StartSeek="0" EndSeek="8485"/>
+<Copy StartSeek="8510" EndSeek="8748"/>
+<Insert>mb8760-misc-drv-v05/
+</Insert>
+<Copy StartSeek="8748" EndSeek="9320"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="11:27:39000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>/export/local/users/haimd/GT-I9100_Kernel.speedmod-18//export/local/users/haimd/GT-I9100_Kernel.speedmod-19/
+</Insert>
+<Copy StartSeek="121" EndSeek="9319"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="11:27:55000">
+<Copy StartSeek="0" EndSeek="8221"/>
+<Copy StartSeek="8276" EndSeek="8502"/>
+<Insert>config-2.6.18-194.el5
+</Insert>
+<Copy StartSeek="8502" EndSeek="9352"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="11:27:55000">
+<Copy StartSeek="0" EndSeek="8517"/>
+<Copy StartSeek="8541" EndSeek="8784"/>
+<Insert>drivers/usb/serial/
+</Insert>
+<Copy StartSeek="8784" EndSeek="9356"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="11:27:55000">
+<Copy StartSeek="0" EndSeek="8924"/>
+<Insert>width=909
+height=536
+def_diff_options=0
+</Insert>
+<Copy StartSeek="8969" EndSeek="9361"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="17:50:27000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="139" EndSeek="9489"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="17:50:28000">
+<Copy StartSeek="0" EndSeek="8349"/>
+<Copy StartSeek="8411" EndSeek="8662"/>
+<Insert>strace_sync_loop.el5.filtered
+</Insert>
+<Copy StartSeek="8662" EndSeek="9521"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="17:50:28000">
+<Copy StartSeek="0" EndSeek="8677"/>
+<Copy StartSeek="8776" EndSeek="9009"/>
+<Insert>/local/ws.702/xsl/src/kernel/qos/
+</Insert>
+<Copy StartSeek="9009" EndSeek="9586"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="17:50:28000">
+<Copy StartSeek="0" EndSeek="9035"/>
+<Insert>width=1680
+height=967
+</Insert>
+<Copy StartSeek="9057" EndSeek="9072"/>
+<Insert>def_diff_options=0
+</Insert>
+<Copy StartSeek="9096" EndSeek="9591"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="utf8" Date="2012/01/26" Time="17:50:46000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="18" EndSeek="256"/>
+<Insert>///
+</Insert>
+<Copy StartSeek="256" EndSeek="9591"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="13:02:21000">
+<Copy StartSeek="0" EndSeek="8349"/>
+<Copy StartSeek="8401" EndSeek="8693"/>
+<Insert>strace_sync_loop.el5
+</Insert>
+<Copy StartSeek="8693" EndSeek="9622"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="13:02:21000">
+<Copy StartSeek="0" EndSeek="8708"/>
+<Copy StartSeek="8748" EndSeek="9073"/>
+<Insert>kpepd/
+</Insert>
+<Copy StartSeek="9073" EndSeek="9655"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="13:02:21000">
+<Copy StartSeek="0" EndSeek="9136"/>
+<Insert>def_diff_options=131072
+</Insert>
+<Copy StartSeek="9155" EndSeek="9650"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="13:05:48000">
+<Copy StartSeek="0" EndSeek="8349"/>
+<Copy StartSeek="8400" EndSeek="8722"/>
+<Insert>strace.2.6.18-194.el5
+</Insert>
+<Copy StartSeek="8722" EndSeek="9679"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="13:06:7000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="169" EndSeek="9837"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="13:10:12000">
+<Copy StartSeek="0" EndSeek="8507"/>
+<Copy StartSeek="8519" EndSeek="8866"/>
+<Insert>kernel-2.6.18-i686.config
+</Insert>
+<Copy StartSeek="8866" EndSeek="9823"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="13:10:12000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/configs/
+</Insert>
+<Copy StartSeek="168" EndSeek="9822"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="13:11:32000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/configs/
+</Insert>
+<Copy StartSeek="256" EndSeek="9910"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="13:14:36000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="140" EndSeek="10039"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="15:39:46000">
+<Copy StartSeek="0" EndSeek="8723"/>
+<Copy StartSeek="8799" EndSeek="9145"/>
+<Insert>/tmp/.config
+</Insert>
+<Copy StartSeek="9145" EndSeek="10102"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="15:39:46000">
+<Copy StartSeek="0" EndSeek="9160"/>
+<Copy StartSeek="9240" EndSeek="9571"/>
+<Insert>/local/ws.710/xsl/src/kernel/qos/
+</Insert>
+<Copy StartSeek="9571" EndSeek="10148"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="15:39:46000">
+<Copy StartSeek="0" EndSeek="9845"/>
+<Insert>y=25
+</Insert>
+<Copy StartSeek="9850" EndSeek="9872"/>
+<Insert>def_diff_options=0
+</Insert>
+<Copy StartSeek="9896" EndSeek="10153"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="15:40:16000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>/export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/
+</Insert>
+<Copy StartSeek="139" EndSeek="10152"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="15:40:31000">
+<Copy StartSeek="0" EndSeek="9800"/>
+<Insert>*
+</Insert>
+<Copy StartSeek="9800" EndSeek="9808"/>
+<Copy StartSeek="9810" EndSeek="10152"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="15:40:31000">
+<Copy StartSeek="0" EndSeek="9840"/>
+<Insert>x=0
+</Insert>
+<Copy StartSeek="9846" EndSeek="10154"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="15:41:16000">
+<Copy StartSeek="0" EndSeek="9731"/>
+<Insert>def_diff_options=131072
+</Insert>
+<Copy StartSeek="9754" EndSeek="10153"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="15:42:53000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>/export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/
+</Insert>
+<Copy StartSeek="206" EndSeek="10220"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="15:42:53000">
+<Copy StartSeek="0" EndSeek="9939"/>
+<Insert>def_diff_options=131072
+</Insert>
+<Copy StartSeek="9962" EndSeek="10219"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="15:43:10000">
+<Copy StartSeek="0" EndSeek="9798"/>
+<Insert>def_diff_options=65536
+</Insert>
+<Copy StartSeek="9822" EndSeek="10220"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="16:07:57000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="131" EndSeek="10340"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="16:07:57000">
+<Copy StartSeek="0" EndSeek="8909"/>
+<Copy StartSeek="8972" EndSeek="9386"/>
+<Insert>.config
+</Insert>
+<Copy StartSeek="9386" EndSeek="10395"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="16:07:57000">
+<Copy StartSeek="0" EndSeek="9401"/>
+<Copy StartSeek="9485" EndSeek="9856"/>
+<Insert>iptables_decisions_mstr/decisions_mstr/
+</Insert>
+<Copy StartSeek="9856" EndSeek="10439"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="16:07:57000">
+<Copy StartSeek="0" EndSeek="9919"/>
+<Insert>def_diff_options=0
+</Insert>
+<Copy StartSeek="9943" EndSeek="10444"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="utf8" Date="2012/01/29" Time="16:36:20000">
+<Copy StartSeek="0" EndSeek="10164"/>
+<Insert>def_diff_options=65536
+</Insert>
+<Copy StartSeek="10188" EndSeek="10445"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/01/29" Time="16:44:0000">
+<Insert>[Mappings]
+/export/local/users/haimd/linux/linux-2.6.32.11//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/
+/export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/
+/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/configs//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/configs/
+///
+/export/local/users/haimd/GT-I9100_Kernel.speedmod-19//export/local/users/haimd/GT-I9100_Kernel.speedmod-19/arch/arm/configs/
+/export/local/users/haimd/GT-I9100_Kernel.speedmod-18//export/local/users/haimd/GT-I9100_Kernel.speedmod-19/
+/local/ws.710//tmp//local/ws.702/
+/tmp//local/ws.710/xsl/kernel/2.6.34//local/ws-613/xsl/kernel/2.4.33/linux/drivers/block/
+/local/ws.710/xsl/src/kernel/iptables_decisions.new//local/ws.710/xsl/src/kernel/iptables_decisions/
+/local/ws.710/xsl/src/kernel/iptables_decisions_mstr.new//local/ws.710/xsl/src/kernel/iptables_decisions_mstr/
+/local/ws.702//local/ws.710/
+/local/ws.710/xsl/src/kernel/kpepd-old//local/ws.710/xsl/src/kernel/kpepd//local/ws.710/xsl/src/kernel/kpepd/
+/local/ws.632//local/ws.702//local/ws.710//local/ws.701GA/
+/local/ws.630GA.newgen.keep/xsl/src/kernel/mb8760-watchdog-and-bypass-v04//local/ws.630GA.newgen.keep/xsl/src/kernel/mb8760-misc-drv-v05//local/ws.630GA.newgen.keep/xsl/src/kernel/mb8760-misc-drv-v05/
+/local/ws.710_newcvs//local/ws.800/
+/local/ws.800/xsl/kernel/2.6.34/drivers/net//local/ws.710_newcvs/xsl/src/kernel/
+/local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libTUNLS//local/ws.710_newcvs/xsl/src/kernel/iptables_udp_encaps/libUDPENCAPS//local/ws.710_newcvs/xsl/src/kernel/iptables_udp_encaps/libudpencaps/
+/local/ws.710_newcvs/xsl/src/kernel/iptables_caching_decisions/libcachingdecisions//local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libTUNLS//local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libtunls//local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libtunls/
+/local/ws.710_newcvs/xsl/src/user/generic/scripts/mng/caswell//local/ws.710_newcvs/xsl/src/kernel/bypass-caswell-1.8.0/script/addressing/
+/local/ws.631//local/ws.632//local/ws.631_118//tmp/
+/local/ws.631_118//local/ws.632//local/ws.631/
+/local/ws.631_118/xsl/src/kernel/kpepd//users/haimd/tmp/
+/tmp/614b111//tmp/631b118/
+/local/ws.gd/multitcp_latest//local/ws.631MultiTcp/
+/local/ws.gd/multitcp_630b104//local/ws.gd/multitcp_latest//local/ws.gd/multitcp_latest/
+/local/ws.gd/multitcp_630b100//local/ws.gd/multitcp_latest//local/ws.gd/multitcp_630b104/
+/local/ws.800//local/ws.800.clean/
+/local/ws.701BetaTwo//local/ws.800//local/ws.701GA/
+/local/ws.630GA/xsl/src/kernel/bypass-caswell//local/ws.701GA/xsl/src/kernel/bypass-caswell-1.6/
+/local/ws.800/xsl/kernel/2.6.34//local/ws.800/xsl/kernel/2.4.33/linux//local/ws.800/xsl/kernel/2.6.33/
+/local/ws.701beta2/xsl/kernel/2.4.33/linux//local/ws.800/xsl/kernel/2.6.34/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel//mnt/flash/root/
+/local/chroot/OS/centos5.5/local/ws.800/xsl/kernel/linux-2.6.34//local/chroot/OS/centos5.5/local/ws.800/xsl/kernel/2.6.34/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v02//local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v03/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v03//local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v02/
+/local/ws.630GA//local/ws.701beta2//local/ws.701beta2/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/linux//local/linux-2.4.21-37.EL//local/chroot/OS/centos3/local/linux-2.4.33.3//local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/spec/
+/local/chroot/OS/centos3/local/ws.630GA//local/ws.701beta2/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/bypass-caswell.softirq//local/ws.701beta2/xsl/src/kernel/bypass-caswell/
+/local/ws.630GA/xsl/kernel/2.4.33/linux//local/chroot/OS/centos3/local/linux-2.4.33.3//local/chroot/OS/centos3/local/linux-2.4.33.3/
+/local/ws.630GA/xsl/kernel/2.4.33/linux/drivers/net//local/chroot/OS/centos3/local/linux-2.4.33.3/
+/home/haimd/downloads/software/kernel/linux-2.4.21//local/ws.630GA/xsl/kernel/2.4.33/linux/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/spec//local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/linux/
+/local/ws.630//local/ws.701///local/ws.701//local/chroot/OS/centos3/local/ws.630GA//local/ws.630GA//local/l7dcn//local/l7dcn/
+/local/chroot/OS/centos3/local/ws.701//local/ws.630GA//local/ws.siteqos/
+/local/ws.630-i2c//local/ws.630b591/
+/local/chroot/OS/centos3/local/ws.630/xsl/kernel/2.4.33/linux//home/haimd/downloads/software/kernel/linux-2.4.37.7//home/haimd/downloads/software/kernel/linux-2.4.37.7/
+/local/chroot/OS/centos3/local/ws.630/xsl/kernel/2.4.33/linux/drivers/scsi//home/haimd/downloads/software/kernel/linux-2.6.20/drivers/ata/
+/local/ws.630/xsl/kernel/2.4.33/linux//tmp/new/
+/local/chroot/OS/centos3/local/ws.630b591/xsl/src/kernel/network-bypass-1.4.0.b2//users/eganor/bypass-caswell/
+/local/chroot/OS/centos3/local/ws.630b591/xsl/src/kernel/bypass-caswell//local/chroot/OS/centos3/local/ws.630b591/xsl/src/kernel/bypass-caswell/network-bypass-1.4.0.b2/driver/
+/local/ws.siteqos//local/ws.701//local/chroot/OS/centos3/local/ws.701//local/ws.630/
+/local/chroot/OS/centos3/local/ws.siteqos//tmp//local/ws.sitepsd//local/chroot/OS/centos3/local/ws.sitepsd/
+/local/ws.sitepsd//local/ws.siteqos/
+/local/chroot/OS/centos3/local/ws.sitepsd//local/chroot/OS/centos3/local/ws.siteqos/
+/home/haimd/projects/debug_mm_slab_8192/kernel//home/haimd/projects/debug_mm_slab_8192/kernel/dbg_mm/
+/local/ws.630/xsl/kernel/2.4.33/old//local/ws.630/xsl/kernel/2.4.33/new/
+/local/ws.630/xsl/src/kernel/iptables_limit_rdp/rdp_queries//local/ws.630/xsl/src/kernel/iptables_limit_http/http_queries/
+/local/ws.630/xsl/src/kernel/iptables_limit_ftp/ftp_queries//local/ws.630/xsl/src/kernel/iptables_limit_rdp/rdp_queries//local/ws.630/xsl/src/kernel/iptables_limit_http/http_queries/
+/local/ws.siteqos/xsl/src/kernel/qos//local/ws.siteqos/xsl/kernel/2.4.33/linux/net/sched/
+/local/l7dcn//local/ws.630//local/ws.630/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/libDECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/libdecisions/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/DECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/decisions/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/libdecisions//local/l7dcn/xsl/src/kernel/iptables_decisions/libDECISIONS/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/decisions//local/l7dcn/xsl/src/kernel/iptables_decisions/DECISIONS/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/old_target/libDECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/libdecisions/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/old_target/DECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/decisions/
+/tmp/l7decision//local/ws.630//local/ws.630/
+/local/ws.630/xsl/src/kernel/iptables_decisions/DECISIONS//home/haimd/downloads/software/decisions//home/haimd/downloads/software/decisions/
+/local/ws.630/xsl/src/kernel/iptables_decisions/libDECISIONS//home/haimd/downloads/software/decisions/
+/local/ws.630/xsl/src/kernel/iptables_decisions//home/haimd/downloads/software/decisions/
+/local/ws.630/xsl/kernel/2.4.33/linux/include/linux/netfilter_ipv4//home/haimd/downloads/software/decisions/
+/home/haimd/downloads/software/kernel/cciss-2.4.64-7//local/ws-613/xsl/kernel/2.4.33/linux/
+/local/ws-613//local/ws-612//local/ws-630_ftp_limit/
+/local/ws-613/xsl/kernel/2.4.33/linux/drivers/block//tmp/
+/local/ws-630/xsl/kernel/2.4.33/linux/drivers/block//tmp/
+/local/ws-613_v613_366//local/ws-613///local/ws-613/
+/local/ws-630_dyn_proc_new//local/ws-630_dyn_proc//local/ws-630_dyn_proc/
+/local/ws-613/xsl/kernel/2.4.33/linux/drivers/net/sk98lin//local/ws-613/xsl_old/kernel/2.4.33/linux/drivers/net/sk98lin_haim_old/
+/local/ws-630/xsl/kernel/2.4.33/linux/old//local/ws-630/xsl/kernel/2.4.33/linux/new/
+/local/ws-630//local/ws-613///local/ws-612b607//local/ws-630_new_co/
+/local/ws-612//local/ws-630_updated//local/ws-630//local/ws-630/
+/tmp/old//tmp/new//tmp/new/
+/users/haimd//local/ws-612b604/xsl/kernel/2.4.33/linux/net/ipv4/
+/users/eganor//local/ws-612b604/xsl/kernel/2.4.33/linux/net/ipv4/
+/local/ws-630/xsl/kernel/2.4.33/linux/net/ipv4//users/eganor/
+/local/ws-630/patches/old//local/ws-630/patches/new/
+/local/ws-630/xsl//local/ws-630_new_co/xsl//
+/local/xsl//local/ws-630/xsl//
+/local//local/ws-630/
+/local/ws-630-239//local/ws-630//
+/local/ws-630-231//local/ws-630-239/
+[Path1History]
+/export/local/users/haimd/linux/linux-2.6.32.11/net/netfilter/
+/export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2/net/netfilter/
+config.haim
+arch/arm/configs/mv88f6500_gw_nfp_static_defconfig
+arch/arm/configs/mv88f6500_gw_nfp_dynamic_defconfig
+/export/local/users/haimd/GT-I9100_Kernel.speedmod-19/.config
+../GT-I9100_Kernel.speedmod-18/drivers/samsung/Kconfig
+../GT-I9100_Kernel.speedmod-18/drivers/samsung/Makefile
+arch/arm/configs/c1_rev02_defconfig
+fs/sync.c.org
+[Path2History]
+/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netfilter/
+/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/net/netfilter/
+arch/arm/configs/mv88f6500_gw_defconfig
+/export/local/users/haimd/GT-I9100_Kernel.speedmod-19/arch/arm/configs/c1_rev02_speedmod_defconfig
+drivers/samsung/Kconfig
+drivers/samsung/Makefile
+arch/arm/configs/c1_rev02_speedmod_defconfig
+fs/
+/tmp/xsl/kernel/2.6.34/
+iptables_decisions/DECISIONS/
+[VSDiffGeometry]
+x=0
+y=27
+width=1678
+height=966
+window_state=N
+def_diff_options=131072
+def_diff_edit_options=104
+[DiffSetupGeometry]
+x=125
+y=122
+width=929
+height=663
+def_diff_options=131072
+def_diff_edit_options=104
+[FilespecsHistory]
+*.c *.h
+*
+*.c
+*.c; *.h
+[MFDiffGeometry]
+x=133
+y=27
+width=1280
+height=950
+def_diff_options=131072
+def_diff_edit_options=104
+[ExcludeFilespecsHistory]
+Entries Tag
+Entries
+*.o Entries* Repository* Tag* Root* CVS* .depend*
+*CVS*
+CVS
+*.o Entries* Repository* Tag* Root* CVS*
+*.o Entries* Repository* Tag*; Root* CVS*;
+*.o; Entries; Repository; Tag; Root;
+*.o
+</Insert>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="utf8" Date="2012/01/31" Time="16:56:32000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>/export/local/users/haimd/linux/linux-2.6.32.11//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/
+</Insert>
+<Copy StartSeek="193" EndSeek="10507"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="utf8" Date="2012/01/31" Time="16:56:32000">
+<Copy StartSeek="0" EndSeek="8971"/>
+<Copy StartSeek="9020" EndSeek="9483"/>
+<Insert>fs/sync.c.org
+</Insert>
+<Copy StartSeek="9483" EndSeek="10542"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="utf8" Date="2012/01/31" Time="16:56:33000">
+<Copy StartSeek="0" EndSeek="9498"/>
+<Copy StartSeek="9560" EndSeek="9985"/>
+<Insert>iptables_decisions/DECISIONS/
+</Insert>
+<Copy StartSeek="9985" EndSeek="10574"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="utf8" Date="2012/01/31" Time="16:56:33000">
+<Copy StartSeek="0" EndSeek="10220"/>
+<Insert>*.c *.h
+</Insert>
+<Copy StartSeek="10220" EndSeek="10222"/>
+<Copy StartSeek="10230" EndSeek="10574"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="utf8" Date="2012/01/31" Time="16:56:33000">
+<Copy StartSeek="0" EndSeek="10260"/>
+<Insert>x=133
+</Insert>
+<Copy StartSeek="10264" EndSeek="10269"/>
+<Insert>width=1280
+height=950
+</Insert>
+<Copy StartSeek="10291" EndSeek="10572"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/02/01" Time="12:31:17000">
+<Insert>[Mappings]
+/export/local/users/haimd/linux/linux-2.6.32.11//export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/
+/export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/
+/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/configs//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/configs/
+///
+/export/local/users/haimd/GT-I9100_Kernel.speedmod-19//export/local/users/haimd/GT-I9100_Kernel.speedmod-19/arch/arm/configs/
+/export/local/users/haimd/GT-I9100_Kernel.speedmod-18//export/local/users/haimd/GT-I9100_Kernel.speedmod-19/
+/local/ws.710//tmp//local/ws.702/
+/tmp//local/ws.710/xsl/kernel/2.6.34//local/ws-613/xsl/kernel/2.4.33/linux/drivers/block/
+/local/ws.710/xsl/src/kernel/iptables_decisions.new//local/ws.710/xsl/src/kernel/iptables_decisions/
+/local/ws.710/xsl/src/kernel/iptables_decisions_mstr.new//local/ws.710/xsl/src/kernel/iptables_decisions_mstr/
+/local/ws.702//local/ws.710/
+/local/ws.710/xsl/src/kernel/kpepd-old//local/ws.710/xsl/src/kernel/kpepd//local/ws.710/xsl/src/kernel/kpepd/
+/local/ws.632//local/ws.702//local/ws.710//local/ws.701GA/
+/local/ws.630GA.newgen.keep/xsl/src/kernel/mb8760-watchdog-and-bypass-v04//local/ws.630GA.newgen.keep/xsl/src/kernel/mb8760-misc-drv-v05//local/ws.630GA.newgen.keep/xsl/src/kernel/mb8760-misc-drv-v05/
+/local/ws.710_newcvs//local/ws.800/
+/local/ws.800/xsl/kernel/2.6.34/drivers/net//local/ws.710_newcvs/xsl/src/kernel/
+/local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libTUNLS//local/ws.710_newcvs/xsl/src/kernel/iptables_udp_encaps/libUDPENCAPS//local/ws.710_newcvs/xsl/src/kernel/iptables_udp_encaps/libudpencaps/
+/local/ws.710_newcvs/xsl/src/kernel/iptables_caching_decisions/libcachingdecisions//local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libTUNLS//local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libtunls//local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libtunls/
+/local/ws.710_newcvs/xsl/src/user/generic/scripts/mng/caswell//local/ws.710_newcvs/xsl/src/kernel/bypass-caswell-1.8.0/script/addressing/
+/local/ws.631//local/ws.632//local/ws.631_118//tmp/
+/local/ws.631_118//local/ws.632//local/ws.631/
+/local/ws.631_118/xsl/src/kernel/kpepd//users/haimd/tmp/
+/tmp/614b111//tmp/631b118/
+/local/ws.gd/multitcp_latest//local/ws.631MultiTcp/
+/local/ws.gd/multitcp_630b104//local/ws.gd/multitcp_latest//local/ws.gd/multitcp_latest/
+/local/ws.gd/multitcp_630b100//local/ws.gd/multitcp_latest//local/ws.gd/multitcp_630b104/
+/local/ws.800//local/ws.800.clean/
+/local/ws.701BetaTwo//local/ws.800//local/ws.701GA/
+/local/ws.630GA/xsl/src/kernel/bypass-caswell//local/ws.701GA/xsl/src/kernel/bypass-caswell-1.6/
+/local/ws.800/xsl/kernel/2.6.34//local/ws.800/xsl/kernel/2.4.33/linux//local/ws.800/xsl/kernel/2.6.33/
+/local/ws.701beta2/xsl/kernel/2.4.33/linux//local/ws.800/xsl/kernel/2.6.34/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel//mnt/flash/root/
+/local/chroot/OS/centos5.5/local/ws.800/xsl/kernel/linux-2.6.34//local/chroot/OS/centos5.5/local/ws.800/xsl/kernel/2.6.34/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v02//local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v03/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v03//local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v02/
+/local/ws.630GA//local/ws.701beta2//local/ws.701beta2/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/linux//local/linux-2.4.21-37.EL//local/chroot/OS/centos3/local/linux-2.4.33.3//local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/spec/
+/local/chroot/OS/centos3/local/ws.630GA//local/ws.701beta2/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/bypass-caswell.softirq//local/ws.701beta2/xsl/src/kernel/bypass-caswell/
+/local/ws.630GA/xsl/kernel/2.4.33/linux//local/chroot/OS/centos3/local/linux-2.4.33.3//local/chroot/OS/centos3/local/linux-2.4.33.3/
+/local/ws.630GA/xsl/kernel/2.4.33/linux/drivers/net//local/chroot/OS/centos3/local/linux-2.4.33.3/
+/home/haimd/downloads/software/kernel/linux-2.4.21//local/ws.630GA/xsl/kernel/2.4.33/linux/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/spec//local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/linux/
+/local/ws.630//local/ws.701///local/ws.701//local/chroot/OS/centos3/local/ws.630GA//local/ws.630GA//local/l7dcn//local/l7dcn/
+/local/chroot/OS/centos3/local/ws.701//local/ws.630GA//local/ws.siteqos/
+/local/ws.630-i2c//local/ws.630b591/
+/local/chroot/OS/centos3/local/ws.630/xsl/kernel/2.4.33/linux//home/haimd/downloads/software/kernel/linux-2.4.37.7//home/haimd/downloads/software/kernel/linux-2.4.37.7/
+/local/chroot/OS/centos3/local/ws.630/xsl/kernel/2.4.33/linux/drivers/scsi//home/haimd/downloads/software/kernel/linux-2.6.20/drivers/ata/
+/local/ws.630/xsl/kernel/2.4.33/linux//tmp/new/
+/local/chroot/OS/centos3/local/ws.630b591/xsl/src/kernel/network-bypass-1.4.0.b2//users/eganor/bypass-caswell/
+/local/chroot/OS/centos3/local/ws.630b591/xsl/src/kernel/bypass-caswell//local/chroot/OS/centos3/local/ws.630b591/xsl/src/kernel/bypass-caswell/network-bypass-1.4.0.b2/driver/
+/local/ws.siteqos//local/ws.701//local/chroot/OS/centos3/local/ws.701//local/ws.630/
+/local/chroot/OS/centos3/local/ws.siteqos//tmp//local/ws.sitepsd//local/chroot/OS/centos3/local/ws.sitepsd/
+/local/ws.sitepsd//local/ws.siteqos/
+/local/chroot/OS/centos3/local/ws.sitepsd//local/chroot/OS/centos3/local/ws.siteqos/
+/home/haimd/projects/debug_mm_slab_8192/kernel//home/haimd/projects/debug_mm_slab_8192/kernel/dbg_mm/
+/local/ws.630/xsl/kernel/2.4.33/old//local/ws.630/xsl/kernel/2.4.33/new/
+/local/ws.630/xsl/src/kernel/iptables_limit_rdp/rdp_queries//local/ws.630/xsl/src/kernel/iptables_limit_http/http_queries/
+/local/ws.630/xsl/src/kernel/iptables_limit_ftp/ftp_queries//local/ws.630/xsl/src/kernel/iptables_limit_rdp/rdp_queries//local/ws.630/xsl/src/kernel/iptables_limit_http/http_queries/
+/local/ws.siteqos/xsl/src/kernel/qos//local/ws.siteqos/xsl/kernel/2.4.33/linux/net/sched/
+/local/l7dcn//local/ws.630//local/ws.630/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/libDECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/libdecisions/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/DECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/decisions/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/libdecisions//local/l7dcn/xsl/src/kernel/iptables_decisions/libDECISIONS/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/decisions//local/l7dcn/xsl/src/kernel/iptables_decisions/DECISIONS/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/old_target/libDECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/libdecisions/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/old_target/DECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/decisions/
+/tmp/l7decision//local/ws.630//local/ws.630/
+/local/ws.630/xsl/src/kernel/iptables_decisions/DECISIONS//home/haimd/downloads/software/decisions//home/haimd/downloads/software/decisions/
+/local/ws.630/xsl/src/kernel/iptables_decisions/libDECISIONS//home/haimd/downloads/software/decisions/
+/local/ws.630/xsl/src/kernel/iptables_decisions//home/haimd/downloads/software/decisions/
+/local/ws.630/xsl/kernel/2.4.33/linux/include/linux/netfilter_ipv4//home/haimd/downloads/software/decisions/
+/home/haimd/downloads/software/kernel/cciss-2.4.64-7//local/ws-613/xsl/kernel/2.4.33/linux/
+/local/ws-613//local/ws-612//local/ws-630_ftp_limit/
+/local/ws-613/xsl/kernel/2.4.33/linux/drivers/block//tmp/
+/local/ws-630/xsl/kernel/2.4.33/linux/drivers/block//tmp/
+/local/ws-613_v613_366//local/ws-613///local/ws-613/
+/local/ws-630_dyn_proc_new//local/ws-630_dyn_proc//local/ws-630_dyn_proc/
+/local/ws-613/xsl/kernel/2.4.33/linux/drivers/net/sk98lin//local/ws-613/xsl_old/kernel/2.4.33/linux/drivers/net/sk98lin_haim_old/
+/local/ws-630/xsl/kernel/2.4.33/linux/old//local/ws-630/xsl/kernel/2.4.33/linux/new/
+/local/ws-630//local/ws-613///local/ws-612b607//local/ws-630_new_co/
+/local/ws-612//local/ws-630_updated//local/ws-630//local/ws-630/
+/tmp/old//tmp/new//tmp/new/
+/users/haimd//local/ws-612b604/xsl/kernel/2.4.33/linux/net/ipv4/
+/users/eganor//local/ws-612b604/xsl/kernel/2.4.33/linux/net/ipv4/
+/local/ws-630/xsl/kernel/2.4.33/linux/net/ipv4//users/eganor/
+/local/ws-630/patches/old//local/ws-630/patches/new/
+/local/ws-630/xsl//local/ws-630_new_co/xsl//
+/local/xsl//local/ws-630/xsl//
+/local//local/ws-630/
+/local/ws-630-239//local/ws-630//
+/local/ws-630-231//local/ws-630-239/
+[Path1History]
+/export/local/users/haimd/linux/linux-2.6.32.11/
+/export/local/users/haimd/linux/linux-2.6.32.11/net/netfilter/
+/export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2/net/netfilter/
+config.haim
+arch/arm/configs/mv88f6500_gw_nfp_static_defconfig
+arch/arm/configs/mv88f6500_gw_nfp_dynamic_defconfig
+/export/local/users/haimd/GT-I9100_Kernel.speedmod-19/.config
+../GT-I9100_Kernel.speedmod-18/drivers/samsung/Kconfig
+../GT-I9100_Kernel.speedmod-18/drivers/samsung/Makefile
+arch/arm/configs/c1_rev02_defconfig
+[Path2History]
+/export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2/
+/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netfilter/
+/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/net/netfilter/
+arch/arm/configs/mv88f6500_gw_defconfig
+/export/local/users/haimd/GT-I9100_Kernel.speedmod-19/arch/arm/configs/c1_rev02_speedmod_defconfig
+drivers/samsung/Kconfig
+drivers/samsung/Makefile
+arch/arm/configs/c1_rev02_speedmod_defconfig
+fs/
+/tmp/xsl/kernel/2.6.34/
+[VSDiffGeometry]
+x=0
+y=27
+width=1678
+height=966
+window_state=N
+def_diff_options=131072
+def_diff_edit_options=104
+[DiffSetupGeometry]
+x=125
+y=122
+width=929
+height=663
+def_diff_options=131072
+def_diff_edit_options=104
+[FilespecsHistory]
+*
+*.c *.h
+*.c
+*.c; *.h
+[MFDiffGeometry]
+x=0
+y=27
+width=1680
+height=967
+def_diff_options=131072
+def_diff_edit_options=104
+[ExcludeFilespecsHistory]
+Entries Tag
+Entries
+*.o Entries* Repository* Tag* Root* CVS* .depend*
+*CVS*
+CVS
+*.o Entries* Repository* Tag* Root* CVS*
+*.o Entries* Repository* Tag*; Root* CVS*;
+*.o; Entries; Repository; Tag; Root;
+*.o
+</Insert>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="utf8" Date="2012/02/29" Time="11:47:54000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="189" EndSeek="10750"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="utf8" Date="2012/02/29" Time="11:47:55000">
+<Copy StartSeek="0" EndSeek="9149"/>
+<Copy StartSeek="9236" EndSeek="9712"/>
+<Insert>arch/arm/configs/c1_rev02_defconfig
+</Insert>
+<Copy StartSeek="9712" EndSeek="10801"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="utf8" Date="2012/02/29" Time="11:47:55000">
+<Copy StartSeek="0" EndSeek="9727"/>
+<Copy StartSeek="9842" EndSeek="10305"/>
+<Insert>/tmp/xsl/kernel/2.6.34/
+</Insert>
+<Copy StartSeek="10305" EndSeek="10892"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="utf8" Date="2012/02/29" Time="11:47:55000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="18" EndSeek="818"/>
+<Insert>///
+</Insert>
+<Copy StartSeek="818" EndSeek="10892"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="utf8" Date="2012/02/29" Time="11:55:4000">
+<Copy StartSeek="0" EndSeek="9149"/>
+<Copy StartSeek="9194" EndSeek="9701"/>
+<Insert>../GT-I9100_Kernel.speedmod-18/drivers/samsung/Makefile
+</Insert>
+<Copy StartSeek="9701" EndSeek="10881"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="utf8" Date="2012/02/29" Time="11:55:4000">
+<Copy StartSeek="0" EndSeek="9716"/>
+<Copy StartSeek="9752" EndSeek="10326"/>
+<Insert>fs/
+</Insert>
+<Copy StartSeek="10326" EndSeek="10913"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="utf8" Date="2012/02/29" Time="11:55:4000">
+<Copy StartSeek="0" EndSeek="10389"/>
+<Insert>def_diff_options=131072
+</Insert>
+<Copy StartSeek="10408" EndSeek="10908"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="utf8" Date="2012/02/29" Time="11:55:19000">
+<Copy StartSeek="0" EndSeek="9149"/>
+<Copy StartSeek="9162" EndSeek="9659"/>
+<Insert>../GT-I9100_Kernel.speedmod-18/drivers/samsung/Kconfig
+</Insert>
+<Copy StartSeek="9659" EndSeek="10866"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="utf8" Date="2012/03/12" Time="11:32:15000">
+<Copy StartSeek="0" EndSeek="9674"/>
+<Copy StartSeek="9721" EndSeek="10286"/>
+<Insert>arch/arm/configs/c1_rev02_speedmod_defconfig
+</Insert>
+<Copy StartSeek="10286" EndSeek="10868"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="utf8" Date="2012/03/12" Time="11:32:15000">
+<Copy StartSeek="0" EndSeek="9149"/>
+<Copy StartSeek="9159" EndSeek="9607"/>
+<Insert>/export/local/users/haimd/GT-I9100_Kernel.speedmod-19/.config
+</Insert>
+<Copy StartSeek="9607" EndSeek="10816"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="utf8" Date="2012/05/16" Time="19:04:23000">
+<Copy StartSeek="0" EndSeek="9622"/>
+<Copy StartSeek="9640" EndSeek="10227"/>
+<Insert>drivers/samsung/Makefile
+</Insert>
+<Copy StartSeek="10227" EndSeek="10809"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="utf8" Date="2012/05/16" Time="19:04:23000">
+<Copy StartSeek="0" EndSeek="9149"/>
+<Copy StartSeek="9159" EndSeek="9565"/>
+<Insert>arch/arm/configs/mv88f6500_gw_nfp_dynamic_defconfig
+</Insert>
+<Copy StartSeek="9565" EndSeek="10767"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="utf8" Date="2012/05/16" Time="19:07:27000">
+<Copy StartSeek="0" EndSeek="9580"/>
+<Copy StartSeek="9597" EndSeek="10178"/>
+<Insert>drivers/samsung/Kconfig
+</Insert>
+<Copy StartSeek="10178" EndSeek="10760"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="utf8" Date="2012/05/16" Time="19:07:27000">
+<Copy StartSeek="0" EndSeek="9149"/>
+<Copy StartSeek="9177" EndSeek="9542"/>
+<Insert>arch/arm/configs/mv88f6500_gw_nfp_static_defconfig
+</Insert>
+<Copy StartSeek="9542" EndSeek="10737"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="utf8" Date="2012/05/30" Time="14:46:54000">
+<Copy StartSeek="0" EndSeek="9557"/>
+<Copy StartSeek="9580" EndSeek="10079"/>
+<Insert>/export/local/users/haimd/GT-I9100_Kernel.speedmod-19/arch/arm/configs/c1_rev02_speedmod_defconfig
+</Insert>
+<Copy StartSeek="10079" EndSeek="10661"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="utf8" Date="2012/05/30" Time="14:46:54000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="116" EndSeek="10766"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="utf8" Date="2012/07/17" Time="14:52:46000">
+<Copy StartSeek="0" EndSeek="9254"/>
+<Copy StartSeek="9274" EndSeek="9655"/>
+<Insert>config.haim
+</Insert>
+<Copy StartSeek="9655" EndSeek="10774"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="utf8" Date="2012/07/17" Time="14:52:47000">
+<Copy StartSeek="0" EndSeek="9670"/>
+<Copy StartSeek="9698" EndSeek="10180"/>
+<Insert>arch/arm/configs/mv88f6500_gw_defconfig
+</Insert>
+<Copy StartSeek="10180" EndSeek="10762"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="utf8" Date="2012/07/17" Time="14:52:47000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>/export/local/users/haimd/projects/dpa/mod/dpa//export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls/
+</Insert>
+<Copy StartSeek="11" EndSeek="18"/>
+<Copy StartSeek="123" EndSeek="10762"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="utf8" Date="2012/07/23" Time="14:33:5000">
+<Copy StartSeek="0" EndSeek="9254"/>
+<Copy StartSeek="9264" EndSeek="9589"/>
+<Insert>/export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2/net/netfilter/
+</Insert>
+<Copy StartSeek="9589" EndSeek="10696"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="utf8" Date="2012/07/23" Time="14:33:5000">
+<Copy StartSeek="0" EndSeek="9604"/>
+<Copy StartSeek="9621" EndSeek="10051"/>
+<Insert>/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/net/netfilter/
+</Insert>
+<Copy StartSeek="10051" EndSeek="10633"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="utf8" Date="2012/07/23" Time="14:33:5000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="128" EndSeek="10750"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="utf8" Date="2012/08/02" Time="16:13:24000">
+<Copy StartSeek="0" EndSeek="9371"/>
+<Copy StartSeek="9384" EndSeek="9656"/>
+<Insert>/export/local/users/haimd/linux/linux-2.6.32.11/net/netfilter/
+</Insert>
+<Copy StartSeek="9656" EndSeek="10700"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="utf8" Date="2012/08/02" Time="16:13:24000">
+<Copy StartSeek="0" EndSeek="9671"/>
+<Copy StartSeek="9688" EndSeek="10051"/>
+<Insert>/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netfilter/
+</Insert>
+<Copy StartSeek="10051" EndSeek="10633"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="utf8" Date="2012/08/02" Time="16:13:24000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>/export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls//export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls/dcm/
+</Insert>
+<Copy StartSeek="127" EndSeek="10632"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="utf8" Date="2012/08/02" Time="16:13:32000">
+<Copy StartSeek="0" EndSeek="9370"/>
+<Copy StartSeek="9383" EndSeek="9619"/>
+<Insert>/export/local/users/haimd/linux/linux-2.6.32.11/
+</Insert>
+<Copy StartSeek="9619" EndSeek="10596"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="utf8" Date="2012/08/02" Time="16:13:32000">
+<Copy StartSeek="0" EndSeek="9634"/>
+<Copy StartSeek="9651" EndSeek="9969"/>
+<Insert>/export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2/
+</Insert>
+<Copy StartSeek="9969" EndSeek="10551"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="utf8" Date="2012/08/02" Time="16:13:32000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>/export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls//export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls/dcm/
+</Insert>
+<Copy StartSeek="11" EndSeek="18"/>
+<Copy StartSeek="134" EndSeek="10551"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="utf8" Date="2012/08/05" Time="18:00:49000">
+<Copy StartSeek="0" EndSeek="9370"/>
+<Copy StartSeek="9435" EndSeek="9597"/>
+<Insert>/export/local/users/haimd/GT-I9100_Kernel.speedmod/GT-I9100_Kernel.speedmod-21/.config
+</Insert>
+<Copy StartSeek="9597" EndSeek="10529"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2012/08/05" Time="18:00:49000">
+<Insert>[Mappings]
+///
+/export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls//export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls/dcm/
+/export/local/users/haimd/projects/dpa/mod/dpa//export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls/
+/export/local/users/haimd/GT-I9100_Kernel.speedmod/GT-I9100_Kernel.speedmod-21//export/local/users/haimd/GT-I9100_Kernel.speedmod/GT-I9100_Kernel.speedmod-21/arch/arm/configs/
+/export/local/users/haimd/linux/linux-2.6.32.11//export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/
+/export/local/users/haimd/kw2/linux-feroceon-3_1_0-Drop5-KW2//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/
+/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/configs//export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/configs/
+/export/local/users/haimd/GT-I9100_Kernel.speedmod-19//export/local/users/haimd/GT-I9100_Kernel.speedmod-19/arch/arm/configs/
+/export/local/users/haimd/GT-I9100_Kernel.speedmod-18//export/local/users/haimd/GT-I9100_Kernel.speedmod-19/
+/local/ws.710//tmp//local/ws.702/
+/tmp//local/ws.710/xsl/kernel/2.6.34//local/ws-613/xsl/kernel/2.4.33/linux/drivers/block/
+/local/ws.710/xsl/src/kernel/iptables_decisions.new//local/ws.710/xsl/src/kernel/iptables_decisions/
+/local/ws.710/xsl/src/kernel/iptables_decisions_mstr.new//local/ws.710/xsl/src/kernel/iptables_decisions_mstr/
+/local/ws.702//local/ws.710/
+/local/ws.710/xsl/src/kernel/kpepd-old//local/ws.710/xsl/src/kernel/kpepd//local/ws.710/xsl/src/kernel/kpepd/
+/local/ws.632//local/ws.702//local/ws.710//local/ws.701GA/
+/local/ws.630GA.newgen.keep/xsl/src/kernel/mb8760-watchdog-and-bypass-v04//local/ws.630GA.newgen.keep/xsl/src/kernel/mb8760-misc-drv-v05//local/ws.630GA.newgen.keep/xsl/src/kernel/mb8760-misc-drv-v05/
+/local/ws.710_newcvs//local/ws.800/
+/local/ws.800/xsl/kernel/2.6.34/drivers/net//local/ws.710_newcvs/xsl/src/kernel/
+/local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libTUNLS//local/ws.710_newcvs/xsl/src/kernel/iptables_udp_encaps/libUDPENCAPS//local/ws.710_newcvs/xsl/src/kernel/iptables_udp_encaps/libudpencaps/
+/local/ws.710_newcvs/xsl/src/kernel/iptables_caching_decisions/libcachingdecisions//local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libTUNLS//local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libtunls//local/ws.710_newcvs/xsl/src/kernel/iptables_tunls/libtunls/
+/local/ws.710_newcvs/xsl/src/user/generic/scripts/mng/caswell//local/ws.710_newcvs/xsl/src/kernel/bypass-caswell-1.8.0/script/addressing/
+/local/ws.631//local/ws.632//local/ws.631_118//tmp/
+/local/ws.631_118//local/ws.632//local/ws.631/
+/local/ws.631_118/xsl/src/kernel/kpepd//users/haimd/tmp/
+/tmp/614b111//tmp/631b118/
+/local/ws.gd/multitcp_latest//local/ws.631MultiTcp/
+/local/ws.gd/multitcp_630b104//local/ws.gd/multitcp_latest//local/ws.gd/multitcp_latest/
+/local/ws.gd/multitcp_630b100//local/ws.gd/multitcp_latest//local/ws.gd/multitcp_630b104/
+/local/ws.800//local/ws.800.clean/
+/local/ws.701BetaTwo//local/ws.800//local/ws.701GA/
+/local/ws.630GA/xsl/src/kernel/bypass-caswell//local/ws.701GA/xsl/src/kernel/bypass-caswell-1.6/
+/local/ws.800/xsl/kernel/2.6.34//local/ws.800/xsl/kernel/2.4.33/linux//local/ws.800/xsl/kernel/2.6.33/
+/local/ws.701beta2/xsl/kernel/2.4.33/linux//local/ws.800/xsl/kernel/2.6.34/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel//mnt/flash/root/
+/local/chroot/OS/centos5.5/local/ws.800/xsl/kernel/linux-2.6.34//local/chroot/OS/centos5.5/local/ws.800/xsl/kernel/2.6.34/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v02//local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v03/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v03//local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/mb8760-watchdog-and-bypass-v02/
+/local/ws.630GA//local/ws.701beta2//local/ws.701beta2/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/linux//local/linux-2.4.21-37.EL//local/chroot/OS/centos3/local/linux-2.4.33.3//local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/spec/
+/local/chroot/OS/centos3/local/ws.630GA//local/ws.701beta2/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/src/kernel/bypass-caswell.softirq//local/ws.701beta2/xsl/src/kernel/bypass-caswell/
+/local/ws.630GA/xsl/kernel/2.4.33/linux//local/chroot/OS/centos3/local/linux-2.4.33.3//local/chroot/OS/centos3/local/linux-2.4.33.3/
+/local/ws.630GA/xsl/kernel/2.4.33/linux/drivers/net//local/chroot/OS/centos3/local/linux-2.4.33.3/
+/home/haimd/downloads/software/kernel/linux-2.4.21//local/ws.630GA/xsl/kernel/2.4.33/linux/
+/local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/spec//local/chroot/OS/centos3/local/ws.630GA/xsl/kernel/2.4.33/linux/
+/local/ws.630//local/ws.701///local/ws.701//local/chroot/OS/centos3/local/ws.630GA//local/ws.630GA//local/l7dcn//local/l7dcn/
+/local/chroot/OS/centos3/local/ws.701//local/ws.630GA//local/ws.siteqos/
+/local/ws.630-i2c//local/ws.630b591/
+/local/chroot/OS/centos3/local/ws.630/xsl/kernel/2.4.33/linux//home/haimd/downloads/software/kernel/linux-2.4.37.7//home/haimd/downloads/software/kernel/linux-2.4.37.7/
+/local/chroot/OS/centos3/local/ws.630/xsl/kernel/2.4.33/linux/drivers/scsi//home/haimd/downloads/software/kernel/linux-2.6.20/drivers/ata/
+/local/ws.630/xsl/kernel/2.4.33/linux//tmp/new/
+/local/chroot/OS/centos3/local/ws.630b591/xsl/src/kernel/network-bypass-1.4.0.b2//users/eganor/bypass-caswell/
+/local/chroot/OS/centos3/local/ws.630b591/xsl/src/kernel/bypass-caswell//local/chroot/OS/centos3/local/ws.630b591/xsl/src/kernel/bypass-caswell/network-bypass-1.4.0.b2/driver/
+/local/ws.siteqos//local/ws.701//local/chroot/OS/centos3/local/ws.701//local/ws.630/
+/local/chroot/OS/centos3/local/ws.siteqos//tmp//local/ws.sitepsd//local/chroot/OS/centos3/local/ws.sitepsd/
+/local/ws.sitepsd//local/ws.siteqos/
+/local/chroot/OS/centos3/local/ws.sitepsd//local/chroot/OS/centos3/local/ws.siteqos/
+/home/haimd/projects/debug_mm_slab_8192/kernel//home/haimd/projects/debug_mm_slab_8192/kernel/dbg_mm/
+/local/ws.630/xsl/kernel/2.4.33/old//local/ws.630/xsl/kernel/2.4.33/new/
+/local/ws.630/xsl/src/kernel/iptables_limit_rdp/rdp_queries//local/ws.630/xsl/src/kernel/iptables_limit_http/http_queries/
+/local/ws.630/xsl/src/kernel/iptables_limit_ftp/ftp_queries//local/ws.630/xsl/src/kernel/iptables_limit_rdp/rdp_queries//local/ws.630/xsl/src/kernel/iptables_limit_http/http_queries/
+/local/ws.siteqos/xsl/src/kernel/qos//local/ws.siteqos/xsl/kernel/2.4.33/linux/net/sched/
+/local/l7dcn//local/ws.630//local/ws.630/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/libDECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/libdecisions/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/DECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/decisions/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/libdecisions//local/l7dcn/xsl/src/kernel/iptables_decisions/libDECISIONS/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/decisions//local/l7dcn/xsl/src/kernel/iptables_decisions/DECISIONS/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/old_target/libDECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/libdecisions/
+/local/l7dcn/xsl/src/kernel/iptables_decisions/old_target/DECISIONS//local/l7dcn/xsl/src/kernel/iptables_decisions/decisions/
+/tmp/l7decision//local/ws.630//local/ws.630/
+/local/ws.630/xsl/src/kernel/iptables_decisions/DECISIONS//home/haimd/downloads/software/decisions//home/haimd/downloads/software/decisions/
+/local/ws.630/xsl/src/kernel/iptables_decisions/libDECISIONS//home/haimd/downloads/software/decisions/
+/local/ws.630/xsl/src/kernel/iptables_decisions//home/haimd/downloads/software/decisions/
+/local/ws.630/xsl/kernel/2.4.33/linux/include/linux/netfilter_ipv4//home/haimd/downloads/software/decisions/
+/home/haimd/downloads/software/kernel/cciss-2.4.64-7//local/ws-613/xsl/kernel/2.4.33/linux/
+/local/ws-613//local/ws-612//local/ws-630_ftp_limit/
+/local/ws-613/xsl/kernel/2.4.33/linux/drivers/block//tmp/
+/local/ws-630/xsl/kernel/2.4.33/linux/drivers/block//tmp/
+/local/ws-613_v613_366//local/ws-613///local/ws-613/
+/local/ws-630_dyn_proc_new//local/ws-630_dyn_proc//local/ws-630_dyn_proc/
+/local/ws-613/xsl/kernel/2.4.33/linux/drivers/net/sk98lin//local/ws-613/xsl_old/kernel/2.4.33/linux/drivers/net/sk98lin_haim_old/
+/local/ws-630/xsl/kernel/2.4.33/linux/old//local/ws-630/xsl/kernel/2.4.33/linux/new/
+/local/ws-630//local/ws-613///local/ws-612b607//local/ws-630_new_co/
+/local/ws-612//local/ws-630_updated//local/ws-630//local/ws-630/
+/tmp/old//tmp/new//tmp/new/
+/users/haimd//local/ws-612b604/xsl/kernel/2.4.33/linux/net/ipv4/
+/users/eganor//local/ws-612b604/xsl/kernel/2.4.33/linux/net/ipv4/
+/local/ws-630/xsl/kernel/2.4.33/linux/net/ipv4//users/eganor/
+/local/ws-630/patches/old//local/ws-630/patches/new/
+/local/ws-630/xsl//local/ws-630_new_co/xsl//
+/local/xsl//local/ws-630/xsl//
+/local//local/ws-630/
+/local/ws-630-239//local/ws-630//
+/local/ws-630-231//local/ws-630-239/
+[Path1History]
+/export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls/dpa_cls.c
+dpa_cls_mm.h
+dpa_cls_mm.c
+dpa_cls.c
+./mod/dpa/dpa_cls.c
+./net/core/neighbour.c.keep
+klna_nl.c
+klna_nc.c
+Speedcam.txt
+arch/arm/configs/c1_rev02_speedmod_defconfig
+[Path2History]
+dcm/dpa_cls_mm.h
+dcm/dpa_cls_mm.c
+dpa_cls_indent.c
+./mod/dpa/dpa_cls/dpa_cls.c
+./net/core/neighbour.c
+klna_nl.indent.c
+klna_nc.lindent.c
+SpeedcamUpdates_ALL_avrika_tomer_04-03-12.spud
+arch/arm/configs/c1_rev02_defconfig
+/export/local/users/haimd/GT-I9100_Kernel.speedmod/GT-I9100_Kernel.speedmod-21/arch/arm/configs/c1_rev02_defconfig
+[VSDiffGeometry]
+x=0
+y=27
+width=1678
+height=966
+window_state=N
+def_diff_options=0
+def_diff_edit_options=104
+[DiffSetupGeometry]
+x=178
+y=102
+width=929
+height=663
+def_diff_options=131072
+def_diff_edit_options=104
+[FilespecsHistory]
+*
+*.c *.h
+*.c
+*.c; *.h
+[MFDiffGeometry]
+x=0
+y=27
+width=1680
+height=967
+def_diff_options=131072
+def_diff_edit_options=104
+[ExcludeFilespecsHistory]
+Entries Tag
+Entries
+*.o Entries* Repository* Tag* Root* CVS* .depend*
+*CVS*
+CVS
+*.o Entries* Repository* Tag* Root* CVS*
+*.o Entries* Repository* Tag*; Root* CVS*;
+*.o; Entries; Repository; Tag; Root;
+*.o
+</Insert>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="utf8" Date="2012/08/05" Time="18:00:49000">
+<Copy StartSeek="0" EndSeek="9370"/>
+<Copy StartSeek="9391" EndSeek="9573"/>
+<Insert>arch/arm/configs/c1_rev02_speedmod_defconfig
+</Insert>
+<Copy StartSeek="9573" EndSeek="10455"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="utf8" Date="2012/08/13" Time="14:05:14000">
+<Copy StartSeek="0" EndSeek="9588"/>
+<Copy StartSeek="9610" EndSeek="9859"/>
+<Insert>arch/arm/configs/c1_rev02_defconfig
+</Insert>
+<Copy StartSeek="9859" EndSeek="10441"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="utf8" Date="2012/08/13" Time="14:05:14000">
+<Copy StartSeek="0" EndSeek="9370"/>
+<Copy StartSeek="9380" EndSeek="9492"/>
+<Insert>dpa_cls.c
+</Insert>
+<Copy StartSeek="9492" EndSeek="10441"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="utf8" Date="2012/08/19" Time="17:09:14000">
+<Copy StartSeek="0" EndSeek="9588"/>
+<Copy StartSeek="9605" EndSeek="9829"/>
+<Insert>SpeedcamUpdates_ALL_avrika_tomer_04-03-12.spud
+</Insert>
+<Copy StartSeek="9829" EndSeek="10411"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="utf8" Date="2012/08/19" Time="17:09:14000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="85" EndSeek="10485"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="utf8" Date="2012/08/26" Time="14:40:53000">
+<Copy StartSeek="0" EndSeek="9444"/>
+<Copy StartSeek="9488" EndSeek="9678"/>
+<Insert>Speedcam.txt
+</Insert>
+<Copy StartSeek="9678" EndSeek="10516"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="utf8" Date="2012/08/26" Time="14:40:54000">
+<Copy StartSeek="0" EndSeek="9693"/>
+<Copy StartSeek="9722" EndSeek="9945"/>
+<Insert>klna_nc.lindent.c
+</Insert>
+<Copy StartSeek="9945" EndSeek="10527"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="utf8" Date="2012/08/26" Time="14:40:54000">
+<Copy StartSeek="0" EndSeek="10175"/>
+<Insert>*
+</Insert>
+<Copy StartSeek="10175" EndSeek="10183"/>
+<Copy StartSeek="10185" EndSeek="10527"/>
+</Delta>
+<Delta Version="84" Comment="" NL="\10" Encoding="utf8" Date="2012/08/26" Time="14:40:54000">
+<Copy StartSeek="0" EndSeek="10224"/>
+<Insert>width=1680
+height=967
+</Insert>
+<Copy StartSeek="10246" EndSeek="10527"/>
+</Delta>
+<Delta Version="85" Comment="" NL="\10" Encoding="utf8" Date="2012/08/26" Time="14:41:34000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="65" EndSeek="10581"/>
+</Delta>
+<Delta Version="86" Comment="" NL="\10" Encoding="utf8" Date="2012/08/26" Time="14:42:9000">
+<Copy StartSeek="0" EndSeek="9498"/>
+<Copy StartSeek="9538" EndSeek="9762"/>
+<Insert>klna_nc.c
+</Insert>
+<Copy StartSeek="9762" EndSeek="10611"/>
+</Delta>
+<Delta Version="87" Comment="" NL="\10" Encoding="utf8" Date="2012/08/26" Time="14:42:9000">
+<Copy StartSeek="0" EndSeek="9777"/>
+<Copy StartSeek="9798" EndSeek="10033"/>
+<Insert>klna_nl.indent.c
+</Insert>
+<Copy StartSeek="10033" EndSeek="10615"/>
+</Delta>
+<Delta Version="88" Comment="" NL="\10" Encoding="utf8" Date="2012/08/26" Time="14:42:9000">
+<Copy StartSeek="0" EndSeek="10096"/>
+<Insert>def_diff_options=0
+</Insert>
+<Copy StartSeek="10120" EndSeek="10620"/>
+</Delta>
+<Delta Version="89" Comment="" NL="\10" Encoding="utf8" Date="2012/08/26" Time="14:43:3000">
+<Copy StartSeek="0" EndSeek="10339"/>
+<Insert>def_diff_options=131072
+</Insert>
+<Copy StartSeek="10358" EndSeek="10615"/>
+</Delta>
+<Delta Version="90" Comment="" NL="\10" Encoding="utf8" Date="2012/08/27" Time="19:09:20000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="126" EndSeek="10730"/>
+</Delta>
+<Delta Version="91" Comment="" NL="\10" Encoding="utf8" Date="2012/08/28" Time="10:05:53000">
+<Copy StartSeek="0" EndSeek="9613"/>
+<Copy StartSeek="9681" EndSeek="9935"/>
+<Insert>klna_nl.c
+</Insert>
+<Copy StartSeek="9935" EndSeek="10788"/>
+</Delta>
+<Delta Version="92" Comment="" NL="\10" Encoding="utf8" Date="2012/08/28" Time="10:05:53000">
+<Copy StartSeek="0" EndSeek="9950"/>
+<Copy StartSeek="10047" EndSeek="10280"/>
+<Insert>./net/core/neighbour.c
+</Insert>
+<Copy StartSeek="10280" EndSeek="10862"/>
+</Delta>
+<Delta Version="93" Comment="" NL="\10" Encoding="utf8" Date="2012/08/28" Time="10:05:53000">
+<Copy StartSeek="0" EndSeek="10343"/>
+<Insert>def_diff_options=131072
+</Insert>
+<Copy StartSeek="10362" EndSeek="10857"/>
+</Delta>
+<Delta Version="94" Comment="" NL="\10" Encoding="utf8" Date="2012/08/28" Time="10:07:11000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="64" EndSeek="179"/>
+<Insert>/export/local/users/haimd/projects//home/maxk/work/
+</Insert>
+<Copy StartSeek="179" EndSeek="10856"/>
+</Delta>
+<Delta Version="95" Comment="" NL="\10" Encoding="utf8" Date="2012/08/29" Time="11:29:16000">
+<Copy StartSeek="0" EndSeek="9612"/>
+<Insert>./arch/arm/plat-feroceon/mv_drivers_lsp/mv_neta/net_dev/mv_netdev.c
+</Insert>
+<Copy StartSeek="9612" EndSeek="9652"/>
+<Copy StartSeek="9720" EndSeek="10856"/>
+</Delta>
+<Delta Version="96" Comment="" NL="\10" Encoding="utf8" Date="2012/08/29" Time="11:29:16000">
+<Copy StartSeek="0" EndSeek="9949"/>
+<Insert>/export/local/users/maxk/linux/arch/arm/plat-feroceon/mv_drivers_lsp/mv_neta/net_dev/mv_netdev.c
+</Insert>
+<Copy StartSeek="9949" EndSeek="9970"/>
+<Copy StartSeek="10067" EndSeek="10856"/>
+</Delta>
+<Delta Version="97" Comment="" NL="\10" Encoding="utf8" Date="2012/08/29" Time="11:29:16000">
+<Copy StartSeek="0" EndSeek="10509"/>
+<Insert>*.c *.h
+</Insert>
+<Copy StartSeek="10509" EndSeek="10511"/>
+<Copy StartSeek="10519" EndSeek="10856"/>
+</Delta>
+<Delta Version="98" Comment="" NL="\10" Encoding="utf8" Date="2012/08/29" Time="11:29:16000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="163" EndSeek="216"/>
+<Insert>/export/local/users/haimd/projects/kw2/linux-2.6.32.11-lsp-3.1.0-tdm-zarlink-fiq//export/local/users/maxk/linux/
+</Insert>
+<Copy StartSeek="216" EndSeek="10893"/>
+</Delta>
+<Delta Version="99" Comment="" NL="\10" Encoding="utf8" Date="2012/11/06" Time="14:41:27000">
+<Copy StartSeek="0" EndSeek="9649"/>
+<Copy StartSeek="9674" EndSeek="9968"/>
+<Insert>./net/core/neighbour.c.keep
+</Insert>
+<Copy StartSeek="9968" EndSeek="10890"/>
+</Delta>
+<Delta Version="100" Comment="" NL="\10" Encoding="utf8" Date="2012/11/06" Time="14:41:27000">
+<Copy StartSeek="0" EndSeek="9983"/>
+<Copy StartSeek="10042" EndSeek="10344"/>
+<Insert>./mod/dpa/dpa_cls/dpa_cls.c
+</Insert>
+<Copy StartSeek="10344" EndSeek="10921"/>
+</Delta>
+<Delta Version="101" Comment="" NL="\10" Encoding="utf8" Date="2012/11/06" Time="14:41:27000">
+<Copy StartSeek="0" EndSeek="9649"/>
+<Copy StartSeek="9672" EndSeek="9971"/>
+<Insert>./mod/dpa/dpa_cls.c
+</Insert>
+<Copy StartSeek="9971" EndSeek="10924"/>
+</Delta>
+<Delta Version="102" Comment="" NL="\10" Encoding="utf8" Date="2012/11/06" Time="14:55:27000">
+<Copy StartSeek="0" EndSeek="9649"/>
+<Copy StartSeek="9667" EndSeek="9976"/>
+<Insert>dpa_cls_mm.c
+</Insert>
+<Copy StartSeek="9976" EndSeek="10929"/>
+</Delta>
+<Delta Version="103" Comment="" NL="\10" Encoding="utf8" Date="2012/11/06" Time="16:46:57000">
+<Copy StartSeek="0" EndSeek="9991"/>
+<Copy StartSeek="10045" EndSeek="10389"/>
+<Insert>dpa_cls_indent.c
+</Insert>
+<Copy StartSeek="10389" EndSeek="10966"/>
+</Delta>
+<Delta Version="104" Comment="" NL="\10" Encoding="utf8" Date="2012/11/06" Time="16:46:57000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="18" EndSeek="297"/>
+<Insert>///
+</Insert>
+<Copy StartSeek="297" EndSeek="10966"/>
+</Delta>
+<Delta Version="105" Comment="" NL="\10" Encoding="utf8" Date="2012/12/03" Time="13:24:31000">
+<Copy StartSeek="0" EndSeek="9649"/>
+<Copy StartSeek="9658" EndSeek="9972"/>
+<Insert>dpa_cls_mm.h
+</Insert>
+<Copy StartSeek="9972" EndSeek="10962"/>
+</Delta>
+<Delta Version="106" Comment="" NL="\10" Encoding="utf8" Date="2012/12/03" Time="13:24:31000">
+<Copy StartSeek="0" EndSeek="9987"/>
+<Copy StartSeek="10000" EndSeek="10381"/>
+<Insert>dcm/dpa_cls_mm.c
+</Insert>
+<Copy StartSeek="10381" EndSeek="10958"/>
+</Delta>
+<Delta Version="107" Comment="" NL="\10" Encoding="utf8" Date="2012/12/03" Time="13:24:31000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="82" EndSeek="241"/>
+<Insert>/export/local/users/haimd/projects//home/maxk/work/
+</Insert>
+<Copy StartSeek="241" EndSeek="10976"/>
+</Delta>
+<Delta Version="108" Comment="" NL="\10" Encoding="utf8" Date="2012/12/25" Time="08:59:58000">
+<Copy StartSeek="0" EndSeek="9667"/>
+<Copy StartSeek="9707" EndSeek="9782"/>
+<Insert>/export/local/users/haimd/projects/dpa/
+</Insert>
+<Copy StartSeek="9782" EndSeek="10976"/>
+</Delta>
+<Delta Version="109" Comment="" NL="\10" Encoding="utf8" Date="2012/12/25" Time="08:59:58000">
+<Copy StartSeek="0" EndSeek="10005"/>
+<Copy StartSeek="10026" EndSeek="10152"/>
+<Insert>/home/maxk/work/dpa/
+</Insert>
+<Copy StartSeek="10152" EndSeek="10976"/>
+</Delta>
+<Delta Version="110" Comment="" NL="\10" Encoding="utf8" Date="2012/12/25" Time="08:59:58000">
+<Copy StartSeek="0" EndSeek="10700"/>
+<Insert>def_diff_options=0
+</Insert>
+<Copy StartSeek="10724" EndSeek="10981"/>
+</Delta>
+<Delta Version="111" Comment="" NL="\10" Encoding="utf8" Date="2012/12/25" Time="09:00:56000">
+<Copy StartSeek="0" EndSeek="10527"/>
+<Insert>x=178
+y=102
+</Insert>
+<Copy StartSeek="10539" EndSeek="10981"/>
+</Delta>
+<Delta Version="112" Comment="" NL="\10" Encoding="utf8" Date="2012/12/25" Time="09:02:38000">
+<Copy StartSeek="0" EndSeek="10629"/>
+<Insert>*
+</Insert>
+<Copy StartSeek="10629" EndSeek="10637"/>
+<Copy StartSeek="10639" EndSeek="10981"/>
+</Delta>
+<Delta Version="113" Comment="" NL="\10" Encoding="utf8" Date="2012/12/25" Time="09:02:38000">
+<Copy StartSeek="0" EndSeek="10462"/>
+<Insert>def_diff_options=0
+</Insert>
+<Copy StartSeek="10486" EndSeek="10986"/>
+</Delta>
+<Delta Version="114" Comment="" NL="\10" Encoding="utf8" Date="2012/12/25" Time="09:03:29000">
+<Copy StartSeek="0" EndSeek="10532"/>
+<Insert>x=190
+y=173
+</Insert>
+<Copy StartSeek="10544" EndSeek="10986"/>
+</Delta>
+<Delta Version="115" Comment="" NL="\10" Encoding="utf8" Date="2012/12/25" Time="10:27:22000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="100" EndSeek="11075"/>
+</Delta>
+<Delta Version="116" Comment="" NL="\10" Encoding="utf8" Date="2012/12/25" Time="10:27:22000">
+<Copy StartSeek="0" EndSeek="9756"/>
+<Copy StartSeek="9804" EndSeek="10062"/>
+<Insert>/export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls/dpa_cls.c
+</Insert>
+<Copy StartSeek="10062" EndSeek="11058"/>
+</Delta>
+<Delta Version="117" Comment="" NL="\10" Encoding="utf8" Date="2012/12/25" Time="10:27:22000">
+<Copy StartSeek="0" EndSeek="10077"/>
+<Copy StartSeek="10117" EndSeek="10494"/>
+<Insert>dcm/dpa_cls_mm.h
+</Insert>
+<Copy StartSeek="10494" EndSeek="11081"/>
+</Delta>
+<Delta Version="118" Comment="" NL="\10" Encoding="utf8" Date="2012/12/25" Time="10:27:22000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>/export/local/users/haimd/projects/dpa.phy_hdr//export/local/users/haimd/projects/dpa/
+</Insert>
+<Copy StartSeek="136" EndSeek="11117"/>
+</Delta>
+<Delta Version="119" Comment="" NL="\10" Encoding="utf8" Date="2012/12/25" Time="10:28:1000">
+<Copy StartSeek="0" EndSeek="9792"/>
+<Copy StartSeek="9844" EndSeek="10129"/>
+<Insert>/tmp/dpa.dump.xxhash
+</Insert>
+<Copy StartSeek="10129" EndSeek="11148"/>
+</Delta>
+<Delta Version="120" Comment="" NL="\10" Encoding="utf8" Date="2012/12/25" Time="10:28:1000">
+<Copy StartSeek="0" EndSeek="10694"/>
+<Insert>x=244
+y=134
+</Insert>
+<Copy StartSeek="10706" EndSeek="11148"/>
+</Delta>
+<Delta Version="121" Comment="" NL="\10" Encoding="utf8" Date="2012/12/27" Time="16:03:19000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="120" EndSeek="11257"/>
+</Delta>
+<Delta Version="122" Comment="" NL="\10" Encoding="utf8" Date="2012/12/27" Time="16:03:20000">
+<Copy StartSeek="0" EndSeek="9901"/>
+<Copy StartSeek="9941" EndSeek="10041"/>
+<Insert>/export/local/users/haimd/projects/dpa/
+</Insert>
+<Copy StartSeek="10041" EndSeek="11257"/>
+</Delta>
+<Delta Version="123" Comment="" NL="\10" Encoding="utf8" Date="2012/12/27" Time="16:03:20000">
+<Copy StartSeek="0" EndSeek="10253"/>
+<Copy StartSeek="10321" EndSeek="10673"/>
+<Insert>/export/local/users/haimd/projects/dpa/mod/dpa/dpa_cls/dpa_cls.c
+</Insert>
+<Copy StartSeek="10673" EndSeek="11260"/>
+</Delta>
+<Delta Version="124" Comment="" NL="\10" Encoding="utf8" Date="2012/12/27" Time="16:03:20000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="120" EndSeek="11369"/>
+</Delta>
+<Delta Version="125" Comment="" NL="\10" Encoding="utf8" Date="2012/12/27" Time="16:03:41000">
+<Copy StartSeek="0" EndSeek="10010"/>
+<Copy StartSeek="10078" EndSeek="10405"/>
+<Insert>dpa_cls.c
+</Insert>
+<Copy StartSeek="10405" EndSeek="11427"/>
+</Delta>
+<Delta Version="126" Comment="" NL="\10" Encoding="utf8" Date="2012/12/27" Time="16:03:41000">
+<Copy StartSeek="0" EndSeek="10420"/>
+<Insert>/export/local/users/haimd/projects/dpa.modifier_dev_vlan_for_merge/
+</Insert>
+<Copy StartSeek="10420" EndSeek="10460"/>
+<Copy StartSeek="10528" EndSeek="11427"/>
+</Delta>
+<Delta Version="127" Comment="" NL="\10" Encoding="utf8" Date="2012/12/27" Time="16:03:41000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>/export/local/users/haimd/projects/dpa.modifier_dev_vlan_for_merge//export/local/users/haimd/projects/dpa/
+</Insert>
+<Copy StartSeek="156" EndSeek="11463"/>
+</Delta>
+<Delta Version="128" Comment="" NL="\10" Encoding="utf8" Date="2012/12/27" Time="16:04:10000">
+<Copy StartSeek="0" EndSeek="10046"/>
+<Copy StartSeek="10118" EndSeek="10469"/>
+<Insert>/export/local/users/haimd/projects/dpa/mod/
+</Insert>
+<Copy StartSeek="10469" EndSeek="11491"/>
+</Delta>
+<Delta Version="129" Comment="" NL="\10" Encoding="utf8" Date="2012/12/27" Time="16:04:10000">
+<Copy StartSeek="0" EndSeek="11139"/>
+<Insert>*.c *.h
+</Insert>
+<Copy StartSeek="11139" EndSeek="11141"/>
+<Copy StartSeek="11149" EndSeek="11491"/>
+</Delta>
+<Delta Version="130" Comment="" NL="\10" Encoding="utf8" Date="2012/12/27" Time="16:07:24000">
+<Copy StartSeek="0" EndSeek="11286"/>
+<Copy StartSeek="11290" EndSeek="11491"/>
+<Insert>*.o
+</Insert>
+</Delta>
+<Delta Version="131" Comment="" NL="\10" Encoding="utf8" Date="2012/12/27" Time="16:07:24000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Copy StartSeek="18" EndSeek="468"/>
+<Insert>///
+</Insert>
+<Copy StartSeek="468" EndSeek="11491"/>
+</Delta>
+<Delta Version="132" Comment="" NL="\10" Encoding="utf8" Date="2013/02/24" Time="17:52:58000">
+<Copy StartSeek="0" EndSeek="10046"/>
+<Copy StartSeek="10123" EndSeek="10478"/>
+<Insert>./arch/arm/plat-feroceon/mv_drivers_lsp/mv_neta/net_dev/mv_netdev.c
+</Insert>
+<Copy StartSeek="10478" EndSeek="11500"/>
+</Delta>
+<Delta Version="133" Comment="" NL="\10" Encoding="utf8" Date="2013/02/24" Time="17:52:58000">
+<Copy StartSeek="0" EndSeek="10493"/>
+<Copy StartSeek="10570" EndSeek="10968"/>
+<Insert>/tmp/test.dump.xxhash
+</Insert>
+<Copy StartSeek="10968" EndSeek="11555"/>
+</Delta>
+<Delta Version="134" Comment="" NL="\10" Encoding="utf8" Date="2013/02/24" Time="17:52:58000">
+<Copy StartSeek="0" EndSeek="10046"/>
+<Copy StartSeek="10099" EndSeek="10506"/>
+<Insert>./include/linux/filter.h
+</Insert>
+<Copy StartSeek="10506" EndSeek="11583"/>
+</Delta>
+<Delta Version="135" Comment="" NL="\10" Encoding="utf8" Date="2013/02/24" Time="17:53:20000">
+<Copy StartSeek="0" EndSeek="10521"/>
+<Copy StartSeek="10574" EndSeek="11032"/>
+<Insert>dpa_cls.c.master
+</Insert>
+<Copy StartSeek="11032" EndSeek="11619"/>
+</Delta>
+</DeltaFile>

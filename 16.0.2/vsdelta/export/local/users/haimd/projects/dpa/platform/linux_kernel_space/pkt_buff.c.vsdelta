@@ -1,0 +1,284 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="20" Comment="" Date="2012/11/28" Time="18:43:13000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+*
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+*
+* pkt_buff.h
+*
+* Description:
+*     Platform-specific packet buffer allocation routines.
+*
+*******************************************************************************/
+
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/skbuff.h&gt;
+#include &lt;linux/pci.h&gt;
+
+#include &lt;dpa/dpa.h&gt;
+#include &lt;eth/eth.h&gt;
+#include &lt;util/string.h&gt;
+#include &lt;util/cache_ops.h&gt;
+#include &lt;util/mem.h&gt;
+#include &lt;log/log.h&gt;
+
+
+
+#define DPA_PAD_STEP      (128)
+#define DPA_PAD_STEP_NUM  (33)
+#define DPA_EXTRA_PAD	  (4) /* HAIM FIXME : needed for header insertion. e.g. VLAN */
+#define DPA_PAD           (DPA_PAD_STEP * DPA_PAD_STEP_NUM + DPA_EXTRA_PAD)
+
+
+eth_pkt_t *__dpa_pkt_alloc(uint32_t size) {
+  eth_pkt_t *pkt;
+  struct sk_buff *skb;
+  uint8_t *data;
+  uint32_t total_size, offset;
+  static uint32_t pad_count = 0;
+
+  total_size = DPA_PAD + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1);
+
+  skb = dev_alloc_skb(total_size);
+  if (skb == NULL) {
+      DPA_ERROR("Failed to alloc skb, (%d) bytes.", total_size);
+      return NULL;
+  }
+  
+  offset = pad_count * DPA_PAD_STEP + DPA_EXTRA_PAD;
+  if (++pad_count == DPA_PAD_STEP_NUM) {
+      pad_count = 0;
+  }
+
+  skb_reserve(skb, offset);
+
+  data = (uint8_t*) MEM_ALIGN_UP(skb-&gt;data, CPU_D_CACHE_LINE_SIZE);
+  skb_reserve(skb, (uint32_t) data - (uint32_t) skb-&gt;data);
+
+  pkt = (eth_pkt_t *) skb-&gt;data; 
+
+  if (MEM_IS_NOT_ALIGN(pkt, CPU_D_CACHE_LINE_SIZE)) {
+      DPA_ERROR("pkt not aligned (0x%x)", (uint32_t)pkt);
+  }
+
+  dpa_memset(pkt, 0, sizeof(eth_pkt_t));
+
+  skb_reserve(skb, sizeof(eth_pkt_t));
+  pkt-&gt;buff = (uint8_t*) skb-&gt;data;
+  
+  /* Provoke page fault while in Linux context */
+  pkt-&gt;buff[0] = pkt-&gt;buff[size-1] = 0x78;
+
+  if (MEM_IS_NOT_ALIGN(pkt-&gt;buff, CPU_D_CACHE_LINE_SIZE)) {
+      DPA_ERROR("Memory buffer not aligned (0x%x), pkt size %d", (uint32_t)pkt-&gt;buff, sizeof(eth_pkt_t));
+  }
+
+  pkt-&gt;os_handle = (void *) skb;
+  pkt-&gt;phys_addr = dpa_os_virt_to_phys(pkt-&gt;buff, size);
+  pkt-&gt;size = 0;
+  pkt-&gt;alloc_size = size;
+  pkt-&gt;pool_id = ETH_POOL_ID_UKNOWN;
+  pkt-&gt;dpa_handle = (void*) NULL;
+  pkt-&gt;status = ETH_PKT_STATUS_NONE;
+
+  return pkt;
+}
+
+
+eth_pkt_t *__dpa_pkt_wrap(void *data, uint32_t size, uint32_t offset, void *os_handle) {
+  eth_pkt_t *pkt;
+
+  pkt = DPA_MALLOC(sizeof(eth_pkt_t));
+  if (pkt != NULL) {
+      dpa_memset(pkt, 0, sizeof(eth_pkt_t));
+
+      pkt-&gt;buff = data;
+      pkt-&gt;offset = offset;
+      pkt-&gt;os_handle = os_handle;
+      pkt-&gt;size = size;
+      pkt-&gt;phys_addr = dpa_os_virt_to_phys(pkt-&gt;buff, pkt-&gt;size); /* Also cache clean */
+      pkt-&gt;alloc_size = size;
+      pkt-&gt;pool_id = ETH_POOL_ID_FOREIGN; /* Foreign packet buffer indication */
+      pkt-&gt;dpa_handle = (void*) NULL;
+  }
+
+  return pkt;
+}
+
+
+void __dpa_pkt_free(eth_pkt_t* pkt) {
+  struct sk_buff *skb;
+
+  if (pkt) {
+      skb = (struct sk_buff *) pkt-&gt;os_handle;
+
+      if (ETH_IS_PKT_SLOW_PATH(pkt)) {
+          DPA_FREE(pkt);
+      }
+      dev_kfree_skb(skb);
+  }
+}</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/09/03" Time="10:33:44000">
+<Copy StartSeek="0" EndSeek="842"/>
+<Insert>#define DPA_PAD_STEP_NUM  (33)
+</Insert>
+<Copy StartSeek="872" EndSeek="3194"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/09/03" Time="18:06:34000">
+<Copy StartSeek="0" EndSeek="842"/>
+<Insert>#define DPA_PAD_STEP_NUM  (1)
+</Insert>
+<Copy StartSeek="873" EndSeek="3195"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/09/03" Time="18:17:44000">
+<Copy StartSeek="0" EndSeek="1328"/>
+<Insert>
+  /* Provoke page fault in Linux context */
+  dpa_memset(skb-&gt;data, 0x78, total_size);
+  
+</Insert>
+<Copy StartSeek="1331" EndSeek="1464"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1464" EndSeek="1593"/>
+<Insert>  pkt = (eth_pkt_t *) skb-&gt;data;
+  
+</Insert>
+<Copy StartSeek="1628" EndSeek="1862"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1959" EndSeek="3098"/>
+<Insert>      if (ETH_IS_PKT_SLOW_PATH(pkt)) {
+          DPA_FREE(pkt);
+      }
+</Insert>
+<Copy StartSeek="3170" EndSeek="3201"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/10/10" Time="15:49:55000">
+<Copy StartSeek="0" EndSeek="3098"/>
+<Insert>//    if (ETH_IS_PKT_SLOW_PATH(pkt)) {
+//        DPA_FREE(pkt);
+//    }
+</Insert>
+<Copy StartSeek="3163" EndSeek="3194"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/10/10" Time="15:52:32000">
+<Copy StartSeek="0" EndSeek="2334"/>
+<Insert>  pkt-&gt;status = ETH_PKT_STATUS_NONE;
+</Insert>
+<Copy StartSeek="2356" EndSeek="3122"/>
+<Insert>	  DPA_FREE(pkt);
+</Insert>
+<Copy StartSeek="3147" EndSeek="3186"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="11:18:21000">
+<Copy StartSeek="0" EndSeek="933"/>
+<Insert>
+</Insert>
+<Copy StartSeek="962" EndSeek="963"/>
+<Copy StartSeek="964" EndSeek="2363"/>
+<Insert>  pkt-&gt;status = 0x66;
+</Insert>
+<Copy StartSeek="2400" EndSeek="3230"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="14:55:0000">
+<Copy StartSeek="0" EndSeek="933"/>
+<Insert>#define DPA_EXTRA_HEAD_PAD 4
+</Insert>
+<Copy StartSeek="959" EndSeek="3227"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="14:55:17000">
+<Copy StartSeek="0" EndSeek="933"/>
+<Insert>#define DPA_VLAN_PAD	   4
+</Insert>
+<Copy StartSeek="960" EndSeek="3228"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="14:55:27000">
+<Copy StartSeek="0" EndSeek="1129"/>
+<Insert>  total_size = DPA_PAD + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1);
+</Insert>
+<Copy StartSeek="1226" EndSeek="3244"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="14:55:58000">
+<Copy StartSeek="0" EndSeek="1129"/>
+<Insert>  total_size = DPA_PAD + DPA_EXTRA_PAD + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1);
+</Insert>
+<Copy StartSeek="1226" EndSeek="3244"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="15:08:47000">
+<Copy StartSeek="0" EndSeek="873"/>
+<Insert>#define DPA_PAD           (DPA_PAD_STEP * DPA_PAD_STEP_NUM)
+</Insert>
+<Copy StartSeek="949" EndSeek="1145"/>
+<Insert>  total_size = DPA_EXTRA_PAD + DPA_PAD + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1);
+</Insert>
+<Copy StartSeek="1226" EndSeek="3244"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="15:09:47000">
+<Copy StartSeek="0" EndSeek="873"/>
+<Insert>#define DPA_PAD           (DPA_PAD_STEP * DPA_PAD_STEP_NUM + DPA_EXTRA_PAD)
+</Insert>
+<Copy StartSeek="873" EndSeek="900"/>
+<Insert>
+</Insert>
+<Copy StartSeek="976" EndSeek="977"/>
+<Copy StartSeek="979" EndSeek="3245"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="15:09:56000">
+<Copy StartSeek="0" EndSeek="873"/>
+<Insert>#define DPA_EXTRA_PAD	   4
+</Insert>
+<Copy StartSeek="901" EndSeek="3246"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="15:10:4000">
+<Copy StartSeek="0" EndSeek="873"/>
+<Copy StartSeek="931" EndSeek="3304"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="15:11:38000">
+<Copy StartSeek="0" EndSeek="1434"/>
+<Insert>  offset = pad_count * DPA_PAD_STEP;
+</Insert>
+<Copy StartSeek="1487" EndSeek="3320"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="15:18:18000">
+<Copy StartSeek="0" EndSeek="931"/>
+<Insert>#define DPA_EXTRA_PAD	  (4)
+</Insert>
+<Copy StartSeek="960" EndSeek="3321"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="15:55:33000">
+<Copy StartSeek="0" EndSeek="931"/>
+<Insert>#define DPA_EXTRA_PAD	  (32)
+</Insert>
+<Copy StartSeek="959" EndSeek="3320"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="15:57:51000">
+<Copy StartSeek="0" EndSeek="931"/>
+<Insert>#define DPA_EXTRA_PAD	  (4)
+</Insert>
+<Copy StartSeek="960" EndSeek="3321"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="15:58:0000">
+<Copy StartSeek="0" EndSeek="931"/>
+<Insert>#define DPA_EXTRA_PAD	  (32)
+</Insert>
+<Copy StartSeek="959" EndSeek="3320"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="15:59:38000">
+<Copy StartSeek="0" EndSeek="873"/>
+<Insert>/* HAIM FIXME : needed for header insertion. e.g. VLAN */
+#define DPA_EXTRA_PAD	  (4)
+</Insert>
+<Copy StartSeek="959" EndSeek="1037"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1037" EndSeek="3319"/>
+</Delta>
+</DeltaFile>

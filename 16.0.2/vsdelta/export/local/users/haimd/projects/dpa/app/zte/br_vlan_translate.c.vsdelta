@@ -1,0 +1,128 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1" Comment="" Date="2013/05/30" Time="11:19:21000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+*
+* br_vlan_translate.c
+*
+* Description:
+*     ZTE Fast API command line utility.
+*
+*******************************************************************************/
+
+
+#include &lt;stdio.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;netinet/in.h&gt;
+#include &lt;arpa/inet.h&gt;
+#include &lt;zte_api_fast.h&gt;
+
+
+#define LOG(format, args...) printf("\nZTE API: %s(%d): "format, __func__, __LINE__, ##args)
+
+static char xml_string[] = "&lt;DPA&gt;\n"
+ "&lt;!-- Physical ports configuration --&gt;\n"
+ " &lt;Interfaces&gt;\n"
+ "  &lt;Port&gt;\n"
+ "    &lt;Id&gt;0&lt;/Id&gt;\n"
+ "    &lt;Mtu&gt;1500&lt;/Mtu&gt;\n"
+ "    &lt;Rx_Desc_Num&gt;128&lt;/Rx_Desc_Num&gt;\n"
+ "    &lt;Tx_Desc_Num&gt;256&lt;/Tx_Desc_Num&gt;\n"
+ "   &lt;/Port&gt;\n"
+ "   &lt;Port&gt;\n"
+ "     &lt;Id&gt;2&lt;/Id&gt;\n"
+ "     &lt;Mtu&gt;1500&lt;/Mtu&gt;\n"
+ "     &lt;Rx_Desc_Num&gt;128&lt;/Rx_Desc_Num&gt;\n"
+ "     &lt;Tx_Desc_Num&gt;256&lt;/Tx_Desc_Num&gt;\n"
+ "   &lt;/Port&gt;\n"
+ " &lt;/Interfaces&gt;\n"
+ "&lt;/DPA&gt;\n";
+
+void init_vlan_bridging_session1(ZTE_L3_HARDFAST_SESSION *session) {
+  ZTE_L3_HARDFAST_SESSION vlan_bridging_session = {
+    .direction = ZTE_DIR_UPLINK,
+    .tuple = {.sip = {.ip = inet_addr("1.1.1.1")},
+              .dip = {.ip = inet_addr("1.1.1.2")},
+              .sport = htons(1000),
+              .dport = htons(2000),
+              .protocol = 17},
+    .l2length = 18,
+    .l3num = 2,
+    .isppp = 0,
+    .gwmac = {0},
+    .smac = {0},
+    .innervlan = ZTE_NO_PARAM,
+    .outervlan = htons(200),
+    .sessionid = ZTE_NO_PARAM,
+    .dscpremark = 0,
+    .dscpvalue = 0xFF,
+    .channel = 2,
+    .queue = 0,
+ };
+
+  *session = vlan_bridging_session;
+}
+
+void init_vlan_bridging_session2(ZTE_L3_HARDFAST_SESSION *session) {
+  ZTE_L3_HARDFAST_SESSION vlan_bridging_session = {
+    .direction = ZTE_DIR_DOWNLINK,
+    .tuple = {.sip = {.ip = inet_addr("1.1.1.2")},
+              .dip = {.ip = inet_addr("1.1.1.1")},
+              .sport = htons(2000),
+              .dport = htons(1000),
+              .protocol = 17},
+    .l2length = 18,
+    .l3num = 2,
+    .isppp = 0,
+    .gwmac = {0},
+    .smac = {0},
+    .innervlan = ZTE_NO_PARAM,
+    .outervlan = htons(100),
+    .sessionid = ZTE_NO_PARAM,
+    .dscpremark = 0,
+    .dscpvalue = 0xFF,
+    .channel = 0,
+    .queue = 0,
+ };
+
+  *session = vlan_bridging_session;
+}
+
+int main(int argc, char**argv) {
+  int err;
+  ZTE_L3_HARDFAST_SESSION session;
+  
+  err = zte_api_fast_l3_init(xml_string);
+  if (err) {
+      LOG("init failure, err %d", err);
+      return -1;
+  }
+
+  init_vlan_bridging_session1(&amp;session);
+  
+  err = zte_api_fast_l3_session_add(&amp;session);
+  if (err) {
+      LOG("add session failed, err %d", err);
+      return -1;
+  }
+  
+  init_vlan_bridging_session2(&amp;session);
+  
+  err = zte_api_fast_l3_session_add(&amp;session);
+  if (err) {
+      LOG("add session failed, err %d", err);
+      return -1;
+  }
+
+  LOG("succeeded\n");
+
+  return err;
+}</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/05/29" Time="14:50:42000">
+<Copy StartSeek="0" EndSeek="1681"/>
+<Insert>    .direction = ZTE_DIR_UPLINK,
+</Insert>
+<Copy StartSeek="1716" EndSeek="2804"/>
+</Delta>
+</DeltaFile>

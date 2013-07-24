@@ -1,0 +1,1200 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="29" Comment="" Date="2013/04/14" Time="17:40:12000" NL="\10" Encoding="text">
+<Insert>/*
+ *	Handle firewalling
+ *	Linux ethernet bridge
+ *
+ *	Authors:
+ *	Lennert Buytenhek               &lt;buytenh@gnu.org&gt;
+ *	Bart De Schuymer (maintainer)	&lt;bdschuym@pandora.be&gt;
+ *
+ *	Changes:
+ *	Apr 29 2003: physdev module support (bdschuym)
+ *	Jun 19 2003: let arptables see bridged ARP traffic (bdschuym)
+ *	Oct 06 2003: filter encapsulated IP/ARP VLAN traffic on untagged bridge
+ *	             (bdschuym)
+ *	Sep 01 2004: add IPv6 filtering (bdschuym)
+ *
+ *	This program is free software; you can redistribute it and/or
+ *	modify it under the terms of the GNU General Public License
+ *	as published by the Free Software Foundation; either version
+ *	2 of the License, or (at your option) any later version.
+ *
+ *	Lennert dedicates this file to Kerstin Wurdinger.
+ */
+
+#include &lt;linux/module.h&gt;
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/ip.h&gt;
+#include &lt;linux/netdevice.h&gt;
+#include &lt;linux/skbuff.h&gt;
+#include &lt;linux/if_arp.h&gt;
+#include &lt;linux/if_ether.h&gt;
+#include &lt;linux/if_vlan.h&gt;
+#include &lt;linux/netfilter_bridge.h&gt;
+#include &lt;linux/netfilter_ipv4.h&gt;
+#include &lt;linux/netfilter_ipv6.h&gt;
+#include &lt;linux/netfilter_arp.h&gt;
+#include &lt;linux/in_route.h&gt;
+#include &lt;linux/inetdevice.h&gt;
+
+#include &lt;net/ip.h&gt;
+#include &lt;net/ipv6.h&gt;
+#include &lt;net/route.h&gt;
+
+#include &lt;asm/uaccess.h&gt;
+#include "br_private.h"
+#ifdef CONFIG_SYSCTL
+#include &lt;linux/sysctl.h&gt;
+#endif
+
+#define skb_origaddr(skb)	 (((struct bridge_skb_cb *) \
+				 (skb-&gt;nf_bridge-&gt;data))-&gt;daddr.ipv4)
+#define store_orig_dstaddr(skb)	 (skb_origaddr(skb) = (skb)-&gt;nh.iph-&gt;daddr)
+#define dnat_took_place(skb)	 (skb_origaddr(skb) != (skb)-&gt;nh.iph-&gt;daddr)
+
+#ifdef CONFIG_SYSCTL
+static struct ctl_table_header *brnf_sysctl_header;
+static int brnf_call_iptables __read_mostly = 1;
+static int brnf_call_ip6tables __read_mostly = 1;
+static int brnf_call_arptables __read_mostly = 1;
+static int brnf_filter_vlan_tagged __read_mostly = 1;
+#else
+#define brnf_filter_vlan_tagged 1
+#endif
+
+static inline __be16 vlan_proto(const struct sk_buff *skb)
+{
+	return vlan_eth_hdr(skb)-&gt;h_vlan_encapsulated_proto;
+}
+
+#define IS_VLAN_IP(skb) \
+	(skb-&gt;protocol == htons(ETH_P_8021Q) &amp;&amp; \
+	 vlan_proto(skb) == htons(ETH_P_IP) &amp;&amp; 	\
+	 brnf_filter_vlan_tagged)
+
+#define IS_VLAN_IPV6(skb) \
+	(skb-&gt;protocol == htons(ETH_P_8021Q) &amp;&amp; \
+	 vlan_proto(skb) == htons(ETH_P_IPV6) &amp;&amp;\
+	 brnf_filter_vlan_tagged)
+
+#define IS_VLAN_ARP(skb) \
+	(skb-&gt;protocol == htons(ETH_P_8021Q) &amp;&amp;	\
+	 vlan_proto(skb) == htons(ETH_P_ARP) &amp;&amp;	\
+	 brnf_filter_vlan_tagged)
+
+/* We need these fake structures to make netfilter happy --
+ * lots of places assume that skb-&gt;dst != NULL, which isn't
+ * all that unreasonable.
+ *
+ * Currently, we fill in the PMTU entry because netfilter
+ * refragmentation needs it, and the rt_flags entry because
+ * ipt_REJECT needs it.  Future netfilter modules might
+ * require us to fill additional fields. */
+static struct net_device __fake_net_device = {
+	.hard_header_len	= ETH_HLEN
+};
+
+static struct rtable __fake_rtable = {
+	.u = {
+		.dst = {
+			.__refcnt		= ATOMIC_INIT(1),
+			.dev			= &amp;__fake_net_device,
+			.path			= &amp;__fake_rtable.u.dst,
+			.metrics		= {[RTAX_MTU - 1] = 1500},
+			.flags			= DST_NOXFRM,
+		}
+	},
+	.rt_flags	= 0,
+};
+
+static inline struct net_device *bridge_parent(const struct net_device *dev)
+{
+	struct net_bridge_port *port = rcu_dereference(dev-&gt;br_port);
+
+	return port ? port-&gt;br-&gt;dev : NULL;
+}
+
+static inline struct nf_bridge_info *nf_bridge_alloc(struct sk_buff *skb)
+{
+	skb-&gt;nf_bridge = kzalloc(sizeof(struct nf_bridge_info), GFP_ATOMIC);
+	if (likely(skb-&gt;nf_bridge))
+		atomic_set(&amp;(skb-&gt;nf_bridge-&gt;use), 1);
+
+	return skb-&gt;nf_bridge;
+}
+
+static inline void nf_bridge_save_header(struct sk_buff *skb)
+{
+	int header_size = ETH_HLEN;
+
+	if (skb-&gt;protocol == htons(ETH_P_8021Q))
+		header_size += VLAN_HLEN;
+
+	memcpy(skb-&gt;nf_bridge-&gt;data, skb-&gt;data - header_size, header_size);
+}
+
+/*
+ * When forwarding bridge frames, we save a copy of the original
+ * header before processing.
+ */
+int nf_bridge_copy_header(struct sk_buff *skb)
+{
+	int err;
+	int header_size = ETH_HLEN;
+
+	if (skb-&gt;protocol == htons(ETH_P_8021Q))
+		header_size += VLAN_HLEN;
+
+	err = skb_cow(skb, header_size);
+	if (err)
+		return err;
+
+	memcpy(skb-&gt;data - header_size, skb-&gt;nf_bridge-&gt;data, header_size);
+
+	if (skb-&gt;protocol == htons(ETH_P_8021Q))
+		__skb_push(skb, VLAN_HLEN);
+	return 0;
+}
+
+/* PF_BRIDGE/PRE_ROUTING *********************************************/
+/* Undo the changes made for ip6tables PREROUTING and continue the
+ * bridge PRE_ROUTING hook. */
+static int br_nf_pre_routing_finish_ipv6(struct sk_buff *skb)
+{
+	struct nf_bridge_info *nf_bridge = skb-&gt;nf_bridge;
+
+	if (nf_bridge-&gt;mask &amp; BRNF_PKT_TYPE) {
+		skb-&gt;pkt_type = PACKET_OTHERHOST;
+		nf_bridge-&gt;mask ^= BRNF_PKT_TYPE;
+	}
+	nf_bridge-&gt;mask ^= BRNF_NF_BRIDGE_PREROUTING;
+
+	skb-&gt;dst = (struct dst_entry *)&amp;__fake_rtable;
+	dst_hold(skb-&gt;dst);
+
+	skb-&gt;dev = nf_bridge-&gt;physindev;
+	if (skb-&gt;protocol == htons(ETH_P_8021Q)) {
+		skb_push(skb, VLAN_HLEN);
+		skb-&gt;nh.raw -= VLAN_HLEN;
+	}
+	NF_HOOK_THRESH(PF_BRIDGE, NF_BR_PRE_ROUTING, skb, skb-&gt;dev, NULL,
+		       br_handle_frame_finish, 1);
+
+	return 0;
+}
+
+static void __br_dnat_complain(void)
+{
+	static unsigned long last_complaint;
+
+	if (jiffies - last_complaint &gt;= 5 * HZ) {
+		printk(KERN_WARNING "Performing cross-bridge DNAT requires IP "
+		       "forwarding to be enabled\n");
+		last_complaint = jiffies;
+	}
+}
+
+/* This requires some explaining. If DNAT has taken place,
+ * we will need to fix up the destination Ethernet address,
+ * and this is a tricky process.
+ *
+ * There are two cases to consider:
+ * 1. The packet was DNAT'ed to a device in the same bridge
+ *    port group as it was received on. We can still bridge
+ *    the packet.
+ * 2. The packet was DNAT'ed to a different device, either
+ *    a non-bridged device or another bridge port group.
+ *    The packet will need to be routed.
+ *
+ * The correct way of distinguishing between these two cases is to
+ * call ip_route_input() and to look at skb-&gt;dst-&gt;dev, which is
+ * changed to the destination device if ip_route_input() succeeds.
+ *
+ * Let us first consider the case that ip_route_input() succeeds:
+ *
+ * If skb-&gt;dst-&gt;dev equals the logical bridge device the packet
+ * came in on, we can consider this bridging. We then call
+ * skb-&gt;dst-&gt;output() which will make the packet enter br_nf_local_out()
+ * not much later. In that function it is assured that the iptables
+ * FORWARD chain is traversed for the packet.
+ *
+ * Otherwise, the packet is considered to be routed and we just
+ * change the destination MAC address so that the packet will
+ * later be passed up to the IP stack to be routed. For a redirected
+ * packet, ip_route_input() will give back the localhost as output device,
+ * which differs from the bridge device.
+ *
+ * Let us now consider the case that ip_route_input() fails:
+ *
+ * This can be because the destination address is martian, in which case
+ * the packet will be dropped.
+ * After a "echo '0' &gt; /proc/sys/net/ipv4/ip_forward" ip_route_input()
+ * will fail, while __ip_route_output_key() will return success. The source
+ * address for __ip_route_output_key() is set to zero, so __ip_route_output_key
+ * thinks we're handling a locally generated packet and won't care
+ * if IP forwarding is allowed. We send a warning message to the users's
+ * log telling her to put IP forwarding on.
+ *
+ * ip_route_input() will also fail if there is no route available.
+ * In that case we just drop the packet.
+ *
+ * --Lennert, 20020411
+ * --Bart, 20020416 (updated)
+ * --Bart, 20021007 (updated)
+ * --Bart, 20062711 (updated) */
+static int br_nf_pre_routing_finish_bridge(struct sk_buff *skb)
+{
+	if (skb-&gt;pkt_type == PACKET_OTHERHOST) {
+		skb-&gt;pkt_type = PACKET_HOST;
+		skb-&gt;nf_bridge-&gt;mask |= BRNF_PKT_TYPE;
+	}
+	skb-&gt;nf_bridge-&gt;mask ^= BRNF_NF_BRIDGE_PREROUTING;
+
+	skb-&gt;dev = bridge_parent(skb-&gt;dev);
+	if (!skb-&gt;dev)
+		kfree_skb(skb);
+	else {
+		if (skb-&gt;protocol == htons(ETH_P_8021Q)) {
+			skb_pull(skb, VLAN_HLEN);
+			skb-&gt;nh.raw += VLAN_HLEN;
+		}
+		skb-&gt;dst-&gt;output(skb);
+	}
+	return 0;
+}
+
+static int br_nf_pre_routing_finish(struct sk_buff *skb)
+{
+	struct net_device *dev = skb-&gt;dev;
+	struct iphdr *iph = skb-&gt;nh.iph;
+	struct nf_bridge_info *nf_bridge = skb-&gt;nf_bridge;
+	int err;
+
+	if (nf_bridge-&gt;mask &amp; BRNF_PKT_TYPE) {
+		skb-&gt;pkt_type = PACKET_OTHERHOST;
+		nf_bridge-&gt;mask ^= BRNF_PKT_TYPE;
+	}
+	nf_bridge-&gt;mask ^= BRNF_NF_BRIDGE_PREROUTING;
+	if (dnat_took_place(skb)) {
+		if ((err = ip_route_input(skb, iph-&gt;daddr, iph-&gt;saddr, iph-&gt;tos, dev))) {
+			struct rtable *rt;
+			struct flowi fl = {
+				.nl_u = {
+					.ip4_u = {
+						 .daddr = iph-&gt;daddr,
+						 .saddr = 0,
+						 .tos = RT_TOS(iph-&gt;tos) },
+				},
+				.proto = 0,
+			};
+			struct in_device *in_dev = in_dev_get(dev);
+
+			/* If err equals -EHOSTUNREACH the error is due to a
+			 * martian destination or due to the fact that
+			 * forwarding is disabled. For most martian packets,
+			 * ip_route_output_key() will fail. It won't fail for 2 types of
+			 * martian destinations: loopback destinations and destination
+			 * 0.0.0.0. In both cases the packet will be dropped because the
+			 * destination is the loopback device and not the bridge. */
+			if (err != -EHOSTUNREACH || !in_dev || IN_DEV_FORWARD(in_dev))
+				goto free_skb;
+
+			if (!ip_route_output_key(&amp;rt, &amp;fl)) {
+				/* - Bridged-and-DNAT'ed traffic doesn't
+				 *   require ip_forwarding. */
+				if (((struct dst_entry *)rt)-&gt;dev == dev) {
+					skb-&gt;dst = (struct dst_entry *)rt;
+					goto bridged_dnat;
+				}
+				/* we are sure that forwarding is disabled, so printing
+				 * this message is no problem. Note that the packet could
+				 * still have a martian destination address, in which case
+				 * the packet could be dropped even if forwarding were enabled */
+				__br_dnat_complain();
+				dst_release((struct dst_entry *)rt);
+			}
+free_skb:
+			kfree_skb(skb);
+			return 0;
+		} else {
+			if (skb-&gt;dst-&gt;dev == dev) {
+bridged_dnat:
+				/* Tell br_nf_local_out this is a
+				 * bridged frame */
+				nf_bridge-&gt;mask |= BRNF_BRIDGED_DNAT;
+				skb-&gt;dev = nf_bridge-&gt;physindev;
+				if (skb-&gt;protocol ==
+				    htons(ETH_P_8021Q)) {
+					skb_push(skb, VLAN_HLEN);
+					skb-&gt;nh.raw -= VLAN_HLEN;
+				}
+				NF_HOOK_THRESH(PF_BRIDGE, NF_BR_PRE_ROUTING,
+					       skb, skb-&gt;dev, NULL,
+					       br_nf_pre_routing_finish_bridge,
+					       1);
+				return 0;
+			}
+			memcpy(eth_hdr(skb)-&gt;h_dest, dev-&gt;dev_addr, ETH_ALEN);
+			skb-&gt;pkt_type = PACKET_HOST;
+		}
+	} else {
+		skb-&gt;dst = (struct dst_entry *)&amp;__fake_rtable;
+		dst_hold(skb-&gt;dst);
+	}
+
+	skb-&gt;dev = nf_bridge-&gt;physindev;
+	if (skb-&gt;protocol == htons(ETH_P_8021Q)) {
+		skb_push(skb, VLAN_HLEN);
+		skb-&gt;nh.raw -= VLAN_HLEN;
+	}
+	NF_HOOK_THRESH(PF_BRIDGE, NF_BR_PRE_ROUTING, skb, skb-&gt;dev, NULL,
+		       br_handle_frame_finish, 1);
+
+	return 0;
+}
+
+/* Some common code for IPv4/IPv6 */
+static struct net_device *setup_pre_routing(struct sk_buff *skb)
+{
+	struct nf_bridge_info *nf_bridge = skb-&gt;nf_bridge;
+
+	if (skb-&gt;pkt_type == PACKET_OTHERHOST) {
+		skb-&gt;pkt_type = PACKET_HOST;
+		nf_bridge-&gt;mask |= BRNF_PKT_TYPE;
+	}
+
+	nf_bridge-&gt;mask |= BRNF_NF_BRIDGE_PREROUTING;
+	nf_bridge-&gt;physindev = skb-&gt;dev;
+	skb-&gt;dev = bridge_parent(skb-&gt;dev);
+
+	return skb-&gt;dev;
+}
+
+/* We only check the length. A bridge shouldn't do any hop-by-hop stuff anyway */
+static int check_hbh_len(struct sk_buff *skb)
+{
+	unsigned char *raw = (u8 *) (skb-&gt;nh.ipv6h + 1);
+	u32 pkt_len;
+	int off = raw - skb-&gt;nh.raw;
+	int len = (raw[1] + 1) &lt;&lt; 3;
+
+	if ((raw + len) - skb-&gt;data &gt; skb_headlen(skb))
+		goto bad;
+
+	off += 2;
+	len -= 2;
+
+	while (len &gt; 0) {
+		int optlen = skb-&gt;nh.raw[off + 1] + 2;
+
+		switch (skb-&gt;nh.raw[off]) {
+		case IPV6_TLV_PAD0:
+			optlen = 1;
+			break;
+
+		case IPV6_TLV_PADN:
+			break;
+
+		case IPV6_TLV_JUMBO:
+			if (skb-&gt;nh.raw[off + 1] != 4 || (off &amp; 3) != 2)
+				goto bad;
+			pkt_len = ntohl(*(__be32 *) (skb-&gt;nh.raw + off + 2));
+			if (pkt_len &lt;= IPV6_MAXPLEN ||
+			    skb-&gt;nh.ipv6h-&gt;payload_len)
+				goto bad;
+			if (pkt_len &gt; skb-&gt;len - sizeof(struct ipv6hdr))
+				goto bad;
+			if (pskb_trim_rcsum(skb,
+					    pkt_len + sizeof(struct ipv6hdr)))
+				goto bad;
+			break;
+		default:
+			if (optlen &gt; len)
+				goto bad;
+			break;
+		}
+		off += optlen;
+		len -= optlen;
+	}
+	if (len == 0)
+		return 0;
+bad:
+	return -1;
+
+}
+
+/* Replicate the checks that IPv6 does on packet reception and pass the packet
+ * to ip6tables, which doesn't support NAT, so things are fairly simple. */
+static unsigned int br_nf_pre_routing_ipv6(unsigned int hook,
+					   struct sk_buff *skb,
+					   const struct net_device *in,
+					   const struct net_device *out,
+					   int (*okfn)(struct sk_buff *))
+{
+	struct ipv6hdr *hdr;
+	u32 pkt_len;
+
+	if (skb-&gt;len &lt; sizeof(struct ipv6hdr))
+		goto inhdr_error;
+
+	if (!pskb_may_pull(skb, sizeof(struct ipv6hdr)))
+		goto inhdr_error;
+
+	hdr = skb-&gt;nh.ipv6h;
+
+	if (hdr-&gt;version != 6)
+		goto inhdr_error;
+
+	pkt_len = ntohs(hdr-&gt;payload_len);
+
+	if (pkt_len || hdr-&gt;nexthdr != NEXTHDR_HOP) {
+		if (pkt_len + sizeof(struct ipv6hdr) &gt; skb-&gt;len)
+			goto inhdr_error;
+		if (pskb_trim_rcsum(skb, pkt_len + sizeof(struct ipv6hdr)))
+			goto inhdr_error;
+	}
+	if (hdr-&gt;nexthdr == NEXTHDR_HOP &amp;&amp; check_hbh_len(skb))
+		goto inhdr_error;
+
+	nf_bridge_put(skb-&gt;nf_bridge);
+	if (!nf_bridge_alloc(skb))
+		return NF_DROP;
+	if (!setup_pre_routing(skb))
+		return NF_DROP;
+
+	NF_HOOK(PF_INET6, NF_IP6_PRE_ROUTING, skb, skb-&gt;dev, NULL,
+		br_nf_pre_routing_finish_ipv6);
+
+	return NF_STOLEN;
+
+inhdr_error:
+	return NF_DROP;
+}
+
+/* Direct IPv6 traffic to br_nf_pre_routing_ipv6.
+ * Replicate the checks that IPv4 does on packet reception.
+ * Set skb-&gt;dev to the bridge device (i.e. parent of the
+ * receiving device) to make netfilter happy, the REDIRECT
+ * target in particular.  Save the original destination IP
+ * address to be able to detect DNAT afterwards. */
+static unsigned int br_nf_pre_routing(unsigned int hook, struct sk_buff **pskb,
+				      const struct net_device *in,
+				      const struct net_device *out,
+				      int (*okfn)(struct sk_buff *))
+{
+	struct iphdr *iph;
+	__u32 len;
+	struct sk_buff *skb = *pskb;
+
+	if (skb-&gt;protocol == htons(ETH_P_IPV6) || IS_VLAN_IPV6(skb)) {
+#ifdef CONFIG_SYSCTL
+		if (!brnf_call_ip6tables)
+			return NF_ACCEPT;
+#endif
+		if ((skb = skb_share_check(*pskb, GFP_ATOMIC)) == NULL)
+			goto out;
+
+		if (skb-&gt;protocol == htons(ETH_P_8021Q)) {
+			skb_pull_rcsum(skb, VLAN_HLEN);
+			skb-&gt;nh.raw += VLAN_HLEN;
+		}
+		return br_nf_pre_routing_ipv6(hook, skb, in, out, okfn);
+	}
+#ifdef CONFIG_SYSCTL
+	if (!brnf_call_iptables)
+		return NF_ACCEPT;
+#endif
+
+	if (skb-&gt;protocol != htons(ETH_P_IP) &amp;&amp; !IS_VLAN_IP(skb))
+		return NF_ACCEPT;
+
+	if ((skb = skb_share_check(*pskb, GFP_ATOMIC)) == NULL)
+		goto out;
+
+	if (skb-&gt;protocol == htons(ETH_P_8021Q)) {
+		skb_pull_rcsum(skb, VLAN_HLEN);
+		skb-&gt;nh.raw += VLAN_HLEN;
+	}
+
+	if (!pskb_may_pull(skb, sizeof(struct iphdr)))
+		goto inhdr_error;
+
+	iph = skb-&gt;nh.iph;
+	if (iph-&gt;ihl &lt; 5 || iph-&gt;version != 4)
+		goto inhdr_error;
+
+	if (!pskb_may_pull(skb, 4 * iph-&gt;ihl))
+		goto inhdr_error;
+
+	iph = skb-&gt;nh.iph;
+	if (ip_fast_csum((__u8 *) iph, iph-&gt;ihl) != 0)
+		goto inhdr_error;
+
+	len = ntohs(iph-&gt;tot_len);
+	if (skb-&gt;len &lt; len || len &lt; 4 * iph-&gt;ihl)
+		goto inhdr_error;
+
+	pskb_trim_rcsum(skb, len);
+
+	nf_bridge_put(skb-&gt;nf_bridge);
+	if (!nf_bridge_alloc(skb))
+		return NF_DROP;
+	if (!setup_pre_routing(skb))
+		return NF_DROP;
+	store_orig_dstaddr(skb);
+
+	NF_HOOK(PF_INET, NF_IP_PRE_ROUTING, skb, skb-&gt;dev, NULL,
+		br_nf_pre_routing_finish);
+
+	return NF_STOLEN;
+
+inhdr_error:
+//      IP_INC_STATS_BH(IpInHdrErrors);
+out:
+	return NF_DROP;
+}
+
+
+/* PF_BRIDGE/LOCAL_IN ************************************************/
+/* The packet is locally destined, which requires a real
+ * dst_entry, so detach the fake one.  On the way up, the
+ * packet would pass through PRE_ROUTING again (which already
+ * took place when the packet entered the bridge), but we
+ * register an IPv4 PRE_ROUTING 'sabotage' hook that will
+ * prevent this from happening. */
+static unsigned int br_nf_local_in(unsigned int hook, struct sk_buff **pskb,
+				   const struct net_device *in,
+				   const struct net_device *out,
+				   int (*okfn)(struct sk_buff *))
+{
+	struct sk_buff *skb = *pskb;
+
+	if (skb-&gt;dst == (struct dst_entry *)&amp;__fake_rtable) {
+		dst_release(skb-&gt;dst);
+		skb-&gt;dst = NULL;
+	}
+
+	return NF_ACCEPT;
+}
+
+/* PF_BRIDGE/FORWARD *************************************************/
+static int br_nf_forward_finish(struct sk_buff *skb)
+{
+	struct nf_bridge_info *nf_bridge = skb-&gt;nf_bridge;
+	struct net_device *in;
+
+	if (skb-&gt;protocol != htons(ETH_P_ARP) &amp;&amp; !IS_VLAN_ARP(skb)) {
+		in = nf_bridge-&gt;physindev;
+		if (nf_bridge-&gt;mask &amp; BRNF_PKT_TYPE) {
+			skb-&gt;pkt_type = PACKET_OTHERHOST;
+			nf_bridge-&gt;mask ^= BRNF_PKT_TYPE;
+		}
+	} else {
+		in = *((struct net_device **)(skb-&gt;cb));
+	}
+	if (skb-&gt;protocol == htons(ETH_P_8021Q)) {
+		skb_push(skb, VLAN_HLEN);
+		skb-&gt;nh.raw -= VLAN_HLEN;
+	}
+	NF_HOOK_THRESH(PF_BRIDGE, NF_BR_FORWARD, skb, in,
+		       skb-&gt;dev, br_forward_finish, 1);
+	return 0;
+}
+
+/* This is the 'purely bridged' case.  For IP, we pass the packet to
+ * netfilter with indev and outdev set to the bridge device,
+ * but we are still able to filter on the 'real' indev/outdev
+ * because of the physdev module. For ARP, indev and outdev are the
+ * bridge ports. */
+static unsigned int br_nf_forward_ip(unsigned int hook, struct sk_buff **pskb,
+				     const struct net_device *in,
+				     const struct net_device *out,
+				     int (*okfn)(struct sk_buff *))
+{
+	struct sk_buff *skb = *pskb;
+	struct nf_bridge_info *nf_bridge;
+	struct net_device *parent;
+	int pf;
+
+	if (!skb-&gt;nf_bridge)
+		return NF_ACCEPT;
+
+	parent = bridge_parent(out);
+	if (!parent)
+		return NF_DROP;
+
+	if (skb-&gt;protocol == htons(ETH_P_IP) || IS_VLAN_IP(skb))
+		pf = PF_INET;
+	else
+		pf = PF_INET6;
+
+	if (skb-&gt;protocol == htons(ETH_P_8021Q)) {
+		skb_pull(*pskb, VLAN_HLEN);
+		(*pskb)-&gt;nh.raw += VLAN_HLEN;
+	}
+
+	nf_bridge = skb-&gt;nf_bridge;
+	if (skb-&gt;pkt_type == PACKET_OTHERHOST) {
+		skb-&gt;pkt_type = PACKET_HOST;
+		nf_bridge-&gt;mask |= BRNF_PKT_TYPE;
+	}
+
+	/* The physdev module checks on this */
+	nf_bridge-&gt;mask |= BRNF_BRIDGED;
+	nf_bridge-&gt;physoutdev = skb-&gt;dev;
+
+	NF_HOOK(pf, NF_IP_FORWARD, skb, bridge_parent(in), parent,
+		br_nf_forward_finish);
+
+	return NF_STOLEN;
+}
+
+static unsigned int br_nf_forward_arp(unsigned int hook, struct sk_buff **pskb,
+				      const struct net_device *in,
+				      const struct net_device *out,
+				      int (*okfn)(struct sk_buff *))
+{
+	struct sk_buff *skb = *pskb;
+	struct net_device **d = (struct net_device **)(skb-&gt;cb);
+
+#ifdef CONFIG_SYSCTL
+	if (!brnf_call_arptables)
+		return NF_ACCEPT;
+#endif
+
+	if (skb-&gt;protocol != htons(ETH_P_ARP)) {
+		if (!IS_VLAN_ARP(skb))
+			return NF_ACCEPT;
+		skb_pull(*pskb, VLAN_HLEN);
+		(*pskb)-&gt;nh.raw += VLAN_HLEN;
+	}
+
+	if (skb-&gt;nh.arph-&gt;ar_pln != 4) {
+		if (IS_VLAN_ARP(skb)) {
+			skb_push(*pskb, VLAN_HLEN);
+			(*pskb)-&gt;nh.raw -= VLAN_HLEN;
+		}
+		return NF_ACCEPT;
+	}
+	*d = (struct net_device *)in;
+	NF_HOOK(NF_ARP, NF_ARP_FORWARD, skb, (struct net_device *)in,
+		(struct net_device *)out, br_nf_forward_finish);
+
+	return NF_STOLEN;
+}
+
+/* PF_BRIDGE/LOCAL_OUT ***********************************************
+ *
+ * This function sees both locally originated IP packets and forwarded
+ * IP packets (in both cases the destination device is a bridge
+ * device). It also sees bridged-and-DNAT'ed packets.
+ *
+ * If (nf_bridge-&gt;mask &amp; BRNF_BRIDGED_DNAT) then the packet is bridged
+ * and we fake the PF_BRIDGE/FORWARD hook. The function br_nf_forward()
+ * will then fake the PF_INET/FORWARD hook. br_nf_local_out() has priority
+ * NF_BR_PRI_FIRST, so no relevant PF_BRIDGE/INPUT functions have been nor
+ * will be executed.
+ */
+static unsigned int br_nf_local_out(unsigned int hook, struct sk_buff **pskb,
+				    const struct net_device *in,
+				    const struct net_device *out,
+				    int (*okfn)(struct sk_buff *))
+{
+	struct net_device *realindev;
+	struct sk_buff *skb = *pskb;
+	struct nf_bridge_info *nf_bridge;
+
+	if (!skb-&gt;nf_bridge)
+		return NF_ACCEPT;
+
+	nf_bridge = skb-&gt;nf_bridge;
+	if (!(nf_bridge-&gt;mask &amp; BRNF_BRIDGED_DNAT))
+		return NF_ACCEPT;
+
+	/* Bridged, take PF_BRIDGE/FORWARD.
+	 * (see big note in front of br_nf_pre_routing_finish) */
+	nf_bridge-&gt;physoutdev = skb-&gt;dev;
+	realindev = nf_bridge-&gt;physindev;
+
+	if (nf_bridge-&gt;mask &amp; BRNF_PKT_TYPE) {
+		skb-&gt;pkt_type = PACKET_OTHERHOST;
+		nf_bridge-&gt;mask ^= BRNF_PKT_TYPE;
+	}
+	if (skb-&gt;protocol == htons(ETH_P_8021Q)) {
+		skb_push(skb, VLAN_HLEN);
+		skb-&gt;nh.raw -= VLAN_HLEN;
+	}
+
+	NF_HOOK(PF_BRIDGE, NF_BR_FORWARD, skb, realindev, skb-&gt;dev,
+		br_forward_finish);
+	return NF_STOLEN;
+}
+
+static int br_nf_dev_queue_xmit(struct sk_buff *skb)
+{
+	int ret;
+	if (skb-&gt;protocol == htons(ETH_P_IP) &amp;&amp;
+	    skb-&gt;len &gt; skb-&gt;dev-&gt;mtu &amp;&amp;
+	    !skb_is_gso(skb))
+		return ip_fragment(skb, br_dev_queue_push_xmit);
+	else {
+		ret = br_dev_queue_push_xmit(skb);
+		printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p ["NIPQUAD_FMT"-&gt;"NIPQUAD_FMT"], ip.proto #%x\n", 
+	 __func__, __LINE__,skb, skb-&gt;nh.raw,
+	 NIPQUAD(skb-&gt;nh.iph-&gt;saddr),NIPQUAD(skb-&gt;nh.iph-&gt;daddr),
+	 ntohs(skb-&gt;protocol));
+
+
+		return ret;
+	}
+}
+
+/* PF_BRIDGE/POST_ROUTING ********************************************/
+static unsigned int br_nf_post_routing(unsigned int hook, struct sk_buff **pskb,
+				       const struct net_device *in,
+				       const struct net_device *out,
+				       int (*okfn)(struct sk_buff *))
+{
+	struct sk_buff *skb = *pskb;
+	struct nf_bridge_info *nf_bridge = (*pskb)-&gt;nf_bridge;
+	struct net_device *realoutdev = bridge_parent(skb-&gt;dev);
+	int pf;
+
+#ifdef CONFIG_NETFILTER_DEBUG
+	/* Be very paranoid. This probably won't happen anymore, but let's
+	 * keep the check just to be sure... */
+	if (skb-&gt;mac.raw &lt; skb-&gt;head || skb-&gt;mac.raw + ETH_HLEN &gt; skb-&gt;data) {
+		printk(KERN_CRIT "br_netfilter: Argh!! br_nf_post_routing: "
+		       "bad mac.raw pointer.\n");
+		goto print_error;
+	}
+#endif
+
+	if (!nf_bridge)
+		return NF_ACCEPT;
+
+	if (!realoutdev)
+		return NF_DROP;
+
+	if (skb-&gt;protocol == htons(ETH_P_IP) || IS_VLAN_IP(skb))
+		pf = PF_INET;
+	else
+		pf = PF_INET6;
+
+#ifdef CONFIG_NETFILTER_DEBUG
+	if (skb-&gt;dst == NULL) {
+		printk(KERN_INFO "br_netfilter post_routing: skb-&gt;dst == NULL\n");
+		goto print_error;
+	}
+#endif
+
+	/* We assume any code from br_dev_queue_push_xmit onwards doesn't care
+	 * about the value of skb-&gt;pkt_type. */
+	if (skb-&gt;pkt_type == PACKET_OTHERHOST) {
+		skb-&gt;pkt_type = PACKET_HOST;
+		nf_bridge-&gt;mask |= BRNF_PKT_TYPE;
+	}
+
+	if (skb-&gt;protocol == htons(ETH_P_8021Q)) {
+		skb_pull(skb, VLAN_HLEN);
+		skb-&gt;nh.raw += VLAN_HLEN;
+	}
+	printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p ["NIPQUAD_FMT"-&gt;"NIPQUAD_FMT"], ip.proto #%x\n", 
+	       __func__, __LINE__,skb, skb-&gt;nh.raw,
+	       NIPQUAD(skb-&gt;nh.iph-&gt;saddr),NIPQUAD(skb-&gt;nh.iph-&gt;daddr),
+	       ntohs(skb-&gt;protocol));
+
+	nf_bridge_save_header(skb);
+
+#if defined(CONFIG_VLAN_8021Q) || defined(CONFIG_VLAN_8021Q_MODULE)
+	if (nf_bridge-&gt;netoutdev)
+		realoutdev = nf_bridge-&gt;netoutdev;
+#endif
+	NF_HOOK(pf, NF_IP_POST_ROUTING, skb, NULL, realoutdev,
+		br_nf_dev_queue_xmit);
+
+	printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p ["NIPQUAD_FMT"-&gt;"NIPQUAD_FMT"], ip.proto #%x\n", 
+	       __func__, __LINE__,skb, skb-&gt;nh.raw,
+	       NIPQUAD(skb-&gt;nh.iph-&gt;saddr),NIPQUAD(skb-&gt;nh.iph-&gt;daddr),
+	       ntohs(skb-&gt;protocol));
+
+	return NF_STOLEN;
+
+#ifdef CONFIG_NETFILTER_DEBUG
+print_error:
+	if (skb-&gt;dev != NULL) {
+		printk("[%s]", skb-&gt;dev-&gt;name);
+		if (realoutdev)
+			printk("[%s]", realoutdev-&gt;name);
+	}
+	printk(" head:%p, raw:%p, data:%p\n", skb-&gt;head, skb-&gt;mac.raw,
+	       skb-&gt;data);
+	dump_stack();
+	return NF_ACCEPT;
+#endif
+}
+
+/* IP/SABOTAGE *****************************************************/
+/* Don't hand locally destined packets to PF_INET(6)/PRE_ROUTING
+ * for the second time. */
+static unsigned int ip_sabotage_in(unsigned int hook, struct sk_buff **pskb,
+				   const struct net_device *in,
+				   const struct net_device *out,
+				   int (*okfn)(struct sk_buff *))
+{
+	if ((*pskb)-&gt;nf_bridge &amp;&amp;
+	    !((*pskb)-&gt;nf_bridge-&gt;mask &amp; BRNF_NF_BRIDGE_PREROUTING)) {
+		return NF_STOP;
+	}
+
+	return NF_ACCEPT;
+}
+
+/* For br_nf_local_out we need (prio = NF_BR_PRI_FIRST), to insure that innocent
+ * PF_BRIDGE/NF_BR_LOCAL_OUT functions don't get bridged traffic as input.
+ * For br_nf_post_routing, we need (prio = NF_BR_PRI_LAST), because
+ * ip_refrag() can return NF_STOLEN. */
+static struct nf_hook_ops br_nf_ops[] = {
+	{ .hook = br_nf_pre_routing,
+	  .owner = THIS_MODULE,
+	  .pf = PF_BRIDGE,
+	  .hooknum = NF_BR_PRE_ROUTING,
+	  .priority = NF_BR_PRI_BRNF, },
+	{ .hook = br_nf_local_in,
+	  .owner = THIS_MODULE,
+	  .pf = PF_BRIDGE,
+	  .hooknum = NF_BR_LOCAL_IN,
+	  .priority = NF_BR_PRI_BRNF, },
+	{ .hook = br_nf_forward_ip,
+	  .owner = THIS_MODULE,
+	  .pf = PF_BRIDGE,
+	  .hooknum = NF_BR_FORWARD,
+	  .priority = NF_BR_PRI_BRNF - 1, },
+	{ .hook = br_nf_forward_arp,
+	  .owner = THIS_MODULE,
+	  .pf = PF_BRIDGE,
+	  .hooknum = NF_BR_FORWARD,
+	  .priority = NF_BR_PRI_BRNF, },
+	{ .hook = br_nf_local_out,
+	  .owner = THIS_MODULE,
+	  .pf = PF_BRIDGE,
+	  .hooknum = NF_BR_LOCAL_OUT,
+	  .priority = NF_BR_PRI_FIRST, },
+	{ .hook = br_nf_post_routing,
+	  .owner = THIS_MODULE,
+	  .pf = PF_BRIDGE,
+	  .hooknum = NF_BR_POST_ROUTING,
+	  .priority = NF_BR_PRI_LAST, },
+	{ .hook = ip_sabotage_in,
+	  .owner = THIS_MODULE,
+	  .pf = PF_INET,
+	  .hooknum = NF_IP_PRE_ROUTING,
+	  .priority = NF_IP_PRI_FIRST, },
+	{ .hook = ip_sabotage_in,
+	  .owner = THIS_MODULE,
+	  .pf = PF_INET6,
+	  .hooknum = NF_IP6_PRE_ROUTING,
+	  .priority = NF_IP6_PRI_FIRST, },
+};
+
+#ifdef CONFIG_SYSCTL
+static
+int brnf_sysctl_call_tables(ctl_table * ctl, int write, struct file *filp,
+			    void __user * buffer, size_t * lenp, loff_t * ppos)
+{
+	int ret;
+
+	ret = proc_dointvec(ctl, write, filp, buffer, lenp, ppos);
+
+	if (write &amp;&amp; *(int *)(ctl-&gt;data))
+		*(int *)(ctl-&gt;data) = 1;
+	return ret;
+}
+
+static ctl_table brnf_table[] = {
+	{
+		.ctl_name	= NET_BRIDGE_NF_CALL_ARPTABLES,
+		.procname	= "bridge-nf-call-arptables",
+		.data		= &amp;brnf_call_arptables,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= &amp;brnf_sysctl_call_tables,
+	},
+	{
+		.ctl_name	= NET_BRIDGE_NF_CALL_IPTABLES,
+		.procname	= "bridge-nf-call-iptables",
+		.data		= &amp;brnf_call_iptables,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= &amp;brnf_sysctl_call_tables,
+	},
+	{
+		.ctl_name	= NET_BRIDGE_NF_CALL_IP6TABLES,
+		.procname	= "bridge-nf-call-ip6tables",
+		.data		= &amp;brnf_call_ip6tables,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= &amp;brnf_sysctl_call_tables,
+	},
+	{
+		.ctl_name	= NET_BRIDGE_NF_FILTER_VLAN_TAGGED,
+		.procname	= "bridge-nf-filter-vlan-tagged",
+		.data		= &amp;brnf_filter_vlan_tagged,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= &amp;brnf_sysctl_call_tables,
+	},
+	{ .ctl_name = 0 }
+};
+
+static ctl_table brnf_bridge_table[] = {
+	{
+		.ctl_name	= NET_BRIDGE,
+		.procname	= "bridge",
+		.mode		= 0555,
+		.child		= brnf_table,
+	},
+	{ .ctl_name = 0 }
+};
+
+static ctl_table brnf_net_table[] = {
+	{
+		.ctl_name	= CTL_NET,
+		.procname	= "net",
+		.mode		= 0555,
+		.child		= brnf_bridge_table,
+	},
+	{ .ctl_name = 0 }
+};
+#endif
+
+int __init br_netfilter_init(void)
+{
+	int ret;
+
+	ret = nf_register_hooks(br_nf_ops, ARRAY_SIZE(br_nf_ops));
+	if (ret &lt; 0)
+		return ret;
+#ifdef CONFIG_SYSCTL
+	brnf_sysctl_header = register_sysctl_table(brnf_net_table);
+	if (brnf_sysctl_header == NULL) {
+		printk(KERN_WARNING
+		       "br_netfilter: can't register to sysctl.\n");
+		nf_unregister_hooks(br_nf_ops, ARRAY_SIZE(br_nf_ops));
+		return -ENOMEM;
+	}
+#endif
+	printk(KERN_NOTICE "Bridge firewalling registered\n");
+	return 0;
+}
+
+void br_netfilter_fini(void)
+{
+	nf_unregister_hooks(br_nf_ops, ARRAY_SIZE(br_nf_ops));
+#ifdef CONFIG_SYSCTL
+	unregister_sysctl_table(brnf_sysctl_header);
+#endif
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/03/21" Time="13:14:26000">
+<Copy StartSeek="0" EndSeek="22163"/>
+<Insert>	}
+
+</Insert>
+<Copy StartSeek="22248" EndSeek="26932"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="18:29:43000">
+<Copy StartSeek="0" EndSeek="22163"/>
+<Insert>		printk(KERN_ERR "(%s:%d) HAIM: skb-&gt;nh %p\n", __func__, __LINE__,skb-&gt;nh.raw);
+	}
+
+</Insert>
+<Copy StartSeek="22271" EndSeek="26955"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="18:30:50000">
+<Copy StartSeek="0" EndSeek="22163"/>
+<Insert>		printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p\n", 
+		       __func__, __LINE__,skb, skb-&gt;nh.raw);
+	}
+
+</Insert>
+<Copy StartSeek="22167" EndSeek="26851"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="18:39:46000">
+<Copy StartSeek="0" EndSeek="22166"/>
+<Insert>
+</Insert>
+<Copy StartSeek="22269" EndSeek="26953"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="18:39:54000">
+<Copy StartSeek="0" EndSeek="22163"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="22245" EndSeek="27032"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="18:54:55000">
+<Copy StartSeek="0" EndSeek="22163"/>
+<Insert>		printk(KERN_ERR "(%s:%d) SHOULD HAVE BEEN HERE !!!!\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="22238" EndSeek="27028"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="18:58:10000">
+<Copy StartSeek="0" EndSeek="22163"/>
+<Insert>		printk(KERN_ERR "(%s:%d) UPDATE NH IS DONE !!!!\n", __func__, __LINE__);
+	}
+</Insert>
+<Copy StartSeek="22166" EndSeek="26953"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="19:02:1000">
+<Copy StartSeek="0" EndSeek="22166"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p\n", 
+	       __func__, __LINE__,skb, skb-&gt;nh.raw);
+</Insert>
+<Copy StartSeek="22309" EndSeek="26994"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="19:03:30000">
+<Copy StartSeek="0" EndSeek="22561"/>
+<Copy StartSeek="22698" EndSeek="27131"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="19:04:10000">
+<Copy StartSeek="0" EndSeek="22636"/>
+<Insert>	__func__, __LINE__,skb, skb-&gt;nh.raw, ntohs(skb-&gt;protocol));
+</Insert>
+<Copy StartSeek="22704" EndSeek="27138"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="19:04:12000">
+<Copy StartSeek="0" EndSeek="22166"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p, skb-&gt;protocol #%x\n", 
+	       __func__, __LINE__,skb, skb-&gt;nh.raw, ntohs(skb-&gt;protocol));
+</Insert>
+<Copy StartSeek="22333" EndSeek="27162"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:08:11000">
+<Copy StartSeek="0" EndSeek="22166"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p ["NIPQUAD"], skb-&gt;protocol #%x\n", 
+</Insert>
+<Copy StartSeek="22257" EndSeek="27166"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:08:13000">
+<Copy StartSeek="0" EndSeek="22257"/>
+<Insert>	       __func__, __LINE__,skb, skb-&gt;nh.raw, NIPQUAD_FMT,ntohs(skb-&gt;protocol));
+</Insert>
+<Copy StartSeek="22347" EndSeek="27176"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:08:31000">
+<Copy StartSeek="0" EndSeek="22257"/>
+<Insert>	       __func__, __LINE__,skb, skb-&gt;nh.raw, NIPQUAD(skb-&gt;nh-&gt;raw),ntohs(skb-&gt;protocol));
+</Insert>
+<Copy StartSeek="22346" EndSeek="27175"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:08:34000">
+<Copy StartSeek="0" EndSeek="22257"/>
+<Insert>	       __func__, __LINE__,skb, skb-&gt;nh.raw, NIPQUAD(skb-&gt;nh.raw),ntohs(skb-&gt;protocol));
+</Insert>
+<Copy StartSeek="22353" EndSeek="27182"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:16:9000">
+<Copy StartSeek="0" EndSeek="22166"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p ["NIPQUAD_FMT"], skb-&gt;protocol #%x\n", 
+</Insert>
+<Copy StartSeek="22249" EndSeek="27174"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:24:51000">
+<Copy StartSeek="0" EndSeek="22166"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p ["NIPQUAD_FMT"], proto #%x\n", 
+</Insert>
+<Copy StartSeek="22252" EndSeek="27177"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:24:57000">
+<Copy StartSeek="0" EndSeek="22166"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p ["NIPQUAD_FMT"], ip.proto #%x\n", 
+</Insert>
+<Copy StartSeek="22267" EndSeek="27192"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:25:31000">
+<Copy StartSeek="0" EndSeek="22267"/>
+<Insert>	       __func__, __LINE__,skb, skb-&gt;nh.raw, NIPQUAD(skb-&gt;nh.iph-&gt;daddr),ntohs(skb-&gt;protocol));
+
+</Insert>
+<Copy StartSeek="22401" EndSeek="27229"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:25:55000">
+<Copy StartSeek="0" EndSeek="22312"/>
+<Insert>	       NIPQUAD(skb-&gt;nh.iph-&gt;saddr),NIPQUAD(skb-&gt;nh.iph-&gt;daddr), ntohs(skb-&gt;protocol));
+</Insert>
+<Copy StartSeek="22399" EndSeek="27228"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:25:57000">
+<Copy StartSeek="0" EndSeek="22312"/>
+<Insert>	       NIPQUAD(skb-&gt;nh.iph-&gt;saddr),NIPQUAD(skb-&gt;nh.iph-&gt;daddr),ntohs(skb-&gt;protocol));
+
+</Insert>
+<Copy StartSeek="22409" EndSeek="27237"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:25:58000">
+<Copy StartSeek="0" EndSeek="22660"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p, skb-&gt;protocol #%x\n", 
+	       __func__, __LINE__,skb, skb-&gt;nh.raw, ntohs(skb-&gt;protocol));
+
+</Insert>
+<Copy StartSeek="22871" EndSeek="27304"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:33:29000">
+<Copy StartSeek="0" EndSeek="22871"/>
+<Insert>	return NF_STOLEN;
+
+</Insert>
+<Copy StartSeek="22899" EndSeek="27312"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:33:31000">
+<Copy StartSeek="0" EndSeek="22872"/>
+<Insert>	       return NF_STOLEN;
+</Insert>
+<Copy StartSeek="22891" EndSeek="27305"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:33:35000">
+<Copy StartSeek="0" EndSeek="22660"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p ["NIPQUAD_FMT"-&gt;"NIPQUAD_FMT"], ip.proto #%x\n", 
+</Insert>
+<Copy StartSeek="22760" EndSeek="22870"/>
+<Insert>
+</Insert>
+<Copy StartSeek="22902" EndSeek="27335"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="11:10:2000">
+<Copy StartSeek="0" EndSeek="22660"/>
+<Insert>printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p ["NIPQUAD_FMT"-&gt;"NIPQUAD_FMT"], ip.proto #%x\n", 
+</Insert>
+<Copy StartSeek="22761" EndSeek="27336"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="11:10:7000">
+<Copy StartSeek="0" EndSeek="20541"/>
+<Copy StartSeek="20551" EndSeek="20699"/>
+<Insert>	else
+		return br_dev_queue_push_xmit(skb);
+}
+
+</Insert>
+<Copy StartSeek="20764" EndSeek="27364"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="17:39:45000">
+<Copy StartSeek="0" EndSeek="20707"/>
+<Insert>		ret = br_dev_queue_push_xmit(skb);
+</Insert>
+<Copy StartSeek="21159" EndSeek="27779"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="17:39:58000">
+<Copy StartSeek="0" EndSeek="20707"/>
+<Copy StartSeek="20744" EndSeek="20970"/>
+<Insert>		printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p ["NIPQUAD_FMT"-&gt;"NIPQUAD_FMT"], ip.proto #%x\n", 
+	 __func__, __LINE__,skb, skb-&gt;nh.raw,
+	 NIPQUAD(skb-&gt;nh.iph-&gt;saddr),NIPQUAD(skb-&gt;nh.iph-&gt;daddr),
+	 ntohs(skb-&gt;protocol));
+
+</Insert>
+<Copy StartSeek="20971" EndSeek="27591"/>
+</Delta>
+</DeltaFile>

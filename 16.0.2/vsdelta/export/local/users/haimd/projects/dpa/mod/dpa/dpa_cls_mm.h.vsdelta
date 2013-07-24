@@ -1,0 +1,28 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="2" Comment="" Date="2012/10/16" Time="12:55:35000" NL="\10" Encoding="text">
+<Insert>#ifndef _DPA_CLS_MM_H_
+#define _DPA_CLS_MM_H_
+
+void *dcm_alloc(void);
+void dcm_free(void *blk);
+
+void *dcm_init(uint32_t blks, uint32_t blk_sz);
+void dcm_exit(void);
+
+#endif /* define _DPA_CLS_MM_H_ */
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/08/23" Time="01:51:38000">
+<Copy StartSeek="0" EndSeek="97"/>
+<Insert>void *dcm_init(uint32_t blks, uint32_t blk_sz);
+</Insert>
+<Copy StartSeek="161" EndSeek="218"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/09/09" Time="16:34:47000">
+<Copy StartSeek="0" EndSeek="97"/>
+<Insert>void *dcm_init(uint32_t blks, uint32_t blk_sz, uint32_t align);
+</Insert>
+<Copy StartSeek="145" EndSeek="202"/>
+</Delta>
+</DeltaFile>

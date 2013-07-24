@@ -1,0 +1,73 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="8" Comment="" Date="2012/04/16" Time="17:03:57000" NL="\10" Encoding="text">
+<Insert>#ifndef KLNA_KCOMPAT_H
+#define KLNA_KCOMPAT_H
+#include &lt;linux/version.h&gt;
+
+
+
+
+
+
+#endif
+
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="15:59:19000">
+<Copy StartSeek="0" EndSeek="46"/>
+<Copy StartSeek="47" EndSeek="54"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="15:59:21000">
+<Copy StartSeek="0" EndSeek="46"/>
+<Insert>
+</Insert>
+<Copy StartSeek="74" EndSeek="81"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="15:59:50000">
+<Copy StartSeek="0" EndSeek="74"/>
+<Copy StartSeek="386" EndSeek="393"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:00:16000">
+<Copy StartSeek="0" EndSeek="393"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:01:28000">
+<Copy StartSeek="0" EndSeek="394"/>
+<Copy StartSeek="443" EndSeek="489"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:22:40000">
+<Copy StartSeek="0" EndSeek="443"/>
+<Insert>#ifndef SHUT_RDWR
+</Insert>
+<Copy StartSeek="443" EndSeek="471"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:22:44000">
+<Copy StartSeek="0" EndSeek="386"/>
+<Insert>#endif
+
+</Insert>
+<Copy StartSeek="386" EndSeek="463"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:22:55000">
+<Copy StartSeek="0" EndSeek="74"/>
+<Insert>#if LINUX_VERSION_CODE &lt;= KERNEL_VERSION(2,6,26)
+static inline u_int16_t nf_ct_l3num(const struct nf_conn *ct)
+{
+	return ct-&gt;tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.l3num;
+}
+static inline u_int8_t nf_ct_protonum(const struct nf_conn *ct)
+{
+	return ct-&gt;tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.protonum;
+}
+#endif
+
+#if LINUX_VERSION_CODE &lt;= KERNEL_VERSION(2,6,24)
+#define SHUT_RDWR 2
+#endif
+
+
+</Insert>
+<Copy StartSeek="79" EndSeek="88"/>
+</Delta>
+</DeltaFile>

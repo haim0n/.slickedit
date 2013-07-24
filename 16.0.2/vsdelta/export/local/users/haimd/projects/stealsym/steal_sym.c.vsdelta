@@ -1,0 +1,423 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="31" Comment="" Date="2012/05/10" Time="10:39:16000" NL="\10" Encoding="text">
+<Insert>/*
+ *	Marvell Kernel Learning Agent
+ * 
+ *      Authors:
+ *	Haim Daniel
+ *
+ *	This program is free software; you can redistribute it and/or
+ *	modify it under the terms of the GNU General Public License
+ *	as published by the Free Software Foundation; either version
+ *	2 of the License, or (at your option) any later version.
+ */
+
+#include &lt;linux/module.h&gt;
+#include &lt;linux/kernel.h&gt;
+#include &lt;asm/cacheflush.h&gt;
+
+#undef pr_fmt
+#define pr_fmt(fmt)	"ksym_steal: " fmt
+DEFINE_SPINLOCK(sym_lock);
+
+volatile int global_var = 10;
+
+int org_func(void)
+{
+start:
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+	__asm__ __volatile__ ("nop");
+end:	__asm__ __volatile__ ("nop");
+	return 0;
+}
+
+void new_func(void)
+{
+	global_var = -EINVAL;
+}
+
+
+//static void klna_restore_sk_alloc(void)
+//{
+//        spin_lock_irq(&amp;sym_lock);
+//        flush_icache_range((unsigned long)&amp;org_func,
+//                   (unsigned long)&amp;org_func + 100);
+//        spin_unlock_irq(&amp;sym_lock);
+//}
+//
+static void flush_cache(unsigned long addr, unsigned long size)
+{
+	spin_lock_irq(&amp;sym_lock);
+	flush_icache_range(addr, addr + size);
+	spin_unlock_irq(&amp;sym_lock);
+}
+
+static int ksym_steal(void)
+{
+	spin_lock_irq(&amp;sym_lock);
+	/* make a copy of the org func */
+	memcpy(&amp;org_func, &amp;new_func, 100 /* FIXME: calculate start-end of org_func */);
+	printk(KERN_ERR "(%s:%d) org_func %p, new_func %p\n", __func__, __LINE__, org_func, new_func);
+	spin_unlock_irq(&amp;sym_lock);
+
+	return 0;
+}
+
+static int __init ksym_steal_init(void)
+{
+//      unsigned long addr;
+	int a;
+	pr_info("init\n");
+
+	if (ksym_steal())
+		return -EINVAL;
+	//flush_cache((unsigned long) &amp;org_func, 100);
+	a = org_func();
+	printk(KERN_ERR "(%s:%d) a = %#x\n", __func__, __LINE__,a);
+	return 0;
+}
+
+static void __exit ksym_steal_exit(void)
+{
+	pr_info("exit\n");
+}
+
+module_init(ksym_steal_init)
+module_exit(ksym_steal_exit)
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Haim Daniel &lt;haimd@marvell.com&gt;");
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/05/07" Time="16:51:44000">
+<Copy StartSeek="0" EndSeek="488"/>
+<Insert>struct void org_func_bak(void)
+</Insert>
+<Copy StartSeek="512" EndSeek="3424"/>
+<Insert>struct void org_func(void)
+</Insert>
+<Copy StartSeek="3444" EndSeek="3752"/>
+<Copy StartSeek="3876" EndSeek="3877"/>
+<Insert>static void flush_org(unsigned long addr, unsigned long size)
+{
+	flush_icache_range(addr, addr + size);
+}
+
+</Insert>
+<Copy StartSeek="3877" EndSeek="4558"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/05/07" Time="16:54:37000">
+<Copy StartSeek="0" EndSeek="3409"/>
+<Insert>	return sk;
+}
+
+</Insert>
+<Copy StartSeek="3412" EndSeek="4546"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/05/07" Time="16:54:57000">
+<Copy StartSeek="0" EndSeek="3373"/>
+<Insert>	__asm__ __volatile__ ("nop");
+end:
+</Insert>
+<Copy StartSeek="3409" EndSeek="4546"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/05/07" Time="16:55:5000">
+<Copy StartSeek="0" EndSeek="4242"/>
+<Insert>	unsigned long addr;
+</Insert>
+<Copy StartSeek="4270" EndSeek="4553"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/05/07" Time="16:55:22000">
+<Copy StartSeek="0" EndSeek="4292"/>
+<Insert>	return klna_steal_sk_alloc();
+</Insert>
+<Copy StartSeek="4338" EndSeek="4568"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/05/07" Time="16:56:5000">
+<Copy StartSeek="0" EndSeek="4355"/>
+<Insert>//      return 0;
+</Insert>
+<Copy StartSeek="4366" EndSeek="4561"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/05/07" Time="16:56:42000">
+<Copy StartSeek="0" EndSeek="488"/>
+<Copy StartSeek="519" EndSeek="3465"/>
+<Insert>	printk(KERN_ERR "(%s:%d) HAIM: I SHOT THE SHERIFF!\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="3483" EndSeek="3938"/>
+<Insert>	memcpy(&amp;org_func_bak, &amp;org_func, 300 /* FIXME: calculate start-end of __sk_alloc_org */);
+</Insert>
+<Copy StartSeek="4023" EndSeek="4258"/>
+<Insert>	if (klna_steal_sk_alloc())
+		return -EINVAL;
+</Insert>
+<Copy StartSeek="4308" EndSeek="4531"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:09:27000">
+<Copy StartSeek="0" EndSeek="519"/>
+<Copy StartSeek="520" EndSeek="4532"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:09:53000">
+<Copy StartSeek="0" EndSeek="3466"/>
+<Insert>	global_var = 10;
+</Insert>
+<Copy StartSeek="3489" EndSeek="4537"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:10:11000">
+<Copy StartSeek="0" EndSeek="488"/>
+<Insert>volatile void global_var = 10;
+</Insert>
+<Copy StartSeek="518" EndSeek="4536"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:10:23000">
+<Copy StartSeek="0" EndSeek="4241"/>
+<Insert>
+</Insert>
+<Copy StartSeek="4249" EndSeek="4320"/>
+<Insert>	org_func_bak();
+</Insert>
+<Copy StartSeek="4401" EndSeek="4607"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:10:55000">
+<Copy StartSeek="0" EndSeek="519"/>
+<Insert>void org_func_bak(void)
+</Insert>
+<Copy StartSeek="542" EndSeek="4606"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:11:6000">
+<Copy StartSeek="0" EndSeek="3438"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3449" EndSeek="4616"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:11:11000">
+<Copy StartSeek="0" EndSeek="3851"/>
+<Insert>static int klna_steal_sk_alloc(void)
+</Insert>
+<Copy StartSeek="3879" EndSeek="4270"/>
+<Insert>//	if (klna_steal_sk_alloc())
+</Insert>
+<Copy StartSeek="4291" EndSeek="4598"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:11:56000">
+<Copy StartSeek="0" EndSeek="4176"/>
+<Insert>static int __init ksym_steal(void)
+</Insert>
+<Copy StartSeek="4216" EndSeek="4603"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:12:1000">
+<Copy StartSeek="0" EndSeek="4477"/>
+<Insert>module_init(ksym_steal)
+</Insert>
+<Copy StartSeek="4506" EndSeek="4608"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:12:6000">
+<Copy StartSeek="0" EndSeek="4275"/>
+<Insert>//	if (ksym_steal())
+//		return -EINVAL;
+</Insert>
+<Copy StartSeek="4312" EndSeek="4604"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:13:8000">
+<Copy StartSeek="0" EndSeek="3452"/>
+<Insert>void org_func(void)
+</Insert>
+<Copy StartSeek="3472" EndSeek="4604"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:14:22000">
+<Copy StartSeek="0" EndSeek="3943"/>
+<Insert>	memcpy(&amp;org_func_bak, &amp;org_func, 100 /* FIXME: calculate start-end of org_func */);
+</Insert>
+<Copy StartSeek="4028" EndSeek="4604"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:14:28000">
+<Copy StartSeek="0" EndSeek="519"/>
+<Insert>int org_func_bak(void)
+</Insert>
+<Copy StartSeek="538" EndSeek="3939"/>
+<Insert>	memcpy(&amp;org_func_bak, &amp;new_func, 100 /* FIXME: calculate start-end of org_func */);
+	printk(KERN_ERR "(%s:%d) org_func_bak %p, org_func %p\n", __func__, __LINE__, org_func_bak, org_func);
+</Insert>
+<Copy StartSeek="4116" EndSeek="4296"/>
+<Insert>	a = org_func_bak();
+</Insert>
+<Copy StartSeek="4313" EndSeek="4584"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:14:49000">
+<Copy StartSeek="0" EndSeek="4020"/>
+<Insert>	printk(KERN_ERR "(%s:%d) org_func %p, org_func %p\n", __func__, __LINE__, org_func, org_func);
+</Insert>
+<Copy StartSeek="4116" EndSeek="4584"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:14:53000">
+<Copy StartSeek="0" EndSeek="384"/>
+<Insert>#include &lt;net/sock.h&gt;
+</Insert>
+<Copy StartSeek="412" EndSeek="4590"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:21:51000">
+<Copy StartSeek="0" EndSeek="3503"/>
+<Insert>//static void klna_restore_sk_alloc(void)
+//{
+//        spin_lock_irq(&amp;sym_lock);
+//        flush_icache_range((unsigned long)&amp;org_func,
+//      		   (unsigned long)&amp;org_func + 100);
+//        spin_unlock_irq(&amp;sym_lock);
+//}
+//
+//static void flush_org(unsigned long addr, unsigned long size)
+//{
+//        flush_icache_range(addr, addr + size);
+//}
+</Insert>
+<Copy StartSeek="3794" EndSeek="4532"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:22:7000">
+<Copy StartSeek="0" EndSeek="3503"/>
+<Insert>static void klna_restore_sk_alloc(void)
+{
+	spin_lock_irq(&amp;sym_lock);
+	flush_icache_range((unsigned long)&amp;org_func,
+		   (unsigned long)&amp;org_func + 100);
+	spin_unlock_irq(&amp;sym_lock);
+}
+
+</Insert>
+<Copy StartSeek="3739" EndSeek="3803"/>
+<Copy StartSeek="3830" EndSeek="3870"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="3902" EndSeek="4639"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:22:31000">
+<Copy StartSeek="0" EndSeek="3739"/>
+<Insert>static void flush_org(unsigned long addr, unsigned long size)
+</Insert>
+<Copy StartSeek="3803" EndSeek="4641"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:22:54000">
+<Copy StartSeek="0" EndSeek="4353"/>
+<Copy StartSeek="4390" EndSeek="4678"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:24:36000">
+<Copy StartSeek="0" EndSeek="4407"/>
+<Insert>	printk(KERN_ERR "(%s:%d) a = %d\n", __func__, __LINE__,a);
+</Insert>
+<Copy StartSeek="4468" EndSeek="4679"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:25:5000">
+<Copy StartSeek="0" EndSeek="4353"/>
+<Insert>	flush_icache_range(&amp;org_func, 100);
+</Insert>
+<Copy StartSeek="4382" EndSeek="4671"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:25:42000">
+<Copy StartSeek="0" EndSeek="4353"/>
+<Insert>	flush_cache(&amp;org_func, 100)
+</Insert>
+<Copy StartSeek="4383" EndSeek="4672"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:25:49000">
+<Copy StartSeek="0" EndSeek="4353"/>
+<Insert>	flush_cache(&amp;org_func, 100);
+</Insert>
+<Copy StartSeek="4399" EndSeek="4688"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/05/08" Time="16:26:15000">
+<Copy StartSeek="0" EndSeek="4353"/>
+<Insert>	flush_cache((unsigned long) &amp;org_func, 100);
+</Insert>
+<Copy StartSeek="4401" EndSeek="4690"/>
+</Delta>
+</DeltaFile>

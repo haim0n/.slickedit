@@ -1,0 +1,1189 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="74" Comment="" Date="2013/06/29" Time="22:22:3000" NL="\10" Encoding="text">
+<Insert>#include &lt;dpa_types.h&gt;
+#include &lt;log/log.h&gt;
+#include &lt;util/string.h&gt;
+#include &lt;eth/eth_regs.h&gt;
+
+#include &lt;util/xxhash.h&gt;
+#include &lt;util/byte_order.h&gt;
+#include &lt;util/string.h&gt;
+
+#include "dpa_frwd.h"
+#include "dpa_frwd_mm.h"
+#include "dpa_mdf.h"
+#include "dpa_policer.h"
+
+#ifdef __DPA_DEBUG__
+int printk(const char * fmt, ...);
+#define DPA_FRWD_DBG(format, args...) printk(format"\n", ##args)
+#else
+#define DPA_FRWD_DBG(format, args...)
+#endif
+
+#define DPA_FRWD_ERR(format, args...) DPA_ERROR(format, ##args)
+
+#define DPA_FRWD_TBL_SZ (1&lt;&lt;13)
+
+char *dpa_flow_state_names[]  = {
+	"NEW",
+	"LRN",
+	"FWD",
+	"LCL",
+	"DROP"
+};
+
+/* HAIM FIXME : rw protection is needed ! */
+static struct dpa_flow *dpa_flow_tbl[DPA_FRWD_TBL_SZ];
+
+static uint32_t dpa_frwd_cmd;
+
+void dpa_dump_pkt(uint8_t *data, int len) {
+#ifdef __DPA_DEBUG__
+  int i;
+  
+  printk("&lt;0&gt;******************* LEN %d\n", len);
+  for (i = 0; i &lt; len; i++) {
+    printk("%02x ", data[i]);
+  }
+  printk("&lt;0&gt;****************************\n");
+#endif
+}
+
+static void dpa_flow_dump(struct dpa_flow *dpf)
+{
+#ifdef __DPA_DEBUG__
+	struct dpa_pri_key *tup = &amp;dpf-&gt;key;
+	struct dpa_pri_key *mod_tup = &amp;dpf-&gt;mod.mod_tuple;
+	struct dpa_frwd_l2 *l2_mod = &amp;dpf-&gt;mod.l2;
+
+  DPA_FRWD_DBG("--------------------------------------\n");
+
+	DPA_FRWD_DBG("orig tup ipv4:proto %u "DPA_NIPQUAD_FMT":%d-&gt;"DPA_NIPQUAD_FMT":%d\n",
+		 tup-&gt;protocol,
+		 DPA_NIPQUAD(tup-&gt;sip), dpa_ntohs(tup-&gt;sport),
+		 DPA_NIPQUAD(tup-&gt;dip), dpa_ntohs(tup-&gt;dport));
+
+	DPA_FRWD_DBG("mod dmac= "DPA_MAC_FMT" smac= "DPA_MAC_FMT " eth_type:%#x vlan:%u",
+	  DPA_MAC_PFMT(l2_mod-&gt;dmac), DPA_MAC_PFMT(l2_mod-&gt;smac), dpa_ntohs(l2_mod-&gt;eth_type),
+		    dpa_ntohs(l2_mod-&gt;vlan_id));
+
+	DPA_FRWD_DBG("mod tup ipv4:proto %u "DPA_NIPQUAD_FMT":%d-&gt;"DPA_NIPQUAD_FMT":%d\n",
+	  mod_tup-&gt;protocol,
+	  DPA_NIPQUAD(mod_tup-&gt;sip), dpa_ntohs(mod_tup-&gt;sport),
+	  DPA_NIPQUAD(mod_tup-&gt;dip), dpa_ntohs(mod_tup-&gt;dport));
+
+	DPA_FRWD_DBG("state:%s rx:%u fwd:%u mod_ops:%#x\n", 
+		 dpa_flow_state_names[dpf-&gt;state],
+		 dpf-&gt;stats.rx_pkts, dpf-&gt;stats.tx_pkts, 
+		 dpf-&gt;mod.ops);
+#endif
+}
+
+static void dpa_dump_rx_desc(eth_rx_desc_t *rx_desc)
+{
+#ifdef __DPA_DEBUG__
+	uint32_t rx_status = rx_desc-&gt;status;
+
+	DPA_FRWD_DBG("(%s:%d)status:%#x, ipv4:%#x tcp:%#x, udp:%x uc:%lu l4_csum:%u l3_off:%u\n",
+		 __func__, __LINE__,
+		rx_status,
+	       NETA_RX_L3_IS_IP4(rx_status), 
+	       NETA_RX_L4_IS_TCP(rx_status),
+	       NETA_RX_L4_IS_UDP(rx_status),
+	      NETA_PNC_RX_IS_DA_UC(rx_desc),
+		 (rx_status &amp; NETA_RX_L4_CSUM_OK_MASK) != 0,
+		 NETA_RX_GET_IPHDR_OFFSET(rx_desc));
+#endif
+}
+
+static inline void dpa_frwd_memcpy_14b_16a(void *a, const void *b)
+{
+	register uint16_t *a16 ,*b16;
+	a16 = (uint16_t *)a;
+	b16 = (uint16_t *)b;
+
+	*a16++ = *b16++;
+	*a16++ = *b16++;
+	*a16++ = *b16++;
+	*a16++ = *b16++;
+	*a16++ = *b16++;
+	*a16++ = *b16++;
+	*a16 = *b16;
+}
+
+static inline uint32_t
+is_pri_key_match(struct dpa_pri_key *a, struct dpa_pri_key *b)
+{
+	register uint32_t *a32, *b32;
+	a32 = (uint32_t *)a;
+	b32 = (uint32_t *)b;
+
+	return (*a32++ == *b32++) &amp;&amp;
+		(*a32++ == *b32++) &amp;&amp;
+		(*a32++ == *b32++) &amp;&amp;
+		(*a32 == *b32);
+
+//      return (a-&gt;dip == b-&gt;dip) &amp;&amp;
+//      	(a-&gt;sip == b-&gt;sip) &amp;&amp;
+//      	(a-&gt;protocol == b-&gt;protocol) &amp;&amp;
+//      	(a-&gt;sport == b-&gt;sport) &amp;&amp;
+//      	(a-&gt;dport == b-&gt;dport);
+}
+
+struct dpa_flow *dpa_frwd_flow_alloc(void)
+{
+	struct dpa_flow *tmp;
+
+  tmp = dcm_alloc();
+  if (!tmp) {
+      DPA_FRWD_DBG("Failed to alloc dpf entry\n");
+      return NULL;
+  }
+
+  tmp-&gt;state = DPF_NEW;
+  uint64split_reset(tmp-&gt;stats.rx_pkts);
+  uint64split_reset(tmp-&gt;stats.tx_pkts);
+  uint64split_reset(tmp-&gt;stats.rx_bytes);
+  uint64split_reset(tmp-&gt;stats.tx_bytes);
+  tmp-&gt;stats.rx_errors = 0;
+  tmp-&gt;stats.tx_errors = 0;
+  tmp-&gt;mod.ops = 0;
+  tmp-&gt;mod.tx_port = ~0;
+  tmp-&gt;next = NULL;
+  tmp-&gt;attr = NULL;
+ 	
+  return tmp;
+}
+
+
+void dpa_frwd_flow_free(struct dpa_flow *dpf)
+{
+	if (dpf-&gt;attr)
+		dpa_os_free(dpf-&gt;attr);
+  dcm_free(dpf);
+}
+
+#define SEED 	0
+#define LEN	12
+#define PRIME1   2654435761U
+#define PRIME2   2246822519U
+#define PRIME3   3266489917U
+#define PRIME4   668265263U
+#define PRIME5   0x165667b1
+#define _rotl(x,r) (((x) &lt;&lt; (r)) | ((x) &gt;&gt; (32 - (r))))
+
+static inline unsigned int dpa_frwd_XXH_small32_12b(const void* key)
+{
+	register const unsigned char* p = (unsigned char*)key;
+	register int idx = SEED + PRIME1;
+	register unsigned int crc  = PRIME5;
+
+
+	crc += ((*(unsigned int*)p) + idx++);
+	p+=4;
+	crc += _rotl(crc, 17) * PRIME4;
+	crc *= PRIME1;
+	crc += ((*(unsigned int*)p) + idx++);
+	p+=4;
+	crc += _rotl(crc, 17) * PRIME4;
+	crc *= PRIME1;
+
+	crc += ((*p) + idx++);
+	crc *= PRIME1;
+	p++;
+	crc += ((*p) + idx++);
+	crc *= PRIME1;
+	p++;
+	crc += ((*p) + idx++);
+	crc *= PRIME1;
+	p++;
+	crc += ((*p) + idx++);
+	crc *= PRIME1;
+
+	crc += LEN;
+
+	crc ^= crc &gt;&gt; 15;
+	crc *= PRIME2;
+	crc ^= crc &gt;&gt; 13;
+	crc *= PRIME3;
+	crc ^= crc &gt;&gt; 16;
+
+	return crc;
+}
+
+static inline uint32_t dpa_key_hash(struct dpa_pri_key *key)
+{
+	register uint32_t idx = 0;
+//	idx = dpa_key_XXH_small32_12b(key);
+#if 0
+	idx = key-&gt;sip ^ (_rotl(key-&gt;dip,7));
+	idx += key-&gt;sport;
+	idx *= PRIME1;
+	idx += key-&gt;dport;
+#else
+	idx = key-&gt;dport;
+#endif 
+	idx &amp;= (DPA_FRWD_TBL_SZ - 1);
+  
+  return idx;
+}
+
+struct dpa_flow *dpa_frwd_flow_find(struct dpa_pri_key *key)
+{
+	struct dpa_flow **dpe_list, *dpf;
+
+	dpe_list = &amp;dpa_flow_tbl[dpa_key_hash(key)]; /* head of the chain */
+	dpf = *dpe_list;
+
+	if (!dpf)
+		return dpf;
+
+	do {
+		if (is_pri_key_match(&amp;dpf-&gt;key, key)) {
+			DPA_FRWD_DBG("match dpf found");
+			return dpf;
+		}
+		dpf = dpf-&gt;next;
+	} while (dpf);
+
+	return dpf;
+}
+
+static inline void dpa_pri_key_init(dpa_ip_hdr_t *iph, dpa_l4_hdr_t *l4,
+		struct dpa_pri_key *tup)
+{
+	tup-&gt;sip = iph-&gt;saddr;
+	tup-&gt;dip = iph-&gt;daddr;
+	tup-&gt;protocol = iph-&gt;protocol;
+	tup-&gt;sport = l4-&gt;source;
+	tup-&gt;dport = l4-&gt;dest;
+}
+
+
+
+void dpa_frwd_flow_add(struct dpa_flow *dpf)
+{
+  struct dpa_flow **dpe_list, *tmp;
+
+  dpe_list = &amp;dpa_flow_tbl[dpa_key_hash(&amp;dpf-&gt;key)]; /* head of the chain */
+  tmp = *dpe_list;
+
+  if (!tmp) {
+       *dpe_list = dpf;
+       dpa_flow_dump(dpf);
+       return;
+  }
+  
+  dpf-&gt;next = tmp;
+  *dpe_list = dpf;
+  
+  dpa_flow_dump(dpf);
+}
+
+
+/* FIXME Non-SMP safe */
+int32_t dpa_frwd_flow_remove(struct dpa_pri_key *key)
+{
+  struct dpa_flow **dpe_list, *dpf, *prev;
+
+  dpe_list = &amp;dpa_flow_tbl[dpa_key_hash(key)]; /* head of the chain */
+  dpf = *dpe_list;
+
+  if (!dpf)
+        return -1;
+
+  prev = dpf;
+  do {
+    if (is_pri_key_match(&amp;dpf-&gt;key, key)) {
+        DPA_FRWD_DBG("match dpf found for remove");
+
+        /* First entry in list */
+        if (prev == dpf) {
+            /* Single element in list */
+            if (!dpf-&gt;next) {
+                *dpe_list = NULL;
+            } else {
+                *dpe_list = dpf-&gt;next;
+            }
+        } else {
+            prev-&gt;next = dpf-&gt;next;
+        }
+
+        dpa_flow_dump(dpf);
+        dpf-&gt;next = NULL;
+        dcm_free(dpf);
+        return 0;
+    }
+    prev = dpf;
+    dpf = dpf-&gt;next;
+  } while (dpf);
+  
+  return -1;
+}
+
+
+bool dpa_frwd_flow_is_alive(struct dpa_pri_key *key) {
+  struct dpa_flow *dpf;
+  bool is_alive;
+  
+  dpf = dpa_frwd_flow_find(key);
+  if (!dpf) {
+        return false;
+  }
+
+  is_alive = dpf-&gt;is_alive;
+  if (is_alive) {
+        dpf-&gt;is_alive = false;
+  }
+
+  return is_alive;
+}
+
+
+int32_t dpa_frwd_flow_get_stats(struct dpa_pri_key *key, dpa_flow_stats_t *stats) 
+{
+  struct dpa_flow *dpf = dpa_frwd_flow_find(key);
+
+  if (!dpf) {
+        return DPA_FLOW_UNKNOWN;
+  }
+
+  *stats = dpf-&gt;stats;
+  
+  return DPA_OK;
+}
+
+
+void dpa_frwd_clean_all(void)
+{
+	unsigned int idx;
+	struct dpa_flow *e, *next;
+
+  dpa_frwd_cmd = 1; /* FIXME Make proper in-context implementation */
+  
+	for (idx = 0; idx &lt; DPA_FRWD_TBL_SZ; idx++) {
+		e = dpa_flow_tbl[idx];
+		while (e) {
+			next = e-&gt;next;
+			e-&gt;next = NULL;
+			/* dpa_memset(e, 0, sizeof(struct dpa_flow)); */
+			dcm_free(e);
+			e = next;
+		}
+		dpa_flow_tbl[idx] = NULL;
+	}
+  
+  dpa_frwd_cmd = 0;
+}
+
+
+
+/* dpa forwarder traverse session tables */
+
+void dpa_frwd_traverse(dpa_frwd_traverse_cb cb)
+{
+	unsigned int idx;
+	struct dpa_flow *e;
+
+
+	dpa_frwd_cmd = 1; /* FIXME Make proper in-context implementation */
+
+	for (idx = 0; idx &lt; DPA_FRWD_TBL_SZ; idx++) {
+		e = dpa_flow_tbl[idx];
+		while (e) {
+			cb(e-&gt;attr);
+			e = e-&gt;next;
+		}
+	}
+
+	dpa_frwd_cmd = 0;
+}
+
+/* rate limiting of the ingress traffic. Ingress port policing is done only on
+   upstream (non-pon interface) */
+static inline int dpa_frwd_ratelimit(struct dpa_flow *dpf, eth_pkt_t *pkt)
+{
+	uint32_t pkt_sz = pkt-&gt;size + 4; /* compensate CRC len */
+
+	if (dpa_policer_flow_do(dpf-&gt;group_id, pkt_sz) == DPA_POLICE_OK) {
+		if (ETH_PORT_HAS_MH(dpf-&gt;mod.tx_port) &amp;&amp;
+		    dpa_policer_port_do(pkt-&gt;port, pkt_sz) == DPA_POLICE_DROP) {
+			DPA_FRWD_DBG("dropping port");
+			return DPF_DROP;
+		}
+	} else {
+		DPA_FRWD_DBG("dropping flow");
+		return DPF_DROP;
+	}
+	DPA_FRWD_DBG("frwd pkt ok");
+	return DPF_FWD;
+}
+
+void dpa_frwd_mc_traverse(dpa_frwd_traverse_cb cb)
+{
+
+}
+
+/* dpa forwarder entry point */
+dpa_flow_states dpa_frwd_rx(eth_pkt_t *pkt)
+{
+	dpa_ip_hdr_t *iph;
+	dpa_l4_hdr_t *l4;
+	struct dpa_pri_key tup;
+	struct dpa_flow *dpf;
+	dpa_eth_hdr_t *eth = pkt-&gt;eth_hdr;
+	eth_rx_desc_t *rx_desc = pkt-&gt;rx_desc;
+	uint32_t rx_status = rx_desc-&gt;status;
+	uint8_t mh;
+
+	if (dpa_frwd_cmd) /* FIXME Make proper in-context implementation */
+		return DPF_LCL;
+
+	if (!NETA_RX_L3_IS_IP4(rx_status)) {
+		if (eth-&gt;h_proto == dpa_ntohs(DPA_ETH_P_ARP)) {
+			pkt-&gt;prio = DPA_PKT_PRI_MAX;
+		}
+		return DPF_LCL;
+	}
+	pkt-&gt;prio = DPA_PKT_PRI_MIN;
+
+	if (!(NETA_RX_L4_IS_TCP(rx_status) || NETA_RX_L4_IS_UDP(rx_status)) ||
+	    NETA_RX_IP_IS_FRAG(rx_status) ||
+	    !(rx_status &amp; NETA_RX_L4_CSUM_OK_MASK) ||
+	    !NETA_PNC_RX_IS_DA_UC(rx_desc)) {
+		return DPF_LCL;
+	}
+	dpa_dump_rx_desc(rx_desc);
+	iph = pkt-&gt;ip_hdr;
+	l4 = (dpa_l4_hdr_t*)((uint8_t* )iph + (iph-&gt;ihl &lt;&lt; 2));
+	pkt-&gt;l4_hdr = l4;
+
+	dpa_pri_key_init(iph, l4, &amp;tup); 
+	dpf = dpa_frwd_flow_find(&amp;tup);
+	if (!dpf) {
+		return DPF_LCL;
+	}
+	dpf-&gt;is_alive = true; 
+	pkt-&gt;dpa_handle = (void *)dpf; /* mark the packet as ours */
+
+	uint64split_sum(dpf-&gt;stats.rx_pkts, 1);
+	uint64split_sum(dpf-&gt;stats.rx_bytes, pkt-&gt;size + ETH_CRC_SIZE);
+
+	if (iph-&gt;ttl &lt;= 1)
+		return DPF_DROP;
+
+	if (dpf-&gt;state == DPF_FWD) {
+		if (dpa_frwd_ratelimit(dpf, pkt) == DPF_DROP)
+			return DPF_DROP;
+
+		dpa_modify_pkt(pkt);
+
+		/* Eth egress port */
+		pkt-&gt;port = dpf-&gt;mod.tx_port;
+
+		/* Eth Tx queue */
+		pkt-&gt;queue = 0;	/* FIXME qos2queue(pkt) */
+
+		/* Eth Tx cmd */
+		mh = ETH_PORT_HAS_MH(pkt-&gt;port) ? 2 : 0; /* FIXME Make calc more generic */
+		pkt-&gt;size += mh;
+		if (dpf-&gt;mod.ops) {
+			uint8_t ip_off =(uint8_t *)pkt-&gt;ip_hdr - (uint8_t *)pkt-&gt;eth_hdr;
+			pkt-&gt;hw_cmd = NETA_TX_L3_IP4 | NETA_TX_IP_CSUM_MASK |
+				      ((ip_off+mh) &lt;&lt; NETA_TX_L3_OFFSET_OFFS) |
+				      ((mh^0x02) &lt;&lt; NETA_TX_PKT_OFFSET_OFFS) |
+				      (iph-&gt;ihl &lt;&lt; NETA_TX_IP_HLEN_OFFS);
+
+			if (dpf-&gt;key.protocol == DPA_IP_PROTO_UDP)
+				pkt-&gt;hw_cmd |= NETA_TX_L4_UDP;
+			else
+				pkt-&gt;hw_cmd &amp;= ~NETA_TX_L4_UDP;
+
+			pkt-&gt;hw_cmd |= NETA_TX_L4_CSUM_FULL;
+			uint64split_sum(dpf-&gt;stats.tx_pkts, 1);
+			uint64split_sum(dpf-&gt;stats.tx_bytes, pkt-&gt;size - mh + ETH_CRC_SIZE);
+
+		} else {
+			/* No modification, so just indicate pkt start. If no mh, skip it since
+			it's always present from Rx */
+			pkt-&gt;hw_cmd = ((mh^0x02) &lt;&lt; NETA_TX_PKT_OFFSET_OFFS);
+		}
+
+		DPA_FRWD_DBG("################ pkt forwarded to port %d, %d bytes, pkt-&gt;cmd 0x%x", pkt-&gt;port, pkt-&gt;size, pkt-&gt;hw_cmd);
+	}
+
+	DPA_FRWD_DBG("state %s\n",dpa_flow_state_names[dpf-&gt;state]);
+	return dpf-&gt;state;
+}
+
+
+int32_t dpa_frwd_init(void)
+{
+	void *pool = dcm_init(DPA_FRWD_TBL_SZ, 
+			      sizeof(struct dpa_flow));
+	if (!pool)
+		return DPA_OUT_OF_MEMORY;
+	
+	if (dpa_mdf_init())
+		return DPA_CONFIG_ERROR;
+
+	DPA_FRWD_DBG("DPA forwarder init OK.");
+
+	return DPA_OK;
+}
+
+void dpa_frwd_exit(void)
+{
+	dpa_frwd_clean_all();
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="09:20:34000">
+<Copy StartSeek="0" EndSeek="9038"/>
+<Insert>  if (dpa_frwd_cmd) /* FIXME Make proper in-context implementation */
+        return DPF_LCL;
+</Insert>
+<Copy StartSeek="9125" EndSeek="9126"/>
+<Insert>  if (!NETA_RX_L3_IS_IP4(rx_status)) {
+</Insert>
+<Copy StartSeek="9164" EndSeek="9752"/>
+<Insert>  dpf-&gt;is_alive = true; 
+	pkt-&gt;dpa_handle = (void *)dpf; /* mark the packet as ours */
+</Insert>
+<Copy StartSeek="9839" EndSeek="9840"/>
+<Insert>  if (dpf-&gt;state == DPF_FWD) {
+        dpa_modify_pkt(pkt);
+</Insert>
+<Copy StartSeek="9893" EndSeek="9894"/>
+<Insert>        /* Eth egress port */
+        pkt-&gt;port = dpf-&gt;mod.tx_port;
+</Insert>
+<Copy StartSeek="9950" EndSeek="9951"/>
+<Insert>        /* Eth Tx queue */
+        pkt-&gt;queue = 0;	/* FIXME qos2queue(pkt) */
+</Insert>
+<Copy StartSeek="10017" EndSeek="10018"/>
+<Insert>        /* Eth Tx cmd */
+        mh = ETH_PORT_HAS_MH(pkt-&gt;port) ? 2 : 0; /* FIXME Make calc more generic */
+        pkt-&gt;size += mh;
+        if (dpf-&gt;mod.ops) {
+              uint8_t ip_off =(uint8_t *)pkt-&gt;ip_hdr - (uint8_t *)pkt-&gt;eth_hdr;
+              pkt-&gt;hw_cmd = NETA_TX_L3_IP4 | NETA_TX_IP_CSUM_MASK |
+                  ((ip_off+mh) &lt;&lt; NETA_TX_L3_OFFSET_OFFS) |
+                  ((mh^0x02) &lt;&lt; NETA_TX_PKT_OFFSET_OFFS) |
+                  (iph-&gt;ihl &lt;&lt; NETA_TX_IP_HLEN_OFFS);
+</Insert>
+<Copy StartSeek="10431" EndSeek="10432"/>
+<Insert>              if (dpf-&gt;key.protocol == DPA_IP_PROTO_UDP)
+                    pkt-&gt;hw_cmd |= NETA_TX_L4_UDP;
+              else
+                    pkt-&gt;hw_cmd &amp;= ~NETA_TX_L4_UDP;
+</Insert>
+<Copy StartSeek="10557" EndSeek="10558"/>
+<Insert>              pkt-&gt;hw_cmd |= NETA_TX_L4_CSUM_FULL;
+              dpf-&gt;stats.tx_pkts++;
+        } else {
+          /* No modification, so just indicate pkt start. If no mh, skip it since
+          it's always present from Rx */
+          pkt-&gt;hw_cmd = ((mh^0x02) &lt;&lt; NETA_TX_PKT_OFFSET_OFFS);
+        }
+</Insert>
+<Copy StartSeek="10804" EndSeek="10805"/>
+<Insert>        DPA_FRWD_DBG("################ pkt forwarded to port %d, %d bytes, pkt-&gt;cmd 0x%x", pkt-&gt;port, pkt-&gt;size, pkt-&gt;hw_cmd);
+  }
+</Insert>
+<Copy StartSeek="10929" EndSeek="11353"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="18:47:19000">
+<Copy StartSeek="0" EndSeek="9035"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="9036" EndSeek="9723"/>
+<Insert>        return DPF_LCL;
+</Insert>
+<Copy StartSeek="9741" EndSeek="9768"/>
+<Insert>		pkt-&gt;dpa_handle = (void *)dpf; /* mark the packet as ours */
+</Insert>
+<Copy StartSeek="9830" EndSeek="10921"/>
+<Insert>  DPA_FRWD_DBG("state %s\n",dpa_flow_state_names[dpf-&gt;state]);
+  dpf-&gt;stats.rx_pkts++;
+</Insert>
+<Copy StartSeek="11006" EndSeek="11007"/>
+<Insert>  return dpf-&gt;state;
+</Insert>
+<Copy StartSeek="11027" EndSeek="11341"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="18:47:24000">
+<Copy StartSeek="0" EndSeek="8739"/>
+<Insert>
+
+
+</Insert>
+<Copy StartSeek="8739" EndSeek="11338"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="18:47:40000">
+<Copy StartSeek="0" EndSeek="9858"/>
+<Copy StartSeek="9895" EndSeek="11375"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="19:07:2000">
+<Copy StartSeek="0" EndSeek="9858"/>
+<Insert>		dpa_policer_flow_do(dpf-&gt;group_id)
+</Insert>
+<Copy StartSeek="9957" EndSeek="11437"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="19:10:3000">
+<Copy StartSeek="0" EndSeek="8739"/>
+<Copy StartSeek="8993" EndSeek="10112"/>
+<Insert>		if (dpa_policer_flow_do(dpf-&gt;group_id, pkt-&gt;size))
+			if (dpa_policer_port_do(pkt-&gt;port)) {
+			}
+</Insert>
+<Copy StartSeek="10140" EndSeek="11620"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="19:14:1000">
+<Copy StartSeek="0" EndSeek="10112"/>
+<Insert>		dpa_frwd_ratelimit(pkt);
+
+</Insert>
+<Copy StartSeek="10181" EndSeek="11661"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="19:14:20000">
+<Copy StartSeek="0" EndSeek="244"/>
+<Insert>
+</Insert>
+<Copy StartSeek="270" EndSeek="11686"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="19:14:54000">
+<Copy StartSeek="0" EndSeek="270"/>
+<Insert>#include "zte/zte_api_fast.h"
+
+</Insert>
+<Copy StartSeek="270" EndSeek="7661"/>
+<Insert>/* dpa forwarder snapshot functionality */
+</Insert>
+<Copy StartSeek="7705" EndSeek="7706"/>
+<Insert>#define DPA_SNAPSHOT_MAX_SZ 4096
+static ZTE_L3_HARDFAST_SESSION *dpa_flow_tbl_snapshot;
+static int dpa_flow_tbl_snapshot_size = 0;
+
+int dpa_frwd_snapshot(ZTE_L3_HARDFAST_SESSION **tbl)
+{
+</Insert>
+<Copy StartSeek="7756" EndSeek="7797"/>
+<Insert>	dpa_flow_tbl_snapshot_size = 0;
+	if (!dpa_flow_tbl_snapshot)
+		dpa_flow_tbl_snapshot = dpa_os_alloc_pages(DPA_SNAPSHOT_MAX_SZ * sizeof(ZTE_L3_HARDFAST_SESSION));
+
+	if (!dpa_flow_tbl_snapshot) {
+		DPA_FRWD_ERR("Snapshot allocation failed");
+		*tbl = NULL;
+		return -1;
+	}
+
+</Insert>
+<Copy StartSeek="7798" EndSeek="7940"/>
+<Insert>		while (e &amp;&amp; (dpa_flow_tbl_snapshot_size &lt; DPA_SNAPSHOT_MAX_SZ)) {
+			dpa_memcpy(&amp;dpa_flow_tbl_snapshot[dpa_flow_tbl_snapshot_size++],
+			e-&gt;attr, sizeof(ZTE_L3_HARDFAST_SESSION));
+</Insert>
+<Copy StartSeek="7970" EndSeek="8013"/>
+<Insert>	*tbl = dpa_flow_tbl_snapshot;
+	return dpa_flow_tbl_snapshot_size;
+}
+
+int dpa_frwd_mc_snapshot(ZTE_L3_HARDFAST_MC_SESSION **tbl)
+{
+	*tbl = NULL;
+	return -1;
+}
+
+</Insert>
+<Copy StartSeek="8016" EndSeek="8250"/>
+<Copy StartSeek="8251" EndSeek="8271"/>
+<Copy StartSeek="8328" EndSeek="10996"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="10:57:12000">
+<Copy StartSeek="0" EndSeek="8250"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8250" EndSeek="10995"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="10:57:13000">
+<Copy StartSeek="0" EndSeek="8249"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8249" EndSeek="10994"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="11:27:2000">
+<Copy StartSeek="0" EndSeek="8093"/>
+<Insert>	if (dpa_policer_flow_do(dpf-&gt;group_id, pkt-&gt;size)) {
+		if (!dpa_policer_port_do(pkt-&gt;port, pkt-&gt;size))
+</Insert>
+<Copy StartSeek="8232" EndSeek="11029"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="11:50:4000">
+<Copy StartSeek="0" EndSeek="2177"/>
+<Insert>	DPA_DBG("(%s:%d)status:%#x, ipv4:%#x tcp:%#x, udp:%x uc:%lu l4_csum:%u l3_off:%u\n",
+</Insert>
+<Copy StartSeek="2268" EndSeek="11034"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="12:57:55000">
+<Copy StartSeek="0" EndSeek="8098"/>
+<Copy StartSeek="8134" EndSeek="8205"/>
+<Copy StartSeek="8206" EndSeek="11071"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="15:01:21000">
+<Copy StartSeek="0" EndSeek="8206"/>
+<Insert>		if (dpa_policer_port_do(pkt-&gt;port, pkt-&gt;size) == DPA_POLICE_DROP)
+</Insert>
+<Copy StartSeek="8317" EndSeek="8337"/>
+<Copy StartSeek="8341" EndSeek="8351"/>
+<Copy StartSeek="8394" EndSeek="11161"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="15:01:49000">
+<Copy StartSeek="0" EndSeek="5193"/>
+<Copy StartSeek="5215" EndSeek="11183"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="15:16:44000">
+<Copy StartSeek="0" EndSeek="1070"/>
+<Copy StartSeek="1078" EndSeek="11191"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="15:20:11000">
+<Copy StartSeek="0" EndSeek="1070"/>
+<Insert>asdfsdf
+</Insert>
+<Copy StartSeek="1071" EndSeek="11184"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="15:20:24000">
+<Copy StartSeek="0" EndSeek="5821"/>
+<Copy StartSeek="5848" EndSeek="11211"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="15:20:38000">
+<Copy StartSeek="0" EndSeek="5194"/>
+<Insert>		dpa_flow_dump(dpf);
+</Insert>
+<Copy StartSeek="5194" EndSeek="11189"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="15:20:56000">
+<Copy StartSeek="0" EndSeek="1070"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1070" EndSeek="2177"/>
+<Insert>	DPA_FRWD_DBG("(%s:%d)status:%#x, ipv4:%#x tcp:%#x, udp:%x uc:%lu l4_csum:%u l3_off:%u\n",
+</Insert>
+<Copy StartSeek="2263" EndSeek="5793"/>
+<Insert>       dpa_flow_dump(dpf);
+</Insert>
+<Copy StartSeek="5793" EndSeek="8093"/>
+<Insert>	DPA_FRWD_DBG("rate limiting ...");
+	if (dpa_policer_flow_do(dpf-&gt;group_id, pkt-&gt;size) == DPA_POLICE_OK) {
+
+		if (dpa_policer_port_do(pkt-&gt;port, pkt-&gt;size) == DPA_POLICE_DROP) {
+			DPA_FRWD_DBG("dropping in port ...");
+</Insert>
+<Copy StartSeek="8197" EndSeek="8217"/>
+<Insert>		}
+</Insert>
+<Copy StartSeek="8217" EndSeek="8227"/>
+<Insert>		DPA_FRWD_DBG("dropping in session ...");
+</Insert>
+<Copy StartSeek="8227" EndSeek="8249"/>
+<Copy StartSeek="8250" EndSeek="8269"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8269" EndSeek="8323"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="8354" EndSeek="11022"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:33:27000">
+<Copy StartSeek="0" EndSeek="8323"/>
+<Insert>
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; avanta_policer_dev
+}
+
+</Insert>
+<Copy StartSeek="8326" EndSeek="10994"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:33:31000">
+<Copy StartSeek="0" EndSeek="8269"/>
+<Copy StartSeek="8270" EndSeek="10995"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:33:34000">
+<Copy StartSeek="0" EndSeek="8093"/>
+<Insert>	if (dpa_policer_flow_do(dpf-&gt;group_id, pkt-&gt;size)) {
+		if (!dpa_policer_port_do(pkt-&gt;port, pkt-&gt;size))
+</Insert>
+<Copy StartSeek="8231" EndSeek="11029"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:38:4000">
+<Copy StartSeek="0" EndSeek="8164"/>
+<Insert>		if (dpa_policer_port_do(pkt-&gt;port, pkt-&gt;size) == DPA_POLICE_DRO)
+</Insert>
+<Copy StartSeek="8232" EndSeek="11030"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:38:5000">
+<Copy StartSeek="0" EndSeek="5793"/>
+<Copy StartSeek="5820" EndSeek="11057"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:39:3000">
+<Copy StartSeek="0" EndSeek="8191"/>
+<Insert>		if (dpa_policer_port_do(pkt-&gt;port, pkt-&gt;size) == DPA_POLICE_DROP)
+</Insert>
+<Copy StartSeek="8295" EndSeek="8315"/>
+<Copy StartSeek="8319" EndSeek="8329"/>
+<Copy StartSeek="8362" EndSeek="11130"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="11:00:58000">
+<Copy StartSeek="0" EndSeek="8384"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8414" EndSeek="11159"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="11:01:16000">
+<Copy StartSeek="0" EndSeek="270"/>
+<Insert>#ifdef __DPA_DEBUG__
+</Insert>
+<Copy StartSeek="299" EndSeek="11167"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="11:15:29000">
+<Copy StartSeek="0" EndSeek="270"/>
+<Insert>//#ifdef __DPA_DEBUG__
+#if 1
+</Insert>
+<Copy StartSeek="291" EndSeek="11159"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="11:19:8000">
+<Copy StartSeek="0" EndSeek="270"/>
+<Copy StartSeek="294" EndSeek="11183"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="11:19:21000">
+<Copy StartSeek="0" EndSeek="8144"/>
+<Insert>	if (dpa_policer_flow_do(dpf-&gt;group_id, pkt-&gt;size) == DPA_POLICE_OK) {
+		if (dpa_policer_port_do(pkt-&gt;port, pkt-&gt;size) == DPA_POLICE_DROP) {
+</Insert>
+<Copy StartSeek="8338" EndSeek="11236"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="11:52:26000">
+<Copy StartSeek="0" EndSeek="8203"/>
+<Copy StartSeek="8204" EndSeek="11237"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="11:52:31000">
+<Copy StartSeek="0" EndSeek="270"/>
+<Insert>//#define __DPA_DEBUG__
+</Insert>
+<Copy StartSeek="270" EndSeek="9633"/>
+<Insert>
+</Insert>
+<Copy StartSeek="9677" EndSeek="11256"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="16:07:41000">
+<Copy StartSeek="0" EndSeek="9633"/>
+<Insert>	if (iph-&gt;ttl &lt;= 1) {
+</Insert>
+<Copy StartSeek="9653" EndSeek="9672"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="9672" EndSeek="11251"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="16:07:44000">
+<Copy StartSeek="0" EndSeek="9672"/>
+<Copy StartSeek="9673" EndSeek="11252"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="16:07:45000">
+<Copy StartSeek="0" EndSeek="7219"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7222" EndSeek="7245"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="7267" EndSeek="11273"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="17:50:57000">
+<Copy StartSeek="0" EndSeek="270"/>
+<Copy StartSeek="292" EndSeek="11295"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="17:51:41000">
+<Copy StartSeek="0" EndSeek="2199"/>
+<Insert>	DPA_DBG("(%s:%d)status:%#x, ipv4:%#x tcp:%#x, udp:%x uc:%lu l4_csum:%u l3_off:%u\n",
+</Insert>
+<Copy StartSeek="2290" EndSeek="11300"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="17:52:23000">
+<Copy StartSeek="0" EndSeek="7194"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7223" EndSeek="11328"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="17:59:56000">
+<Copy StartSeek="0" EndSeek="7194"/>
+<Insert>  DPA_FRWD_DBG("get stats");
+</Insert>
+<Copy StartSeek="7235" EndSeek="11340"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="18:00:28000">
+<Copy StartSeek="0" EndSeek="7289"/>
+<Copy StartSeek="7330" EndSeek="11381"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="18:00:35000">
+<Copy StartSeek="0" EndSeek="7289"/>
+<Insert>  DPA_FRWD_DBG("get stats dpf %p", dpf);
+</Insert>
+<Copy StartSeek="7353" EndSeek="11404"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="18:01:3000">
+<Copy StartSeek="0" EndSeek="7289"/>
+<Insert>  DPA_FRWD_DBG("get stats dpf-&gt;rx_pkt %u", dpf-&gt;stats.rx_pkts);
+</Insert>
+<Copy StartSeek="7354" EndSeek="11405"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="18:01:5000">
+<Copy StartSeek="0" EndSeek="11070"/>
+<Insert>
+</Insert>
+<Copy StartSeek="11072" EndSeek="11406"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="18:13:44000">
+<Copy StartSeek="0" EndSeek="4743"/>
+<Insert>	register uint32_t idx = 0;
+</Insert>
+<Copy StartSeek="4767" EndSeek="11402"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="18:15:43000">
+<Copy StartSeek="0" EndSeek="4743"/>
+<Insert>	register uint32_t idx;
+</Insert>
+<Copy StartSeek="4771" EndSeek="7194"/>
+<Insert>  DPA_FRWD_DBG("get stats dpf %p", dpf);
+</Insert>
+<Copy StartSeek="7195" EndSeek="7246"/>
+<Insert>  
+  DPA_FRWD_DBG("get stats dpf-&gt;rx_pkts %u", dpf-&gt;stats.rx_pkts);
+</Insert>
+<Copy StartSeek="7247" EndSeek="7270"/>
+<Insert>  dpa_flow_dump(dpf);
+</Insert>
+<Copy StartSeek="7273" EndSeek="10944"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="10945" EndSeek="11279"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="19:13:1000">
+<Copy StartSeek="0" EndSeek="10921"/>
+<Insert>	dpf-&gt;stats.rx_pkts++;
+</Insert>
+<Copy StartSeek="10963" EndSeek="11298"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="19:28:2000">
+<Copy StartSeek="0" EndSeek="10963"/>
+<Insert>
+</Insert>
+<Copy StartSeek="11014" EndSeek="11348"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="19:28:29000">
+<Copy StartSeek="0" EndSeek="9660"/>
+<Copy StartSeek="9856" EndSeek="10143"/>
+<Insert>		/* Eth Tx cmd */
+		mh = ETH_PORT_HAS_MH(pkt-&gt;port) ? 2 : 0; /* FIXME Make calc more generic */
+</Insert>
+<Copy StartSeek="10143" EndSeek="11020"/>
+<Insert>	sum_split_uint64(dpf-&gt;stats.rx_pkts, 1);
+	sum_split_uint64(dpf-&gt;stats.rx_bytes, pkt-&gt;size);
+</Insert>
+<Copy StartSeek="11020" EndSeek="11354"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="19:50:31000">
+<Copy StartSeek="0" EndSeek="9661"/>
+<Insert>	/* Eth Tx cmd */
+	mh = ETH_PORT_HAS_MH(pkt-&gt;port) ? 2 : 0; /* FIXME Make calc more generic */
+
+</Insert>
+<Copy StartSeek="9661" EndSeek="9703"/>
+<Insert>	sum_split_uint64(dpf-&gt;stats.rx_bytes, pkt-&gt;size - mh);
+</Insert>
+<Copy StartSeek="9754" EndSeek="10042"/>
+<Copy StartSeek="10140" EndSeek="10623"/>
+<Insert>			dpf-&gt;stats.tx_pkts++;
+</Insert>
+<Copy StartSeek="10726" EndSeek="11429"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="19:52:0000">
+<Copy StartSeek="0" EndSeek="10139"/>
+<Insert>
+</Insert>
+<Copy StartSeek="10139" EndSeek="11428"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="19:52:51000">
+<Copy StartSeek="0" EndSeek="3489"/>
+<Insert>  tmp-&gt;stats.rx_pkts = 0;
+  tmp-&gt;stats.tx_pkts = 0;
+</Insert>
+<Copy StartSeek="3573" EndSeek="11460"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="19:56:27000">
+<Copy StartSeek="0" EndSeek="9693"/>
+<Insert>	sum_split_uint64(dpf-&gt;stats.rx_pkts, 1);
+	sum_split_uint64(dpf-&gt;stats.rx_bytes, pkt-&gt;size);
+</Insert>
+<Copy StartSeek="9786" EndSeek="11460"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="19:56:53000">
+<Copy StartSeek="0" EndSeek="10654"/>
+<Insert>			sum_split_uint64(dpf-&gt;stats.tx_pkts, 1);
+			sum_split_uint64(dpf-&gt;stats.tx_bytes, pkt-&gt;size - mh);
+</Insert>
+<Copy StartSeek="10756" EndSeek="11460"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="19:57:2000">
+<Copy StartSeek="0" EndSeek="3489"/>
+<Insert>  uint64_split_reset(tmp-&gt;stats.rx_pkts);
+  uint64_split_reset(tmp-&gt;stats.tx_pkts);
+</Insert>
+<Copy StartSeek="3571" EndSeek="9691"/>
+<Insert>	uint64_split_sum(dpf-&gt;stats.rx_pkts, 1);
+	uint64_split_sum(dpf-&gt;stats.rx_bytes, pkt-&gt;size);
+</Insert>
+<Copy StartSeek="9782" EndSeek="10650"/>
+<Insert>			uint64_split_sum(dpf-&gt;stats.tx_pkts, 1);
+			uint64_split_sum(dpf-&gt;stats.tx_bytes, pkt-&gt;size - mh);
+</Insert>
+<Copy StartSeek="10750" EndSeek="11454"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="19:59:4000">
+<Copy StartSeek="0" EndSeek="270"/>
+<Insert>#define __DPA_DEBUG__
+</Insert>
+<Copy StartSeek="294" EndSeek="11456"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:06:46000">
+<Copy StartSeek="0" EndSeek="3573"/>
+<Copy StartSeek="3574" EndSeek="11457"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:17:59000">
+<Copy StartSeek="0" EndSeek="3573"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3657" EndSeek="11540"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:21:25000">
+<Copy StartSeek="0" EndSeek="3657"/>
+<Copy StartSeek="3658" EndSeek="11541"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:21:29000">
+<Copy StartSeek="0" EndSeek="10780"/>
+<Insert>			uint64split_sum(dpf-&gt;stats.tx_bytes, pkt-&gt;size - mh);
+</Insert>
+<Copy StartSeek="10855" EndSeek="11559"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:26:14000">
+<Copy StartSeek="0" EndSeek="10780"/>
+<Insert>			uint64split_sum(dpf-&gt;stats.tx_bytes, pkt-&gt;size - mh +  + ETH_CRC_SIZE);
+</Insert>
+<Copy StartSeek="10852" EndSeek="11556"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:26:16000">
+<Copy StartSeek="0" EndSeek="9819"/>
+<Insert>	uint64split_sum(dpf-&gt;stats.rx_bytes, pkt-&gt;size);
+</Insert>
+<Copy StartSeek="9884" EndSeek="10795"/>
+<Insert>			uint64split_sum(dpf-&gt;stats.tx_bytes, pkt-&gt;size - mh + ETH_CRC_SIZE);
+
+</Insert>
+<Copy StartSeek="10873" EndSeek="11576"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:26:39000">
+<Copy StartSeek="0" EndSeek="270"/>
+<Insert>//#define __DPA_DEBUG__
+</Insert>
+<Copy StartSeek="270" EndSeek="3633"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3633" EndSeek="8298"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8366" EndSeek="10837"/>
+<Insert>			uint64split_sum(dpf-&gt;stats.tx_bytes,
+					pkt-&gt;size - mh + ETH_CRC_SIZE);
+
+</Insert>
+<Copy StartSeek="10910" EndSeek="11613"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2013/06/27" Time="10:58:1000">
+<Copy StartSeek="0" EndSeek="8298"/>
+<Insert>	uint32_t port = pkt-&gt;port;
+
+	if (ETH_PORT_HAS_MH(port))
+</Insert>
+<Copy StartSeek="8340" EndSeek="11598"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2013/06/27" Time="10:58:55000">
+<Copy StartSeek="0" EndSeek="8340"/>
+<Insert>		return;
+</Insert>
+<Copy StartSeek="8358" EndSeek="11606"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2013/06/27" Time="10:59:46000">
+<Copy StartSeek="0" EndSeek="3633"/>
+<Copy StartSeek="3689" EndSeek="8355"/>
+<Insert>	if (!ETH_PORT_HAS_MH(dpf-&gt;mod.tx_port))
+</Insert>
+<Copy StartSeek="8362" EndSeek="8449"/>
+<Insert>		if (dpa_policer_port_do(pkt-&gt;port, pkt_sz) == DPA_POLICE_DROP) {
+</Insert>
+<Copy StartSeek="8561" EndSeek="11673"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2013/06/27" Time="12:16:7000">
+<Copy StartSeek="0" EndSeek="8449"/>
+<Insert>		if (!ETH_PORT_HAS_MH(dpf-&gt;mod.tx_port) || 
+</Insert>
+<Copy StartSeek="8492" EndSeek="11671"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2013/06/27" Time="12:16:48000">
+<Copy StartSeek="0" EndSeek="8355"/>
+<Insert>	if ()
+		return DPF_FWD;
+
+</Insert>
+<Copy StartSeek="8355" EndSeek="11645"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2013/06/27" Time="12:16:52000">
+<Copy StartSeek="0" EndSeek="8218"/>
+<Copy StartSeek="8327" EndSeek="11754"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2013/06/27" Time="12:17:52000">
+<Copy StartSeek="0" EndSeek="8218"/>
+<Insert>/* rate limits the ingress traffic. Ingress port policing is done only on
+</Insert>
+<Copy StartSeek="8297" EndSeek="11759"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2013/06/27" Time="12:18:3000">
+<Copy StartSeek="0" EndSeek="9157"/>
+<Insert>	uint8_t mh;
+</Insert>
+<Copy StartSeek="9174" EndSeek="10383"/>
+<Insert>		mh = ETH_PORT_HAS_MH(pkt-&gt;port) ? 2 : 0; /* FIXME Make calc more generic */
+</Insert>
+<Copy StartSeek="10435" EndSeek="11737"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2013/06/29" Time="22:12:9000">
+<Copy StartSeek="0" EndSeek="10430"/>
+<Insert>
+</Insert>
+<Copy StartSeek="10445" EndSeek="11751"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2013/06/29" Time="22:21:34000">
+<Copy StartSeek="0" EndSeek="9157"/>
+<Insert>	uint8_t mh = 0;
+</Insert>
+<Copy StartSeek="9170" EndSeek="10379"/>
+<Insert>		if (ETH_PORT_HAS_MH(pkt-&gt;port)) {
+			mh = 2;
+			pkt-&gt;hw_cmd
+		}
+</Insert>
+<Copy StartSeek="10457" EndSeek="11759"/>
+</Delta>
+</DeltaFile>

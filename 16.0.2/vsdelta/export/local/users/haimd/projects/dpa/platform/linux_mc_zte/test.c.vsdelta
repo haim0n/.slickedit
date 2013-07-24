@@ -1,0 +1,763 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="6" Comment="" Date="2013/06/25" Time="14:45:5000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2013, Marvell Technology Group Ltd.
+* All Rights Reserved.
+*
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+*
+* test.c
+*
+* Description:
+*       ZTE API Fast samples function implementation.
+*
+*******************************************************************************/
+
+#include &lt;linux/module.h&gt;
+#include &lt;linux/moduleparam.h&gt;
+#include &lt;linux/kernel.h&gt;
+#include &lt;zte/zte_api_fast.h&gt;
+#include "test.h"
+
+#define LOG(format, args...) printk("\n&lt;0&gt;%s(%d): "format, __func__, __LINE__, ##args)
+
+/*
+#define TEST_BR_VLAN_TRANSLATE "br_vlan_translate"
+#define TEST_ROUTING_NAT       "routing_nat"
+*/
+
+/********************************************************************
+ * Utilities
+ *
+ ********************************************************************/
+
+static unsigned int inet_addr(char *str)
+{
+  int a,b,c,d;
+  char n[4];
+  sscanf(str,"%d.%d.%d.%d", &amp;a, &amp;b, &amp;c, &amp;d);
+  n[0] = a; n[1] = b; n[2] = c; n[3] = d;
+  return *(unsigned int*)n;
+}
+
+/********************************************************************
+ * Routing + NAT
+ *
+ ********************************************************************/
+
+static void init_routing_nat_session1(ZTE_L3_HARDFAST_SESSION *session) {
+
+  ZTE_L3_HARDFAST_SESSION routing_nat_session = {
+    .direction = ZTE_DIR_UPLINK,
+    .tuple = {.sip = {.ip = inet_addr("192.168.1.10")},
+              .dip = {.ip = inet_addr("2.2.2.2")},
+              .sport = htons(1000),
+              .dport = htons(2000),
+              .protocol = 17},
+    .l2length = 14,
+    .l3num = 0,
+    .isppp = 0,
+    .gwmac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
+    .smac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x0A},
+    .innervlan = ZTE_NO_PARAM,
+    .outervlan = ZTE_NO_PARAM,
+    .sessionid = ZTE_NO_PARAM,
+    .dscpremark = 0,
+    .dscpvalue = 0xFF,
+    .natip = { .ip = inet_addr("2.2.2.254")},
+    .natport = htons(3000),
+    .channel = 2,
+    .queue = 0,
+ };
+
+  *session = routing_nat_session;
+}
+
+
+static void init_routing_nat_session2(ZTE_L3_HARDFAST_SESSION *session) {
+
+  ZTE_L3_HARDFAST_SESSION routing_nat_session = {
+    .direction = ZTE_DIR_UPLINK,
+    .tuple = {.sip = {.ip = inet_addr("2.2.2.2")},
+              .dip = {.ip = inet_addr("2.2.2.254")},
+              .sport = htons(2000),
+              .dport = htons(3000),
+              .protocol = 17},
+    .l2length = 14,
+    .l3num = 0,
+    .isppp = 0,
+    .gwmac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+    .smac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x0B},
+    .innervlan = ZTE_NO_PARAM,
+    .outervlan = ZTE_NO_PARAM,
+    .sessionid = ZTE_NO_PARAM,
+    .dscpremark = 0,
+    .dscpvalue = 0xFF,
+    .natip = { .ip = inet_addr("192.168.1.10")},
+    .natport = htons(1000),
+    .channel = 0,
+    .queue = 0,
+ };
+
+  *session = routing_nat_session;
+}
+
+int routing_nat_sessions_add(void) {
+  int err;
+  ZTE_L3_HARDFAST_SESSION session;
+
+  init_routing_nat_session1(&amp;session);
+  err = zte_api_fast_l3_session_add(&amp;session);
+  if (err) {
+      return err;
+  }
+
+  init_routing_nat_session2(&amp;session);
+  err = zte_api_fast_l3_session_add(&amp;session);
+  if (err) {
+      return err;
+  }
+
+  return err;
+}
+
+
+/********************************************************************
+ * Bridging + VLAN Translation
+ *
+ ********************************************************************/
+
+static void init_vlan_bridging_session1(ZTE_L3_HARDFAST_SESSION *session) {
+  ZTE_L3_HARDFAST_SESSION vlan_bridging_session = {
+    .direction = ZTE_DIR_UPLINK,
+    .tuple = {.sip = {.ip = inet_addr("1.1.1.1")},
+              .dip = {.ip = inet_addr("1.1.1.2")},
+              .sport = htons(1000),
+              .dport = htons(2000),
+              .protocol = 17},
+    .l2length = 18,
+    .l3num = 2,
+    .isppp = 0,
+    .gwmac = {0},
+    .smac = {0},
+    .innervlan = ZTE_NO_PARAM,
+    .outervlan = htons(200),
+    .sessionid = ZTE_NO_PARAM,
+    .dscpremark = 0,
+    .dscpvalue = 0xFF,
+    .channel = 2,
+    .queue = 0,
+ };
+
+  *session = vlan_bridging_session;
+}
+
+static void init_vlan_bridging_session2(ZTE_L3_HARDFAST_SESSION *session) {
+  ZTE_L3_HARDFAST_SESSION vlan_bridging_session = {
+    .direction = ZTE_DIR_UPLINK,
+    .tuple = {.sip = {.ip = inet_addr("1.1.1.2")},
+              .dip = {.ip = inet_addr("1.1.1.1")},
+              .sport = htons(2000),
+              .dport = htons(1000),
+              .protocol = 17},
+    .l2length = 18,
+    .l3num = 2,
+    .isppp = 0,
+    .gwmac = {0},
+    .smac = {0},
+    .innervlan = ZTE_NO_PARAM,
+    .outervlan = htons(100),
+    .sessionid = ZTE_NO_PARAM,
+    .dscpremark = 0,
+    .dscpvalue = 0xFF,
+    .channel = 0,
+    .queue = 0,
+ };
+
+  *session = vlan_bridging_session;
+}
+
+
+
+int br_vlan_translate_sessions_add(void)
+{
+  int err;
+  ZTE_L3_HARDFAST_SESSION session;
+
+  init_vlan_bridging_session1(&amp;session);
+  err = zte_api_fast_l3_session_add(&amp;session);
+  if (err) {
+      return err;
+  }
+
+  init_vlan_bridging_session2(&amp;session);
+  err = zte_api_fast_l3_session_add(&amp;session);
+  if (err) {
+      return err;
+  }
+
+  return err;
+}
+
+/********************************************************************
+ * PPPOE Routing + NAT
+ *
+ ********************************************************************/
+
+static void init_pppoe_nat_session1(ZTE_L3_HARDFAST_SESSION *session) {
+
+  ZTE_L3_HARDFAST_SESSION pppoe_session = {
+    .direction = ZTE_DIR_UPLINK,
+    .tuple = {.sip = {.ip = inet_addr("192.168.1.10")},
+              .dip = {.ip = inet_addr("2.2.2.2")},
+              .sport = htons(1000),
+              .dport = htons(2000),
+              .protocol = 17},
+    .l2length = 14,
+    .l3num = 0,
+    .isppp = 1,
+    .gwmac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
+    .smac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x0A},
+    .innervlan = ZTE_NO_PARAM,
+    .outervlan = ZTE_NO_PARAM,
+    .sessionid = htons(777),
+    .dscpremark = 0,
+    .dscpvalue = 0xFF,
+    .natip = { .ip = inet_addr("2.2.2.254")},
+    .natport = htons(3000),
+    .channel = 2,
+    .queue = 0,
+ };
+
+  *session = pppoe_session;
+}
+
+
+static void init_pppoe_nat_session2(ZTE_L3_HARDFAST_SESSION *session) {
+
+  ZTE_L3_HARDFAST_SESSION pppoe_session = {
+    .direction = ZTE_DIR_DOWNLINK,
+    .tuple = {.sip = {.ip = inet_addr("2.2.2.2")},
+              .dip = {.ip = inet_addr("2.2.2.254")},
+              .sport = htons(2000),
+              .dport = htons(3000),
+              .protocol = 17},
+    .l2length = 22,
+    .l3num = 0,
+    .isppp = 1,
+    .gwmac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+    .smac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x0B},
+    .innervlan = ZTE_NO_PARAM,
+    .outervlan = ZTE_NO_PARAM,
+    .sessionid = ZTE_NO_PARAM,
+    .dscpremark = 0,
+    .dscpvalue = 0xFF,
+    .natip = { .ip = inet_addr("192.168.1.10")},
+    .natport = htons(1000),
+    .channel = 0,
+    .queue = 0,
+ };
+
+  *session = pppoe_session;
+}
+
+int pppoe_nat_sessions_add(void) {
+  int err;
+  ZTE_L3_HARDFAST_SESSION session;
+  
+  init_pppoe_nat_session1(&amp;session);
+  
+  err = zte_api_fast_l3_session_add(&amp;session);
+  if (err) {
+      return err;
+  }
+  
+  init_pppoe_nat_session2(&amp;session);
+  err = zte_api_fast_l3_session_add(&amp;session);
+  if (err) {
+      return err;
+  }
+
+  return err;
+}
+
+/********************************************************************
+ * VLAN + PPPOE + NAT
+ *
+ ********************************************************************/
+
+static void init_vlan_pppoe_nat_session1(ZTE_L3_HARDFAST_SESSION *session) {
+
+  ZTE_L3_HARDFAST_SESSION pppoe_session = {
+    .direction = ZTE_DIR_UPLINK,
+    .tuple = {.sip = {.ip = inet_addr("192.168.1.10")},
+              .dip = {.ip = inet_addr("2.2.2.2")},
+              .sport = htons(1000),
+              .dport = htons(2000),
+              .protocol = 17},
+    .l2length = 14,
+    .l3num = 0,
+    .isppp = 1,
+    .gwmac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
+    .smac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x0A},
+    .innervlan = ZTE_NO_PARAM,
+    .outervlan = htons(100),
+    .sessionid = htons(777),
+    .dscpremark = 0,
+    .dscpvalue = 0xFF,
+    .natip = { .ip = inet_addr("2.2.2.254")},
+    .natport = htons(3000),
+    .channel = 2,
+    .queue = 0,
+ };
+
+  *session = pppoe_session;
+}
+
+
+static void init_vlan_pppoe_nat_session2(ZTE_L3_HARDFAST_SESSION *session) {
+
+  ZTE_L3_HARDFAST_SESSION pppoe_session = {
+    .direction = ZTE_DIR_DOWNLINK,
+    .tuple = {.sip = {.ip = inet_addr("2.2.2.2")},
+              .dip = {.ip = inet_addr("2.2.2.254")},
+              .sport = htons(2000),
+              .dport = htons(3000),
+              .protocol = 17},
+    .l2length = 26,
+    .l3num = 0,
+    .isppp = 1,
+    .gwmac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x01},
+    .smac = {0x00, 0x00, 0x00, 0x00, 0x00, 0x0B},
+    .innervlan = ZTE_NO_PARAM,
+    .outervlan = ZTE_NO_PARAM,
+    .sessionid = ZTE_NO_PARAM,
+    .dscpremark = 0,
+    .dscpvalue = 0xFF,
+    .natip = { .ip = inet_addr("192.168.1.10")},
+    .natport = htons(1000),
+    .channel = 0,
+    .queue = 0,
+ };
+
+  *session = pppoe_session;
+}
+
+int vlan_pppoe_nat_sessions_add(void) {
+  int err;
+  ZTE_L3_HARDFAST_SESSION session;
+  
+  init_vlan_pppoe_nat_session1(&amp;session);
+  
+  err = zte_api_fast_l3_session_add(&amp;session);
+  if (err) {
+      return err;
+  }
+  
+  init_vlan_pppoe_nat_session2(&amp;session);
+  err = zte_api_fast_l3_session_add(&amp;session);
+  if (err) {
+      return err;
+  }
+
+  return err;
+}
+
+/********************************************************************
+ * Configuration: Egress Port Policer
+ *
+ ********************************************************************/
+
+
+int config_egress_port_policer(void) {
+  ZTE_L3_HARDFAST_EGRESS_POLICER_CFG cfg = {.rate_limit = 1000 /* kbps */,
+                                            .burst_size = 1600 /* bytes */};
+
+  return zte_api_fast_l3_set_egress_policer_cfg(&amp;cfg);
+}
+
+
+/* Kernel module */
+
+int test = -1;
+module_param(test, int, 0);
+MODULE_PARM_DESC(test, "Test case scenario. [default=1]");
+
+int init_hw = 0;
+module_param(init_hw, int, 0);
+MODULE_PARM_DESC(init_hw, "Init HW on start. [default=0]");
+MODULE_LICENSE("Proprietary");
+
+static void __exit mod_exit(void)
+{
+	int err;
+
+	/* Clear all sessions */
+	err = zte_api_fast_l3_session_clr();
+	if (err) {
+		LOG("sessions clear failure, err %d", err);
+	}
+
+	if (0 &amp;&amp; init_hw) {
+		/* Remove port 0 from ADP */
+		err = zte_api_fast_l3_port_del(0);
+		if (err) {
+			LOG("del port 0 failure, err %d", err);
+		}
+
+		/* Remove port 2 from ADP */
+		err = zte_api_fast_l3_port_del(2);
+		if (err) {
+			LOG("del port 2 failure, err %d", err);
+		}
+	}
+}
+module_exit(mod_exit);
+
+
+static int __init mod_init(void)
+{
+	int err;
+	ZTE_L3_HARDFAST_INIT_CFG cfg; /* Empty */
+	ZTE_L3_HARDFAST_PORT_CFG port_cfg;
+
+	/* One time ADP initialization */
+	if (init_hw) {
+		err = zte_api_fast_l3_init(&amp;cfg);
+		if (err) {
+			LOG("init failure, err %d", err);
+			return -1;
+		}
+
+		/* Add port 0 to ADP */
+		port_cfg.port = 0;
+		err = zte_api_fast_l3_port_add(&amp;port_cfg);
+		if (err) {
+			LOG("add port %d failure, err %d", port_cfg.port, err);
+			return -1;
+		}
+
+		/* Add port 2 to ADP */
+		port_cfg.port = 2;
+		err = zte_api_fast_l3_port_add(&amp;port_cfg);
+		if (err) {
+			LOG("add port %d failure, err %d", port_cfg.port, err);
+			return -1;
+		}
+	}
+
+	switch (test) {
+	case 1:
+		/* Add bridging + VLAN translation sessions */
+		err = br_vlan_translate_sessions_add();
+		if (err) {
+			LOG("bridging + vlan sessions add failure, err %d", err);
+			return -1;
+		}
+		break;
+	case 3:
+		/* Add routing + NAT sessions */
+		err = routing_nat_sessions_add();
+		if (err) {
+			LOG("routing + nat sessions add failure, err %d", err);
+			return -1;
+		}
+		break;
+	case 5:
+		/* Add PPPOE + routing + NAT sessions */
+		err = pppoe_nat_sessions_add();
+		if (err) {
+			LOG("pppoe + NAT sessions add failure, err %d", err);
+			return -1;
+		}
+		break;
+	case 6:
+		/* Add PPPOE + routing + NAT sessions */
+		err = vlan_pppoe_nat_sessions_add();
+		if (err) {
+			LOG("VLAN + pppoe + NAT sessions add failure, err %d", err);
+			return -1;
+		}
+		break;
+
+	case 100: 
+		/* Egress port policer */
+		err = config_egress_port_policer();
+		if (err) {
+			LOG("Egress port policer failure, err %d", err);
+			return -1;
+		}
+		break;
+
+	default:
+		LOG("Unsupported test scenario (%u)",test);
+		return -EDOM;
+	}
+	LOG("succeeded: added test %u\n",test);
+
+	return 0;
+}
+module_init(mod_init);
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/06/23" Time="14:19:14000">
+<Copy StartSeek="0" EndSeek="10697"/>
+<Insert>  int err;
+  ZTE_L3_HARDFAST_INIT_CFG cfg; /* Empty */
+  ZTE_L3_HARDFAST_PORT_CFG port_cfg;
+  
+  /* One time ADP initialization */
+</Insert>
+<Copy StartSeek="10822" EndSeek="10838"/>
+<Insert>  err = zte_api_fast_l3_init(&amp;cfg);
+  if (err) {
+      LOG("init failure, err %d", err);
+      return -1;
+  }
+</Insert>
+<Copy StartSeek="10942" EndSeek="10943"/>
+<Insert>  /* Add port 0 to ADP */
+  port_cfg.port = 0;
+  err = zte_api_fast_l3_port_add(&amp;port_cfg);
+  if (err) {
+      LOG("add port %d failure, err %d", port_cfg.port, err);
+      return -1;
+  }
+</Insert>
+<Copy StartSeek="11125" EndSeek="11126"/>
+<Insert>  /* Add port 2 to ADP */
+  port_cfg.port = 2;
+  err = zte_api_fast_l3_port_add(&amp;port_cfg);
+  if (err) {
+      LOG("add port %d failure, err %d", port_cfg.port, err);
+      return -1;
+  }
+</Insert>
+<Copy StartSeek="11308" EndSeek="11386"/>
+<Insert>  err = br_vlan_translate_sessions_add();
+  if (err) {
+      LOG("bridging + vlan sessions add failure, err %d", err);
+      return -1;
+</Insert>
+<Copy StartSeek="11516" EndSeek="11573"/>
+<Insert>  err = routing_nat_sessions_add();
+  if (err) {
+      LOG("routing + nat sessions add failure, err %d", err);
+      return -1;
+</Insert>
+<Copy StartSeek="11695" EndSeek="11717"/>
+<Insert>  /* Add PPPOE + routing + NAT sessions */
+</Insert>
+<Copy StartSeek="11760" EndSeek="11794"/>
+<Insert>  if (err) {
+</Insert>
+<Copy StartSeek="11807" EndSeek="11864"/>
+<Insert>      return -1;
+  }
+</Insert>
+<Copy StartSeek="11882" EndSeek="12086"/>
+<Insert>    
+  case 100: 
+    /* Egress port policer */
+    err = config_egress_port_policer();
+    if (err) {
+      LOG("Egress port policer failure, err %d", err);
+      return -1;
+    }
+    break;
+</Insert>
+<Copy StartSeek="12257" EndSeek="12375"/>
+<Insert>  return 0;
+</Insert>
+<Copy StartSeek="12386" EndSeek="12411"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="10:40:16000">
+<Copy StartSeek="0" EndSeek="10697"/>
+<Insert>	int err;
+	ZTE_L3_HARDFAST_INIT_CFG cfg; /* Empty */
+	ZTE_L3_HARDFAST_PORT_CFG port_cfg;
+
+	/* One time ADP initialization */
+</Insert>
+<Copy StartSeek="10828" EndSeek="10844"/>
+<Insert>		err = zte_api_fast_l3_init(&amp;cfg);
+		if (err) {
+			LOG("init failure, err %d", err);
+			return -1;
+		}
+</Insert>
+<Copy StartSeek="10954" EndSeek="10955"/>
+<Insert>		/* Add port 0 to ADP */
+		port_cfg.port = 0;
+		err = zte_api_fast_l3_port_add(&amp;port_cfg);
+		if (err) {
+			LOG("add port %d failure, err %d", port_cfg.port, err);
+			return -1;
+		}
+</Insert>
+<Copy StartSeek="11143" EndSeek="11144"/>
+<Insert>		/* Add port 2 to ADP */
+		port_cfg.port = 2;
+		err = zte_api_fast_l3_port_add(&amp;port_cfg);
+		if (err) {
+			LOG("add port %d failure, err %d", port_cfg.port, err);
+			return -1;
+		}
+</Insert>
+<Copy StartSeek="11332" EndSeek="11362"/>
+<Insert>		/*Add bridging + VLAN translation sessions */
+		err = br_vlan_translate_sessions_add();
+		if (err) {
+			LOG("bridging + vlan sessions add failure, err %d", err);
+			return -1;
+</Insert>
+<Copy StartSeek="11547" EndSeek="11604"/>
+<Insert>		err = routing_nat_sessions_add();
+		if (err) {
+			LOG("routing + nat sessions add failure, err %d", err);
+			return -1;
+</Insert>
+<Copy StartSeek="11732" EndSeek="11754"/>
+<Insert>		/* Add PPPOE + routing + NAT sessions */
+</Insert>
+<Copy StartSeek="11797" EndSeek="11831"/>
+<Insert>		if (err) {
+</Insert>
+<Copy StartSeek="11844" EndSeek="11901"/>
+<Insert>			return -1;
+		}
+</Insert>
+<Copy StartSeek="11922" EndSeek="12126"/>
+<Copy StartSeek="12318" EndSeek="12319"/>
+<Insert>	case 100: 
+		/* Egress port policer */
+		err = config_egress_port_policer();
+		if (err) {
+			LOG("Egress port policer failure, err %d", err);
+			return -1;
+		}
+		break;
+
+</Insert>
+<Copy StartSeek="12319" EndSeek="12436"/>
+<Insert>	return 0;
+</Insert>
+<Copy StartSeek="12448" EndSeek="12473"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="11:29:40000">
+<Copy StartSeek="0" EndSeek="10697"/>
+<Insert>  int err;
+  ZTE_L3_HARDFAST_INIT_CFG cfg; /* Empty */
+  ZTE_L3_HARDFAST_PORT_CFG port_cfg;
+  
+  /* One time ADP initialization */
+</Insert>
+<Copy StartSeek="10822" EndSeek="10838"/>
+<Insert>  err = zte_api_fast_l3_init(&amp;cfg);
+  if (err) {
+      LOG("init failure, err %d", err);
+      return -1;
+  }
+</Insert>
+<Copy StartSeek="10942" EndSeek="10943"/>
+<Insert>  /* Add port 0 to ADP */
+  port_cfg.port = 0;
+  err = zte_api_fast_l3_port_add(&amp;port_cfg);
+  if (err) {
+      LOG("add port %d failure, err %d", port_cfg.port, err);
+      return -1;
+  }
+</Insert>
+<Copy StartSeek="11125" EndSeek="11126"/>
+<Insert>  /* Add port 2 to ADP */
+  port_cfg.port = 2;
+  err = zte_api_fast_l3_port_add(&amp;port_cfg);
+  if (err) {
+      LOG("add port %d failure, err %d", port_cfg.port, err);
+      return -1;
+  }
+</Insert>
+<Copy StartSeek="11308" EndSeek="11387"/>
+<Insert>  err = br_vlan_translate_sessions_add();
+  if (err) {
+      LOG("bridging + vlan sessions add failure, err %d", err);
+      return -1;
+</Insert>
+<Copy StartSeek="11517" EndSeek="11574"/>
+<Insert>  err = routing_nat_sessions_add();
+  if (err) {
+      LOG("routing + nat sessions add failure, err %d", err);
+      return -1;
+</Insert>
+<Copy StartSeek="11696" EndSeek="11718"/>
+<Insert>  /* Add PPPOE + routing + NAT sessions */
+</Insert>
+<Copy StartSeek="11761" EndSeek="11795"/>
+<Insert>  if (err) {
+</Insert>
+<Copy StartSeek="11808" EndSeek="11865"/>
+<Insert>      return -1;
+  }
+</Insert>
+<Copy StartSeek="11883" EndSeek="12087"/>
+<Insert>    
+  case 100: 
+    /* Egress port policer */
+    err = config_egress_port_policer();
+    if (err) {
+      LOG("Egress port policer failure, err %d", err);
+      return -1;
+    }
+    break;
+</Insert>
+<Copy StartSeek="12258" EndSeek="12376"/>
+<Insert>  return 0;
+</Insert>
+<Copy StartSeek="12387" EndSeek="12412"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="14:37:51000">
+<Copy StartSeek="0" EndSeek="10207"/>
+<Insert>  int err;
+</Insert>
+<Copy StartSeek="10217" EndSeek="10218"/>
+<Insert>  /* Clear all sessions */
+  err = zte_api_fast_l3_session_clr();
+  if (err) {
+      LOG("sessions clear failure, err %d", err);
+  }
+</Insert>
+<Copy StartSeek="10343" EndSeek="10344"/>
+<Insert>  if (init_hw) {
+  /* Remove port 0 from ADP */
+  err = zte_api_fast_l3_port_del(0);
+  if (err) {
+      LOG("del port 0 failure, err %d", err);
+  }
+</Insert>
+<Copy StartSeek="10488" EndSeek="10489"/>
+<Insert>  /* Remove port 2 from ADP */
+  err = zte_api_fast_l3_port_del(2);
+  if (err) {
+      LOG("del port 2 failure, err %d", err);
+  }
+}
+</Insert>
+<Copy StartSeek="10620" EndSeek="12397"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="14:44:36000">
+<Copy StartSeek="0" EndSeek="10344"/>
+<Insert>	if (init_hw) {
+</Insert>
+<Copy StartSeek="10365" EndSeek="12402"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="14:44:44000">
+<Copy StartSeek="0" EndSeek="10171"/>
+<Insert>static void __exit mod_exit(void) {
+</Insert>
+<Copy StartSeek="10207" EndSeek="12402"/>
+</Delta>
+</DeltaFile>

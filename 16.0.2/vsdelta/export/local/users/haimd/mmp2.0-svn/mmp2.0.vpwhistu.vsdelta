@@ -1,0 +1,458 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="12" Comment="" Date="2012/01/29" Time="10:24:50000" NL="\10" Encoding="text">
+<Insert>[Global]
+CurrentProject=mmp2.0.vpj
+[ProjectDates]
+mmp2.0.vpj=20120118153632000
+[ActiveConfig]
+mmp2.0.vpj=Debug
+[State]
+SCREEN: 1680 1050 0 27 1678 966 0 0 N 0 0 0 0 1628 809 0
+CWD: ../mmp2.0-svn
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_baseopGCCARM.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5275 CL=1 LE=0 CX=0 CY=22 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/src/baseopMSVC.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1864 CL=1 LE=0 CX=0 CY=14 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/src/baseopGCC.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1895 CL=1 LE=0 CX=0 CY=16 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/src/baseopANSI.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2187 CL=29 LE=0 CX=28 CY=23 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/incl/mmp_basic_types.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.947 CL=36 LE=0 CX=35 CY=22 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_Math.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2482 CL=16 LE=0 CX=15 CY=23 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_baseopMSVC.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.95375 CL=1 LE=0 CX=0 CY=22 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_baseopGCC.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.76868 CL=1 LE=0 CX=0 CY=22 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/sru/src/sru_cm_turbo.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.26766 CL=25 LE=0 CX=24 CY=29 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_types.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6961 CL=1 LE=0 CX=0 CY=33 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="test-armcc/sru_cm_turbo.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.424 CL=1 LE=0 CX=0 CY=11 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_baseopGCCARM.h"
+VIEW: LN=.5275 CL=1 LE=0 CX=7 CY=22 WI=74 BI=9 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=13 ",,,"
+BUFFER: BN="trunk/mod/dspCommon/src/baseopMSVC.c"
+VIEW: LN=.1864 CL=1 LE=0 CX=7 CY=14 WI=76 BI=10 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+BUFFER: BN="trunk/mod/dspCommon/src/baseopGCC.c"
+VIEW: LN=.1895 CL=1 LE=0 CX=7 CY=16 WI=78 BI=11 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=6 ",,,"
+BUFFER: BN="trunk/mod/dspCommon/src/baseopANSI.c"
+VIEW: LN=.2187 CL=29 LE=0 CX=35 CY=23 WI=80 BI=12 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=7 ",,,"
+BUFFER: BN="trunk/incl/mmp_basic_types.h"
+VIEW: LN=.947 CL=36 LE=0 CX=42 CY=22 WI=82 BI=13 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=4 ",,,"
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_Math.h"
+VIEW: LN=.2482 CL=16 LE=0 CX=22 CY=23 WI=84 BI=14 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=3 ",,,"
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_baseopMSVC.h"
+VIEW: LN=.95375 CL=1 LE=0 CX=7 CY=22 WI=86 BI=15 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=11 ",,,"
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_baseopGCC.h"
+VIEW: LN=.76868 CL=1 LE=0 CX=7 CY=22 WI=88 BI=16 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="trunk/mod/sru/src/sru_cm_turbo.c"
+VIEW: LN=.26766 CL=25 LE=0 CX=31 CY=29 WI=90 BI=17 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_types.h"
+VIEW: LN=.6961 CL=1 LE=0 CX=7 CY=33 WI=92 BI=18 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=2 ",,,"
+BUFFER: BN="test-armcc/sru_cm_turbo.c"
+VIEW: LN=.1429 CL=22 LE=0 CX=28 CY=35 WI=94 BI=19 HT=0 HN=0 HF=0 HC=4
+FILEHIST: 9
+../kprobe-pmc-armcc/perf_counters.c
+../kprobe-pmc-armcc/perf_counters.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/include/linux/kprobes.h
+trunk/mod/dspCommon/incl/NatureDSP_Math.h
+trunk/mod/mdmfxdet/incl/extra_arm9e_22.h
+trunk/mod/dspCommon/incl/NatureDSP_baseopMSVC.h
+trunk/mod/dspCommon/incl/NatureDSP_baseopGCC.h
+trunk/mod/sru/src/sru_cm_turbo.c
+test-armcc/sru_cm_turbo.c
+DEBUG: 0 0 0 0 3 0 gdb
+printf
+strcpy
+std::*
+DEBUG2: 0
+TBCLASS: 0 0
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="utf8" Date="2012/01/18" Time="17:33:15000">
+<Insert>[ActiveConfig]
+mmp2.0.vpj=,Debug
+</Insert>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="17:33:16000">
+<Copy StartSeek="0" EndSeek="59"/>
+<Insert>mmp2.0.vpj=,Debug
+</Insert>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="17:33:16000">
+<Copy StartSeek="35" EndSeek="111"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="17:33:16000">
+<Copy StartSeek="0" EndSeek="50"/>
+<Insert>mmp2.0.vpj=20120118153316000
+</Insert>
+<Copy StartSeek="79" EndSeek="111"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="17:33:59000">
+<Copy StartSeek="0" EndSeek="111"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="17:34:38000">
+<Copy StartSeek="0" EndSeek="50"/>
+<Insert>mmp2.0.vpj=20120118153359000
+</Insert>
+<Copy StartSeek="79" EndSeek="634"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="17:36:32000">
+<Copy StartSeek="0" EndSeek="195"/>
+<Copy StartSeek="4782" EndSeek="4794"/>
+<Insert>../kprobe-pmc/Makefile.armcc
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/include/linux/compiler-gcc.h
+../kprobe-pmc/perf_counters.c
+../kprobe-pmc/perf_counters.h
+../kprobe-pmc/mvCpuCntrs.h
+</Insert>
+<Copy StartSeek="4794" EndSeek="4967"/>
+<Copy StartSeek="5157" EndSeek="5224"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/01/19" Time="12:10:46000">
+<Copy StartSeek="0" EndSeek="195"/>
+<Copy StartSeek="1357" EndSeek="1399"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.947 CL=36 LE=0 CX=35 CY=22 WI=5 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1637" EndSeek="1692"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=1048672 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2482 CL=16 LE=0 CX=15 CY=23 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2533" EndSeek="2572"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=1049184 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.168 CL=1 LE=0 CX=0 CY=11 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2812" EndSeek="2858"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=1179744 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.26632 CL=5 LE=0 CX=4 CY=23 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_baseopMSVC.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=1048672 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.95577 CL=1 LE=0 CX=0 CY=20 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/src/baseopMSVC.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1864 CL=1 LE=0 CX=0 CY=14 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_types.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=32 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6408 CL=27 LE=0 CX=26 CY=22 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3105" EndSeek="3345"/>
+<Insert>VIEW: LN=.5227 CL=1 LE=0 CX=0 CY=20 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/src/baseopGCC.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=1049184 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1895 CL=1 LE=0 CX=0 CY=16 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/src/baseopANSI.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.3757 CL=1 LE=0 CX=0 CY=5 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=3 ",,,"
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_baseopMSVC.h"
+VIEW: LN=.95577 CL=1 LE=0 CX=9 CY=20 WI=208 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3587" EndSeek="3682"/>
+<Insert>VIEW: LN=.1864 CL=1 LE=0 CX=7 CY=14 WI=188 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3750" EndSeek="3850"/>
+<Insert>VIEW: LN=.6408 CL=27 LE=0 CX=33 CY=22 WI=17 BI=27 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_baseopGCCARM.h"
+VIEW: LN=.5227 CL=1 LE=0 CX=7 CY=20 WI=179 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3920" EndSeek="4013"/>
+<Insert>VIEW: LN=.1895 CL=1 LE=0 CX=7 CY=16 WI=159 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4081" EndSeek="4175"/>
+<Insert>VIEW: LN=.2187 CL=29 LE=0 CX=35 CY=23 WI=95 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4245" EndSeek="4331"/>
+<Insert>VIEW: LN=.947 CL=36 LE=0 CX=42 CY=22 WI=151 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4399" EndSeek="4498"/>
+<Insert>VIEW: LN=.2482 CL=16 LE=0 CX=22 CY=23 WI=168 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4917" EndSeek="5000"/>
+<Insert>VIEW: LN=.168 CL=1 LE=0 CX=9 CY=11 WI=14 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5069" EndSeek="5159"/>
+<Insert>VIEW: LN=.26632 CL=5 LE=0 CX=13 CY=23 WI=222 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5230" EndSeek="5242"/>
+<Insert>../kprobe-pmc/perf_counters_test.c
+</Insert>
+<Copy StartSeek="5242" EndSeek="5537"/>
+<Copy StartSeek="5584" EndSeek="5684"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/01/22" Time="09:38:6000">
+<Copy StartSeek="0" EndSeek="195"/>
+<Copy StartSeek="496" EndSeek="717"/>
+<Insert>VIEW: LN=.1864 CL=1 LE=0 CX=0 CY=14 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="783" EndSeek="839"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6408 CL=27 LE=0 CX=26 CY=22 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1079" EndSeek="1299"/>
+<Insert>VIEW: LN=.1895 CL=1 LE=0 CX=0 CY=16 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1366" EndSeek="1587"/>
+<Insert>VIEW: LN=.2187 CL=29 LE=0 CX=28 CY=23 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1656" EndSeek="1869"/>
+<Insert>VIEW: LN=.947 CL=36 LE=0 CX=35 CY=22 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1937" EndSeek="1992"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2482 CL=16 LE=0 CX=15 CY=23 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2232" EndSeek="2464"/>
+<Insert>VIEW: LN=.95375 CL=1 LE=0 CX=0 CY=22 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2532" EndSeek="2592"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.76868 CL=1 LE=0 CX=0 CY=22 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2831" EndSeek="2870"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.695 CL=30 LE=0 CX=29 CY=34 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3109" EndSeek="3155"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=1180256 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.27240 CL=22 LE=0 CX=21 CY=13 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_baseopGCCARM.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=1049184 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5275 CL=1 LE=0 CX=0 CY=22 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3398" EndSeek="3505"/>
+<Insert>VIEW: LN=.5275 CL=1 LE=0 CX=7 CY=22 WI=80 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3573" EndSeek="3668"/>
+<Insert>VIEW: LN=.1864 CL=1 LE=0 CX=7 CY=14 WI=76 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3735" EndSeek="3835"/>
+<Insert>VIEW: LN=.6408 CL=27 LE=0 CX=33 CY=22 WI=78 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3905" EndSeek="3998"/>
+<Insert>VIEW: LN=.1895 CL=1 LE=0 CX=7 CY=16 WI=82 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4066" EndSeek="4160"/>
+<Insert>VIEW: LN=.2187 CL=29 LE=0 CX=35 CY=23 WI=84 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4230" EndSeek="4316"/>
+<Insert>VIEW: LN=.947 CL=36 LE=0 CX=42 CY=22 WI=86 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4385" EndSeek="4484"/>
+<Insert>VIEW: LN=.2482 CL=16 LE=0 CX=22 CY=23 WI=88 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4554" EndSeek="4659"/>
+<Insert>VIEW: LN=.95375 CL=1 LE=0 CX=9 CY=22 WI=74 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4728" EndSeek="4833"/>
+<Insert>VIEW: LN=.76868 CL=1 LE=0 CX=7 CY=22 WI=130 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4902" EndSeek="4985"/>
+<Insert>VIEW: LN=.695 CL=30 LE=0 CX=38 CY=34 WI=90 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5054" EndSeek="5144"/>
+<Insert>VIEW: LN=.27240 CL=30 LE=0 CX=38 CY=13 WI=92 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5215" EndSeek="5669"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/01/22" Time="09:47:14000">
+<Copy StartSeek="0" EndSeek="429"/>
+<Insert>VIEW: LN=.5275 CL=1 LE=0 CX=0 CY=22 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="496" EndSeek="717"/>
+<Insert>VIEW: LN=.1864 CL=1 LE=0 CX=0 CY=14 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_types.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6408 CL=27 LE=0 CX=26 CY=22 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="784" EndSeek="1004"/>
+<Insert>VIEW: LN=.1895 CL=1 LE=0 CX=0 CY=16 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1071" EndSeek="1292"/>
+<Insert>VIEW: LN=.2187 CL=29 LE=0 CX=28 CY=23 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1361" EndSeek="1574"/>
+<Insert>VIEW: LN=.947 CL=36 LE=0 CX=35 CY=22 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1642" EndSeek="1868"/>
+<Insert>VIEW: LN=.2482 CL=16 LE=0 CX=15 CY=23 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1937" EndSeek="2169"/>
+<Insert>VIEW: LN=.95375 CL=1 LE=0 CX=0 CY=22 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2237" EndSeek="2468"/>
+<Insert>VIEW: LN=.76868 CL=1 LE=0 CX=0 CY=22 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="test-armcc/sru_cm_turbo.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.695 CL=30 LE=0 CX=29 CY=34 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2536" EndSeek="2755"/>
+<Insert>VIEW: LN=.27240 CL=22 LE=0 CX=21 CY=13 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3398" EndSeek="3505"/>
+<Insert>VIEW: LN=.5275 CL=1 LE=0 CX=7 CY=22 WI=74 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3574" EndSeek="3669"/>
+<Insert>VIEW: LN=.1864 CL=1 LE=0 CX=7 CY=14 WI=76 BI=9 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+BUFFER: BN="trunk/mod/dspCommon/incl/NatureDSP_types.h"
+VIEW: LN=.6408 CL=27 LE=0 CX=33 CY=22 WI=78 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3738" EndSeek="3831"/>
+<Insert>VIEW: LN=.1895 CL=1 LE=0 CX=7 CY=16 WI=80 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3900" EndSeek="3994"/>
+<Insert>VIEW: LN=.2187 CL=29 LE=0 CX=35 CY=23 WI=82 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4065" EndSeek="4151"/>
+<Insert>VIEW: LN=.947 CL=36 LE=0 CX=42 CY=22 WI=84 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4221" EndSeek="4320"/>
+<Insert>VIEW: LN=.2482 CL=16 LE=0 CX=22 CY=23 WI=86 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4391" EndSeek="4496"/>
+<Insert>VIEW: LN=.95375 CL=1 LE=0 CX=7 CY=22 WI=88 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4566" EndSeek="4671"/>
+<Insert>VIEW: LN=.76868 CL=1 LE=0 CX=7 CY=22 WI=90 BI=16 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="test-armcc/sru_cm_turbo.c"
+VIEW: LN=.695 CL=30 LE=0 CX=36 CY=34 WI=92 BI=17 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=1 ",,,"
+</Insert>
+<Copy StartSeek="4785" EndSeek="4831"/>
+<Insert>VIEW: LN=.27240 CL=30 LE=0 CX=36 CY=13 WI=94 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5226" EndSeek="5507"/>
+<Insert>test-armcc/sru_cm_turbo.c
+</Insert>
+<Copy StartSeek="5507" EndSeek="5587"/>
+<Copy StartSeek="5613" EndSeek="5680"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/01/22" Time="18:38:14000">
+<Copy StartSeek="0" EndSeek="429"/>
+<Insert>VIEW: LN=.5275 CL=1 LE=0 CX=0 CY=22 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="trunk/mod/dspCommon/src/baseopMSVC.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1864 CL=1 LE=0 CX=0 CY=14 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="495" EndSeek="715"/>
+<Insert>VIEW: LN=.1895 CL=1 LE=0 CX=0 CY=16 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="782" EndSeek="1003"/>
+<Insert>VIEW: LN=.2187 CL=29 LE=0 CX=28 CY=23 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1072" EndSeek="1285"/>
+<Insert>VIEW: LN=.947 CL=36 LE=0 CX=35 CY=22 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1353" EndSeek="1579"/>
+<Insert>VIEW: LN=.2482 CL=16 LE=0 CX=15 CY=23 WI=5 BI=23 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1648" EndSeek="1880"/>
+<Insert>VIEW: LN=.95375 CL=1 LE=0 CX=0 CY=22 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1948" EndSeek="2179"/>
+<Insert>VIEW: LN=.76868 CL=1 LE=0 CX=0 CY=22 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2247" EndSeek="2293"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.26766 CL=25 LE=0 CX=24 CY=29 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2534" EndSeek="2590"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6961 CL=1 LE=0 CX=0 CY=33 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2828" EndSeek="2867"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.424 CL=1 LE=0 CX=0 CY=11 WI=5 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3401" EndSeek="3508"/>
+<Insert>VIEW: LN=.5275 CL=1 LE=0 CX=7 CY=22 WI=173 BI=11 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=13 ",,,"
+BUFFER: BN="trunk/mod/dspCommon/src/baseopMSVC.c"
+VIEW: LN=.1864 CL=1 LE=0 CX=7 CY=14 WI=186 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3575" EndSeek="3668"/>
+<Insert>VIEW: LN=.1895 CL=1 LE=0 CX=7 CY=16 WI=169 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3736" EndSeek="3830"/>
+<Insert>VIEW: LN=.2187 CL=29 LE=0 CX=35 CY=23 WI=180 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3900" EndSeek="3986"/>
+<Insert>VIEW: LN=.947 CL=36 LE=0 CX=42 CY=22 WI=177 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4055" EndSeek="4154"/>
+<Insert>VIEW: LN=.2482 CL=16 LE=0 CX=22 CY=23 WI=155 BI=23 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4224" EndSeek="4329"/>
+<Insert>VIEW: LN=.95375 CL=1 LE=0 CX=7 CY=22 WI=183 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4398" EndSeek="4503"/>
+<Insert>VIEW: LN=.76868 CL=1 LE=0 CX=7 CY=22 WI=133 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4572" EndSeek="4662"/>
+<Insert>VIEW: LN=.26766 CL=25 LE=0 CX=33 CY=29 WI=189 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4733" EndSeek="4833"/>
+<Insert>VIEW: LN=.6961 CL=1 LE=0 CX=7 CY=33 WI=178 BI=16 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=2 ",,,"
+</Insert>
+<Copy StartSeek="4945" EndSeek="4984"/>
+<Insert>VIEW: LN=.1429 CL=22 LE=0 CX=28 CY=35 WI=191 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5214" EndSeek="5226"/>
+<Insert>../kprobe-pmc-armcc/perf_counters.c
+</Insert>
+<Copy StartSeek="5226" EndSeek="5565"/>
+<Copy StartSeek="5599" EndSeek="5666"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/01/26" Time="17:47:18000">
+<Copy StartSeek="0" EndSeek="495"/>
+<Copy StartSeek="783" EndSeek="3327"/>
+<Insert>VIEW: LN=.1429 CL=22 LE=0 CX=21 CY=35 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="/home/haimd/scripts/build-sgs2.sh"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Bourne Shell	HM=0 MF=544 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.720 CL=10 LE=0 CX=9 CY=26 WI=5 BI=4 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3393" EndSeek="3567"/>
+<Copy StartSeek="3730" EndSeek="5056"/>
+<Insert>WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+</Insert>
+<Copy StartSeek="5100" EndSeek="5209"/>
+<Insert>WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=12 ",,,"
+BUFFER: BN="/home/haimd/scripts/build-sgs2.sh"
+VIEW: LN=.720 CL=10 LE=0 CX=18 CY=26 WI=11 BI=4 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5209" EndSeek="5221"/>
+<Copy StartSeek="5257" EndSeek="5596"/>
+<Insert>/home/haimd/scripts/build-sgs2.sh
+</Insert>
+<Copy StartSeek="5596" EndSeek="5663"/>
+</Delta>
+</DeltaFile>

@@ -1,0 +1,1440 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="168" Comment="" Date="2012/03/18" Time="13:02:8000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2010, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* DESCRIPTION:
+*       
+* 
+*******************************************************************************/
+#include &lt;linux/module.h&gt;
+#include &lt;linux/moduleparam.h&gt;
+#include &lt;linux/proc_fs.h&gt;
+
+#include "eth_if.h"
+
+#define MV_CPU_LE
+#include "gbe/mvNeta.h"
+#include "gbe/mvNetaRegs.h"
+#include "gbe/mvEthRegs.h"
+
+
+#ifdef MODULE_LICENSE
+MODULE_LICENSE("MARVELL");
+#endif
+
+typedef struct {
+  unsigned char   h_dest[6];       /* destination eth addr */
+  unsigned char   h_source[6];     /* source ether addr    */
+  u16             h_proto;        /* packet type ID field */
+//unsigned char   data[200];
+} __attribute__((packed)) ethhdr;
+
+struct timer_list eth_timer;
+struct proc_dir_entry *eth_if_proc_dir;
+u32 dpa_cycle_count[2];
+int fwd_done = 0;
+
+#if 0
+void tx_test(void)
+{
+	int i, n;
+	ethhdr *eth_hdr;
+	void* pkt = NULL;
+
+	pkt = kmalloc(1500, GFP_ATOMIC);
+	eth_hdr = (ethhdr *) pkt;
+
+	memset(pkt, 0, 1500);
+	eth_hdr-&gt;h_dest[0] = 0xF0;
+	eth_hdr-&gt;h_dest[1] = 0xDE;
+	eth_hdr-&gt;h_dest[2] = 0xF1;
+	eth_hdr-&gt;h_dest[3] = 0x3C;
+	eth_hdr-&gt;h_dest[4] = 0x5B;
+	eth_hdr-&gt;h_dest[5] = 0x68;
+
+	eth_hdr-&gt;h_source[0] = 0x00;
+	eth_hdr-&gt;h_source[1] = 0x50;
+	eth_hdr-&gt;h_source[2] = 0x43;
+	eth_hdr-&gt;h_source[3] = 0x01;
+	eth_hdr-&gt;h_source[4] = 0x0F;
+	eth_hdr-&gt;h_source[5] = 0x0F;
+
+	eth_hdr-&gt;h_proto = 0x0800;
+
+	for (i = 0; i &lt; 10; i++) {
+		eth_hdr-&gt;data[i] = i;
+		eth_if_tx(ETH_PORT, pkt, 1000);
+		msleep(1);
+		n = mvNetaTxqSentDescNumGet(ETH_PORT, 0, ETH_TXQ);
+		printk("\nMMP ETH: sent %d\n", n);
+	}
+
+	kfree(pkt);
+}
+#endif /* tx_test() */
+
+void eth_poll_timer(unsigned long unused) 
+{
+	
+	unsigned long delay;
+
+	PERF_COUNTER_RESET(0);
+	PERF_COUNTER_START(0, PERF_COUNTER_TYPE_CYCLE_COUNT);
+	PERF_BEGIN(dpa_cycle_count[0], 0);
+//      done = eth_if_rx(ETH_RX_PORT, RX_QUOTA);
+	fwd_done = eth_if_fwd(ETH_RX_PORT, ETH_TX_PORT, RX_QUOTA);
+	PERF_END(dpa_cycle_count[0], 0)
+//      delay = (fwd_done &lt;  RX_QUOTA ? HZ/10 : 1);
+	delay = 1;
+	mod_timer(&amp;eth_timer, jiffies + delay);
+}
+
+static void __init eth_if_timer_init(struct timer_list *timer)
+{
+	init_timer(timer);
+	timer-&gt;expires = jiffies + HZ;
+	timer-&gt;function = eth_poll_timer;
+	add_timer(timer);
+}
+
+static void eth_if_timer_clean(struct timer_list *timer)
+{
+	del_timer(timer);
+}
+
+void mmp_log(int level, const char* format, ...) {
+  char      buf[256];
+  va_list   argptr;
+  int len;
+
+  va_start( argptr, format);
+  len = vsnprintf(buf,sizeof(buf),format, argptr);
+  va_end( argptr);
+  printk("&lt;0&gt; %d: %s\n", level, buf);
+}
+
+static int eth_if_mod_perf_read(char *buffer, char **buffer_location, off_t offset,
+				 int buffer_length, int *zero, void *ptr)
+{
+	u32 *stats = dpa_cycle_count;
+
+	int n = sprintf(buffer, "0=%u done=%d, avg=%d\n", 
+			dpa_cycle_count[0], fwd_done, (fwd_done ? dpa_cycle_count[0]/fwd_done : -1));
+
+
+	*stats++ = 0;
+	*stats = 0;
+	
+	return n;
+}
+
+static int eth_if_mod_create_proc(void)
+{
+	eth_if_proc_dir = proc_mkdir("eth_if", NULL);
+	if (!eth_if_proc_dir) {
+		printk(KERN_ERR "Error creating proc dir\n");
+		return -EEXIST;
+	}
+
+	create_proc_read_entry("perf", 0, eth_if_proc_dir, eth_if_mod_perf_read, NULL);
+	return 0;
+}
+
+static void eth_if_mod_remove_proc(void)
+{
+	remove_proc_entry("perf", eth_if_proc_dir);
+	remove_proc_entry("eth_if", NULL);
+}  
+
+static int __init eth_if_mod_init(void)
+{
+	eth_if_config_t cfg = {
+		.state = ETH_IF_STATE_UP,
+		.port = ETH_RX_PORT,
+		.rxq = ETH_RXQ,
+		.txq = ETH_TXQ,
+//      	.rx_callback = eth_tx_fwd /*eth_rx_callback */,
+	};
+	if (eth_if_init(&amp;cfg) &lt; 0) {
+		return -1;
+	}
+	cfg.port = ETH_TX_PORT;
+//      cfg.rx_callback = NULL; /* we xmit in uni-dir as a test ..*/
+	if (eth_if_init(&amp;cfg) &lt; 0) {
+		return -1;
+	}
+
+	if (eth_if_mod_create_proc())
+		return -EINVAL;
+
+	eth_if_timer_init(&amp;eth_timer);
+//      rx_test();
+/*  
+  printk("MMP ETH: REsetting.....\n");
+   
+  eth_if_txq_reinit();
+
+  printk("MMP ETH: re-init done\n");
+  tx_test();
+*/
+	return 0;
+}
+module_init(eth_if_mod_init);
+
+static void __exit eth_if_mod_exit(void)
+{
+	eth_if_mod_remove_proc();
+	eth_if_timer_clean(&amp;eth_timer);
+	eth_if_shutdown(ETH_RX_PORT);
+	eth_if_shutdown(ETH_TX_PORT);
+	
+}
+module_exit(eth_if_mod_exit);
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/03/07" Time="10:19:13000">
+<Copy StartSeek="0" EndSeek="2185"/>
+<Insert>  char      buf[256];
+</Insert>
+<Copy StartSeek="2231" EndSeek="2263"/>
+<Copy StartSeek="2288" EndSeek="2891"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/03/07" Time="11:13:31000">
+<Copy StartSeek="0" EndSeek="2470"/>
+<Insert>   eth_if_config_t cfg = {.state = ETH_IF_STATE_UP,
+                          .port = ETH_PORT,
+                          .rxq = ETH_RXQ,
+                          .txq = ETH_TXQ};
+
+</Insert>
+<Copy StartSeek="2618" EndSeek="2857"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/03/07" Time="17:02:21000">
+<Copy StartSeek="0" EndSeek="1914"/>
+<Insert>void rx_test(void) {
+  int i;
+  for (i = 0; i &lt; 10; i++) {
+        eth_if_rx(ETH_PORT, 10);
+        msleep(1000);
+   }
+}
+
+</Insert>
+<Copy StartSeek="2021" EndSeek="2842"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/03/07" Time="17:06:0000">
+<Copy StartSeek="0" EndSeek="1936"/>
+<Copy StartSeek="1957" EndSeek="1965"/>
+<Insert>	for (i = 0; i &lt; 10; i++) {
+		eth_if_rx(ETH_PORT, 10);
+		msleep(1000);
+	}
+}
+
+</Insert>
+<Copy StartSeek="2081" EndSeek="2902"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:12:14000">
+<Copy StartSeek="0" EndSeek="1957"/>
+<Insert>	int i;
+</Insert>
+<Copy StartSeek="1968" EndSeek="2057"/>
+<Insert>	} while (1);
+</Insert>
+<Copy StartSeek="2078" EndSeek="2912"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:13:40000">
+<Copy StartSeek="0" EndSeek="2009"/>
+<Insert>			eth_if_rx(ETH_PORT, RX_QUOTA);
+			msleep(1);
+</Insert>
+<Copy StartSeek="2094" EndSeek="2949"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:14:12000">
+<Copy StartSeek="0" EndSeek="2009"/>
+<Insert>			ret = eth_if_rx(ETH_PORT, RX_QUOTA);
+			if (ret &lt; RX_QUOTA) {
+				msleep(1);
+			}
+</Insert>
+<Copy StartSeek="2090" EndSeek="2945"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:14:25000">
+<Copy StartSeek="0" EndSeek="1936"/>
+<Insert>	#define RX_QUOTA 64
+</Insert>
+<Copy StartSeek="1956" EndSeek="2944"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:14:31000">
+<Copy StartSeek="0" EndSeek="1094"/>
+<Copy StartSeek="1124" EndSeek="2974"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:29:54000">
+<Copy StartSeek="0" EndSeek="1944"/>
+<Insert>void rx_test(void) 
+</Insert>
+<Copy StartSeek="1980" EndSeek="2751"/>
+<Insert>   if (eth_if_init(&amp;cfg) &lt; 0) {
+       return -1;
+   }
+
+  rx_test();
+</Insert>
+<Copy StartSeek="2857" EndSeek="2982"/>
+<Insert>   return 0;
+</Insert>
+<Copy StartSeek="2993" EndSeek="3025"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:32:39000">
+<Copy StartSeek="0" EndSeek="2797"/>
+<Insert>	eth_timer.function = 
+</Insert>
+<Copy StartSeek="2829" EndSeek="3034"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:33:10000">
+<Copy StartSeek="0" EndSeek="2797"/>
+<Insert>	eth_timer.function = &amp;rx_test;
+</Insert>
+<Copy StartSeek="2828" EndSeek="3033"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:33:19000">
+<Copy StartSeek="0" EndSeek="2797"/>
+<Insert>	eth_timer.function = rx_test;
+</Insert>
+<Copy StartSeek="2865" EndSeek="3070"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:34:6000">
+<Copy StartSeek="0" EndSeek="2890"/>
+<Insert>	rx_test();
+</Insert>
+<Copy StartSeek="2909" EndSeek="3077"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:34:22000">
+<Copy StartSeek="0" EndSeek="2048"/>
+<Insert>	do {
+</Insert>
+<Copy StartSeek="2061" EndSeek="2142"/>
+<Insert>	} while (ret &gt;= 0);
+</Insert>
+<Copy StartSeek="2170" EndSeek="3091"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:35:11000">
+<Copy StartSeek="0" EndSeek="2003"/>
+<Insert>	int ret;
+</Insert>
+<Copy StartSeek="2014" EndSeek="2062"/>
+<Insert>		ret = eth_if_rx(ETH_PORT, RX_QUOTA);
+</Insert>
+<Copy StartSeek="2102" EndSeek="2140"/>
+<Insert>		}
+</Insert>
+<Copy StartSeek="2145" EndSeek="3094"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:35:19000">
+<Copy StartSeek="0" EndSeek="2014"/>
+<Insert>//      for (i = 0; i &lt; 10; i++) {
+//      do {
+		done = eth_if_rx(ETH_PORT, RX_QUOTA);
+		if (ret &lt; RX_QUOTA) {
+			msleep(1);
+
+		}
+//      } while (ret &gt;= 0);
+//      }
+}
+
+</Insert>
+<Copy StartSeek="2156" EndSeek="3064"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:37:4000">
+<Copy StartSeek="0" EndSeek="2076"/>
+<Insert>	delay = done &lt;  RX_QUOTA ? HZ : 1;
+</Insert>
+<Copy StartSeek="2114" EndSeek="3066"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:37:14000">
+<Copy StartSeek="0" EndSeek="2786"/>
+<Copy StartSeek="2811" EndSeek="2879"/>
+<Insert>	init_timer(&amp;eth_timer);
+</Insert>
+<Copy StartSeek="2903" EndSeek="3090"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:38:28000">
+<Copy StartSeek="0" EndSeek="2786"/>
+<Copy StartSeek="2787" EndSeek="3091"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:38:36000">
+<Copy StartSeek="0" EndSeek="2877"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="2881" EndSeek="3092"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:38:55000">
+<Copy StartSeek="0" EndSeek="2812"/>
+<Insert>	eth_timer = {
+		.expires = jiffies + HZ,
+		.function = rx_test,
+	};
+</Insert>
+<Copy StartSeek="2878" EndSeek="3089"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:39:32000">
+<Copy StartSeek="0" EndSeek="2114"/>
+<Copy StartSeek="2152" EndSeek="3127"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:43:12000">
+<Copy StartSeek="0" EndSeek="2587"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2754" EndSeek="2991"/>
+<Insert>	init_timer(&amp;eth_timer);
+	eth_timer.expires = jiffies + HZ;
+	eth_timer.function = rx_test;
+	add_timer(&amp;eth_timer);
+</Insert>
+<Copy StartSeek="2991" EndSeek="3178"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:45:10000">
+<Copy StartSeek="0" EndSeek="2990"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3022" EndSeek="3209"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:45:24000">
+<Copy StartSeek="0" EndSeek="2754"/>
+<Copy StartSeek="2917" EndSeek="3372"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:46:6000">
+<Copy StartSeek="0" EndSeek="2913"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="2916" EndSeek="3371"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:46:9000">
+<Copy StartSeek="0" EndSeek="2814"/>
+<Insert>	init_timer(&amp;timer);
+	timer.expires = jiffies + HZ;
+	timer.function = rx_test;
+	add_timer(&amp;timer);
+}
+
+</Insert>
+<Copy StartSeek="2836" EndSeek="3291"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:47:33000">
+<Copy StartSeek="0" EndSeek="2196"/>
+<Insert>static void __exit eth_if_mod_exit(void)
+{
+  eth_if_shutdown();
+}
+module_exit(eth_if_mod_exit);
+
+
+</Insert>
+<Copy StartSeek="2196" EndSeek="3193"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:48:2000">
+<Copy StartSeek="0" EndSeek="3237"/>
+<Insert>  eth_if_shutdown();
+</Insert>
+<Copy StartSeek="3257" EndSeek="3290"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:48:6000">
+<Copy StartSeek="0" EndSeek="3237"/>
+<Copy StartSeek="3270" EndSeek="3323"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:48:35000">
+<Copy StartSeek="0" EndSeek="2489"/>
+<Copy StartSeek="2490" EndSeek="3324"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:48:52000">
+<Copy StartSeek="0" EndSeek="2555"/>
+<Insert>	init_timer(&amp;timer);
+</Insert>
+<Copy StartSeek="2575" EndSeek="2633"/>
+<Insert>	add_timer(&amp;timer);
+</Insert>
+<Copy StartSeek="2652" EndSeek="3322"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:49:21000">
+<Copy StartSeek="0" EndSeek="2575"/>
+<Insert>	timer.expires = jiffies + HZ;
+	timer.function = rx_test;
+</Insert>
+<Copy StartSeek="2635" EndSeek="3324"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:50:0000">
+<Copy StartSeek="0" EndSeek="2114"/>
+<Insert>	printk(KERN_ERR "done %d \n", done);
+</Insert>
+<Copy StartSeek="2154" EndSeek="3326"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:51:22000">
+<Copy StartSeek="0" EndSeek="2114"/>
+<Insert>	pr_debug(KERN_ERR "done %d \n", done);
+</Insert>
+<Copy StartSeek="2145" EndSeek="3317"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:51:25000">
+<Copy StartSeek="0" EndSeek="2114"/>
+<Insert>	pr_debug("done %d \n", done);
+</Insert>
+<Copy StartSeek="2114" EndSeek="3286"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="07:52:24000">
+<Copy StartSeek="0" EndSeek="1124"/>
+<Insert>void tx_test(void) {
+   int i, n;
+   ethhdr *eth_hdr;
+   void* pkt = NULL;
+
+   pkt = kmalloc(1500, GFP_ATOMIC);
+   eth_hdr = (ethhdr *) pkt;
+
+   memset(pkt, 0, 1500);
+   eth_hdr-&gt;h_dest[0] = 0xF0;
+   eth_hdr-&gt;h_dest[1] = 0xDE;
+   eth_hdr-&gt;h_dest[2] = 0xF1;
+   eth_hdr-&gt;h_dest[3] = 0x3C;
+   eth_hdr-&gt;h_dest[4] = 0x5B;
+   eth_hdr-&gt;h_dest[5] = 0x68;
+
+   eth_hdr-&gt;h_source[0] = 0x00;
+   eth_hdr-&gt;h_source[1] = 0x50;
+   eth_hdr-&gt;h_source[2] = 0x43;
+   eth_hdr-&gt;h_source[3] = 0x01;
+   eth_hdr-&gt;h_source[4] = 0x0F;
+   eth_hdr-&gt;h_source[5] = 0x0F;
+
+   eth_hdr-&gt;h_proto = 0x0800;
+</Insert>
+<Copy StartSeek="1634" EndSeek="1635"/>
+<Insert>   for (i = 0; i &lt; 10; i++) {
+        eth_hdr-&gt;data[i] = i;
+        eth_if_tx(ETH_PORT, pkt, 1000);
+        msleep(1);
+        n = mvNetaTxqSentDescNumGet(ETH_PORT, 0, ETH_TXQ);
+        printk("\nMMP ETH: sent %d\n", n);
+   }
+   
+   kfree(pkt);
+}
+
+</Insert>
+<Copy StartSeek="2689" EndSeek="4031"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:26:15000">
+<Copy StartSeek="0" EndSeek="2079"/>
+<Insert>	eth_hdr-&gt;h_dest[0] = 0xF0;
+	eth_hdr-&gt;h_dest[1] = 0xDE;
+	eth_hdr-&gt;h_dest[2] = 0xF1;
+	eth_hdr-&gt;h_dest[3] = 0x3C;
+	eth_hdr-&gt;h_dest[4] = 0x5B;
+	eth_hdr-&gt;h_dest[5] = 0x68;
+</Insert>
+<Copy StartSeek="2247" EndSeek="4031"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:27:22000">
+<Copy StartSeek="0" EndSeek="2079"/>
+<Copy StartSeek="2127" EndSeek="4079"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:28:58000">
+<Copy StartSeek="0" EndSeek="2079"/>
+<Insert>	memcpy(eth_hdr-&gt;h_dest, eth_hdr-&gt;h_source, 6);
+</Insert>
+<Copy StartSeek="2134" EndSeek="4086"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:29:7000">
+<Copy StartSeek="0" EndSeek="1879"/>
+<Insert>void tx_test(void *pkt, unsigned int size)
+</Insert>
+<Copy StartSeek="1926" EndSeek="4090"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:29:51000">
+<Copy StartSeek="0" EndSeek="2138"/>
+<Insert>	eth_hdr-&gt;h_dest[0] = 0xE0;
+	eth_hdr-&gt;h_dest[1] = 0xcb;
+	eth_hdr-&gt;h_dest[2] = 0x4e;
+	eth_hdr-&gt;h_dest[3] = 0x9e;
+	eth_hdr-&gt;h_dest[4] = 0x07;
+	eth_hdr-&gt;h_dest[5] = 0xa8;
+
+</Insert>
+<Copy StartSeek="2348" EndSeek="2438"/>
+<Insert>	eth_hdr-&gt;h_source[3] = 0x01;
+	eth_hdr-&gt;h_source[4] = 0x0F;
+	eth_hdr-&gt;h_source[5] = 0x0F;
+</Insert>
+<Copy StartSeek="2528" EndSeek="4131"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:36:25000">
+<Copy StartSeek="0" EndSeek="2138"/>
+<Insert>//      eth_hdr-&gt;h_dest[0] = 0xE0;
+//      eth_hdr-&gt;h_dest[1] = 0xcb;
+//      eth_hdr-&gt;h_dest[2] = 0x4e;
+//      eth_hdr-&gt;h_dest[3] = 0x9e;
+//      eth_hdr-&gt;h_dest[4] = 0x07;
+//      eth_hdr-&gt;h_dest[5] = 0xa8;
+</Insert>
+<Copy StartSeek="2138" EndSeek="3921"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:36:49000">
+<Copy StartSeek="0" EndSeek="2319"/>
+<Insert>	eth_hdr-&gt;h_proto = 0x0800;
+</Insert>
+<Copy StartSeek="2354" EndSeek="3928"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:36:52000">
+<Copy StartSeek="0" EndSeek="2355"/>
+<Insert>	for (i = 0; i &lt; 10; i++) {
+		eth_hdr-&gt;data[i] = i;
+		eth_if_tx(ETH_PORT, pkt, 1000);
+		msleep(1);
+</Insert>
+<Copy StartSeek="2420" EndSeek="3894"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:38:32000">
+<Copy StartSeek="0" EndSeek="2510"/>
+<Insert>	}
+
+</Insert>
+<Copy StartSeek="2510" EndSeek="3890"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:38:54000">
+<Copy StartSeek="0" EndSeek="2386"/>
+<Insert>		eth_if_tx(ETH_PORT, pkt, size);
+		n = mvNetaTxqSentDescNumGet(ETH_PORT, 0, ETH_TXQ);
+		printk("\nMMP ETH: sent %d\n", n);
+	kfree(pkt);
+</Insert>
+<Copy StartSeek="2527" EndSeek="3894"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:39:4000">
+<Copy StartSeek="0" EndSeek="1872"/>
+<Insert>#else 
+void tx_loopback(void *pkt, unsigned int size)
+{
+	int i, n;
+	ethhdr *eth_hdr;
+//      void* pkt = NULL;
+
+//      pkt = kmalloc(1500, GFP_ATOMIC);
+	eth_hdr = (ethhdr *) pkt;
+
+//      memset(pkt, 0, 1500);
+	memcpy(eth_hdr-&gt;h_dest, eth_hdr-&gt;h_source, ETH_ALEN);
+	eth_hdr-&gt;h_source[0] = 0x00;
+	eth_hdr-&gt;h_source[1] = 0x50;
+	eth_hdr-&gt;h_source[2] = 0x43;
+	eth_hdr-&gt;h_source[3] = 0x12;
+	eth_hdr-&gt;h_source[4] = 0x01;
+	eth_hdr-&gt;h_source[5] = 0x81;
+
+//      eth_hdr-&gt;h_proto = 0x0800;
+
+//      	eth_hdr-&gt;data[i] = i;
+	eth_if_tx(ETH_PORT, pkt, size);
+	n = mvNetaTxqSentDescNumGet(ETH_PORT, 0, ETH_TXQ);
+	printk("\nMMP ETH: sent %d\n", n);
+//      kfree(pkt);
+}
+</Insert>
+<Copy StartSeek="1872" EndSeek="3237"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:45:34000">
+<Copy StartSeek="0" EndSeek="2803"/>
+<Insert>		.rx_callback = eth_rx_callback,
+</Insert>
+<Copy StartSeek="2853" EndSeek="3253"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:52:46000">
+<Copy StartSeek="0" EndSeek="765"/>
+<Insert>#define ETH_PORT 1
+#define ETH_RXQ  7
+#define ETH_TXQ  7
+
+</Insert>
+<Copy StartSeek="765" EndSeek="3195"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="08:55:10000">
+<Copy StartSeek="0" EndSeek="967"/>
+<Insert>  unsigned char   data[100];     
+</Insert>
+<Copy StartSeek="996" EndSeek="3190"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/03/08" Time="09:10:22000">
+<Copy StartSeek="0" EndSeek="2740"/>
+<Insert>		.rx_callback = tx_looback /*eth_rx_callback */,
+</Insert>
+<Copy StartSeek="2790" EndSeek="3190"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/03/14" Time="16:19:15000">
+<Copy StartSeek="0" EndSeek="2684"/>
+<Insert>		.port = ETH_PORT,
+</Insert>
+<Copy StartSeek="2705" EndSeek="3191"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="10:42:19000">
+<Copy StartSeek="0" EndSeek="2684"/>
+<Insert>		.port = ETH_PORT1,
+</Insert>
+<Copy StartSeek="2705" EndSeek="3191"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="10:42:43000">
+<Copy StartSeek="0" EndSeek="2842"/>
+<Copy StartSeek="2912" EndSeek="3261"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="10:43:37000">
+<Copy StartSeek="0" EndSeek="2842"/>
+<Copy StartSeek="2843" EndSeek="3262"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="10:43:44000">
+<Copy StartSeek="0" EndSeek="2046"/>
+<Insert>void mmp_log(int level, const char* format, ...) {
+#define BUFSIZE 256
+  char      buf[BUFSIZE];
+  va_list   argptr;
+  int len;
+
+  buf[BUFSIZE-1] = '\0';
+  va_start( argptr, format);
+  len = vsnprintf(buf,sizeof(buf),format, argptr);
+  va_end( argptr);
+  printk("&lt;0&gt; %d: %s\n", level, buf);
+}
+
+</Insert>
+<Copy StartSeek="2046" EndSeek="2968"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="10:47:13000">
+<Copy StartSeek="0" EndSeek="1925"/>
+<Insert>	done = eth_if_rx(ETH_PORT, RX_QUOTA);
+</Insert>
+<Copy StartSeek="1965" EndSeek="2969"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="10:48:5000">
+<Copy StartSeek="0" EndSeek="765"/>
+<Copy StartSeek="845" EndSeek="3049"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="10:48:58000">
+<Copy StartSeek="0" EndSeek="844"/>
+<Insert>
+</Insert>
+<Copy StartSeek="844" EndSeek="3048"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="10:49:15000">
+<Copy StartSeek="0" EndSeek="765"/>
+<Insert>#define ETH_PORT0 0
+#define ETH_PORT1 1
+</Insert>
+<Copy StartSeek="809" EndSeek="3052"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="10:49:44000">
+<Copy StartSeek="0" EndSeek="2474"/>
+<Insert>		.port = ETH_PORT0,
+</Insert>
+<Copy StartSeek="2497" EndSeek="2635"/>
+<Insert>	cfg.port = ETH_PORT1;
+</Insert>
+<Copy StartSeek="2660" EndSeek="3056"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="10:50:4000">
+<Copy StartSeek="0" EndSeek="2294"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="2297" EndSeek="3055"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="10:50:51000">
+<Copy StartSeek="0" EndSeek="848"/>
+<Copy StartSeek="869" EndSeek="1974"/>
+<Insert>#define RX_QUOTA 64
+
+</Insert>
+<Copy StartSeek="1974" EndSeek="3055"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="10:51:5000">
+<Copy StartSeek="0" EndSeek="2008"/>
+<Insert>	done = eth_if_rx(ETH_PORT0, RX_QUOTA);
+</Insert>
+<Copy StartSeek="2050" EndSeek="3057"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="10:51:28000">
+<Copy StartSeek="0" EndSeek="1936"/>
+<Insert>void rx_test(unsigned long unused) 
+</Insert>
+<Copy StartSeek="1972" EndSeek="3057"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="11:16:35000">
+<Copy StartSeek="0" EndSeek="2050"/>
+<Copy StartSeek="2051" EndSeek="3058"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="11:25:15000">
+<Copy StartSeek="0" EndSeek="1936"/>
+<Insert>void eth_fwd(unsigned long unused) 
+</Insert>
+<Copy StartSeek="1979" EndSeek="3065"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="12:03:9000">
+<Copy StartSeek="0" EndSeek="2257"/>
+<Insert>	timer-&gt;function = rx_test;
+</Insert>
+<Copy StartSeek="2292" EndSeek="3072"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="12:03:24000">
+<Copy StartSeek="0" EndSeek="2676"/>
+<Copy StartSeek="2701" EndSeek="3097"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="12:10:40000">
+<Copy StartSeek="0" EndSeek="2676"/>
+<Insert>	cfg.rx_callback = NULL;
+</Insert>
+<Copy StartSeek="2744" EndSeek="3140"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="12:10:55000">
+<Copy StartSeek="0" EndSeek="2676"/>
+<Insert>	cfg.rx_callback = NULL; /* we xmit single direction as a test ..*/
+</Insert>
+<Copy StartSeek="2747" EndSeek="3143"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="12:10:59000">
+<Copy StartSeek="0" EndSeek="2676"/>
+<Insert>	cfg.rx_callback = NULL; /* we xmit in single direction as a test ..*/
+</Insert>
+<Copy StartSeek="2738" EndSeek="3134"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="12:11:6000">
+<Copy StartSeek="0" EndSeek="765"/>
+<Insert>#define ETH_RX_PORT 0
+#define ETH_TX_PORT 1
+#define ETH_RXQ  7
+#define ETH_TXQ  7
+
+#define RX_QUOTA 64
+
+</Insert>
+<Copy StartSeek="765" EndSeek="3030"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="12:25:40000">
+<Copy StartSeek="0" EndSeek="1911"/>
+<Copy StartSeek="1912" EndSeek="3031"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:13:25000">
+<Copy StartSeek="0" EndSeek="1911"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2026" EndSeek="3145"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:13:41000">
+<Copy StartSeek="0" EndSeek="2026"/>
+<Insert>	done = eth_if_rx(ETH_RX_PORT, RX_QUOTA);
+
+</Insert>
+<Copy StartSeek="2132" EndSeek="3208"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:17:43000">
+<Copy StartSeek="0" EndSeek="1060"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1085" EndSeek="3232"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:20:51000">
+<Copy StartSeek="0" EndSeek="2647"/>
+<Insert>		.rx_callback = eth_tx_fwd /*eth_rx_callback */,
+</Insert>
+<Copy StartSeek="2704" EndSeek="3239"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:23:57000">
+<Copy StartSeek="0" EndSeek="2493"/>
+<Copy StartSeek="2738" EndSeek="3484"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:28:28000">
+<Copy StartSeek="0" EndSeek="1084"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1113" EndSeek="2521"/>
+<Copy StartSeek="2536" EndSeek="3527"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:40:48000">
+<Copy StartSeek="0" EndSeek="1084"/>
+<Insert>struct proc_dir_entry *dpa;
+</Insert>
+<Copy StartSeek="1116" EndSeek="2785"/>
+<Copy StartSeek="3127" EndSeek="3873"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:42:2000">
+<Copy StartSeek="0" EndSeek="1084"/>
+<Insert>struct proc_dir_entry *dpa_dir;
+</Insert>
+<Copy StartSeek="1121" EndSeek="3878"/>
+</Delta>
+<Delta Version="84" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:42:15000">
+<Copy StartSeek="0" EndSeek="1084"/>
+<Insert>struct proc_dir_entry *eth_proc_dir;
+</Insert>
+<Copy StartSeek="1124" EndSeek="3881"/>
+</Delta>
+<Delta Version="85" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:42:23000">
+<Copy StartSeek="0" EndSeek="1060"/>
+<Insert>u32 dpa_cycle_count[2];
+</Insert>
+<Copy StartSeek="1060" EndSeek="1100"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1127" EndSeek="3883"/>
+</Delta>
+<Delta Version="86" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:42:28000">
+<Copy StartSeek="0" EndSeek="1125"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="1125" EndSeek="2826"/>
+<Insert>	asus_proc_dir = proc_mkdir(PROC_ASUS, acpi_root_dir);
+</Insert>
+<Copy StartSeek="2882" EndSeek="3882"/>
+</Delta>
+<Delta Version="87" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:43:16000">
+<Copy StartSeek="0" EndSeek="2826"/>
+<Insert>	eth_if_proc_dir = proc_mkdir("eth_if", acpi_root_dir);
+</Insert>
+<Copy StartSeek="2873" EndSeek="3873"/>
+</Delta>
+<Delta Version="88" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:43:53000">
+<Copy StartSeek="0" EndSeek="2873"/>
+<Insert>	if (!asus_proc_dir) {
+</Insert>
+<Copy StartSeek="2898" EndSeek="3875"/>
+</Delta>
+<Delta Version="89" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:44:0000">
+<Copy StartSeek="0" EndSeek="2898"/>
+<Insert>		printk(KERN_ERR "Asus ACPI: Unable to create /proc entry\n");
+</Insert>
+<Copy StartSeek="2944" EndSeek="3857"/>
+</Delta>
+<Delta Version="90" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:44:23000">
+<Copy StartSeek="0" EndSeek="2966"/>
+<Copy StartSeek="3016" EndSeek="3907"/>
+</Delta>
+<Delta Version="91" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:45:15000">
+<Copy StartSeek="0" EndSeek="2793"/>
+<Insert>static int eth_proc_init(void)
+{
+	eth_if_proc_dir = proc_mkdir("eth_if", NULL);
+	if (!eth_if_proc_dir) {
+		printk(KERN_ERR "unable to create proc\n");
+		return -ENODEV;
+	}
+</Insert>
+<Copy StartSeek="3107" EndSeek="3108"/>
+<Insert>	create_proc_entry("perf", 555, eth_if_proc_dir);
+	result = acpi_bus_register_driver(&amp;asus_hotk_driver);
+	if (result &lt; 0) {
+		remove_proc_entry(PROC_ASUS, acpi_root_dir);
+		return result;
+	}
+
+}
+
+</Insert>
+<Copy StartSeek="3409" EndSeek="4155"/>
+</Delta>
+<Delta Version="92" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:47:31000">
+<Copy StartSeek="0" EndSeek="2878"/>
+<Insert>                            int buffer_length, int *zero, void *ptr)
+</Insert>
+<Copy StartSeek="2924" EndSeek="2926"/>
+<Insert>  int n = sprintf(buffer, "0=%d 1=%d\n", 
+                 dpa_cycle_count[0], dpa_cycle_count[1]);
+  
+  memset(dpa_cycle_count, 0, sizeof(dpa_cycle_count));
+</Insert>
+<Copy StartSeek="3066" EndSeek="3067"/>
+<Insert>  return n;
+</Insert>
+<Copy StartSeek="3078" EndSeek="4113"/>
+</Delta>
+<Delta Version="93" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:47:50000">
+<Copy StartSeek="0" EndSeek="3081"/>
+<Insert>static void eth_if_mod_create_proc(void) {
+  dpa_stats = proc_mkdir("dpa", NULL);
+  create_proc_read_entry("stats", 0, dpa_stats, eth_if_mod_stats_read, NULL);
+}
+
+static void eth_if_mod_remove_proc(void) {
+  remove_proc_entry("stats", dpa_stats);
+  remove_proc_entry("dpa", NULL);
+}  
+
+</Insert>
+<Copy StartSeek="3363" EndSeek="4109"/>
+</Delta>
+<Delta Version="94" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:48:1000">
+<Copy StartSeek="0" EndSeek="3124"/>
+<Insert>	dpa_stats = proc_mkdir("dpa", NULL);
+</Insert>
+<Copy StartSeek="3168" EndSeek="4115"/>
+</Delta>
+<Delta Version="95" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:48:30000">
+<Copy StartSeek="0" EndSeek="3081"/>
+<Insert>static void eth_if_mod_create_proc(void)
+</Insert>
+<Copy StartSeek="3121" EndSeek="4114"/>
+</Delta>
+<Delta Version="96" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:48:34000">
+<Copy StartSeek="0" EndSeek="3081"/>
+<Insert>static int eth_if_mod_create_proc(void)
+</Insert>
+<Copy StartSeek="3128" EndSeek="4121"/>
+</Delta>
+<Delta Version="97" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:48:39000">
+<Copy StartSeek="0" EndSeek="3130"/>
+<Insert>	eth_if_proc_dir = proc_mkdir("dpa", NULL);
+</Insert>
+<Copy StartSeek="3253" EndSeek="4200"/>
+</Delta>
+<Delta Version="98" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:49:13000">
+<Copy StartSeek="0" EndSeek="3250"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="3271" EndSeek="4218"/>
+</Delta>
+<Delta Version="99" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:49:23000">
+<Copy StartSeek="0" EndSeek="3271"/>
+<Insert>	create_proc_read_entry("stats", 0, dpa_stats, eth_if_mod_stats_read, NULL);
+</Insert>
+<Copy StartSeek="3347" EndSeek="4217"/>
+</Delta>
+<Delta Version="100" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:49:28000">
+<Copy StartSeek="0" EndSeek="3271"/>
+<Insert>	create_proc_read_entry("perf", 0, dpa_stats, eth_if_mod_stats_read, NULL);
+</Insert>
+<Copy StartSeek="3353" EndSeek="4223"/>
+</Delta>
+<Delta Version="101" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:49:40000">
+<Copy StartSeek="0" EndSeek="3271"/>
+<Insert>	create_proc_read_entry("perf", 0, eth_if_proc_dir, eth_if_mod_stats_read, NULL);
+</Insert>
+<Copy StartSeek="3352" EndSeek="4222"/>
+</Delta>
+<Delta Version="102" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:49:47000">
+<Copy StartSeek="0" EndSeek="2793"/>
+<Insert>static int eth_if_mod_stats_read(char *buffer, char **buffer_location, off_t offset,
+</Insert>
+<Copy StartSeek="2877" EndSeek="4221"/>
+</Delta>
+<Delta Version="103" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:49:53000">
+<Copy StartSeek="0" EndSeek="2925"/>
+<Copy StartSeek="2956" EndSeek="3042"/>
+<Insert>	memset(dpa_cycle_count, 0, sizeof(dpa_cycle_count));
+
+</Insert>
+<Copy StartSeek="3075" EndSeek="4230"/>
+</Delta>
+<Delta Version="104" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:51:47000">
+<Copy StartSeek="0" EndSeek="3043"/>
+<Insert>	*stats = 0;
+</Insert>
+<Copy StartSeek="3043" EndSeek="3060"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="3075" EndSeek="4230"/>
+</Delta>
+<Delta Version="105" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:52:7000">
+<Copy StartSeek="0" EndSeek="2956"/>
+<Copy StartSeek="2957" EndSeek="4231"/>
+</Delta>
+<Delta Version="106" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:52:35000">
+<Copy StartSeek="0" EndSeek="3280"/>
+<Insert>	create_proc_read_entry("perf", 0, eth_if_proc_dir, eth_if_mod_perf_read, NULL);
+</Insert>
+<Copy StartSeek="3363" EndSeek="4233"/>
+</Delta>
+<Delta Version="107" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="15:53:14000">
+<Copy StartSeek="0" EndSeek="2533"/>
+<Insert>eth_add_proc()
+</Insert>
+<Copy StartSeek="2533" EndSeek="4218"/>
+</Delta>
+<Delta Version="108" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:06:52000">
+<Copy StartSeek="0" EndSeek="587"/>
+<Insert>
+</Insert>
+<Copy StartSeek="614" EndSeek="4244"/>
+</Delta>
+<Delta Version="109" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:07:21000">
+<Copy StartSeek="0" EndSeek="587"/>
+<Insert>#include &lt;linux/procfs.h&gt;
+</Insert>
+<Copy StartSeek="614" EndSeek="4245"/>
+</Delta>
+<Delta Version="110" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:07:49000">
+<Copy StartSeek="0" EndSeek="3421"/>
+<Insert>	remove_proc_entry("stats", dpa_stats);
+</Insert>
+<Copy StartSeek="3468" EndSeek="4252"/>
+</Delta>
+<Delta Version="111" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:08:10000">
+<Copy StartSeek="0" EndSeek="3468"/>
+<Insert>	remove_proc_entry("dpa", NULL);
+</Insert>
+<Copy StartSeek="3502" EndSeek="4253"/>
+</Delta>
+<Delta Version="112" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:08:14000">
+<Copy StartSeek="0" EndSeek="3421"/>
+<Insert>	remove_proc_entry("eth_if", eth_if_proc_dir);
+</Insert>
+<Copy StartSeek="3421" EndSeek="3455"/>
+<Insert>}  
+
+</Insert>
+<Copy StartSeek="3509" EndSeek="4255"/>
+</Delta>
+<Delta Version="113" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:08:32000">
+<Copy StartSeek="0" EndSeek="3502"/>
+<Insert>	
+}  
+
+</Insert>
+<Copy StartSeek="3507" EndSeek="4253"/>
+</Delta>
+<Delta Version="114" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:08:49000">
+<Copy StartSeek="0" EndSeek="3904"/>
+<Copy StartSeek="3931" EndSeek="4280"/>
+</Delta>
+<Delta Version="115" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:09:21000">
+<Copy StartSeek="0" EndSeek="4194"/>
+<Copy StartSeek="4221" EndSeek="4307"/>
+</Delta>
+<Delta Version="116" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:09:30000">
+<Copy StartSeek="0" EndSeek="3904"/>
+<Insert>	eth_if_mod_create_proc();
+</Insert>
+<Copy StartSeek="3954" EndSeek="4330"/>
+</Delta>
+<Delta Version="117" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:09:59000">
+<Copy StartSeek="0" EndSeek="3375"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="3389" EndSeek="4341"/>
+</Delta>
+<Delta Version="118" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:10:11000">
+<Copy StartSeek="0" EndSeek="3375"/>
+<Copy StartSeek="3376" EndSeek="4342"/>
+</Delta>
+<Delta Version="119" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:10:13000">
+<Copy StartSeek="0" EndSeek="3375"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3427" EndSeek="4393"/>
+</Delta>
+<Delta Version="120" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:11:33000">
+<Copy StartSeek="0" EndSeek="3375"/>
+<Insert>	printk(KERN_ERR "(%s:%d) \n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="3375" EndSeek="4341"/>
+</Delta>
+<Delta Version="121" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:11:54000">
+<Copy StartSeek="0" EndSeek="3432"/>
+<Insert>	remove_proc_entry("perf", NULL);
+	remove_proc_entry("eth_if", eth_if_proc_dir);
+</Insert>
+<Copy StartSeek="3513" EndSeek="4341"/>
+</Delta>
+<Delta Version="122" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:12:39000">
+<Copy StartSeek="0" EndSeek="3292"/>
+<Copy StartSeek="3293" EndSeek="4342"/>
+</Delta>
+<Delta Version="123" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:13:48000">
+<Copy StartSeek="0" EndSeek="3293"/>
+<Insert>	create_proc_read_entry("perf", 555, eth_if_proc_dir, eth_if_mod_perf_read, NULL);
+</Insert>
+<Copy StartSeek="3374" EndSeek="4340"/>
+</Delta>
+<Delta Version="124" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:14:14000">
+<Copy StartSeek="0" EndSeek="2969"/>
+<Insert>	int n = sprintf(buffer, "0=%d 1=%d\n", 
+</Insert>
+<Copy StartSeek="3010" EndSeek="4340"/>
+</Delta>
+<Delta Version="125" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:14:39000">
+<Copy StartSeek="0" EndSeek="3056"/>
+<Insert>	*(stats++) = 0;
+</Insert>
+<Copy StartSeek="3073" EndSeek="4340"/>
+</Delta>
+<Delta Version="126" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:14:56000">
+<Copy StartSeek="0" EndSeek="3056"/>
+<Insert>	(*stats)++ = 0;
+</Insert>
+<Copy StartSeek="3073" EndSeek="4340"/>
+</Delta>
+<Delta Version="127" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:15:5000">
+<Copy StartSeek="0" EndSeek="3056"/>
+<Insert>	*(stats++) = 0;
+</Insert>
+<Copy StartSeek="3071" EndSeek="4338"/>
+</Delta>
+<Delta Version="128" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:15:26000">
+<Copy StartSeek="0" EndSeek="3100"/>
+<Insert>static int __init eth_if_mod_create_proc(void)
+</Insert>
+<Copy StartSeek="3140" EndSeek="4331"/>
+</Delta>
+<Delta Version="129" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:17:2000">
+<Copy StartSeek="0" EndSeek="3365"/>
+<Copy StartSeek="3417" EndSeek="4383"/>
+</Delta>
+<Delta Version="130" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:17:16000">
+<Copy StartSeek="0" EndSeek="3365"/>
+<Insert>	printk(KERN_ERR "(%s:%d) \n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="3416" EndSeek="4382"/>
+</Delta>
+<Delta Version="131" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:17:16000">
+<Copy StartSeek="0" EndSeek="3956"/>
+<Insert>	if (eth_if_mod_create_proc());
+</Insert>
+<Copy StartSeek="3993" EndSeek="4387"/>
+</Delta>
+<Delta Version="132" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:17:36000">
+<Copy StartSeek="0" EndSeek="3365"/>
+<Insert>	printk(KERN_ERR "(%s:%d)\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="3365" EndSeek="4336"/>
+</Delta>
+<Delta Version="133" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:18:9000">
+<Copy StartSeek="0" EndSeek="3905"/>
+<Insert>	if (eth_if_mod_create_proc() != 0);
+</Insert>
+<Copy StartSeek="3941" EndSeek="4335"/>
+</Delta>
+<Delta Version="134" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:18:34000">
+<Copy StartSeek="0" EndSeek="3905"/>
+<Insert>	if (eth_if_mod_create_proc() != 0)
+</Insert>
+<Copy StartSeek="3936" EndSeek="4330"/>
+</Delta>
+<Delta Version="135" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:19:30000">
+<Copy StartSeek="0" EndSeek="3954"/>
+<Copy StartSeek="3955" EndSeek="4331"/>
+</Delta>
+<Delta Version="136" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:19:47000">
+<Copy StartSeek="0" EndSeek="2222"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2254" EndSeek="4362"/>
+</Delta>
+<Delta Version="137" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:22:2000">
+<Copy StartSeek="0" EndSeek="2222"/>
+<Copy StartSeek="2286" EndSeek="4426"/>
+</Delta>
+<Delta Version="138" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:31:51000">
+<Copy StartSeek="0" EndSeek="2222"/>
+<Insert>	printk(KERN_ERR "(%s:%d) done %d\n", __func__, __LINE__,done);
+</Insert>
+<Copy StartSeek="2222" EndSeek="4362"/>
+</Delta>
+<Delta Version="139" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:37:26000">
+<Copy StartSeek="0" EndSeek="1923"/>
+<Copy StartSeek="1941" EndSeek="1986"/>
+<Insert>	int done;
+</Insert>
+<Copy StartSeek="1988" EndSeek="4371"/>
+</Delta>
+<Delta Version="140" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:38:25000">
+<Copy StartSeek="0" EndSeek="2175"/>
+<Insert>	done = eth_if_fwd(ETH_RX_PORT, ETH_TX_PORT, RX_QUOTA);
+</Insert>
+<Copy StartSeek="2235" EndSeek="4375"/>
+</Delta>
+<Delta Version="141" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:38:28000">
+<Copy StartSeek="0" EndSeek="1151"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1170" EndSeek="1941"/>
+<Insert>int fwd_done = 0;
+</Insert>
+<Copy StartSeek="1942" EndSeek="4376"/>
+</Delta>
+<Delta Version="142" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:38:39000">
+<Copy StartSeek="0" EndSeek="3014"/>
+<Insert>	int n = sprintf(buffer, "0=%u 1=%u\n", 
+			dpa_cycle_count[0], dpa_cycle_count[1]);
+</Insert>
+<Copy StartSeek="3117" EndSeek="4394"/>
+</Delta>
+<Delta Version="143" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:38:59000">
+<Copy StartSeek="0" EndSeek="2268"/>
+<Insert>	delay = (done &lt;  RX_QUOTA ? HZ : 1);
+</Insert>
+<Copy StartSeek="2310" EndSeek="4398"/>
+</Delta>
+<Delta Version="144" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="16:39:26000">
+<Copy StartSeek="0" EndSeek="3863"/>
+<Insert>	cfg.rx_callback = NULL; /* we xmit in uni-dir as a test ..*/
+</Insert>
+<Copy StartSeek="3932" EndSeek="4405"/>
+</Delta>
+<Delta Version="145" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="17:38:44000">
+<Copy StartSeek="0" EndSeek="3018"/>
+<Insert>	int n = sprintf(buffer, "0=%u 1=%u done=%d\n", 
+			dpa_cycle_count[0], dpa_cycle_count[1], fwd_done);
+</Insert>
+<Copy StartSeek="3175" EndSeek="4459"/>
+</Delta>
+<Delta Version="146" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="17:48:58000">
+<Copy StartSeek="0" EndSeek="3075"/>
+<Insert>			dpa_cycle_count[0], dpa_cycle_count[1], fwd_done, (fwd_done ? dpa_cycle_count[0]/fwd_done: -1));
+</Insert>
+<Copy StartSeek="3176" EndSeek="4460"/>
+</Delta>
+<Delta Version="147" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="17:48:59000">
+<Copy StartSeek="0" EndSeek="3918"/>
+<Copy StartSeek="3932" EndSeek="4474"/>
+</Delta>
+<Delta Version="148" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="17:53:53000">
+<Copy StartSeek="0" EndSeek="3918"/>
+<Insert>	cfg.state = 
+</Insert>
+<Copy StartSeek="3918" EndSeek="4460"/>
+</Delta>
+<Delta Version="149" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="17:54:8000">
+<Copy StartSeek="0" EndSeek="3018"/>
+<Insert>	int n = sprintf(buffer, "0=%u 1=%u done=%d, avg=%d\n", 
+			dpa_cycle_count[0], dpa_cycle_count[1], fwd_done, (fwd_done ? dpa_cycle_count[0]/fwd_done : -1));
+</Insert>
+<Copy StartSeek="3151" EndSeek="4435"/>
+</Delta>
+<Delta Version="150" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="18:47:52000">
+<Copy StartSeek="0" EndSeek="2091"/>
+<Insert>	PERF_BEGIN(dpa_cycle_count[0],0);
+</Insert>
+<Copy StartSeek="2127" EndSeek="2237"/>
+<Insert>	PERF_END(dpa_cycle_count[0],0)
+</Insert>
+<Copy StartSeek="2270" EndSeek="4437"/>
+</Delta>
+<Delta Version="151" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="19:04:33000">
+<Copy StartSeek="0" EndSeek="2270"/>
+<Insert>	delay = (fwd_done &lt;  RX_QUOTA ? HZ : 1);
+</Insert>
+<Copy StartSeek="2313" EndSeek="4438"/>
+</Delta>
+<Delta Version="152" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="19:11:27000">
+<Copy StartSeek="0" EndSeek="2270"/>
+<Insert>	delay = (fwd_done ==  RX_QUOTA ? 1 : HZ);
+</Insert>
+<Copy StartSeek="2312" EndSeek="4437"/>
+</Delta>
+<Delta Version="153" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="19:11:33000">
+<Copy StartSeek="0" EndSeek="2270"/>
+<Insert>	delay = (fwd_done == RX_QUOTA ? 1 : HZ);
+</Insert>
+<Copy StartSeek="2312" EndSeek="4437"/>
+</Delta>
+<Delta Version="154" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="19:11:55000">
+<Copy StartSeek="0" EndSeek="2270"/>
+<Insert>	delay = (fwd_done &lt;  RX_QUOTA ? HZ : 1);
+</Insert>
+<Copy StartSeek="2312" EndSeek="4437"/>
+</Delta>
+<Delta Version="155" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="19:12:58000">
+<Copy StartSeek="0" EndSeek="2270"/>
+<Insert>	delay = (fwd_done &lt;  RX_QUOTA ? 1 : HZ);
+</Insert>
+<Copy StartSeek="2312" EndSeek="4437"/>
+</Delta>
+<Delta Version="156" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="19:13:15000">
+<Copy StartSeek="0" EndSeek="2312"/>
+<Copy StartSeek="2401" EndSeek="4526"/>
+</Delta>
+<Delta Version="157" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="19:13:40000">
+<Copy StartSeek="0" EndSeek="2270"/>
+<Insert>	delay = (fwd_done &lt;  RX_QUOTA ? HZ : 1);
+</Insert>
+<Copy StartSeek="2315" EndSeek="4529"/>
+</Delta>
+<Delta Version="158" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="19:15:14000">
+<Copy StartSeek="0" EndSeek="2315"/>
+<Insert>	printk(KERN_ERR "(%s:%d) delay %lu fwd_done %d\n", __func__, __LINE__,delay, fwd_done);
+</Insert>
+<Copy StartSeek="2315" EndSeek="4440"/>
+</Delta>
+<Delta Version="159" Comment="" NL="\10" Encoding="text" Date="2012/03/15" Time="19:16:15000">
+<Copy StartSeek="0" EndSeek="2127"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2160" EndSeek="2269"/>
+<Insert>	PERF_END(dpa_cycle_count[0], 0)
+</Insert>
+<Copy StartSeek="2309" EndSeek="4479"/>
+</Delta>
+<Delta Version="160" Comment="" NL="\10" Encoding="text" Date="2012/03/18" Time="09:59:9000">
+<Copy StartSeek="0" EndSeek="2127"/>
+<Insert>	PERF_END(dpa_cycle_count[0], 0)
+</Insert>
+<Copy StartSeek="2127" EndSeek="2236"/>
+<Insert>//      PERF_END(dpa_cycle_count[0], 0)
+</Insert>
+<Copy StartSeek="2269" EndSeek="4439"/>
+</Delta>
+<Delta Version="161" Comment="" NL="\10" Encoding="text" Date="2012/03/18" Time="09:59:46000">
+<Copy StartSeek="0" EndSeek="2269"/>
+<Insert>	delay = (fwd_done &lt;  RX_QUOTA ? HZ/10 : 1);
+</Insert>
+<Copy StartSeek="2333" EndSeek="4458"/>
+</Delta>
+<Delta Version="162" Comment="" NL="\10" Encoding="text" Date="2012/03/18" Time="10:27:3000">
+<Copy StartSeek="0" EndSeek="3843"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3843" EndSeek="3889"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3889" EndSeek="4456"/>
+</Delta>
+<Delta Version="163" Comment="" NL="\10" Encoding="text" Date="2012/03/18" Time="10:41:12000">
+<Copy StartSeek="0" EndSeek="4403"/>
+<Copy StartSeek="4416" EndSeek="4469"/>
+</Delta>
+<Delta Version="164" Comment="" NL="\10" Encoding="text" Date="2012/03/18" Time="11:07:5000">
+<Copy StartSeek="0" EndSeek="4343"/>
+<Copy StartSeek="4351" EndSeek="4411"/>
+<Insert>	for () {
+	}
+	eth_if_shutdown();
+</Insert>
+<Copy StartSeek="4475" EndSeek="4508"/>
+</Delta>
+<Delta Version="165" Comment="" NL="\10" Encoding="text" Date="2012/03/18" Time="11:08:18000">
+<Copy StartSeek="0" EndSeek="4343"/>
+<Insert>	int i;
+</Insert>
+<Copy StartSeek="4343" EndSeek="4500"/>
+</Delta>
+<Delta Version="166" Comment="" NL="\10" Encoding="text" Date="2012/03/18" Time="11:10:19000">
+<Copy StartSeek="0" EndSeek="994"/>
+<Insert>//unsigned char   data[100];
+</Insert>
+<Copy StartSeek="1023" EndSeek="4500"/>
+</Delta>
+<Delta Version="167" Comment="" NL="\10" Encoding="text" Date="2012/03/18" Time="13:01:10000">
+<Copy StartSeek="0" EndSeek="994"/>
+<Insert>  unsigned char   data[200];
+</Insert>
+<Copy StartSeek="1023" EndSeek="4500"/>
+</Delta>
+</DeltaFile>

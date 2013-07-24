@@ -1,0 +1,3587 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="367" Comment="" Date="2012/04/03" Time="14:49:50000" NL="\10" Encoding="text">
+<Insert>#include &lt;asm/types.h&gt;
+
+#include &lt;sys/socket.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;err.h&gt;
+#include &lt;errno.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+#include &lt;netinet/in.h&gt;
+
+#include &lt;linux/netlink.h&gt;
+#include &lt;linux/rtnetlink.h&gt;
+
+#define KLNA_GRP (RTMGRP_IPV4_ROUTE | RTMGRP_NEIGH | RTNLGRP_LINK)
+
+struct msgnames_t {
+	int id;
+	char *msg;
+} typenames[] = {
+#define MSG(x) { x, #x }
+	MSG(RTM_NEWROUTE),
+	MSG(RTM_DELROUTE),
+	MSG(RTM_GETROUTE),
+	MSG(RTM_NEWNEIGH),
+	MSG(RTM_DELNEIGH),
+	MSG(RTM_NEWLINK),
+	MSG(RTM_DELLINK),
+#undef MSG
+	{0,0}
+};
+
+char *klna_lookup_name(struct msgnames_t *db,int id)
+{
+	static char name[512];
+	struct msgnames_t *msgnamesiter;
+	for (msgnamesiter=db;msgnamesiter-&gt;msg;++msgnamesiter) {
+		if (msgnamesiter-&gt;id == id)
+			break;
+	}
+	if (msgnamesiter-&gt;msg) {
+		return msgnamesiter-&gt;msg;
+	}
+	snprintf(name,sizeof(name),"#%i",id);
+	return name;
+}
+
+#ifndef NIPQUAD
+	#define NIPQUAD(addr) \
+	((unsigned char *)&amp;addr)[0], \
+	((unsigned char *)&amp;addr)[1], \
+	((unsigned char *)&amp;addr)[2], \
+	((unsigned char *)&amp;addr)[3]
+	#define NIPQUAD_FMT "%u.%u.%u.%u"
+#endif
+
+static void
+netlink_parse_rtattr(struct rtattr **tb, int max, struct rtattr *rta, int len)
+{
+	while (RTA_OK(rta, len)) {
+		if (rta-&gt;rta_type &lt;= max)
+			tb[rta-&gt;rta_type] = rta;
+		rta = RTA_NEXT(rta,len);
+	}
+}
+
+static int klna_ev_route(struct nlmsghdr *nlh, void *buffer)
+{
+	struct rtmsg *rtm;
+	struct rtattr *rta;
+	int rtl;
+	rtm = (struct rtmsg *)buffer;
+	rta = (struct rtattr*)RTM_RTA(rtm);
+	rtl = RTM_PAYLOAD(nlh);
+	printf("%s: family: %u\n", __func__, rtm-&gt;rtm_family);
+	/* parse each attr */
+	for (; RTA_OK(rta, rtl); rta = RTA_NEXT(rta, rtl)) {
+		if (rta-&gt;rta_type == RTA_DST) {
+			uint32_t dst_addr = *((uint32_t *)RTA_DATA(rta));
+			printf("dst " NIPQUAD_FMT "/%u\n", NIPQUAD(dst_addr),
+			       rtm-&gt;rtm_dst_len);
+		}
+		if (rta-&gt;rta_type == RTA_GATEWAY) {
+			uint32_t dst_gw = *((uint32_t *)RTA_DATA(rta));
+			printf("gw " NIPQUAD_FMT "\n", NIPQUAD(dst_gw));
+		}
+		if (rta-&gt;rta_type == RTA_OIF) {
+			uint32_t oif = *((uint32_t *)RTA_DATA(rta));
+			printf("oif_index %u\n", oif);
+		}
+	}
+	if (nlh-&gt;nlmsg_type == RTM_NEWROUTE) {
+		/* dpa_rt_rule_add */
+	} else {
+		/* dpa_rt_rule_del */
+	}
+
+	return 0;
+}
+
+int netlink_interface(struct nlmsghdr *h)
+{
+	int len;
+	struct ifinfomsg *ifi;
+	struct rtattr *tb[IFLA_MAX + 1];
+	char *name;
+	int i;
+
+	ifi = NLMSG_DATA (h);
+
+	len = h-&gt;nlmsg_len - NLMSG_LENGTH (sizeof (struct ifinfomsg));
+	if (len &lt; 0)
+		return -1;
+
+	/* Looking up interface name. */
+	memset (tb, 0, sizeof tb);
+	netlink_parse_rtattr(tb, IFLA_MAX, IFLA_RTA (ifi), len);
+	if (tb[IFLA_IFNAME] == NULL)
+		return -1;
+	name = (char *)RTA_DATA(tb[IFLA_IFNAME]);
+	printf("name %s\n",name);
+	printf("change %#x\n",ifi-&gt;ifi_change);
+	printf("family %u\n",ifi-&gt;ifi_family);
+	/* Add interface. */
+//      ifp = if_get_by_name(name);
+
+//      ifp-&gt;ifindex = ifi-&gt;ifi_index;
+	printf("flags %#x\n",ifi-&gt;ifi_flags &amp; 0x0000fffff);
+	printf("mtu %u\n",*(int *)RTA_DATA (tb[IFLA_MTU]));
+	/* Hardware type and address. */
+	printf("hw_type %#x\n",ifi-&gt;ifi_type);
+
+	if (tb[IFLA_OPERSTATE])
+		printf("operstate %u\n", *(unsigned char *)RTA_DATA(tb[IFLA_OPERSTATE]));
+	if (tb[IFLA_LINKMODE])
+		printf("linkmode %u\n", *(unsigned char *)RTA_DATA(tb[IFLA_LINKMODE]));
+	if (tb[IFLA_ADDRESS]) {
+		int hw_addr_len;
+		#define INTERFACE_HWADDR_MAX 6
+		char hw_addr[INTERFACE_HWADDR_MAX];
+		hw_addr_len = RTA_PAYLOAD(tb[IFLA_ADDRESS]);
+
+		if (hw_addr_len &gt; INTERFACE_HWADDR_MAX)
+			printf("Hardware address is too large: %d", hw_addr_len);
+		else {
+			memcpy (hw_addr, RTA_DATA(tb[IFLA_ADDRESS]), hw_addr_len);
+
+			for (i = 0; i &lt; hw_addr_len; i++)
+				if (hw_addr[i] != 0)
+					break;
+
+			if (i == hw_addr_len)
+				hw_addr_len = 0;
+		}
+	}
+
+	return 0;
+}
+
+static int klna_ev_link(struct nlmsghdr *nlh, void *buffer)
+{
+	struct ifinfomsg *ifi;
+	struct rtattr *rta;
+	struct interface *ifp;
+	int rtl;
+	int new_if = (nlh-&gt;nlmsg_type == RTM_NEWLINK);
+
+	ifi = (struct ifinfomsg *)buffer;
+	rta = (struct rtattr*)IFLA_RTA(ifi);
+	rtl = IFLA_PAYLOAD(nlh);
+
+	printf("%s: ifi_family: %u\n", __func__, ifi-&gt;ifi_family);
+	if (ifi-&gt;ifi_family == AF_BRIDGE) {
+		if (new_if) {
+			printf("bridge if bind\n");
+		} else 
+			printf("bridge if unbind\n");
+	}
+	/* parse each attr */
+	for (; RTA_OK(rta, rtl); rta = RTA_NEXT(rta, rtl)) {
+		if (rta-&gt;rta_type == IFLA_IFNAME) {
+			printf("name: %s, flags %#x, type %#x,\n",RTA_DATA(rta), 
+			       ifi-&gt;ifi_flags,
+			       ifi-&gt;ifi_type);
+		}
+//      	if (rta-&gt;rta_type == IFLA_LINKINFO) {
+//      		struct rtattr *rta = ;
+//      		int rtl;
+//      		printf("IFLA_LINKINFO\n");
+//      		for (; RTA_OK(_rta, _rtl); _rta = RTA_NEXT(_rta, _rtl)) {
+//      			if (rta-&gt;rta_type == IFLA_INFO_KIND) {
+//      				printf("IFLA_INFO_KIND: %s\n",RTA_DATA(_rta));
+//      			}
+//      		}
+//
+//      	}
+	}
+	printf("\n");
+	if (new_if) {
+		/* add */
+	} else {
+		/* del */
+	}
+	return 0;
+}
+
+static int klna_ev_arp(struct nlmsghdr *nlh, void *buffer)
+{
+	struct ndmsg *ndm;
+	struct rtattr *rta;
+	int rtl;
+	int new_neigh;
+
+	ndm = (struct ndmsg *)buffer;
+	rta = (struct rtattr*)RTM_RTA(ndm);
+	rtl = RTM_PAYLOAD(nlh);
+	printf("%s: family: %u\n", __func__, ndm-&gt;ndm_family);
+	/* parse each attr */
+	for (; RTA_OK(rta, rtl); rta = RTA_NEXT(rta, rtl)) {
+		if (rta-&gt;rta_type == NDA_DST) {
+			uint32_t dst_addr = *((uint32_t *)RTA_DATA(rta));
+			printf("ip " NIPQUAD_FMT "\n", NIPQUAD(dst_addr));
+			continue;
+		}
+		if (rta-&gt;rta_type == NDA_LLADDR) {
+			#define MAX_BUF_LEN 6
+			uint8_t ha[MAX_BUF_LEN];
+			uint8_t *data = (uint8_t *)RTA_DATA(rta);
+			uint32_t data_len =
+				rta-&gt;rta_len &lt; MAX_BUF_LEN ? rta-&gt;rta_len : MAX_BUF_LEN;
+			uint32_t i;
+
+			new_neigh = 1; /* NDA_LLADDR appears only in new entry */
+			memcpy(ha, data, data_len);
+			for (i = 0; i &lt; data_len; i++) {
+				printf("%x:", ha[i]);
+			}
+			printf("\n");
+			continue;
+		}
+//      	if (rta-&gt;rta_type == NDA_CACHEINFO) {
+//      		printf(" NDA_CACHEINFO\n");
+//      		continue;
+//      	}
+	}
+	if (new_neigh) {
+		/* dpa_arp_rule_add */
+	} else {
+		/* dpa_arp_rule_del */
+	}
+	return 0;
+}
+
+/* Receive message from netlink and pass information to relevant function. */
+static int klna_netlink_parse_info(int sock)
+{
+	int status;
+	int ret = 0;
+	int error;
+
+	while (1) {
+		char buf[4096];
+		struct iovec iov = { 
+			.iov_base = buf, 
+			.iov_len = sizeof(buf),
+		};
+		struct sockaddr_nl snl;
+		struct msghdr msg = {
+			.msg_name = (void*)&amp;snl, 
+			.msg_namelen = sizeof(snl), 
+			.msg_iov = &amp;iov, 
+			.msg_iovlen = 1,
+		};
+		struct nlmsghdr *h;
+
+		status = recvmsg(sock, &amp;msg, 0);
+		if (status &lt; 0) {
+			if (errno == EINTR)
+				continue;
+			if (errno == EWOULDBLOCK)
+				break;
+			printf("recvmsg overrun");
+			continue;
+		}
+		if (status == 0) {
+			printf("EOF");
+			return -1;
+		}
+		if (msg.msg_namelen != sizeof snl) {
+			printf("sender address length error",
+			       msg.msg_namelen);
+			return -1;
+		}
+		for (h = (struct nlmsghdr *)buf; NLMSG_OK(h, status); 
+		    h = NLMSG_NEXT(h, status)) {
+			/* Finish of reading. */
+			if (h-&gt;nlmsg_type == NLMSG_DONE)
+				return ret;
+
+			/* Error handling. */
+			if (h-&gt;nlmsg_type == NLMSG_ERROR) {
+				struct nlmsgerr *err = (struct nlmsgerr *) NLMSG_DATA (h);
+				if (h-&gt;nlmsg_len &lt; NLMSG_LENGTH (sizeof (struct nlmsgerr))) {
+					printf("error: message truncated");
+					return -1;
+				}
+				printf("error: %s, type=%s(%u), seq=%u, pid=%d",
+				      strerror(-err-&gt;error),
+				      klna_lookup_name(typenames,err-&gt;msg.nlmsg_type),
+				      err-&gt;msg.nlmsg_type, err-&gt;msg.nlmsg_seq,
+				      err-&gt;msg.nlmsg_pid);
+				return -1;
+			}
+			#ifdef KLNA_NOARP
+			if (h-&gt;nlmsg_type != RTM_NEWNEIGH &amp;&amp;
+			    h-&gt;nlmsg_type != RTM_DELNEIGH)
+			#endif
+			printf("nlmsg_type: %i (%s)\n",(h-&gt;nlmsg_type), 
+			       klna_lookup_name(typenames,h-&gt;nlmsg_type));
+			
+			/* OK we got netlink message. */
+			switch (h-&gt;nlmsg_type) {
+			case RTM_NEWROUTE:
+			case RTM_DELROUTE:
+				ret = klna_ev_route(h, NLMSG_DATA(buf));
+				break;
+			#ifndef KLNA_NOARP
+			case RTM_NEWNEIGH:
+			case RTM_DELNEIGH:
+				ret = klna_ev_arp(h, NLMSG_DATA(buf));
+				break;
+			#endif
+			case RTM_NEWLINK:
+			case RTM_DELLINK:
+//      			ret = klna_ev_link(h, NLMSG_DATA(buf));
+				ret = netlink_interface(h);
+				break;
+			}
+		}
+		/* After error care. */
+		if (msg.msg_flags &amp; MSG_TRUNC) {
+			printf("error: message truncated");
+			continue;
+		}
+		if (status) {
+			printf("error: data remnant size %d", status);
+			return -1;
+		}
+		if (ret) {
+			printf("error: message parsing\n");
+			break;
+		}
+	}
+	return ret;
+}
+
+int klna_open_netlink()
+{
+	int sock = socket(AF_NETLINK,SOCK_RAW, NETLINK_ROUTE);
+	struct sockaddr_nl addr;
+
+	memset((void *)&amp;addr, 0, sizeof(addr));
+
+	if (sock&lt;0)
+		return sock;
+	addr.nl_family = AF_NETLINK;
+	addr.nl_pid = getpid();
+	addr.nl_groups = KLNA_GRP;
+	if (bind(sock,(struct sockaddr *)&amp;addr,sizeof(addr))&lt;0)
+		return -1;
+	return sock;
+}
+
+int main(int argc, char *argv[])
+{
+	int nls = klna_open_netlink();
+	if (nls&lt;0) {
+		err(1,"netlink");
+	}
+	
+	klna_netlink_parse_info(nls);
+	return 0;
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:12:21000">
+<Copy StartSeek="0" EndSeek="2861"/>
+<Insert>	int ret;
+</Insert>
+<Copy StartSeek="2876" EndSeek="3209"/>
+<Copy StartSeek="3210" EndSeek="3590"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:26:17000">
+<Copy StartSeek="0" EndSeek="3210"/>
+<Copy StartSeek="3211" EndSeek="3591"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:33:52000">
+<Copy StartSeek="0" EndSeek="1036"/>
+<Insert>int klna_open_netlink()
+{
+	int sock = socket(AF_NETLINK,SOCK_RAW,MYPROTO);
+	struct sockaddr_nl addr;
+
+	memset((void *)&amp;addr, 0, sizeof(addr));
+
+	if (sock&lt;0)
+		return sock;
+	addr.nl_family = AF_NETLINK;
+	addr.nl_pid = getpid();
+	addr.nl_groups = MYMGRP;
+	if (bind(sock,(struct sockaddr *)&amp;addr,sizeof(addr))&lt;0)
+		return -1;
+	return sock;
+}
+
+</Insert>
+<Copy StartSeek="1037" EndSeek="3099"/>
+<Copy StartSeek="3438" EndSeek="3591"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:35:4000">
+<Copy StartSeek="0" EndSeek="1036"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1036" EndSeek="3590"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:35:6000">
+<Copy StartSeek="0" EndSeek="2869"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="2869" EndSeek="3588"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:35:17000">
+<Copy StartSeek="0" EndSeek="3435"/>
+<Copy StartSeek="3436" EndSeek="3589"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:35:31000">
+<Copy StartSeek="0" EndSeek="2868"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2868" EndSeek="3588"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:35:42000">
+<Copy StartSeek="0" EndSeek="2868"/>
+<Copy StartSeek="2869" EndSeek="3589"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:35:45000">
+<Copy StartSeek="0" EndSeek="1678"/>
+<Insert>//      		#define RTA_TYPE_PRINT(x) (if rta-&gt;rta_type == x) printf("rta type %d = %u", #x, RTA_PAYLOAD(rta));
+</Insert>
+<Copy StartSeek="1678" EndSeek="3479"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:35:56000">
+<Copy StartSeek="0" EndSeek="709"/>
+<Copy StartSeek="716" EndSeek="3486"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:51:15000">
+<Copy StartSeek="0" EndSeek="710"/>
+<Insert>
+
+
+
+
+
+</Insert>
+<Copy StartSeek="1146" EndSeek="3916"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:52:5000">
+<Copy StartSeek="0" EndSeek="1146"/>
+<Copy StartSeek="1835" EndSeek="4605"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:53:29000">
+<Copy StartSeek="0" EndSeek="1146"/>
+<Insert>void recv_reply()
+</Insert>
+<Copy StartSeek="1168" EndSeek="4609"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:53:32000">
+<Copy StartSeek="0" EndSeek="1170"/>
+<Insert>  char *p;
+</Insert>
+<Copy StartSeek="1180" EndSeek="1181"/>
+<Insert>  // initialize the socket read buffer
+  bzero(buf, sizeof(buf));
+</Insert>
+<Copy StartSeek="1245" EndSeek="1246"/>
+<Insert>  p = buf;
+  nll = 0;
+</Insert>
+<Copy StartSeek="1266" EndSeek="1267"/>
+<Insert>  // read from the socket until the NLMSG_DONE is
+  // returned in the type of the RTNETLINK message
+  // or if it was a monitoring socket
+  while(1) {
+    rtn = recv(fd, p, sizeof(buf) - nll, 0);
+</Insert>
+<Copy StartSeek="1459" EndSeek="1460"/>
+<Insert>    nlp = (struct nlmsghdr *) p;
+</Insert>
+<Copy StartSeek="1491" EndSeek="1492"/>
+<Insert>    if(nlp-&gt;nlmsg_type == NLMSG_DONE)
+      break;
+</Insert>
+<Copy StartSeek="1539" EndSeek="1540"/>
+<Insert>    // increment the buffer pointer to place
+    // next message
+    p += rtn;
+</Insert>
+<Copy StartSeek="1613" EndSeek="1614"/>
+<Insert>    // increment the total size by the size of
+    // the last received message
+    nll += rtn;
+</Insert>
+<Copy StartSeek="1704" EndSeek="1705"/>
+<Insert>    if((la.nl_groups &amp; RTMGRP_IPV4_ROUTE)
+                      == RTMGRP_IPV4_ROUTE)
+      break;
+  }
+}
+
+</Insert>
+<Copy StartSeek="1784" EndSeek="4554"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:54:40000">
+<Copy StartSeek="0" EndSeek="1146"/>
+<Insert>void recv_reply(void)
+</Insert>
+<Copy StartSeek="1168" EndSeek="1170"/>
+<Insert>	char *p;
+
+	// initialize the socket read buffer
+	bzero(buf, sizeof(buf));
+
+	p = buf;
+	nll = 0;
+
+	// read from the socket until the NLMSG_DONE is
+	// returned in the type of the RTNETLINK message
+	// or if it was a monitoring socket
+	while (1) {
+		rtn = recv(fd, p, sizeof(buf) - nll, 0);
+
+		nlp = (struct nlmsghdr *) p;
+
+		if (nlp-&gt;nlmsg_type == NLMSG_DONE)
+			break;
+
+		// increment the buffer pointer to place
+		// next message
+		p += rtn;
+
+		// increment the total size by the size of
+		// the last received message
+		nll += rtn;
+
+		if ((la.nl_groups &amp; RTMGRP_IPV4_ROUTE) == RTMGRP_IPV4_ROUTE)
+			break;
+	}
+}
+
+</Insert>
+<Copy StartSeek="2518" EndSeek="5288"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:55:40000">
+<Copy StartSeek="0" EndSeek="1146"/>
+<Insert>void read_reply(void)
+</Insert>
+<Copy StartSeek="1170" EndSeek="5290"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:57:14000">
+<Copy StartSeek="0" EndSeek="710"/>
+<Copy StartSeek="717" EndSeek="2853"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2862" EndSeek="5305"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="13:18:36000">
+<Copy StartSeek="0" EndSeek="2853"/>
+<Insert>#endif
+</Insert>
+<Copy StartSeek="2889" EndSeek="5334"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="13:18:43000">
+<Copy StartSeek="0" EndSeek="501"/>
+<Insert>	#define MYMGRP RTMGRP_IPV4_ROUTE
+</Insert>
+<Copy StartSeek="552" EndSeek="5351"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:00:4000">
+<Copy StartSeek="0" EndSeek="3229"/>
+<Insert>	bool new_rt;
+</Insert>
+<Copy StartSeek="3242" EndSeek="5350"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:07:55000">
+<Copy StartSeek="0" EndSeek="3292"/>
+<Insert>		new_rt = true;
+</Insert>
+<Copy StartSeek="3306" EndSeek="5347"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:08:3000">
+<Copy StartSeek="0" EndSeek="2543"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2580" EndSeek="2906"/>
+<Insert>#endif /* sample code for review */
+</Insert>
+<Copy StartSeek="2907" EndSeek="4628"/>
+<Insert>	printf("nlmsg_type: %i (%s)\n",(nlh.nlmsg_type),klna_lookup_name(typenames,nlh.nlmsg_type));
+</Insert>
+<Copy StartSeek="4723" EndSeek="5349"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:08:33000">
+<Copy StartSeek="0" EndSeek="2907"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="2907" EndSeek="5347"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:08:36000">
+<Copy StartSeek="0" EndSeek="704"/>
+<Copy StartSeek="743" EndSeek="5386"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:10:16000">
+<Copy StartSeek="0" EndSeek="724"/>
+<Insert>	MSG(RTM_DELNEIGH)
+</Insert>
+<Copy StartSeek="744" EndSeek="5387"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:10:24000">
+<Copy StartSeek="0" EndSeek="4133"/>
+<Insert>int klna_read_event(int sock)
+</Insert>
+<Copy StartSeek="4171" EndSeek="4173"/>
+<Copy StartSeek="4216" EndSeek="5438"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:11:53000">
+<Copy StartSeek="0" EndSeek="4133"/>
+<Insert>static void klna_ev_arp(&amp;nlh, buffer)
+</Insert>
+<Copy StartSeek="4170" EndSeek="5437"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:11:57000">
+<Copy StartSeek="0" EndSeek="4173"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="4187" EndSeek="5448"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:12:0000">
+<Copy StartSeek="0" EndSeek="4133"/>
+<Insert>static int klna_ev_arp(&amp;nlh, buffer)
+</Insert>
+<Copy StartSeek="4192" EndSeek="5470"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:12:16000">
+<Copy StartSeek="0" EndSeek="4195"/>
+<Copy StartSeek="4196" EndSeek="5471"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:12:18000">
+<Copy StartSeek="0" EndSeek="4964"/>
+<Copy StartSeek="5082" EndSeek="5589"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:15:5000">
+<Copy StartSeek="0" EndSeek="4194"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="5102" EndSeek="6495"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:19:15000">
+<Copy StartSeek="0" EndSeek="5028"/>
+<Insert>		if (new_rt) {
+</Insert>
+<Copy StartSeek="5047" EndSeek="6498"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:19:20000">
+<Copy StartSeek="0" EndSeek="5047"/>
+<Insert>			/* dpa_rt_rule_add */
+</Insert>
+<Copy StartSeek="5073" EndSeek="6499"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:19:22000">
+<Copy StartSeek="0" EndSeek="4328"/>
+<Insert>	case RTM_DELROUTE: {
+</Insert>
+<Copy StartSeek="4350" EndSeek="6499"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:19:34000">
+<Copy StartSeek="0" EndSeek="5077"/>
+<Insert>		
+
+
+	}
+</Insert>
+<Copy StartSeek="5080" EndSeek="6494"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:19:39000">
+<Copy StartSeek="0" EndSeek="4568"/>
+<Insert>			if (rta-&gt;rta_type == RTA_DST) {
+</Insert>
+<Copy StartSeek="4603" EndSeek="6494"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:27:43000">
+<Copy StartSeek="0" EndSeek="4750"/>
+<Insert>			if (rta-&gt;rta_type == RTA_GATEWAY) {
+</Insert>
+<Copy StartSeek="4788" EndSeek="6493"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:29:35000">
+<Copy StartSeek="0" EndSeek="4194"/>
+<Insert>	struct rtmsg *rtm;
+</Insert>
+<Copy StartSeek="4214" EndSeek="6493"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:30:12000">
+<Copy StartSeek="0" EndSeek="4350"/>
+<Insert>		rtm = (struct rtmsg *)buffer;
+</Insert>
+<Copy StartSeek="4382" EndSeek="6493"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:30:24000">
+<Copy StartSeek="0" EndSeek="4657"/>
+<Insert>				printf("dst " NIPQUAD_FMT "/%u\n", NIPQUAD(dst_addr),
+				       rtm-&gt;rtm_dst_len);
+			}
+</Insert>
+<Copy StartSeek="4718" EndSeek="6461"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:30:54000">
+<Copy StartSeek="0" EndSeek="4866"/>
+<Insert>			if (rta-&gt;rta_type == RTA_OIF) {
+				uint32_t oif = *((uint32_t *)RTA_DATA(rta));
+				printf("oif_index %u\n", oif);
+			}
+
+		}
+</Insert>
+<Copy StartSeek="5079" EndSeek="6545"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:32:38000">
+<Copy StartSeek="0" EndSeek="4350"/>
+<Insert>		ndm = (struct ndmsg *)buffer;
+		rta = (struct rtattr*)RTM_RTA(rtm);
+		rtl = RTM_PAYLOAD(nlh);
+		printf("family: %u\n", rtm-&gt;rtm_family);
+		/* parse each attr */
+		for (; RTA_OK(rta, rtl); rta = RTA_NEXT(rta, rtl)) {
+			if (rta-&gt;rta_type == NDA_DST) {
+				uint32_t dst_addr = *((uint32_t *)RTA_DATA(rta));
+				printf("dst " NIPQUAD_FMT "\n", NIPQUAD(dst_addr));
+			}
+			if (rta-&gt;rta_type == NDA_LLADDR) {
+				uint32_t dst_gw = *((uint32_t *)RTA_DATA(rta));
+				printf("gw " NIPQUAD_FMT "\n", NIPQUAD(dst_gw));
+			}
+</Insert>
+<Copy StartSeek="4880" EndSeek="5089"/>
+<Insert>		}
+		if (new_neigh) {
+			/* dpa_arp_rule_add */
+		}
+	}
+</Insert>
+<Copy StartSeek="5150" EndSeek="6564"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:33:26000">
+<Copy StartSeek="0" EndSeek="826"/>
+<Insert>  struct nlmsghdr nl;
+  struct rtmsg    rt;
+  char            buf[8192];
+</Insert>
+<Copy StartSeek="896" EndSeek="2960"/>
+<Insert>#define NIPQUAD(addr) \
+</Insert>
+<Copy StartSeek="2985" EndSeek="3110"/>
+<Insert>#define NIPQUAD_FMT "%u.%u.%u.%u"
+</Insert>
+<Copy StartSeek="3145" EndSeek="3366"/>
+<Insert>		rtm = (struct rtmsg *)buffer;
+		rta = (struct rtattr*)RTM_RTA(rtm);
+		rtl = RTM_PAYLOAD(nlh);
+		printf("family: %u\n", rtm-&gt;rtm_family);
+		/* parse each attr */
+		for (; RTA_OK(rta, rtl); rta = RTA_NEXT(rta, rtl)) {
+			if (rta-&gt;rta_type == RTA_DST) {
+				uint32_t dst_addr = *((uint32_t *)RTA_DATA(rta));
+				printf("dst " NIPQUAD_FMT "/%u\n", NIPQUAD(dst_addr),
+				       rtm-&gt;rtm_dst_len);
+			}
+			if (rta-&gt;rta_type == RTA_GATEWAY) {
+				uint32_t dst_gw = *((uint32_t *)RTA_DATA(rta));
+				printf("gw " NIPQUAD_FMT "\n", NIPQUAD(dst_gw));
+			}
+			if (rta-&gt;rta_type == RTA_OIF) {
+				uint32_t oif = *((uint32_t *)RTA_DATA(rta));
+				printf("oif_index %u\n", oif);
+			}
+</Insert>
+<Copy StartSeek="4058" EndSeek="4059"/>
+<Insert>		}
+		if (new_rt) {
+			/* dpa_rt_rule_add */
+		}
+		
+</Insert>
+<Copy StartSeek="4113" EndSeek="4115"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="4119" EndSeek="5712"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="5713" EndSeek="6584"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:33:36000">
+<Copy StartSeek="0" EndSeek="4788"/>
+<Insert>					uint32_t dst_gw = *((uint32_t *)RTA_DATA(rta));
+</Insert>
+<Copy StartSeek="4903" EndSeek="6646"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:36:38000">
+<Copy StartSeek="0" EndSeek="4866"/>
+<Insert>					memcpy(dst, data,rta-&gt;rta_len);
+</Insert>
+<Copy StartSeek="4904" EndSeek="6647"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:36:46000">
+<Copy StartSeek="0" EndSeek="4866"/>
+<Copy StartSeek="4867" EndSeek="6648"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:37:16000">
+<Copy StartSeek="0" EndSeek="4866"/>
+<Insert>
+</Insert>
+<Copy StartSeek="4866" EndSeek="6647"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:37:31000">
+<Copy StartSeek="0" EndSeek="4788"/>
+<Insert>					uint8_t dst[16] = {0}
+</Insert>
+<Copy StartSeek="4852" EndSeek="4903"/>
+<Copy StartSeek="4904" EndSeek="6685"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:38:23000">
+<Copy StartSeek="0" EndSeek="4816"/>
+<Insert>					uint8_t dst[MAX_BUF_LEN] = {0}
+</Insert>
+<Copy StartSeek="4853" EndSeek="6686"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:38:25000">
+<Copy StartSeek="0" EndSeek="4904"/>
+<Insert>
+					memcpy(dst, data, rta-&gt;rta_len);
+</Insert>
+<Copy StartSeek="4990" EndSeek="6733"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:39:19000">
+<Copy StartSeek="0" EndSeek="4853"/>
+<Insert>					uint8_t *data =  *((uint8_t *)RTA_DATA(rta));
+</Insert>
+<Copy StartSeek="4903" EndSeek="6732"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:39:27000">
+<Copy StartSeek="0" EndSeek="5049"/>
+<Insert>				if (rta-&gt;rta_type == RTA_OIF) {
+</Insert>
+<Copy StartSeek="5088" EndSeek="6735"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:39:44000">
+<Copy StartSeek="0" EndSeek="5088"/>
+<Copy StartSeek="5232" EndSeek="6879"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:40:15000">
+<Copy StartSeek="0" EndSeek="5232"/>
+<Insert>					uint32_t oif = *((uint32_t *)RTA_DATA(rta));
+</Insert>
+<Copy StartSeek="5260" EndSeek="6857"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:41:26000">
+<Copy StartSeek="0" EndSeek="5260"/>
+<Insert>					printf("oif_index %u\n", oif);
+</Insert>
+<Copy StartSeek="5290" EndSeek="6851"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:41:36000">
+<Copy StartSeek="0" EndSeek="5260"/>
+<Insert>					printf("ha %#x\n", oif);
+</Insert>
+<Copy StartSeek="5289" EndSeek="6850"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:41:40000">
+<Copy StartSeek="0" EndSeek="5260"/>
+<Insert>					printf("ha %#x\n", ha);
+				}
+</Insert>
+<Copy StartSeek="5337" EndSeek="6892"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:42:11000">
+<Copy StartSeek="0" EndSeek="5379"/>
+<Insert>					printf("NDA_CACHEINFO\n");
+</Insert>
+<Copy StartSeek="5410" EndSeek="6891"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:42:23000">
+<Copy StartSeek="0" EndSeek="5331"/>
+<Insert>				}
+</Insert>
+<Copy StartSeek="5356" EndSeek="6910"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:42:32000">
+<Copy StartSeek="0" EndSeek="5293"/>
+<Insert>						printf("ha %#x", ha[i]);
+</Insert>
+<Copy StartSeek="5322" EndSeek="6908"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:42:42000">
+<Copy StartSeek="0" EndSeek="4404"/>
+<Insert>			rta = (struct rtattr*)RTM_RTA(rtm);
+</Insert>
+<Copy StartSeek="4443" EndSeek="6908"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:43:11000">
+<Copy StartSeek="0" EndSeek="4470"/>
+<Insert>			printf("family: %u\n", rtm-&gt;rtm_family);
+</Insert>
+<Copy StartSeek="4514" EndSeek="6908"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:45:7000">
+<Copy StartSeek="0" EndSeek="4960"/>
+<Insert>					memcpy(dst, data, len);
+</Insert>
+<Copy StartSeek="4994" EndSeek="6913"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:45:19000">
+<Copy StartSeek="0" EndSeek="4960"/>
+<Copy StartSeek="4961" EndSeek="6914"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:45:27000">
+<Copy StartSeek="0" EndSeek="4995"/>
+<Insert>					printf("gw " NIPQUAD_FMT "\n", NIPQUAD(dst_gw));
+</Insert>
+<Copy StartSeek="5047" EndSeek="6912"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:45:43000">
+<Copy StartSeek="0" EndSeek="5236"/>
+<Insert>					memcpy(ha, data, len);
+</Insert>
+<Copy StartSeek="5269" EndSeek="6917"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:47:18000">
+<Copy StartSeek="0" EndSeek="5235"/>
+<Insert>
+</Insert>
+<Copy StartSeek="5247" EndSeek="5280"/>
+<Insert>					for (; i &lt; data_len; i++) {
+</Insert>
+<Copy StartSeek="5318" EndSeek="6933"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:47:31000">
+<Copy StartSeek="0" EndSeek="5247"/>
+<Copy StartSeek="5248" EndSeek="6934"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:47:35000">
+<Copy StartSeek="0" EndSeek="4903"/>
+<Insert>					uint32_t data_len = min(MAX_BUF_LEN, rta-&gt;rta_len);
+</Insert>
+<Copy StartSeek="4985" EndSeek="5203"/>
+<Insert>					uint32_t data_len = min(MAX_BUF_LEN, rta-&gt;rta_len);
+</Insert>
+<Copy StartSeek="5285" EndSeek="6984"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:48:47000">
+<Copy StartSeek="0" EndSeek="4853"/>
+<Insert>					uint8_t *data = *((uint8_t *)RTA_DATA(rta));
+</Insert>
+<Copy StartSeek="4902" EndSeek="6983"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:50:21000">
+<Copy StartSeek="0" EndSeek="5152"/>
+<Insert>					uint8_t *data = *((uint8_t *)RTA_DATA(rta));
+</Insert>
+<Copy StartSeek="5201" EndSeek="6982"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:50:38000">
+<Copy StartSeek="0" EndSeek="5152"/>
+<Insert>					uint8_t *data = ((uint8_t *)RTA_DATA(rta));
+</Insert>
+<Copy StartSeek="5199" EndSeek="6980"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:50:39000">
+<Copy StartSeek="0" EndSeek="4853"/>
+<Insert>					uint8_t *data = ((uint8_t *)RTA_DATA(rta));
+</Insert>
+<Copy StartSeek="4900" EndSeek="6978"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:50:44000">
+<Copy StartSeek="0" EndSeek="5466"/>
+<Insert>					printf(" NDA_CACHEINFO");
+</Insert>
+<Copy StartSeek="5499" EndSeek="6980"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:51:46000">
+<Copy StartSeek="0" EndSeek="5363"/>
+<Insert>						printf(" %#x", ha[i]);
+</Insert>
+<Copy StartSeek="5392" EndSeek="6980"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:51:59000">
+<Copy StartSeek="0" EndSeek="5363"/>
+<Insert>						printf("%#x:", ha[i]);
+</Insert>
+<Copy StartSeek="5391" EndSeek="6979"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:52:7000">
+<Copy StartSeek="0" EndSeek="5398"/>
+<Insert>					printf("\n");
+				}
+</Insert>
+<Copy StartSeek="5404" EndSeek="6960"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:52:14000">
+<Copy StartSeek="0" EndSeek="4788"/>
+<Insert>					#define MAX_BUF_LEN 16
+</Insert>
+<Copy StartSeek="4794" EndSeek="4995"/>
+<Insert>					printf("dst " NIPQUAD_FMT "\n", NIPQUAD(dst));
+</Insert>
+<Copy StartSeek="5001" EndSeek="5046"/>
+<Copy StartSeek="5074" EndSeek="6920"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:53:45000">
+<Copy StartSeek="0" EndSeek="4788"/>
+<Insert>					
+					uint8_t dst[MAX_BUF_LEN] = {0};
+					uint8_t *data = (uint8_t *)RTA_DATA(rta);
+					uint32_t data_len = rta-&gt;rta_len &lt; MAX_BUF_LEN ? rta-&gt;rta_len : MAX_BUF_LEN;
+
+					memcpy(dst, data, data_len);
+					
+				}
+				if (rta-&gt;rta_type == NDA_LLADDR) {
+</Insert>
+<Copy StartSeek="4788" EndSeek="6662"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:53:54000">
+<Copy StartSeek="0" EndSeek="5100"/>
+<Insert>				}
+</Insert>
+<Copy StartSeek="5125" EndSeek="6681"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:56:7000">
+<Copy StartSeek="0" EndSeek="4743"/>
+<Insert>				}
+</Insert>
+<Copy StartSeek="4764" EndSeek="6696"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:56:25000">
+<Copy StartSeek="0" EndSeek="5134"/>
+<Insert>				}
+</Insert>
+<Copy StartSeek="5155" EndSeek="6711"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:56:34000">
+<Copy StartSeek="0" EndSeek="5230"/>
+<Insert>				}
+
+			}
+</Insert>
+<Copy StartSeek="5257" EndSeek="6726"/>
+</Delta>
+<Delta Version="84" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:56:39000">
+<Copy StartSeek="0" EndSeek="4686"/>
+<Insert>					printf("dst " NIPQUAD_FMT "\n", NIPQUAD(dst_addr));
+</Insert>
+<Copy StartSeek="4741" EndSeek="6724"/>
+</Delta>
+<Delta Version="85" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="15:58:33000">
+<Copy StartSeek="0" EndSeek="6099"/>
+<Insert>	if (nlh.nlmsg_type == RTM_NEWNEIGH ||
+</Insert>
+<Copy StartSeek="6142" EndSeek="6728"/>
+</Delta>
+<Delta Version="86" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:04:17000">
+<Copy StartSeek="0" EndSeek="6099"/>
+<Insert>	if (/*nlh.nlmsg_type == RTM_NEWNEIGH ||*/
+</Insert>
+<Copy StartSeek="6138" EndSeek="6724"/>
+</Delta>
+<Delta Version="87" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:07:10000">
+<Copy StartSeek="0" EndSeek="5040"/>
+<Copy StartSeek="5079" EndSeek="6763"/>
+</Delta>
+<Delta Version="88" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:07:39000">
+<Copy StartSeek="0" EndSeek="4686"/>
+<Insert>					printf("ip" NIPQUAD_FMT "\n", NIPQUAD(dst_addr));
+</Insert>
+<Copy StartSeek="4742" EndSeek="6764"/>
+</Delta>
+<Delta Version="89" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:08:28000">
+<Copy StartSeek="0" EndSeek="4283"/>
+<Copy StartSeek="4373" EndSeek="6854"/>
+</Delta>
+<Delta Version="90" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:12:13000">
+<Copy StartSeek="0" EndSeek="4283"/>
+<Insert>	printf("sizeof(struct ndmsg) %u sizeof()\n",sizeof(struct ndmsg), sizeof(struct rtmsg));
+</Insert>
+<Copy StartSeek="4378" EndSeek="6859"/>
+</Delta>
+<Delta Version="91" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:12:18000">
+<Copy StartSeek="0" EndSeek="4283"/>
+<Insert>	printf("sizeof(struct ndmsg) %u sizeof(rtmsg)\n",sizeof(struct ndmsg), sizeof(struct rtmsg));
+</Insert>
+<Copy StartSeek="4381" EndSeek="6862"/>
+</Delta>
+<Delta Version="92" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:12:21000">
+<Copy StartSeek="0" EndSeek="4283"/>
+<Insert>	printf("sizeof(struct ndmsg) %u sizeof(rtmsg) 5u\n",sizeof(struct ndmsg), sizeof(struct rtmsg));
+</Insert>
+<Copy StartSeek="4390" EndSeek="6871"/>
+</Delta>
+<Delta Version="93" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:12:25000">
+<Copy StartSeek="0" EndSeek="4390"/>
+<Copy StartSeek="4391" EndSeek="6872"/>
+</Delta>
+<Delta Version="94" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:12:26000">
+<Copy StartSeek="0" EndSeek="4283"/>
+<Insert>	printf("sizeof(struct ndmsg) %u sizeof(rtmsg) %u\n",
+	       sizeof(struct ndmsg), sizeof(struct rtmsg));
+
+</Insert>
+<Copy StartSeek="4283" EndSeek="6764"/>
+</Delta>
+<Delta Version="95" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:12:51000">
+<Copy StartSeek="0" EndSeek="5008"/>
+<Copy StartSeek="5049" EndSeek="6805"/>
+</Delta>
+<Delta Version="96" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:13:44000">
+<Copy StartSeek="0" EndSeek="5008"/>
+<Insert>					printf("rta_len %u", rta-&gt;rta_len);
+</Insert>
+<Copy StartSeek="5051" EndSeek="6807"/>
+</Delta>
+<Delta Version="97" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:13:47000">
+<Copy StartSeek="0" EndSeek="4802"/>
+<Insert>					#define MAX_BUF_LEN 16
+</Insert>
+<Copy StartSeek="4829" EndSeek="6806"/>
+</Delta>
+<Delta Version="98" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:50:2000">
+<Copy StartSeek="0" EndSeek="5007"/>
+<Insert>					printf("rta_len %u\n", rta-&gt;rta_len);
+</Insert>
+<Copy StartSeek="5007" EndSeek="6763"/>
+</Delta>
+<Delta Version="99" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:50:7000">
+<Copy StartSeek="0" EndSeek="4829"/>
+<Insert>					uint8_t ha[MAX_BUF_LEN] = {0};
+</Insert>
+<Copy StartSeek="4859" EndSeek="6757"/>
+</Delta>
+<Delta Version="100" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:54:12000">
+<Copy StartSeek="0" EndSeek="5186"/>
+<Insert>				if (rta-&gt;rta_type == NDA_CACHEINFO) {
+					printf(" NDA_CACHEINFO\n");
+					continue;
+				}
+</Insert>
+<Copy StartSeek="5310" EndSeek="6785"/>
+</Delta>
+<Delta Version="101" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:54:35000">
+<Copy StartSeek="0" EndSeek="4332"/>
+<Insert>		new_neigh = 1;
+</Insert>
+<Copy StartSeek="4332" EndSeek="5148"/>
+<Copy StartSeek="5168" EndSeek="6788"/>
+</Delta>
+<Delta Version="102" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:58:12000">
+<Copy StartSeek="0" EndSeek="5148"/>
+<Insert>					new_neigh = 1;
+</Insert>
+<Copy StartSeek="5212" EndSeek="6832"/>
+</Delta>
+<Delta Version="103" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:58:34000">
+<Copy StartSeek="0" EndSeek="5017"/>
+<Insert>					printf("[ha_len %u] ", data_len);
+</Insert>
+<Copy StartSeek="5017" EndSeek="6793"/>
+</Delta>
+<Delta Version="104" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="16:58:45000">
+<Copy StartSeek="0" EndSeek="243"/>
+<Insert>	#define MYMGRP RTMGRP_NEIGH
+</Insert>
+<Copy StartSeek="274" EndSeek="503"/>
+<Insert>	#define MYMGRP (RTMGRP_IPV4_ROUTE | RTMGRP_NEIGH)
+</Insert>
+<Copy StartSeek="556" EndSeek="6531"/>
+<Insert>	addr.nl_groups = MYMGRP;
+</Insert>
+<Copy StartSeek="6559" EndSeek="6799"/>
+</Delta>
+<Delta Version="105" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:01:0000">
+<Copy StartSeek="0" EndSeek="206"/>
+<Insert>#if 0
+//#define MYPROTO NETLINK_ARPD
+	#define KLNA_GRP RTMGRP_NEIGH
+// if you want the above you'll find that the kernel must be compiled with CONFIG_ARPD, and
+// that you need MYPROTO=NETLINK_ROUTE, since the kernel arp code {re,ab}uses rtnl (NETLINK_ROUTE)
+
+#else
+	#define MYPROTO NETLINK_ROUTE
+	#define KLNA_GRP (RTMGRP_IPV4_ROUTE | RTMGRP_NEIGH)
+#endif
+
+</Insert>
+<Copy StartSeek="289" EndSeek="6524"/>
+</Delta>
+<Delta Version="106" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:01:13000">
+<Copy StartSeek="0" EndSeek="6055"/>
+<Insert>	int sock = socket(AF_NETLINK,SOCK_RAW,MYPROTO);
+</Insert>
+<Copy StartSeek="6111" EndSeek="6531"/>
+</Delta>
+<Delta Version="107" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:01:31000">
+<Copy StartSeek="0" EndSeek="206"/>
+<Insert>#define MYPROTO NETLINK_ROUTE
+</Insert>
+<Copy StartSeek="206" EndSeek="6501"/>
+</Delta>
+<Delta Version="108" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:01:37000">
+<Copy StartSeek="0" EndSeek="5070"/>
+<Insert>			}
+		}
+</Insert>
+<Copy StartSeek="5120" EndSeek="6542"/>
+</Delta>
+<Delta Version="109" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:02:42000">
+<Copy StartSeek="0" EndSeek="3806"/>
+<Insert>			}
+
+
+</Insert>
+<Copy StartSeek="3849" EndSeek="3850"/>
+<Insert>		}
+</Insert>
+<Copy StartSeek="3856" EndSeek="6580"/>
+</Delta>
+<Delta Version="110" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:02:58000">
+<Copy StartSeek="0" EndSeek="3849"/>
+<Insert>
+
+
+		}
+</Insert>
+<Copy StartSeek="3853" EndSeek="4519"/>
+<Insert>					#define MAX_BUF_LEN 6
+</Insert>
+<Copy StartSeek="4541" EndSeek="5100"/>
+<Insert>			} else  {
+</Insert>
+<Copy StartSeek="5112" EndSeek="6571"/>
+</Delta>
+<Delta Version="111" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:03:11000">
+<Copy StartSeek="0" EndSeek="4519"/>
+<Insert>#define MAX_BUF_LEN 6
+</Insert>
+<Copy StartSeek="4546" EndSeek="6576"/>
+</Delta>
+<Delta Version="112" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:04:1000">
+<Copy StartSeek="0" EndSeek="4017"/>
+<Insert>	switch (nlh-&gt;nlmsg_type) {
+	case RTM_NEWNEIGH: 
+	case RTM_DELNEIGH: {
+			ndm = (struct ndmsg *)buffer;
+			rta = (struct rtattr*)RTM_RTA(ndm);
+			rtl = RTM_PAYLOAD(nlh);
+			printf("family: %u\n", ndm-&gt;ndm_family);
+			/* parse each attr */
+			for (; RTA_OK(rta, rtl); rta = RTA_NEXT(rta, rtl)) {
+				if (rta-&gt;rta_type == NDA_DST) {
+					uint32_t dst_addr = *((uint32_t *)RTA_DATA(rta));
+					printf("ip " NIPQUAD_FMT "\n", NIPQUAD(dst_addr));
+					continue;
+				}
+				if (rta-&gt;rta_type == NDA_LLADDR) {
+					#define MAX_BUF_LEN 6
+					uint8_t ha[MAX_BUF_LEN];
+					uint8_t *data = (uint8_t *)RTA_DATA(rta);
+					uint32_t data_len = rta-&gt;rta_len &lt; MAX_BUF_LEN ? rta-&gt;rta_len : MAX_BUF_LEN;
+					int i;
+
+					memcpy(ha, data, data_len);
+					for (i = 0; i &lt; data_len; i++) {
+						printf("%x:", ha[i]);
+					}
+					printf("\n");
+
+					new_neigh = 1; /* NDA_LLADDR appears only in new entry */
+					continue;
+				}
+</Insert>
+<Copy StartSeek="4807" EndSeek="4932"/>
+<Insert>			}
+			if (new_neigh) {
+				/* dpa_arp_rule_add */
+			} else {
+				/* dpa_arp_rule_del */
+			}
+
+		}
+	default: break;
+	}
+
+</Insert>
+<Copy StartSeek="5016" EndSeek="6417"/>
+</Delta>
+<Delta Version="113" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:06:4000">
+<Copy StartSeek="0" EndSeek="4522"/>
+<Insert>			uint32_t data_len = rta-&gt;rta_len &lt; MAX_BUF_LEN ? rta-&gt;rta_len : MAX_BUF_LEN;
+</Insert>
+<Copy StartSeek="4607" EndSeek="6422"/>
+</Delta>
+<Delta Version="114" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:06:20000">
+<Copy StartSeek="0" EndSeek="4812"/>
+<Insert>//      			if (rta-&gt;rta_type == NDA_CACHEINFO) {
+//      				printf(" NDA_CACHEINFO\n");
+//      				continue;
+//      			}
+</Insert>
+<Copy StartSeek="4928" EndSeek="6414"/>
+</Delta>
+<Delta Version="115" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:06:30000">
+<Copy StartSeek="0" EndSeek="4928"/>
+<Insert>
+	}
+</Insert>
+<Copy StartSeek="4931" EndSeek="6413"/>
+</Delta>
+<Delta Version="116" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:06:33000">
+<Copy StartSeek="0" EndSeek="2966"/>
+<Insert>	int new_rt;
+</Insert>
+<Copy StartSeek="2982" EndSeek="3766"/>
+<Insert>			if (new_rt) {
+</Insert>
+<Copy StartSeek="3808" EndSeek="6441"/>
+</Delta>
+<Delta Version="117" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:07:20000">
+<Copy StartSeek="0" EndSeek="2966"/>
+<Insert>	int new_rt = ;
+
+	switch (nlh-&gt;nlmsg_type) {
+	case RTM_NEWROUTE: 
+		new_rt = 1;
+	case RTM_DELROUTE: {
+			rtm = (struct rtmsg *)buffer;
+			rta = (struct rtattr*)RTM_RTA(rtm);
+			rtl = RTM_PAYLOAD(nlh);
+			printf("family: %u\n", rtm-&gt;rtm_family);
+			/* parse each attr */
+			for (; RTA_OK(rta, rtl); rta = RTA_NEXT(rta, rtl)) {
+				if (rta-&gt;rta_type == RTA_DST) {
+					uint32_t dst_addr = *((uint32_t *)RTA_DATA(rta));
+					printf("dst " NIPQUAD_FMT "/%u\n", NIPQUAD(dst_addr),
+					       rtm-&gt;rtm_dst_len);
+				}
+				if (rta-&gt;rta_type == RTA_GATEWAY) {
+					uint32_t dst_gw = *((uint32_t *)RTA_DATA(rta));
+					printf("gw " NIPQUAD_FMT "\n", NIPQUAD(dst_gw));
+				}
+				if (rta-&gt;rta_type == RTA_OIF) {
+					uint32_t oif = *((uint32_t *)RTA_DATA(rta));
+					printf("oif_index %u\n", oif);
+				}
+
+			}
+			if (nlh-&gt;nlmsg_type == RTM_NEWROUTE) {
+				/* dpa_rt_rule_add */
+			} else {
+				/* dpa_rt_rule_del */
+			}
+		}
+	default: break;
+	}
+
+</Insert>
+<Copy StartSeek="3726" EndSeek="6265"/>
+</Delta>
+<Delta Version="118" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:07:41000">
+<Copy StartSeek="0" EndSeek="3620"/>
+<Insert>
+	}
+</Insert>
+<Copy StartSeek="3623" EndSeek="6264"/>
+</Delta>
+<Delta Version="119" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:08:0000">
+<Copy StartSeek="0" EndSeek="4469"/>
+<Copy StartSeek="4530" EndSeek="4646"/>
+<Insert>			new_neigh = 1; /* NDA_LLADDR appears only in new entry */
+</Insert>
+<Copy StartSeek="4647" EndSeek="6265"/>
+</Delta>
+<Delta Version="120" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:08:20000">
+<Copy StartSeek="0" EndSeek="4373"/>
+<Insert>			uint32_t data_len = 
+</Insert>
+<Copy StartSeek="4396" EndSeek="6264"/>
+</Delta>
+<Delta Version="121" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:08:44000">
+<Copy StartSeek="0" EndSeek="4457"/>
+<Insert>			int i;
+</Insert>
+<Copy StartSeek="4472" EndSeek="6269"/>
+</Delta>
+<Delta Version="122" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:09:3000">
+<Copy StartSeek="0" EndSeek="4649"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="4649" EndSeek="6267"/>
+</Delta>
+<Delta Version="123" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:09:11000">
+<Copy StartSeek="0" EndSeek="206"/>
+<Insert>#define KLNA_GRP (RTMGRP_IPV4_ROUTE | RTMGRP_NEIGH)
+</Insert>
+<Copy StartSeek="273" EndSeek="6282"/>
+</Delta>
+<Delta Version="124" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:13:6000">
+<Copy StartSeek="0" EndSeek="5765"/>
+<Copy StartSeek="5879" EndSeek="6396"/>
+</Delta>
+<Delta Version="125" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:17:15000">
+<Copy StartSeek="0" EndSeek="5840"/>
+<Insert>		return klna_ev_arp(&amp;nlh, buffer);
+</Insert>
+<Copy StartSeek="5877" EndSeek="6397"/>
+</Delta>
+<Delta Version="126" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:17:20000">
+<Copy StartSeek="0" EndSeek="3754"/>
+<Copy StartSeek="4896" EndSeek="7539"/>
+</Delta>
+<Delta Version="127" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:17:37000">
+<Copy StartSeek="0" EndSeek="5056"/>
+<Insert>	rta = (struct rtattr*)RTM_RTA(ndm);
+</Insert>
+<Copy StartSeek="5094" EndSeek="5119"/>
+<Copy StartSeek="5198" EndSeek="7619"/>
+</Delta>
+<Delta Version="128" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:24:42000">
+<Copy StartSeek="0" EndSeek="4957"/>
+<Insert>	struct ndmsg *ndm;
+</Insert>
+<Copy StartSeek="4984" EndSeek="5126"/>
+<Insert>	(r)  ((struct rtattr*)(((char*)(r)) + NLMSG_ALIGN(sizeof(struct ifinfomsg))))
+</Insert>
+<Copy StartSeek="5189" EndSeek="7610"/>
+</Delta>
+<Delta Version="129" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:25:10000">
+<Copy StartSeek="0" EndSeek="5063"/>
+<Insert>	rta = (struct rtattr*)IFLA_RTA(ndm);
+</Insert>
+<Copy StartSeek="5105" EndSeek="5130"/>
+<Insert>	(r)  ((struct rtattr*)(((char*)(r)) + NLMSG_ALIGN(sizeof())))
+</Insert>
+<Copy StartSeek="5132" EndSeek="7553"/>
+</Delta>
+<Delta Version="130" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:25:30000">
+<Copy StartSeek="0" EndSeek="5032"/>
+<Insert>	ndm = (struct ndmsg *)buffer;
+	ifa = (struct rtattr*)IFLA_PAYLOAD(ndm);
+</Insert>
+<Copy StartSeek="5114" EndSeek="5141"/>
+<Insert>	printf("family: %u\n", ndm-&gt;ndm_family);
+</Insert>
+<Copy StartSeek="5189" EndSeek="7568"/>
+</Delta>
+<Delta Version="131" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:25:48000">
+<Copy StartSeek="0" EndSeek="4957"/>
+<Insert>	struct ifinfomsg *ifinfo;
+</Insert>
+<Copy StartSeek="4981" EndSeek="5029"/>
+<Insert>	ifinfo = (struct ifinfosg *)buffer;
+	ifa = (struct rtattr*)IFLA_PAYLOAD(ifinfo);
+</Insert>
+<Copy StartSeek="5105" EndSeek="5132"/>
+<Insert>	printf("family: %u\n", ifinfo-&gt;ifinfo_family);
+</Insert>
+<Copy StartSeek="5177" EndSeek="7556"/>
+</Delta>
+<Delta Version="132" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:26:7000">
+<Copy StartSeek="0" EndSeek="5132"/>
+<Insert>	printf("family: %u\n", ifi-&gt;ifinfo_family);
+</Insert>
+<Copy StartSeek="5174" EndSeek="7553"/>
+</Delta>
+<Delta Version="133" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:26:16000">
+<Copy StartSeek="0" EndSeek="4957"/>
+<Insert>	struct ifinfomsg *ifi;
+	struct rtattr *rta;
+	int rtl;
+	int new_neigh;
+
+	ifi = (struct ifinfosg *)buffer;
+	ifa = (struct rtattr*)IFLA_PAYLOAD(ifi);
+	rtl = RTM_PAYLOAD(nlh);
+	
+	printf("family: %u\n", ifi-&gt;ifi_family);
+	/* parse each attr */
+	for (; RTA_OK(rta, rtl); rta = RTA_NEXT(rta, rtl)) {
+		if (rta-&gt;rta_type == NDA_DST) {
+			uint32_t dst_addr = *((uint32_t *)RTA_DATA(rta));
+			printf("ip " NIPQUAD_FMT "\n", NIPQUAD(dst_addr));
+			continue;
+		}
+		if (rta-&gt;rta_type == NDA_LLADDR) {
+			#define MAX_BUF_LEN 6
+			uint8_t ha[MAX_BUF_LEN];
+			uint8_t *data = (uint8_t *)RTA_DATA(rta);
+			uint32_t data_len =
+				rta-&gt;rta_len &lt; MAX_BUF_LEN ? rta-&gt;rta_len : MAX_BUF_LEN;
+			uint32_t i;
+
+			new_neigh = 1; /* NDA_LLADDR appears only in new entry */
+			memcpy(ha, data, data_len);
+			for (i = 0; i &lt; data_len; i++) {
+				printf("%x:", ha[i]);
+			}
+			printf("\n");
+			continue;
+		}
+//      	if (rta-&gt;rta_type == NDA_CACHEINFO) {
+//      		printf(" NDA_CACHEINFO\n");
+//      		continue;
+//      	}
+	}
+	if (new_neigh) {
+		/* dpa_arp_rule_add */
+	} else {
+		/* dpa_arp_rule_del */
+	}
+</Insert>
+<Copy StartSeek="4958" EndSeek="6474"/>
+</Delta>
+<Delta Version="134" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:26:50000">
+<Copy StartSeek="0" EndSeek="458"/>
+<Copy StartSeek="496" EndSeek="6512"/>
+</Delta>
+<Delta Version="135" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="17:28:42000">
+<Copy StartSeek="0" EndSeek="3854"/>
+<Insert>	struct ndmsg *ndm;
+</Insert>
+<Copy StartSeek="3878" EndSeek="6516"/>
+</Delta>
+<Delta Version="136" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:17:8000">
+<Copy StartSeek="0" EndSeek="3926"/>
+<Insert>	ndm = (struct ndmsg *)buffer;
+</Insert>
+<Copy StartSeek="3961" EndSeek="6520"/>
+</Delta>
+<Delta Version="137" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:17:22000">
+<Copy StartSeek="0" EndSeek="3854"/>
+<Insert>	struct ifinfomsg *ndm;
+</Insert>
+<Copy StartSeek="3878" EndSeek="3926"/>
+<Insert>	ndm = (struct ifinfomsg *)buffer;
+	rta = (struct rtattr*)RTM_RTA(ndm);
+</Insert>
+<Copy StartSeek="3998" EndSeek="4023"/>
+<Insert>	printf("family: %u\n", ndm-&gt;ndm_family);
+</Insert>
+<Copy StartSeek="4065" EndSeek="6520"/>
+</Delta>
+<Delta Version="138" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:17:39000">
+<Copy StartSeek="0" EndSeek="4023"/>
+<Insert>	printf("family: %u\n", ifi-&gt;ndm_family);
+</Insert>
+<Copy StartSeek="4065" EndSeek="6520"/>
+</Delta>
+<Delta Version="139" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:17:45000">
+<Copy StartSeek="0" EndSeek="4176"/>
+<Insert>			uint32_t dst_addr = *((uint32_t *)RTA_DATA(rta));
+</Insert>
+<Copy StartSeek="4233" EndSeek="6524"/>
+</Delta>
+<Delta Version="140" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:18:51000">
+<Copy StartSeek="0" EndSeek="4394"/>
+<Insert>			uint8_t *data = (uint8_t *)RTA_DATA(rta);
+</Insert>
+<Copy StartSeek="4443" EndSeek="6528"/>
+</Delta>
+<Delta Version="141" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:18:53000">
+<Copy StartSeek="0" EndSeek="4304"/>
+<Insert>		if (rta-&gt;rta_type == NDA_LLADDR) {
+</Insert>
+<Copy StartSeek="4342" EndSeek="6529"/>
+</Delta>
+<Delta Version="142" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:20:2000">
+<Copy StartSeek="0" EndSeek="4342"/>
+<Insert>			#define MAX_BUF_LEN 6
+</Insert>
+<Copy StartSeek="4368" EndSeek="6530"/>
+</Delta>
+<Delta Version="143" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:20:16000">
+<Copy StartSeek="0" EndSeek="4368"/>
+<Insert>			uint8_t ha[MAX_BUF_LEN];
+</Insert>
+<Copy StartSeek="4398" EndSeek="6532"/>
+</Delta>
+<Delta Version="144" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:20:42000">
+<Copy StartSeek="0" EndSeek="4368"/>
+<Insert>			uint8_t name[MAX_BUF_LEN];
+</Insert>
+<Copy StartSeek="4401" EndSeek="6535"/>
+</Delta>
+<Delta Version="145" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:20:44000">
+<Copy StartSeek="0" EndSeek="4611"/>
+<Insert>			memcpy(ha, data, data_len);
+</Insert>
+<Copy StartSeek="4647" EndSeek="6540"/>
+</Delta>
+<Delta Version="146" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:20:50000">
+<Copy StartSeek="0" EndSeek="4647"/>
+<Copy StartSeek="4679" EndSeek="6572"/>
+</Delta>
+<Delta Version="147" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:21:13000">
+<Copy StartSeek="0" EndSeek="4679"/>
+<Insert>			for (i = 0; i &lt; data_len; i++) {
+				printf("%x:", ha[i]);
+			}
+</Insert>
+<Copy StartSeek="4719" EndSeek="6545"/>
+</Delta>
+<Delta Version="148" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:21:32000">
+<Copy StartSeek="0" EndSeek="4679"/>
+<Insert>			printf("if_name: %s", if_name);
+			}
+			printf("\n");
+</Insert>
+<Copy StartSeek="4716" EndSeek="6525"/>
+</Delta>
+<Delta Version="149" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:21:40000">
+<Copy StartSeek="0" EndSeek="4142"/>
+<Insert>		if (rta-&gt;rta_type == NDA_DST) {
+			uint32_t dst_addr = *((uint32_t *)IFLA_PAYLOAD(rta));
+			printf("ip " NIPQUAD_FMT "\n", NIPQUAD(dst_addr));
+			continue;
+		}
+</Insert>
+<Copy StartSeek="4142" EndSeek="6363"/>
+</Delta>
+<Delta Version="150" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:21:46000">
+<Copy StartSeek="0" EndSeek="4372"/>
+<Insert>			uint32_t i;
+
+			new_neigh = 1; /* NDA_LLADDR appears only in new entry */
+</Insert>
+<Copy StartSeek="4373" EndSeek="6287"/>
+</Delta>
+<Delta Version="151" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:21:59000">
+<Copy StartSeek="0" EndSeek="3854"/>
+<Insert>	struct ifinfomsg *ifi;
+</Insert>
+<Copy StartSeek="3878" EndSeek="3926"/>
+<Insert>	ifi = (struct ifinfomsg *)buffer;
+	rta = (struct rtattr*)RTM_RTA(ifi);
+	rtl = RTM_PAYLOAD(nlh);
+	printf("family: %u\n", ifi-&gt;ifi_family);
+</Insert>
+<Copy StartSeek="4066" EndSeek="4143"/>
+<Insert>		if (rta-&gt;rta_type == IFLA_IFNAME) {
+			#define MAX_BUF_LEN 16
+			uint8_t if_name[MAX_BUF_LEN];
+			uint8_t *data = (uint8_t *)IFLA_PAYLOAD(rta);
+</Insert>
+<Copy StartSeek="4436" EndSeek="4520"/>
+<Insert>
+			memcpy(if_name, data, data_len);
+			if_name[MAX_BUF_LEN -1] = 0;
+			printf("if_name: %s\n", if_name);
+</Insert>
+<Copy StartSeek="4712" EndSeek="6521"/>
+</Delta>
+<Delta Version="152" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:25:31000">
+<Copy StartSeek="0" EndSeek="4143"/>
+<Insert>		if (rta-&gt;rta_type == NDA_DST) {
+			uint32_t dst_addr = *((uint32_t *)RTA_DATA(rta));
+			printf("ip " NIPQUAD_FMT "\n", NIPQUAD(dst_addr));
+			continue;
+		}
+		if (rta-&gt;rta_type == NDA_LLADDR) {
+</Insert>
+<Copy StartSeek="4181" EndSeek="6364"/>
+</Delta>
+<Delta Version="153" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:25:48000">
+<Copy StartSeek="0" EndSeek="4181"/>
+<Insert>			#define MAX_BUF_LEN 6
+</Insert>
+<Copy StartSeek="4207" EndSeek="6365"/>
+</Delta>
+<Delta Version="154" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:25:51000">
+<Copy StartSeek="0" EndSeek="4207"/>
+<Insert>			uint8_t ha[MAX_BUF_LEN];
+</Insert>
+<Copy StartSeek="4240" EndSeek="6370"/>
+</Delta>
+<Delta Version="155" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:26:0000">
+<Copy StartSeek="0" EndSeek="4446"/>
+<Insert>			memcpy(ha, data, data_len);
+</Insert>
+<Copy StartSeek="4514" EndSeek="6407"/>
+</Delta>
+<Delta Version="156" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:26:16000">
+<Copy StartSeek="0" EndSeek="4482"/>
+<Insert>			if_name[MAX_BUF_LEN -1] = 0;
+</Insert>
+<Copy StartSeek="4517" EndSeek="6410"/>
+</Delta>
+<Delta Version="157" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:26:22000">
+<Copy StartSeek="0" EndSeek="4517"/>
+<Insert>			for (i = 0; i &lt; data_len; i++) {
+				printf("%x:", ha[i]);
+			}
+</Insert>
+<Copy StartSeek="4557" EndSeek="6383"/>
+</Delta>
+<Delta Version="158" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:26:37000">
+<Copy StartSeek="0" EndSeek="4517"/>
+<Insert>			printf("if_name: %s", if_name);
+			}
+			printf("\n");
+</Insert>
+<Copy StartSeek="4554" EndSeek="6363"/>
+</Delta>
+<Delta Version="159" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:26:42000">
+<Copy StartSeek="0" EndSeek="4369"/>
+<Insert>			uint32_t i;
+
+			new_neigh = 1; /* NDA_LLADDR appears only in new entry */
+</Insert>
+<Copy StartSeek="4370" EndSeek="6287"/>
+</Delta>
+<Delta Version="160" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:26:51000">
+<Copy StartSeek="0" EndSeek="3854"/>
+<Insert>	struct ifinfomsg *ndm;
+</Insert>
+<Copy StartSeek="3878" EndSeek="3926"/>
+<Insert>	ndm = (struct ifinfomsg *)buffer;
+	rta = (struct rtattr*)RTM_RTA(ndm);
+</Insert>
+<Copy StartSeek="3998" EndSeek="4024"/>
+<Insert>	printf("family: %u\n", ndm-&gt;ndm_family);
+</Insert>
+<Copy StartSeek="4066" EndSeek="6287"/>
+</Delta>
+<Delta Version="161" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:27:12000">
+<Copy StartSeek="0" EndSeek="4478"/>
+<Copy StartSeek="4523" EndSeek="6332"/>
+</Delta>
+<Delta Version="162" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:29:10000">
+<Copy StartSeek="0" EndSeek="4024"/>
+<Insert>	printf("family: %u\n", ifi-&gt;ndm_family);
+</Insert>
+<Copy StartSeek="4066" EndSeek="6332"/>
+</Delta>
+<Delta Version="163" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:29:25000">
+<Copy StartSeek="0" EndSeek="4815"/>
+<Insert>
+</Insert>
+<Copy StartSeek="5881" EndSeek="7397"/>
+</Delta>
+<Delta Version="164" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:50:41000">
+<Copy StartSeek="0" EndSeek="4181"/>
+<Insert>			#define MAX_BUF_LEN 16
+			uint8_t if_name[MAX_BUF_LEN];
+</Insert>
+<Copy StartSeek="4238" EndSeek="4404"/>
+<Insert>			if_name[MAX_BUF_LEN -1] = '\0';
+</Insert>
+<Copy StartSeek="4438" EndSeek="7394"/>
+</Delta>
+<Delta Version="165" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:51:38000">
+<Copy StartSeek="0" EndSeek="4306"/>
+<Insert>				rta-&gt;rta_len &lt; MAX_BUF_LEN ? rta-&gt;rta_len : MAX_BUF_LEN;
+</Insert>
+<Copy StartSeek="4366" EndSeek="7393"/>
+</Delta>
+<Delta Version="166" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:51:51000">
+<Copy StartSeek="0" EndSeek="4306"/>
+<Insert>				rta-&gt;rta_len &lt; MAX_BUF_LEN ? rta-&gt;rta_len : IFNAMESIZE;
+</Insert>
+<Copy StartSeek="4365" EndSeek="7392"/>
+</Delta>
+<Delta Version="167" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:52:29000">
+<Copy StartSeek="0" EndSeek="4143"/>
+<Copy StartSeek="4183" EndSeek="7432"/>
+</Delta>
+<Delta Version="168" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:56:27000">
+<Copy StartSeek="0" EndSeek="4694"/>
+<Copy StartSeek="4709" EndSeek="7447"/>
+</Delta>
+<Delta Version="169" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:57:36000">
+<Copy StartSeek="0" EndSeek="3961"/>
+<Insert>	rta = (struct rtattr*)RTM_RTA(ifi);
+</Insert>
+<Copy StartSeek="3998" EndSeek="7447"/>
+</Delta>
+<Delta Version="170" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:58:20000">
+<Copy StartSeek="0" EndSeek="3909"/>
+<Insert>	int new_neigh;
+
+</Insert>
+<Copy StartSeek="3910" EndSeek="7431"/>
+</Delta>
+<Delta Version="171" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:59:11000">
+<Copy StartSeek="0" EndSeek="3909"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3926" EndSeek="7447"/>
+</Delta>
+<Delta Version="172" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:59:22000">
+<Copy StartSeek="0" EndSeek="3961"/>
+<Insert>	rta = (struct rtattr*)RTM_RTA(nlh);
+</Insert>
+<Copy StartSeek="3999" EndSeek="7448"/>
+</Delta>
+<Delta Version="173" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="18:59:50000">
+<Copy StartSeek="0" EndSeek="3999"/>
+<Insert>	rtl = IFLA_PAYLOAD(nlh);
+</Insert>
+<Copy StartSeek="4025" EndSeek="7448"/>
+</Delta>
+<Delta Version="174" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="19:00:3000">
+<Copy StartSeek="0" EndSeek="3999"/>
+<Insert>	rtl = IFLA_PAYLOAD(ifi);
+</Insert>
+<Copy StartSeek="4025" EndSeek="7448"/>
+</Delta>
+<Delta Version="175" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="19:00:15000">
+<Copy StartSeek="0" EndSeek="6580"/>
+<Insert>	if (nlh.nlmsg_type == RTM_NEWROUTE ||
+	    nlh.nlmsg_type == RTM_DELROUTE) {
+</Insert>
+<Copy StartSeek="6647" EndSeek="6685"/>
+<Insert>	}
+	if (nlh.nlmsg_type == RTM_NEWNEIGH ||
+	    nlh.nlmsg_type == RTM_DELNEIGH) {
+</Insert>
+<Copy StartSeek="6725" EndSeek="6761"/>
+<Insert>	}
+	if (nlh.nlmsg_type == RTM_NEWLINK||
+	    nlh.nlmsg_type == RTM_DELLINK) {
+</Insert>
+<Copy StartSeek="6799" EndSeek="6839"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7233" EndSeek="7749"/>
+</Delta>
+<Delta Version="176" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:21:3000">
+<Copy StartSeek="0" EndSeek="6077"/>
+<Insert>	char buffer[1024]; /* pointer to |rtmsg header|rtm_data| */
+</Insert>
+<Copy StartSeek="6138" EndSeek="7749"/>
+</Delta>
+<Delta Version="177" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:25:42000">
+<Copy StartSeek="0" EndSeek="5945"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8702" EndSeek="10505"/>
+</Delta>
+<Delta Version="178" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:29:23000">
+<Copy StartSeek="0" EndSeek="6577"/>
+<Insert>			pr_err(NULL, LOG_ERR, "%s recvmsg overrun", nl-&gt;name);
+</Insert>
+<Copy StartSeek="6620" EndSeek="6659"/>
+<Insert>			pr_err(NULL, LOG_ERR, "%s EOF", nl-&gt;name);
+</Insert>
+<Copy StartSeek="6690" EndSeek="6748"/>
+<Insert>			pr_err(NULL, LOG_ERR, "%s sender address length error: length %d",
+</Insert>
+<Copy StartSeek="6803" EndSeek="7228"/>
+<Insert>					pr_err(NULL, LOG_ERR, "%s error: message truncated",
+</Insert>
+<Copy StartSeek="7271" EndSeek="7315"/>
+<Insert>				pr_err(NULL, LOG_ERR, "%s error: %s, type=%s(%u), seq=%u, pid=%d",
+</Insert>
+<Copy StartSeek="7371" EndSeek="8202"/>
+<Insert>				pr_err(NULL, LOG_ERR, "%s filter function error", nl-&gt;name);
+</Insert>
+<Copy StartSeek="8252" EndSeek="8340"/>
+<Insert>			pr_err(NULL, LOG_ERR, "%s error: message truncated", nl-&gt;name);
+</Insert>
+<Copy StartSeek="8392" EndSeek="8425"/>
+<Insert>			pr_err(NULL, LOG_ERR, "%s error: data remnant size %d", nl-&gt;name,
+</Insert>
+<Copy StartSeek="8479" EndSeek="10385"/>
+</Delta>
+<Delta Version="179" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:29:50000">
+<Copy StartSeek="0" EndSeek="7647"/>
+<Insert>			if (IS_ZEBRA_DEBUG_KERNEL)
+				zlog_info ("netlink_parse_info: %s type %s(%u), seq=%u, pid=%d",
+					   nl-&gt;name,
+					   lookup (nlmsg_str, h-&gt;nlmsg_type), h-&gt;nlmsg_type,
+					   h-&gt;nlmsg_seq, h-&gt;nlmsg_pid);
+</Insert>
+<Copy StartSeek="7894" EndSeek="10420"/>
+</Delta>
+<Delta Version="180" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:31:11000">
+<Copy StartSeek="0" EndSeek="7895"/>
+<Insert>			/* skip unsolicited messages originating from command socket */
+			if (nl != &amp;netlink_cmd &amp;&amp; h-&gt;nlmsg_pid == netlink_cmd.snl.nl_pid) {
+				if (IS_ZEBRA_DEBUG_KERNEL)
+					zlog_info ("netlink_parse_info: %s packet comes from %s",
+						   nl-&gt;name, netlink_cmd.name);
+				continue;
+			}
+
+</Insert>
+<Copy StartSeek="7895" EndSeek="10130"/>
+</Delta>
+<Delta Version="181" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:31:24000">
+<Copy StartSeek="0" EndSeek="7647"/>
+<Insert>//      		if (IS_ZEBRA_DEBUG_KERNEL)
+//      			zlog_info ("netlink_parse_info: %s type %s(%u), seq=%u, pid=%d",
+//      				   nl-&gt;name,
+//      				   lookup (nlmsg_str, h-&gt;nlmsg_type), h-&gt;nlmsg_type,
+//      				   h-&gt;nlmsg_seq, h-&gt;nlmsg_pid);
+
+			error = (*filter) (&amp;snl, h);
+			if (error &lt; 0) {
+				pr_err("%s filter function error", nl-&gt;name);
+				ret = error;
+			}
+		}
+
+</Insert>
+<Copy StartSeek="7653" EndSeek="9759"/>
+</Delta>
+<Delta Version="182" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:37:5000">
+<Copy StartSeek="0" EndSeek="6102"/>
+<Insert>netlink_parse_info (int (*filter) (struct sockaddr_nl *, struct nlmsghdr *),
+</Insert>
+<Copy StartSeek="6178" EndSeek="9758"/>
+</Delta>
+<Delta Version="183" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:37:11000">
+<Copy StartSeek="0" EndSeek="5993"/>
+<Insert>/* Receive message from netlink interface and pass those information
+</Insert>
+<Copy StartSeek="6056" EndSeek="9752"/>
+</Delta>
+<Delta Version="184" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:37:18000">
+<Copy StartSeek="0" EndSeek="6056"/>
+<Insert>   to the given function. */
+</Insert>
+<Copy StartSeek="6084" EndSeek="9751"/>
+</Delta>
+<Delta Version="185" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:37:29000">
+<Copy StartSeek="0" EndSeek="5993"/>
+<Insert>/* Receive message from netlink interface and pass information
+</Insert>
+<Copy StartSeek="6046" EndSeek="9741"/>
+</Delta>
+<Delta Version="186" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:37:37000">
+<Copy StartSeek="0" EndSeek="5993"/>
+<Insert>/* Receive message from netlink and pass information
+   to relevant function. */
+</Insert>
+<Copy StartSeek="6071" EndSeek="9738"/>
+</Delta>
+<Delta Version="187" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:37:39000">
+<Copy StartSeek="0" EndSeek="6082"/>
+<Insert>netlink_parse_info(int (*filter) (struct sockaddr_nl *, struct nlmsghdr *),
+</Insert>
+<Copy StartSeek="6163" EndSeek="9743"/>
+</Delta>
+<Delta Version="188" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:37:52000">
+<Copy StartSeek="0" EndSeek="6082"/>
+<Insert>klna_netlink_parse_info(int (*filter) (struct sockaddr_nl *, struct nlmsghdr *),
+</Insert>
+<Copy StartSeek="6149" EndSeek="9729"/>
+</Delta>
+<Delta Version="189" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:38:0000">
+<Copy StartSeek="0" EndSeek="6082"/>
+<Insert>klna_netlink_parse_info((struct sockaddr_nl *, struct nlmsghdr *),
+</Insert>
+<Copy StartSeek="6148" EndSeek="9728"/>
+</Delta>
+<Delta Version="190" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:38:3000">
+<Copy StartSeek="0" EndSeek="6082"/>
+<Insert>klna_netlink_parse_info(struct sockaddr_nl *, struct nlmsghdr *),
+		    struct nlsock *nl)
+{
+</Insert>
+<Copy StartSeek="6127" EndSeek="9680"/>
+</Delta>
+<Delta Version="191" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:40:11000">
+<Copy StartSeek="0" EndSeek="6498"/>
+<Insert>			pr_err("%s recvmsg overrun", nl-&gt;name);
+</Insert>
+<Copy StartSeek="6541" EndSeek="6580"/>
+<Insert>			pr_err("%s EOF", nl-&gt;name);
+</Insert>
+<Copy StartSeek="6611" EndSeek="6669"/>
+<Insert>			pr_err("%s sender address length error: length %d",
+</Insert>
+<Copy StartSeek="6724" EndSeek="7149"/>
+<Insert>					pr_err("%s error: message truncated",
+</Insert>
+<Copy StartSeek="7192" EndSeek="7236"/>
+<Insert>				pr_err("%s error: %s, type=%s(%u), seq=%u, pid=%d",
+</Insert>
+<Copy StartSeek="7292" EndSeek="7635"/>
+<Insert>			pr_err("%s error: message truncated", nl-&gt;name);
+</Insert>
+<Copy StartSeek="7687" EndSeek="7720"/>
+<Insert>			pr_err("%s error: data remnant size %d", nl-&gt;name,
+</Insert>
+<Copy StartSeek="7774" EndSeek="9680"/>
+</Delta>
+<Delta Version="192" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:42:6000">
+<Copy StartSeek="0" EndSeek="7469"/>
+<Insert>				/*
+				ret = -1;
+				continue;
+				*/
+</Insert>
+<Copy StartSeek="7469" EndSeek="9638"/>
+</Delta>
+<Delta Version="193" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:42:17000">
+<Copy StartSeek="0" EndSeek="7526"/>
+<Insert>
+		}
+
+</Insert>
+<Copy StartSeek="7812" EndSeek="9918"/>
+</Delta>
+<Delta Version="194" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:42:50000">
+<Copy StartSeek="0" EndSeek="7599"/>
+<Insert>				return klna_ev_route(&amp;nlh, buffer);
+</Insert>
+<Copy StartSeek="7636" EndSeek="7680"/>
+<Insert>				return klna_ev_arp(&amp;nlh, buffer);
+</Insert>
+<Copy StartSeek="7716" EndSeek="7758"/>
+<Insert>				return klna_ev_link(&amp;nlh, buffer);
+</Insert>
+<Copy StartSeek="7794" EndSeek="9910"/>
+</Delta>
+<Delta Version="195" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:43:25000">
+<Copy StartSeek="0" EndSeek="7599"/>
+<Insert>				return klna_ev_route(h, buffer);
+</Insert>
+<Copy StartSeek="7641" EndSeek="7685"/>
+<Insert>				return klna_ev_arp(&amp;h, buffer);
+</Insert>
+<Copy StartSeek="7726" EndSeek="7768"/>
+<Insert>				return klna_ev_link(h, buffer);
+</Insert>
+<Copy StartSeek="7809" EndSeek="9925"/>
+</Delta>
+<Delta Version="196" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:43:49000">
+<Copy StartSeek="0" EndSeek="7685"/>
+<Insert>				return klna_ev_arp(&amp;h, (void *)buf);
+</Insert>
+<Copy StartSeek="7725" EndSeek="9924"/>
+</Delta>
+<Delta Version="197" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:43:53000">
+<Copy StartSeek="0" EndSeek="9876"/>
+<Insert>	while (1)
+		klna_read_event(nls);
+</Insert>
+<Copy StartSeek="9957" EndSeek="9970"/>
+</Delta>
+<Delta Version="198" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:44:21000">
+<Copy StartSeek="0" EndSeek="6360"/>
+<Insert>		status = recvmsg (nl-&gt;sock, &amp;msg, 0);
+</Insert>
+<Copy StartSeek="6399" EndSeek="9969"/>
+</Delta>
+<Delta Version="199" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:45:8000">
+<Copy StartSeek="0" EndSeek="6082"/>
+<Insert>klna_netlink_parse_info(struct nlsock *nl)
+</Insert>
+<Copy StartSeek="6124" EndSeek="6359"/>
+<Insert>		status = recvmsg(nl-&gt;sock, &amp;msg, 0);
+</Insert>
+<Copy StartSeek="6394" EndSeek="9964"/>
+</Delta>
+<Delta Version="200" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:47:22000">
+<Copy StartSeek="0" EndSeek="6082"/>
+<Insert>klna_netlink_parse_info(int nlsock *sock)
+</Insert>
+<Copy StartSeek="6123" EndSeek="9963"/>
+</Delta>
+<Delta Version="201" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:47:25000">
+<Copy StartSeek="0" EndSeek="6082"/>
+<Insert>klna_netlink_parse_info(int nlsock sock)
+</Insert>
+<Copy StartSeek="6116" EndSeek="9956"/>
+</Delta>
+<Delta Version="202" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:47:28000">
+<Copy StartSeek="0" EndSeek="9911"/>
+<Insert>	klna_netlink_parse_info(&amp;nls);
+</Insert>
+<Copy StartSeek="9942" EndSeek="9955"/>
+</Delta>
+<Delta Version="203" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:47:46000">
+<Copy StartSeek="0" EndSeek="85"/>
+<Copy StartSeek="104" EndSeek="9974"/>
+</Delta>
+<Delta Version="204" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:48:53000">
+<Copy StartSeek="0" EndSeek="6503"/>
+<Insert>			perror("%s recvmsg overrun", nl-&gt;name);
+</Insert>
+<Copy StartSeek="6533" EndSeek="9961"/>
+</Delta>
+<Delta Version="205" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:49:11000">
+<Copy StartSeek="0" EndSeek="6572"/>
+<Insert>			perror("%s EOF", nl-&gt;name);
+</Insert>
+<Copy StartSeek="6590" EndSeek="9948"/>
+</Delta>
+<Delta Version="206" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:49:18000">
+<Copy StartSeek="0" EndSeek="6276"/>
+<Insert>		struct msghdr msg = { (void*)&amp;snl, sizeof snl, &amp;iov, 1, NULL, 0, 0};
+</Insert>
+<Copy StartSeek="6348" EndSeek="6649"/>
+<Insert>			perror("%s sender address length error: length %d",
+</Insert>
+<Copy StartSeek="6701" EndSeek="9946"/>
+</Delta>
+<Delta Version="207" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:49:51000">
+<Copy StartSeek="0" EndSeek="6649"/>
+<Insert>			perror("sender address length error: length %d",
+			      nl-&gt;name, msg.msg_namelen);
+</Insert>
+<Copy StartSeek="6719" EndSeek="9927"/>
+</Delta>
+<Delta Version="208" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:49:57000">
+<Copy StartSeek="0" EndSeek="6649"/>
+<Insert>			perror("sender address length error: length %d", msg.msg_namelen);
+</Insert>
+<Copy StartSeek="6729" EndSeek="9937"/>
+</Delta>
+<Delta Version="209" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:50:3000">
+<Copy StartSeek="0" EndSeek="7117"/>
+<Insert>					perror("%s error: message truncated",
+					      nl-&gt;name);
+</Insert>
+<Copy StartSeek="7158" EndSeek="9913"/>
+</Delta>
+<Delta Version="210" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:50:12000">
+<Copy StartSeek="0" EndSeek="7180"/>
+<Insert>				perror("%s error: %s, type=%s(%u), seq=%u, pid=%d",
+				      nl-&gt;name, strerror (-err-&gt;error),
+</Insert>
+<Copy StartSeek="7267" EndSeek="9900"/>
+</Delta>
+<Delta Version="211" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:50:24000">
+<Copy StartSeek="0" EndSeek="7457"/>
+<Insert>			switch (nlh.nlmsg_type) {
+</Insert>
+<Copy StartSeek="7485" EndSeek="9899"/>
+</Delta>
+<Delta Version="212" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:50:43000">
+<Copy StartSeek="0" EndSeek="6649"/>
+<Insert>			perror("sender address length error: length %d",
+			       msg.msg_namelen);
+</Insert>
+<Copy StartSeek="6691" EndSeek="9861"/>
+</Delta>
+<Delta Version="213" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:51:22000">
+<Copy StartSeek="0" EndSeek="6649"/>
+<Insert>			perror("sender address length error");
+</Insert>
+<Copy StartSeek="6718" EndSeek="7222"/>
+<Insert>				      strerror (-err-&gt;error),
+</Insert>
+<Copy StartSeek="7255" EndSeek="9887"/>
+</Delta>
+<Delta Version="214" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:51:52000">
+<Copy StartSeek="0" EndSeek="6504"/>
+<Insert>			perror("recvmsg overrun");
+</Insert>
+<Copy StartSeek="6534" EndSeek="6573"/>
+<Insert>			perror("EOF");
+</Insert>
+<Copy StartSeek="6591" EndSeek="6649"/>
+<Insert>			perror("sender address length error",
+</Insert>
+<Copy StartSeek="6690" EndSeek="7106"/>
+<Insert>					perror("error: message truncated");
+</Insert>
+<Copy StartSeek="7147" EndSeek="7169"/>
+<Insert>				perror("error: %s, type=%s(%u), seq=%u, pid=%d",
+</Insert>
+<Copy StartSeek="7222" EndSeek="7797"/>
+<Insert>			perror("%s error: message truncated", nl-&gt;name);
+</Insert>
+<Copy StartSeek="7849" EndSeek="7882"/>
+<Insert>			perror("%s error: data remnant size %d", nl-&gt;name,
+</Insert>
+<Copy StartSeek="7936" EndSeek="9887"/>
+</Delta>
+<Delta Version="215" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:52:7000">
+<Copy StartSeek="0" EndSeek="537"/>
+<Insert>
+
+#if 0
+/* buffer to hold the RTNETLINK request */
+struct {
+	struct nlmsghdr nl;
+	struct rtmsg    rt;
+	char            buf[8192];
+} req;
+
+// variables used for
+// socket communications
+int fd;
+struct sockaddr_nl la;
+struct sockaddr_nl pa;
+struct msghdr msg;
+struct iovec iov;
+int rtn;
+
+// RTNETLINK message pointers &amp; lengths
+// used when processing messages
+struct nlmsghdr *nlp;
+int nll;
+struct rtmsg *rtp;
+int rtl;
+struct rtattr *rtap;
+
+
+void __read_reply(void)
+{
+	// string to hold content of the route
+	// table (i.e. one entry)
+	char dsts[24], gws[24], ifs[16], ms[24];
+
+	// outer loop: loops thru all the NETLINK
+	// headers that also include the route entry
+	// header
+	nlp = (struct nlmsghdr *) buf;
+	for (;NLMSG_OK(nlp, nll);nlp=NLMSG_NEXT(nlp, nll)) {
+
+		// get route entry header
+		rtp = (struct rtmsg *) NLMSG_DATA(nlp);
+
+		// we are only concerned about the
+		// main route table
+		if (rtp-&gt;rtm_table != RT_TABLE_MAIN)
+			continue;
+
+		// init all the strings
+		bzero(dsts, sizeof(dsts));
+		bzero(gws, sizeof(gws));
+		bzero(ifs, sizeof(ifs));
+		bzero(ms, sizeof(ms));
+
+		// inner loop: loop thru all the attributes of
+		// one route entry
+		rtap = (struct rtattr *) RTM_RTA(rtp);
+		rtl = RTM_PAYLOAD(nlp);
+		for (;RTA_OK(rtap, rtl);rtap=RTA_NEXT(rtap,rtl)) {
+			switch (rtap-&gt;rta_type) {
+			// destination IPv4 address
+			case RTA_DST:
+				inet_ntop(AF_INET, RTA_DATA(rtap),
+					  dsts, 24);
+				break;
+
+				// next hop IPv4 address
+			case RTA_GATEWAY:
+				inet_ntop(AF_INET, RTA_DATA(rtap),
+					  gws, 24);
+				break;
+
+				// unique ID associated with the network
+				// interface
+			case RTA_OIF:
+				sprintf(ifs, "%d",
+					*((int *) RTA_DATA(rtap)));
+			default:
+				break;
+			}
+		}
+		sprintf(ms, "%d", rtp-&gt;rtm_dst_len);
+
+		printf("dst %s/%s gw %s if %s\n",
+		       dsts, ms, gws, ifs);
+	}
+}
+#endif /* sample code for review */
+
+</Insert>
+<Copy StartSeek="537" EndSeek="5404"/>
+<Insert>				      lookup (nlmsg_str, err-&gt;msg.nlmsg_type),
+</Insert>
+<Copy StartSeek="5454" EndSeek="8035"/>
+</Delta>
+<Delta Version="216" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:52:59000">
+<Copy StartSeek="0" EndSeek="5404"/>
+<Insert>				      lookup(nlmsg_str, err-&gt;msg.nlmsg_type),
+</Insert>
+<Copy StartSeek="5463" EndSeek="8044"/>
+</Delta>
+<Delta Version="217" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:54:2000">
+<Copy StartSeek="0" EndSeek="5954"/>
+<Insert>			printf("%s error: message truncated", nl-&gt;name);
+</Insert>
+<Copy StartSeek="5993" EndSeek="8031"/>
+</Delta>
+<Delta Version="218" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:54:26000">
+<Copy StartSeek="0" EndSeek="6026"/>
+<Insert>			printf("%s error: data remnant size %d", nl-&gt;name,
+			      status);
+</Insert>
+<Copy StartSeek="6076" EndSeek="8009"/>
+</Delta>
+<Delta Version="219" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:54:33000">
+<Copy StartSeek="0" EndSeek="5674"/>
+<Insert>				return klna_ev_route(h, (void *)buf);
+</Insert>
+<Copy StartSeek="5720" EndSeek="5764"/>
+<Insert>				return klna_ev_arp(h, (void *)buf);
+</Insert>
+<Copy StartSeek="5808" EndSeek="5850"/>
+<Insert>				return klna_ev_link(h, (void *)buf);
+			}
+		}
+
+</Insert>
+<Copy StartSeek="5905" EndSeek="8021"/>
+</Delta>
+<Delta Version="220" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:56:27000">
+<Copy StartSeek="0" EndSeek="5674"/>
+<Insert>				klna_ev_route(h, (void *)buf);
+</Insert>
+<Copy StartSeek="5715" EndSeek="5770"/>
+<Insert>				klna_ev_arp(h, (void *)buf);
+</Insert>
+<Copy StartSeek="5809" EndSeek="5862"/>
+<Insert>				klna_ev_link(h, (void *)buf);
+</Insert>
+<Copy StartSeek="5902" EndSeek="6124"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="6183" EndSeek="8095"/>
+</Delta>
+<Delta Version="221" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:58:1000">
+<Copy StartSeek="0" EndSeek="6176"/>
+<Insert>		}
+	}
+</Insert>
+<Copy StartSeek="6193" EndSeek="8105"/>
+</Delta>
+<Delta Version="222" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="11:58:13000">
+<Copy StartSeek="0" EndSeek="5565"/>
+<Insert>
+</Insert>
+<Copy StartSeek="5663" EndSeek="8202"/>
+</Delta>
+<Delta Version="223" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="12:00:31000">
+<Copy StartSeek="0" EndSeek="5662"/>
+<Insert>
+</Insert>
+<Copy StartSeek="5662" EndSeek="8201"/>
+</Delta>
+<Delta Version="224" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="12:00:41000">
+<Copy StartSeek="0" EndSeek="5565"/>
+<Insert>			printf("nlmsg_type: %i (%s)\n",(nlh.nlmsg_type), klna_lookup_name(typenames,nlh.nlmsg_type));
+</Insert>
+<Copy StartSeek="5660" EndSeek="8199"/>
+</Delta>
+<Delta Version="225" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="12:00:55000">
+<Copy StartSeek="0" EndSeek="3195"/>
+<Insert>	printf("family: %u\n", ndm-&gt;ndm_family);
+</Insert>
+<Copy StartSeek="3251" EndSeek="8213"/>
+</Delta>
+<Delta Version="226" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="12:02:48000">
+<Copy StartSeek="0" EndSeek="2193"/>
+<Insert>	printf("family: %u\n", ifi-&gt;ifi_family);
+</Insert>
+<Copy StartSeek="2249" EndSeek="8227"/>
+</Delta>
+<Delta Version="227" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="12:03:2000">
+<Copy StartSeek="0" EndSeek="1280"/>
+<Insert>	printf("family: %u\n", rtm-&gt;rtm_family);
+</Insert>
+<Copy StartSeek="1336" EndSeek="8241"/>
+</Delta>
+<Delta Version="228" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="12:03:14000">
+<Copy StartSeek="0" EndSeek="3356"/>
+<Copy StartSeek="3395" EndSeek="8280"/>
+</Delta>
+<Delta Version="229" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:14:22000">
+<Copy StartSeek="0" EndSeek="3356"/>
+<Insert>		printf("rta_attr %u "rta-&gt;rta_type);
+</Insert>
+<Copy StartSeek="3396" EndSeek="8281"/>
+</Delta>
+<Delta Version="230" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:14:34000">
+<Copy StartSeek="0" EndSeek="3356"/>
+<Insert>		printf("rta_attr %u ",rta-&gt;rta_type);
+</Insert>
+<Copy StartSeek="3356" EndSeek="8241"/>
+</Delta>
+<Delta Version="231" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:15:19000">
+<Copy StartSeek="0" EndSeek="4399"/>
+<Insert>		struct iovec iov = { buf, sizeof buf };
+</Insert>
+<Copy StartSeek="4442" EndSeek="8242"/>
+</Delta>
+<Delta Version="232" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:16:35000">
+<Copy StartSeek="0" EndSeek="7287"/>
+<Insert>//      if (nlh.nlmsg_type == RTM_NEWROUTE ||
+//          nlh.nlmsg_type == RTM_DELROUTE) {
+//
+//      }
+//      if (nlh.nlmsg_type == RTM_NEWNEIGH ||
+//          nlh.nlmsg_type == RTM_DELNEIGH) {
+//      	return klna_ev_arp(&amp;nlh, buffer);
+//      }
+//      if (nlh.nlmsg_type == RTM_NEWLINK||
+//          nlh.nlmsg_type == RTM_DELLINK) {
+//      	return klna_ev_link(&amp;nlh, buffer);
+//      }
+
+</Insert>
+<Copy StartSeek="7288" EndSeek="7849"/>
+</Delta>
+<Delta Version="233" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:43:16000">
+<Copy StartSeek="0" EndSeek="7756"/>
+<Insert>//      while (1)
+//      	klna_read_event(nls);
+	klna_netlink_parse_info(nls);
+</Insert>
+<Copy StartSeek="7829" EndSeek="7842"/>
+</Delta>
+<Delta Version="234" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:45:16000">
+<Copy StartSeek="0" EndSeek="4281"/>
+<Insert>static int
+klna_netlink_parse_info(int sock)
+{
+	int status;
+	int ret = 0;
+	int error;
+
+	while (1) {
+		char buf[4096];
+		struct iovec iov = { buf, sizeof(buf) };
+		struct sockaddr_nl snl;
+		struct msghdr msg = { (void*)&amp;snl, sizeof(snl), &amp;iov, 1, NULL, 0, 0};
+		struct nlmsghdr *h;
+
+		status = recvmsg(sock, &amp;msg, 0);
+
+		if (status &lt; 0) {
+			if (errno == EINTR)
+				continue;
+			if (errno == EWOULDBLOCK)
+				break;
+			printf("recvmsg overrun");
+			continue;
+		}
+
+		if (status == 0) {
+			printf("EOF");
+			return -1;
+		}
+
+		if (msg.msg_namelen != sizeof snl) {
+			printf("sender address length error",
+			       msg.msg_namelen);
+			return -1;
+		}
+
+		for (h = (struct nlmsghdr *) buf; NLMSG_OK (h, status); 
+		    h = NLMSG_NEXT (h, status)) {
+			/* Finish of reading. */
+			if (h-&gt;nlmsg_type == NLMSG_DONE)
+				return ret;
+
+			/* Error handling. */
+			if (h-&gt;nlmsg_type == NLMSG_ERROR) {
+				struct nlmsgerr *err = (struct nlmsgerr *) NLMSG_DATA (h);
+				if (h-&gt;nlmsg_len &lt; NLMSG_LENGTH (sizeof (struct nlmsgerr))) {
+					printf("error: message truncated");
+					return -1;
+				}
+				printf("error: %s, type=%s(%u), seq=%u, pid=%d",
+				      strerror(-err-&gt;error),
+				      klna_lookup_name(typenames,err-&gt;msg.nlmsg_type),
+				      err-&gt;msg.nlmsg_type, err-&gt;msg.nlmsg_seq,
+				      err-&gt;msg.nlmsg_pid);
+				return -1;
+			}
+			printf("nlmsg_type: %i (%s)\n",(h-&gt;nlmsg_type), klna_lookup_name(typenames,h-&gt;nlmsg_type));
+			/* OK we got netlink message. */
+			switch (h-&gt;nlmsg_type) {
+			case RTM_NEWROUTE:
+			case RTM_DELROUTE:
+				ret = klna_ev_route(h, (void *)buf);
+				break;
+			case RTM_NEWNEIGH:
+			case RTM_DELNEIGH:
+				ret = klna_ev_arp(h, (void *)buf);
+				break;
+			case RTM_NEWLINK:
+			case RTM_DELLINK:
+				ret = klna_ev_link(h, (void *)buf);
+				break;
+			}
+		}
+
+		/* After error care. */
+		if (msg.msg_flags &amp; MSG_TRUNC) {
+			printf("error: message truncated");
+			continue;
+		}
+		if (status) {
+			printf("error: data remnant size %d", status);
+			return -1;
+		}
+		if (ret) {
+			printf("error: message parsing\n");
+			break;
+		}
+	}
+	return ret;
+}
+</Insert>
+<Copy StartSeek="8078" EndSeek="9575"/>
+</Delta>
+<Delta Version="235" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:45:35000">
+<Copy StartSeek="0" EndSeek="4281"/>
+<Insert>//static int
+//klna_netlink_parse_info(int sock)
+</Insert>
+<Copy StartSeek="4328" EndSeek="9573"/>
+</Delta>
+<Delta Version="236" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:45:37000">
+<Copy StartSeek="0" EndSeek="9487"/>
+<Insert>	while (1)
+		klna_read_event(nls);
+//      klna_netlink_parse_info(nls);
+</Insert>
+<Copy StartSeek="9567" EndSeek="9580"/>
+</Delta>
+<Delta Version="237" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:47:27000">
+<Copy StartSeek="0" EndSeek="4281"/>
+<Insert>//static int klna_netlink_parse_info(int sock)
+//{
+//        int status;
+//        int ret = 0;
+//        int error;
+//
+//        while (1) {
+//                char buf[4096];
+//                struct iovec iov = { buf, sizeof(buf) };
+//                struct sockaddr_nl snl;
+//                struct msghdr msg = { (void*)&amp;snl, sizeof(snl), &amp;iov, 1, NULL, 0, 0};
+//                struct nlmsghdr *h;
+//
+//                status = recvmsg(sock, &amp;msg, 0);
+//
+//                if (status &lt; 0) {
+//                        if (errno == EINTR)
+//                                continue;
+//                        if (errno == EWOULDBLOCK)
+//                                break;
+//                        printf("recvmsg overrun");
+//                        continue;
+//                }
+//
+//                if (status == 0) {
+//                        printf("EOF");
+//                        return -1;
+//                }
+//
+//                if (msg.msg_namelen != sizeof snl) {
+//                        printf("sender address length error",
+//                               msg.msg_namelen);
+//                        return -1;
+//                }
+//
+//                for (h = (struct nlmsghdr *) buf; NLMSG_OK (h, status);
+//                    h = NLMSG_NEXT (h, status)) {
+//                        /* Finish of reading. */
+//                        if (h-&gt;nlmsg_type == NLMSG_DONE)
+//                                return ret;
+//
+//                        /* Error handling. */
+//                        if (h-&gt;nlmsg_type == NLMSG_ERROR) {
+//                                struct nlmsgerr *err = (struct nlmsgerr *) NLMSG_DATA (h);
+//                                if (h-&gt;nlmsg_len &lt; NLMSG_LENGTH (sizeof (struct nlmsgerr))) {
+//                                        printf("error: message truncated");
+//                                        return -1;
+//                                }
+//                                printf("error: %s, type=%s(%u), seq=%u, pid=%d",
+//                                      strerror(-err-&gt;error),
+//                                      klna_lookup_name(typenames,err-&gt;msg.nlmsg_type),
+//                                      err-&gt;msg.nlmsg_type, err-&gt;msg.nlmsg_seq,
+//                                      err-&gt;msg.nlmsg_pid);
+//                                return -1;
+//                        }
+//                        printf("nlmsg_type: %i (%s)\n",(h-&gt;nlmsg_type), klna_lookup_name(typenames,h-&gt;nlmsg_type));
+//                        /* OK we got netlink message. */
+//                        switch (h-&gt;nlmsg_type) {
+//                        case RTM_NEWROUTE:
+//                        case RTM_DELROUTE:
+//                                ret = klna_ev_route(h, (void *)buf);
+//                                break;
+//                        case RTM_NEWNEIGH:
+//                        case RTM_DELNEIGH:
+//                                ret = klna_ev_arp(h, (void *)buf);
+//                                break;
+//                        case RTM_NEWLINK:
+//                        case RTM_DELLINK:
+//                                ret = klna_ev_link(h, (void *)buf);
+//                                break;
+//                        }
+//                }
+//
+//                /* After error care. */
+//                if (msg.msg_flags &amp; MSG_TRUNC) {
+//                        printf("error: message truncated");
+//                        continue;
+//                }
+//                if (status) {
+//                        printf("error: data remnant size %d", status);
+//                        return -1;
+//                }
+//                if (ret) {
+//                        printf("error: message parsing\n");
+//                        break;
+//                }
+//        }
+//        return ret;
+//}
+</Insert>
+<Copy StartSeek="6344" EndSeek="7848"/>
+</Delta>
+<Delta Version="238" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:47:38000">
+<Copy StartSeek="0" EndSeek="6058"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6058" EndSeek="7847"/>
+</Delta>
+<Delta Version="239" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:47:47000">
+<Copy StartSeek="0" EndSeek="864"/>
+<Copy StartSeek="1095" EndSeek="8078"/>
+</Delta>
+<Delta Version="240" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:48:38000">
+<Copy StartSeek="0" EndSeek="877"/>
+<Insert>klna_netlink_parse_rtattr (struct rtattr **tb, int max, struct rtattr *rta, int len)
+{
+</Insert>
+<Copy StartSeek="971" EndSeek="8085"/>
+</Delta>
+<Delta Version="241" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:48:46000">
+<Copy StartSeek="0" EndSeek="971"/>
+<Insert>  while (RTA_OK(rta, len)) 
+    {
+      if (rta-&gt;rta_type &lt;= max)
+	tb[rta-&gt;rta_type] = rta;
+      rta = RTA_NEXT(rta,len);
+    }
+}
+</Insert>
+<Copy StartSeek="1087" EndSeek="8070"/>
+</Delta>
+<Delta Version="242" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:48:58000">
+<Copy StartSeek="0" EndSeek="1055"/>
+<Insert>		rta = RTA_NEXT(rta,len);
+</Insert>
+<Copy StartSeek="1083" EndSeek="8071"/>
+</Delta>
+<Delta Version="243" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:49:2000">
+<Copy StartSeek="0" EndSeek="877"/>
+<Insert>klna_netlink_parse_rtattr (struct rtattr **tb, int max, 
+</Insert>
+<Copy StartSeek="933" EndSeek="8070"/>
+</Delta>
+<Delta Version="244" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:49:10000">
+<Copy StartSeek="0" EndSeek="864"/>
+<Insert>static void 
+klna_netlink_parse_rtattr(struct rtattr **tb, int max, 
+			   struct rtattr *rta, int len)
+{
+	while (RTA_OK(rta, len)) {
+		if (rta-&gt;rta_type &lt;= max)
+			tb[rta-&gt;rta_type] = rta;
+		rta = RTA_NEXT(rta, len);
+	}
+}
+</Insert>
+<Copy StartSeek="864" EndSeek="7847"/>
+</Delta>
+<Delta Version="245" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:50:50000">
+<Copy StartSeek="0" EndSeek="6391"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6397" EndSeek="7304"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7311" EndSeek="7858"/>
+</Delta>
+<Delta Version="246" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:53:49000">
+<Copy StartSeek="0" EndSeek="7311"/>
+<Copy StartSeek="7312" EndSeek="7859"/>
+</Delta>
+<Delta Version="247" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:53:53000">
+<Copy StartSeek="0" EndSeek="4399"/>
+<Insert>		struct iovec iov = { buf, sizeof(buf) };
+</Insert>
+<Copy StartSeek="4472" EndSeek="7889"/>
+</Delta>
+<Delta Version="248" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:55:21000">
+<Copy StartSeek="0" EndSeek="4399"/>
+<Insert>		struct iovec iov = { .iov_base = buf, 
+</Insert>
+<Copy StartSeek="4444" EndSeek="7893"/>
+</Delta>
+<Delta Version="249" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:55:24000">
+<Copy StartSeek="0" EndSeek="4502"/>
+<Insert>		struct msghdr msg = { (void*)&amp;snl, sizeof(snl), &amp;iov, 1, NULL, 0, 0};
+</Insert>
+<Copy StartSeek="5009" EndSeek="8328"/>
+</Delta>
+<Delta Version="250" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:57:27000">
+<Copy StartSeek="0" EndSeek="4876"/>
+<Insert>
+</Insert>
+<Copy StartSeek="4876" EndSeek="8327"/>
+</Delta>
+<Delta Version="251" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:57:32000">
+<Copy StartSeek="0" EndSeek="4502"/>
+<Insert>		struct msghdr {
+			void	*	msg_name;	/* Socket name			*/
+			int		msg_namelen;	/* Length of name		*/
+			struct iovec *	msg_iov;	/* Data blocks			*/
+			__kernel_size_t	msg_iovlen;	/* Number of blocks		*/
+			void 	*	msg_control;	/* Per protocol magic (eg BSD file descriptor passing) */
+			__kernel_size_t	msg_controllen;	/* Length of cmsg list */
+			unsigned	msg_flags;
+		};
+</Insert>
+<Copy StartSeek="4502" EndSeek="7953"/>
+</Delta>
+<Delta Version="252" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:58:6000">
+<Copy StartSeek="0" EndSeek="4502"/>
+<Insert>		struct msghdr msg = { 
+</Insert>
+<Copy StartSeek="4526" EndSeek="7952"/>
+</Delta>
+<Delta Version="253" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:58:14000">
+<Copy StartSeek="0" EndSeek="4444"/>
+<Insert>			.iov_len = sizeof(buf) 
+</Insert>
+<Copy StartSeek="4471" EndSeek="7952"/>
+</Delta>
+<Delta Version="254" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:58:31000">
+<Copy StartSeek="0" EndSeek="4691"/>
+<Insert>
+</Insert>
+<Copy StartSeek="4691" EndSeek="7951"/>
+</Delta>
+<Delta Version="255" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:59:8000">
+<Copy StartSeek="0" EndSeek="4835"/>
+<Insert>
+</Insert>
+<Copy StartSeek="4835" EndSeek="7950"/>
+</Delta>
+<Delta Version="256" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:59:12000">
+<Copy StartSeek="0" EndSeek="4892"/>
+<Insert>
+</Insert>
+<Copy StartSeek="4892" EndSeek="7949"/>
+</Delta>
+<Delta Version="257" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:59:14000">
+<Copy StartSeek="0" EndSeek="5018"/>
+<Insert>
+</Insert>
+<Copy StartSeek="5018" EndSeek="7948"/>
+</Delta>
+<Delta Version="258" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="13:59:18000">
+<Copy StartSeek="0" EndSeek="1255"/>
+<Insert>	rtl = RTM_PAYLOAD(nlh);
+</Insert>
+<Copy StartSeek="1280" EndSeek="7948"/>
+</Delta>
+<Delta Version="259" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:01:8000">
+<Copy StartSeek="0" EndSeek="1255"/>
+<Insert>	rtl = RTM_PAYLOAD(rtm);
+</Insert>
+<Copy StartSeek="1280" EndSeek="7948"/>
+</Delta>
+<Delta Version="260" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:01:14000">
+<Copy StartSeek="0" EndSeek="6087"/>
+<Insert>				ret = klna_ev_link(h, (void *)buf);
+</Insert>
+<Copy StartSeek="6131" EndSeek="7952"/>
+</Delta>
+<Delta Version="261" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:05:11000">
+<Copy StartSeek="0" EndSeek="5995"/>
+<Insert>				ret = klna_ev_arp(h, (void *)buf);
+</Insert>
+<Copy StartSeek="6038" EndSeek="7956"/>
+</Delta>
+<Delta Version="262" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:05:22000">
+<Copy StartSeek="0" EndSeek="5899"/>
+<Insert>				ret = klna_ev_route(h, (void *)buf);
+</Insert>
+<Copy StartSeek="5945" EndSeek="7961"/>
+</Delta>
+<Delta Version="263" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:08:39000">
+<Copy StartSeek="0" EndSeek="5899"/>
+<Insert>				ret = klna_ev_route(h, (NLMSG_DATA(buf));
+</Insert>
+<Copy StartSeek="5944" EndSeek="7960"/>
+</Delta>
+<Delta Version="264" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:10:28000">
+<Copy StartSeek="0" EndSeek="7867"/>
+<Insert>//      while (1)
+//      	klna_read_event(nls);
+</Insert>
+<Copy StartSeek="7867" EndSeek="7911"/>
+</Delta>
+<Delta Version="265" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:11:17000">
+<Copy StartSeek="0" EndSeek="4155"/>
+<Insert>/*-------------------------------------------*/
+</Insert>
+<Copy StartSeek="4156" EndSeek="7864"/>
+</Delta>
+<Delta Version="266" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:11:30000">
+<Copy StartSeek="0" EndSeek="6397"/>
+<Insert>/*-------------------------------------------*/
+#if 0
+static int klna_read_event(int sock)
+{
+	struct sockaddr_nl nladdr;
+	struct msghdr msg;
+	struct iovec iov[2];
+	struct nlmsghdr nlh;
+	char buffer[4096]; /* pointer to |rtmsg header|rtm_data| */
+	int ret, nll;
+
+	iov[0].iov_base = (void *)&amp;nlh;
+	iov[0].iov_len = sizeof(nlh);
+	iov[1].iov_base = (void *)buffer;
+	iov[1].iov_len = sizeof(buffer);
+	msg.msg_name = (void *)&amp;(nladdr);
+	msg.msg_namelen = sizeof(nladdr);
+	msg.msg_iov = iov;
+	msg.msg_iovlen = sizeof(iov)/sizeof(iov[0]);
+	ret=recvmsg(sock, &amp;msg, 0);
+
+	if (ret&lt;0) {
+		return ret;
+	}
+
+	printf("nlmsg_type: %i (%s)\n",(nlh.nlmsg_type), klna_lookup_name(typenames,nlh.nlmsg_type));
+	switch (nlh.nlmsg_type) {
+	case RTM_NEWROUTE:
+	case RTM_DELROUTE:
+		return klna_ev_route(&amp;nlh, buffer);
+	case RTM_NEWNEIGH:
+	case RTM_DELNEIGH:
+		return klna_ev_arp(&amp;nlh, buffer);
+	case RTM_NEWLINK:
+	case RTM_DELLINK:
+		return klna_ev_link(&amp;nlh, buffer);
+	}
+
+	return 0;
+}
+#endif
+
+</Insert>
+<Copy StartSeek="6398" EndSeek="6896"/>
+</Delta>
+<Delta Version="267" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:11:55000">
+<Copy StartSeek="0" EndSeek="4971"/>
+<Insert>		for (h = (struct nlmsghdr *) buf; NLMSG_OK (h, status);
+		    h = NLMSG_NEXT (h, status)) {
+</Insert>
+<Copy StartSeek="5063" EndSeek="6894"/>
+</Delta>
+<Delta Version="268" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:12:4000">
+<Copy StartSeek="0" EndSeek="4971"/>
+<Insert>		for (h = (struct nlmsghdr *)buf; NLMSG_OK (h, status);
+</Insert>
+<Copy StartSeek="5027" EndSeek="6893"/>
+</Delta>
+<Delta Version="269" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:12:5000">
+<Copy StartSeek="0" EndSeek="4971"/>
+<Insert>		for (h = (struct nlmsghdr *)buf; NLMSG_OK(h, status);
+</Insert>
+<Copy StartSeek="5028" EndSeek="6894"/>
+</Delta>
+<Delta Version="270" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:12:10000">
+<Copy StartSeek="0" EndSeek="5647"/>
+<Insert>			printf("nlmsg_type: %i (%s)\n",(h-&gt;nlmsg_type), klna_lookup_name(typenames,h-&gt;nlmsg_type));
+</Insert>
+<Copy StartSeek="5754" EndSeek="6906"/>
+</Delta>
+<Delta Version="271" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:12:31000">
+<Copy StartSeek="0" EndSeek="5962"/>
+<Insert>				ret = klna_ev_arp(h, NLMSG_DATA(buf));
+</Insert>
+<Copy StartSeek="6012" EndSeek="6913"/>
+</Delta>
+<Delta Version="272" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:14:3000">
+<Copy StartSeek="0" EndSeek="2036"/>
+<Insert>	struct ifinfomsg *ifi;
+</Insert>
+<Copy StartSeek="2056" EndSeek="2104"/>
+<Insert>	ifi = (struct ifinfomsg *)buffer;
+	rta = (struct rtattr*)IFLA_RTA(nlh);
+	rtl = IFLA_PAYLOAD(nlh);
+	printf("%s: family: %u\n", __func__, ifi-&gt;ifi_family);
+</Insert>
+<Copy StartSeek="2253" EndSeek="2330"/>
+<Insert>		printf("rta_type %u ",rta-&gt;rta_type);
+		if (rta-&gt;rta_type == IFLA_IFNAME) {
+			#define IFNAMESIZE 16
+			uint8_t if_name[IFNAMESIZE];
+</Insert>
+<Copy StartSeek="2578" EndSeek="2646"/>
+<Insert>				rta-&gt;rta_len &lt; IFNAMESIZE ? rta-&gt;rta_len : IFNAMESIZE;
+
+			memcpy(if_name, data, data_len);
+			if_name[IFNAMESIZE -1] = '\0';
+			printf("if_name: %s\n", if_name);
+			printf("ifi_flags %#x\n",ifi-&gt;ifi_flags);
+</Insert>
+<Copy StartSeek="2899" EndSeek="3035"/>
+<Insert>	printf("\n");
+</Insert>
+<Copy StartSeek="3035" EndSeek="7042"/>
+</Delta>
+<Delta Version="273" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:14:50000">
+<Copy StartSeek="0" EndSeek="2087"/>
+<Insert>	int new_neigh;
+</Insert>
+<Copy StartSeek="2100" EndSeek="2720"/>
+<Insert>			new_neigh = 1; /* NDA_LLADDR appears only in new entry */
+</Insert>
+<Copy StartSeek="2778" EndSeek="3029"/>
+<Insert>	if (new_neigh) {
+</Insert>
+<Copy StartSeek="3044" EndSeek="7033"/>
+</Delta>
+<Delta Version="274" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:19:2000">
+<Copy StartSeek="0" EndSeek="2036"/>
+<Insert>	struct ndmsg *ndm;
+</Insert>
+<Copy StartSeek="2060" EndSeek="7037"/>
+</Delta>
+<Delta Version="275" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:19:37000">
+<Copy StartSeek="0" EndSeek="2081"/>
+<Copy StartSeek="2105" EndSeek="7061"/>
+</Delta>
+<Delta Version="276" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:20:1000">
+<Copy StartSeek="0" EndSeek="2129"/>
+<Insert>	ndm = (struct ndmsg *)buffer;
+</Insert>
+<Copy StartSeek="2166" EndSeek="7067"/>
+</Delta>
+<Delta Version="277" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:20:29000">
+<Copy StartSeek="0" EndSeek="2129"/>
+<Insert>	ifi = (struct ifinfomsg * *)buffer;
+</Insert>
+<Copy StartSeek="2164" EndSeek="7065"/>
+</Delta>
+<Delta Version="278" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:20:31000">
+<Copy StartSeek="0" EndSeek="2164"/>
+<Insert>	rta = (struct rtattr*)RTM_RTA(ndm);
+</Insert>
+<Copy StartSeek="2202" EndSeek="7066"/>
+</Delta>
+<Delta Version="279" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:21:19000">
+<Copy StartSeek="0" EndSeek="2202"/>
+<Insert>	rtl = RTM_PAYLOAD(nlh);
+</Insert>
+<Copy StartSeek="2228" EndSeek="7067"/>
+</Delta>
+<Delta Version="280" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:21:42000">
+<Copy StartSeek="0" EndSeek="2228"/>
+<Insert>	printf("%s: family: %u\n", __func__, ndm-&gt;ndm_family);
+</Insert>
+<Copy StartSeek="2284" EndSeek="7067"/>
+</Delta>
+<Delta Version="281" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:22:1000">
+<Copy StartSeek="0" EndSeek="2361"/>
+<Insert>		if (rta-&gt;rta_type == NDA_DST) {
+			uint32_t dst_addr = *((uint32_t *)RTA_DATA(rta));
+			printf("ip " NIPQUAD_FMT "\n", NIPQUAD(dst_addr));
+			continue;
+		}
+		if (rta-&gt;rta_type == NDA_LLADDR) {
+			#define MAX_BUF_LEN 6
+			uint8_t ha[MAX_BUF_LEN];
+			uint8_t *data = (uint8_t *)RTA_DATA(rta);
+			uint32_t data_len =
+				rta-&gt;rta_len &lt; MAX_BUF_LEN ? rta-&gt;rta_len : MAX_BUF_LEN;
+			uint32_t i;
+
+			new_if = 1; /* NDA_LLADDR appears only in new entry */
+			memcpy(ha, data, data_len);
+			for (i = 0; i &lt; data_len; i++) {
+				printf("%x:", ha[i]);
+			}
+			printf("\n");
+			continue;
+		}
+//      	if (rta-&gt;rta_type == NDA_CACHEINFO) {
+//      		printf(" NDA_CACHEINFO\n");
+//      		continue;
+//      	}
+	}
+</Insert>
+<Copy StartSeek="2404" EndSeek="6408"/>
+</Delta>
+<Delta Version="282" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:22:39000">
+<Copy StartSeek="0" EndSeek="2404"/>
+<Copy StartSeek="2419" EndSeek="6423"/>
+</Delta>
+<Delta Version="283" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:22:45000">
+<Copy StartSeek="0" EndSeek="2361"/>
+<Copy StartSeek="2441" EndSeek="2481"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="2485" EndSeek="6504"/>
+</Delta>
+<Delta Version="284" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:25:50000">
+<Copy StartSeek="0" EndSeek="2441"/>
+<Insert>		printf("rta_type %u ",rta-&gt;rta_type);
+
+	}
+</Insert>
+<Copy StartSeek="2444" EndSeek="6463"/>
+</Delta>
+<Delta Version="285" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:26:0000">
+<Copy StartSeek="0" EndSeek="2361"/>
+<Insert>		if (rta-&gt;rta_type = IFLA_IFNAME) {
+</Insert>
+<Copy StartSeek="2399" EndSeek="6464"/>
+</Delta>
+<Delta Version="286" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:26:34000">
+<Copy StartSeek="0" EndSeek="2399"/>
+<Insert>			printf("name: %s\n",RTA_DATA(rta));
+</Insert>
+<Copy StartSeek="2465" EndSeek="6491"/>
+</Delta>
+<Delta Version="287" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:27:14000">
+<Copy StartSeek="0" EndSeek="2399"/>
+<Insert>			printf("name: %s, flags %#x\n",RTA_DATA(rta), ifi-&gt;ifi_flags);
+</Insert>
+<Copy StartSeek="2487" EndSeek="6513"/>
+</Delta>
+<Delta Version="288" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:29:51000">
+<Copy StartSeek="0" EndSeek="2228"/>
+<Insert>	printf("%s: family: %u\n", __func__, ifi-&gt;ifi_family);
+</Insert>
+<Copy StartSeek="2288" EndSeek="2403"/>
+<Insert>			printf("name: %s, flags %#x\n",RTA_DATA(rta), ifi-&gt;ifi_flags /*&amp; IFF_802_1Q_VLAN*/);
+		}
+	}
+</Insert>
+<Copy StartSeek="2526" EndSeek="6545"/>
+</Delta>
+<Delta Version="289" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:31:11000">
+<Copy StartSeek="0" EndSeek="2479"/>
+<Insert>			       ifi-&gt;ifi_family,
+			       );
+		}
+	}
+</Insert>
+<Copy StartSeek="2512" EndSeek="6531"/>
+</Delta>
+<Delta Version="290" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:31:19000">
+<Copy StartSeek="0" EndSeek="2403"/>
+<Insert>			printf("name: %s, flags %#x\n",RTA_DATA(rta), 
+</Insert>
+<Copy StartSeek="2463" EndSeek="6541"/>
+</Delta>
+<Delta Version="291" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:31:25000">
+<Copy StartSeek="0" EndSeek="2403"/>
+<Insert>			printf("name: %s, flags %#x, type %#x\n",RTA_DATA(rta), 
+</Insert>
+<Copy StartSeek="2464" EndSeek="6542"/>
+</Delta>
+<Delta Version="292" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="14:31:31000">
+<Copy StartSeek="0" EndSeek="2520"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="2608" EndSeek="6627"/>
+</Delta>
+<Delta Version="293" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="15:02:13000">
+<Copy StartSeek="0" EndSeek="2520"/>
+<Insert>		if (rta-&gt;rta_type == IFLA_VLAN_ID) {
+</Insert>
+<Copy StartSeek="2560" EndSeek="6628"/>
+</Delta>
+<Delta Version="294" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="15:11:27000">
+<Copy StartSeek="0" EndSeek="2560"/>
+<Insert>			printf("vlan id %u\n", RTA_DATA(rta));
+</Insert>
+<Copy StartSeek="2608" EndSeek="6634"/>
+</Delta>
+<Delta Version="295" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="15:11:30000">
+<Copy StartSeek="0" EndSeek="6589"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6610" EndSeek="6654"/>
+</Delta>
+<Delta Version="296" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="15:27:2000">
+<Copy StartSeek="0" EndSeek="6589"/>
+<Insert>	nla_parse_nested();
+</Insert>
+<Copy StartSeek="6591" EndSeek="6635"/>
+</Delta>
+<Delta Version="297" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="15:28:8000">
+<Copy StartSeek="0" EndSeek="2288"/>
+<Copy StartSeek="2349" EndSeek="6696"/>
+</Delta>
+<Delta Version="298" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="15:38:44000">
+<Copy StartSeek="0" EndSeek="2325"/>
+<Insert>		printf("bridge\n")
+</Insert>
+<Copy StartSeek="2347" EndSeek="6697"/>
+</Delta>
+<Delta Version="299" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="15:38:47000">
+<Copy StartSeek="0" EndSeek="2228"/>
+<Copy StartSeek="2229" EndSeek="6698"/>
+</Delta>
+<Delta Version="300" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="15:39:0000">
+<Copy StartSeek="0" EndSeek="2326"/>
+<Insert>		printf("bridge\n");
+</Insert>
+<Copy StartSeek="2353" EndSeek="6703"/>
+</Delta>
+<Delta Version="301" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="17:07:53000">
+<Copy StartSeek="0" EndSeek="5751"/>
+<Insert>//      			ret = klna_ev_arp(h, NLMSG_DATA(buf));
+</Insert>
+<Copy StartSeek="5794" EndSeek="6696"/>
+</Delta>
+<Delta Version="302" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:02:34000">
+<Copy StartSeek="0" EndSeek="2289"/>
+<Insert>	if (ifi-&gt;ifi_family == AF_BRIDGE) {
+</Insert>
+<Copy StartSeek="2360" EndSeek="6730"/>
+</Delta>
+<Delta Version="303" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:05:11000">
+<Copy StartSeek="0" EndSeek="2115"/>
+<Insert>	int new_if;
+</Insert>
+<Copy StartSeek="2161" EndSeek="2322"/>
+<Insert>	if (nlh-&gt;nlmsg_type == RTM_NEWLINK &amp;&amp; ifi-&gt;ifi_family == AF_BRIDGE) {
+</Insert>
+<Copy StartSeek="2363" EndSeek="6733"/>
+</Delta>
+<Delta Version="304" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:06:6000">
+<Copy StartSeek="0" EndSeek="2322"/>
+<Insert>	if ( &amp;&amp; ifi-&gt;ifi_family == AF_BRIDGE) {
+</Insert>
+<Copy StartSeek="2369" EndSeek="6739"/>
+</Delta>
+<Delta Version="305" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:06:9000">
+<Copy StartSeek="0" EndSeek="2322"/>
+<Insert>	if (new_if &amp;&amp; ifi-&gt;ifi_family == AF_BRIDGE) {
+		printf("bridge bind\n");
+	}
+</Insert>
+<Copy StartSeek="2452" EndSeek="6792"/>
+</Delta>
+<Delta Version="306" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:06:44000">
+<Copy StartSeek="0" EndSeek="2115"/>
+<Insert>	int new_if = nlh-&gt;nlmsg_type == RTM_NEWLINK;
+</Insert>
+<Copy StartSeek="2163" EndSeek="6794"/>
+</Delta>
+<Delta Version="307" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:08:30000">
+<Copy StartSeek="0" EndSeek="2811"/>
+<Insert>		/* dpa_arp_rule_add */
+</Insert>
+<Copy StartSeek="2823" EndSeek="2833"/>
+<Insert>		/* dpa_arp_rule_del */
+</Insert>
+<Copy StartSeek="2845" EndSeek="6768"/>
+</Delta>
+<Delta Version="308" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:09:0000">
+<Copy StartSeek="0" EndSeek="2726"/>
+<Insert>			printf("IFLA_LINKINFO %u\n", RTA_DATA(rta));
+</Insert>
+<Copy StartSeek="2774" EndSeek="6768"/>
+</Delta>
+<Delta Version="309" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:31:21000">
+<Copy StartSeek="0" EndSeek="2726"/>
+<Insert>			printf("IFLA_LINKINFO %s\n", RTA_DATA(rta));
+		}
+	}
+</Insert>
+<Copy StartSeek="2931" EndSeek="6918"/>
+</Delta>
+<Delta Version="310" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:40:7000">
+<Copy StartSeek="0" EndSeek="2726"/>
+<Copy StartSeek="2761" EndSeek="6953"/>
+</Delta>
+<Delta Version="311" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:40:34000">
+<Copy StartSeek="0" EndSeek="2726"/>
+<Insert>			struct rtattr *rta;
+</Insert>
+<Copy StartSeek="2752" EndSeek="6956"/>
+</Delta>
+<Delta Version="312" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:40:56000">
+<Copy StartSeek="0" EndSeek="1974"/>
+<Copy StartSeek="3415" EndSeek="8397"/>
+</Delta>
+<Delta Version="313" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:46:25000">
+<Copy StartSeek="0" EndSeek="2478"/>
+<Insert>	netlink_parse_rtattr (tb, IFLA_MAX, IFLA_RTA (ifi), len);
+</Insert>
+<Copy StartSeek="2536" EndSeek="8396"/>
+</Delta>
+<Delta Version="314" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:46:42000">
+<Copy StartSeek="0" EndSeek="3017"/>
+<Insert>			zlog_warn ("Hardware address is too large: %d", hw_addr_len);
+</Insert>
+<Copy StartSeek="3078" EndSeek="8392"/>
+</Delta>
+<Delta Version="315" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:46:56000">
+<Copy StartSeek="0" EndSeek="1073"/>
+<Copy StartSeek="1074" EndSeek="3374"/>
+<Insert>	if_add_update (ifp);
+</Insert>
+<Copy StartSeek="3395" EndSeek="8392"/>
+</Delta>
+<Delta Version="316" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:50:1000">
+<Copy StartSeek="0" EndSeek="1073"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1304" EndSeek="8622"/>
+</Delta>
+<Delta Version="317" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:50:17000">
+<Copy StartSeek="0" EndSeek="1073"/>
+<Insert>/* parse rtattr. */
+</Insert>
+<Copy StartSeek="1073" EndSeek="8602"/>
+</Delta>
+<Delta Version="318" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:50:20000">
+<Copy StartSeek="0" EndSeek="1085"/>
+<Insert>netlink_parse_rtattr (struct rtattr **tb, int max, struct rtattr *rta, int len)
+</Insert>
+<Copy StartSeek="1164" EndSeek="8601"/>
+</Delta>
+<Delta Version="319" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:50:22000">
+<Copy StartSeek="0" EndSeek="2283"/>
+<Insert>netlink_interface(struct sockaddr_nl *snl, struct nlmsghdr *h)
+</Insert>
+<Copy StartSeek="2321" EndSeek="8576"/>
+</Delta>
+<Delta Version="320" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:50:42000">
+<Copy StartSeek="0" EndSeek="2461"/>
+<Insert>	if (h-&gt;nlmsg_type != RTM_NEWLINK)
+		return 0;
+</Insert>
+<Copy StartSeek="2524" EndSeek="8592"/>
+</Delta>
+<Delta Version="321" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:51:4000">
+<Copy StartSeek="0" EndSeek="2846"/>
+<Insert>	ifp = if_get_by_name (name);
+</Insert>
+<Copy StartSeek="2875" EndSeek="8591"/>
+</Delta>
+<Delta Version="322" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:51:19000">
+<Copy StartSeek="0" EndSeek="2846"/>
+<Insert>	ifp = if_get_by_name(name);
+</Insert>
+<Copy StartSeek="2882" EndSeek="8598"/>
+</Delta>
+<Delta Version="323" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:51:41000">
+<Copy StartSeek="0" EndSeek="3580"/>
+<Insert>	if_add_update(ifp);
+
+</Insert>
+<Copy StartSeek="3580" EndSeek="8576"/>
+</Delta>
+<Delta Version="324" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:52:33000">
+<Copy StartSeek="0" EndSeek="2391"/>
+<Insert>	struct interface *ifp;
+</Insert>
+<Copy StartSeek="2422" EndSeek="8583"/>
+</Delta>
+<Delta Version="325" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:52:44000">
+<Copy StartSeek="0" EndSeek="2890"/>
+<Insert>	ifp-&gt;ifindex = ifi-&gt;ifi_index;
+</Insert>
+<Copy StartSeek="2929" EndSeek="8590"/>
+</Delta>
+<Delta Version="326" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:53:3000">
+<Copy StartSeek="0" EndSeek="2929"/>
+<Insert>	ifp-&gt;flags = ifi-&gt;ifi_flags &amp; 0x0000fffff;
+</Insert>
+<Copy StartSeek="2982" EndSeek="8599"/>
+</Delta>
+<Delta Version="327" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:53:34000">
+<Copy StartSeek="0" EndSeek="2982"/>
+<Insert>	ifp-&gt;mtu = *(int *)RTA_DATA (tb[IFLA_MTU]);
+</Insert>
+<Copy StartSeek="3037" EndSeek="8609"/>
+</Delta>
+<Delta Version="328" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:53:58000">
+<Copy StartSeek="0" EndSeek="2982"/>
+<Insert>	printf("mtu = %u\n",*(int *)RTA_DATA (tb[IFLA_MTU]));
+</Insert>
+<Copy StartSeek="3035" EndSeek="8607"/>
+</Delta>
+<Delta Version="329" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:54:1000">
+<Copy StartSeek="0" EndSeek="3035"/>
+<Insert>	ifp-&gt;metric = 1;
+
+</Insert>
+<Copy StartSeek="3037" EndSeek="3071"/>
+<Insert>	ifp-&gt;hw_type = ifi-&gt;ifi_type;
+</Insert>
+<Copy StartSeek="3111" EndSeek="8599"/>
+</Delta>
+<Delta Version="330" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:54:34000">
+<Copy StartSeek="0" EndSeek="2830"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2855" EndSeek="8623"/>
+</Delta>
+<Delta Version="331" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:54:51000">
+<Copy StartSeek="0" EndSeek="2830"/>
+<Insert>	printf("name %s",name);
+</Insert>
+<Copy StartSeek="2857" EndSeek="8625"/>
+</Delta>
+<Delta Version="332" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:54:53000">
+<Copy StartSeek="0" EndSeek="3182"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3201" EndSeek="8643"/>
+</Delta>
+<Delta Version="333" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:56:11000">
+<Copy StartSeek="0" EndSeek="3182"/>
+<Insert>		char hw_addr[6];
+</Insert>
+<Copy StartSeek="3254" EndSeek="8696"/>
+</Delta>
+<Delta Version="334" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:57:24000">
+<Copy StartSeek="0" EndSeek="3215"/>
+<Insert>		char hw_addr[INTERFACE_HWADDR_MAX]];
+</Insert>
+<Copy StartSeek="3253" EndSeek="8695"/>
+</Delta>
+<Delta Version="335" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:57:26000">
+<Copy StartSeek="0" EndSeek="3413"/>
+<Insert>			ifp-&gt;hw_addr_len = hw_addr_len;
+			memcpy (ifp-&gt;hw_addr, RTA_DATA(tb[IFLA_ADDRESS]), hw_addr_len);
+
+</Insert>
+<Copy StartSeek="3476" EndSeek="8655"/>
+</Delta>
+<Delta Version="336" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:57:54000">
+<Copy StartSeek="0" EndSeek="3513"/>
+<Insert>				if (ifp-&gt;hw_addr[i] != 0)
+</Insert>
+<Copy StartSeek="3538" EndSeek="8650"/>
+</Delta>
+<Delta Version="337" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:58:27000">
+<Copy StartSeek="0" EndSeek="3576"/>
+<Insert>				ifp-&gt;hw_addr_len = 0;
+</Insert>
+<Copy StartSeek="3597" EndSeek="8645"/>
+</Delta>
+<Delta Version="338" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:59:24000">
+<Copy StartSeek="0" EndSeek="3605"/>
+<Insert>				ifp-&gt;hw_addr_len = hw_addr_len;
+</Insert>
+<Copy StartSeek="3636" EndSeek="8640"/>
+</Delta>
+<Delta Version="339" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:59:29000">
+<Copy StartSeek="0" EndSeek="3597"/>
+<Insert>			else
+				hw_addr_len = hw_addr_len;
+		}
+	}
+
+</Insert>
+<Copy StartSeek="3605" EndSeek="8601"/>
+</Delta>
+<Delta Version="340" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:59:37000">
+<Copy StartSeek="0" EndSeek="7752"/>
+<Insert>				ret = klna_ev_link(h, NLMSG_DATA(buf));
+</Insert>
+<Copy StartSeek="7829" EndSeek="8634"/>
+</Delta>
+<Delta Version="341" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:00:4000">
+<Copy StartSeek="0" EndSeek="7803"/>
+<Insert>				netlink_interface(h);
+</Insert>
+<Copy StartSeek="7835" EndSeek="8640"/>
+</Delta>
+<Delta Version="342" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:00:8000">
+<Copy StartSeek="0" EndSeek="4331"/>
+<Insert>		if (rta-&gt;rta_type == IFLA_LINKINFO) {
+			struct rtattr *rta = ;
+			int rtl;
+			printf("IFLA_LINKINFO\n");
+			for (; RTA_OK(_rta, _rtl); _rta = RTA_NEXT(_rta, _rtl)) {
+				if (rta-&gt;rta_type == IFLA_INFO_KIND) {
+					printf("IFLA_INFO_KIND: %s\n",RTA_DATA(_rta));
+				}
+			}
+
+		}
+</Insert>
+<Copy StartSeek="4683" EndSeek="8712"/>
+</Delta>
+<Delta Version="343" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:00:35000">
+<Copy StartSeek="0" EndSeek="2391"/>
+<Insert>//      struct interface *ifp;
+</Insert>
+<Copy StartSeek="2391" EndSeek="2437"/>
+<Insert>//      if (h-&gt;nlmsg_type != RTM_NEWLINK |)
+//      	return 0;
+
+</Insert>
+<Copy StartSeek="2437" EndSeek="8617"/>
+</Delta>
+<Delta Version="344" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:01:59000">
+<Copy StartSeek="0" EndSeek="2279"/>
+<Insert>int
+netlink_interface(struct nlmsghdr *h)
+{
+</Insert>
+<Copy StartSeek="2323" EndSeek="8617"/>
+</Delta>
+<Delta Version="345" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:05:50000">
+<Copy StartSeek="0" EndSeek="2184"/>
+<Insert>/* Called from interface_lookup_netlink().  This function is only used
+   during bootstrap. */
+</Insert>
+<Copy StartSeek="2184" EndSeek="8522"/>
+</Delta>
+<Delta Version="346" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:05:56000">
+<Copy StartSeek="0" EndSeek="2871"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="2871" EndSeek="2946"/>
+<Copy StartSeek="2993" EndSeek="8567"/>
+</Delta>
+<Delta Version="347" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:09:36000">
+<Copy StartSeek="0" EndSeek="2946"/>
+<Insert>	printf("operstate %u\n," tb[IFLA_OPERSTATE]);
+</Insert>
+<Copy StartSeek="2994" EndSeek="8568"/>
+</Delta>
+<Delta Version="348" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:10:8000">
+<Copy StartSeek="0" EndSeek="2946"/>
+<Insert>	printf("operstate %u\n," *tb[IFLA_OPERSTATE]);
+</Insert>
+<Copy StartSeek="3010" EndSeek="8584"/>
+</Delta>
+<Delta Version="349" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:10:32000">
+<Copy StartSeek="0" EndSeek="2946"/>
+<Insert>	printf("operstate %u\n," *(uint8_t *)RTA_DATA (tb[IFLA_MTU]));
+</Insert>
+<Copy StartSeek="3016" EndSeek="8590"/>
+</Delta>
+<Delta Version="350" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:10:48000">
+<Copy StartSeek="0" EndSeek="2946"/>
+<Insert>	printf("operstate %u\n," *(unsigned char *)RTA_DATA (tb[IFLA_MTU]));
+</Insert>
+<Copy StartSeek="3005" EndSeek="8579"/>
+</Delta>
+<Delta Version="351" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:11:24000">
+<Copy StartSeek="0" EndSeek="2946"/>
+<Insert>	printf("operstate %u\n," *(int *)RTA_DATA(tb[IFLA_MTU]));
+</Insert>
+<Copy StartSeek="3016" EndSeek="8590"/>
+</Delta>
+<Delta Version="352" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:11:40000">
+<Copy StartSeek="0" EndSeek="2946"/>
+<Insert>	printf("operstate %u\n,", *(unsigned char *)RTA_DATA(tb[IFLA_MTU]));
+</Insert>
+<Copy StartSeek="3021" EndSeek="8595"/>
+</Delta>
+<Delta Version="353" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:14:2000">
+<Copy StartSeek="0" EndSeek="2946"/>
+<Insert>	printf("operstate %u\n,", *(unsigned char *)RTA_DATA(tb[IFLA_LINKMODE]));
+</Insert>
+<Copy StartSeek="3091" EndSeek="8665"/>
+</Delta>
+<Delta Version="354" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:14:30000">
+<Copy StartSeek="0" EndSeek="3016"/>
+<Insert>	printf("linkstate %u\n,", *(unsigned char *)RTA_DATA(tb[IFLA_LINKMODE]));
+</Insert>
+<Copy StartSeek="3116" EndSeek="8690"/>
+</Delta>
+<Delta Version="355" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:30:15000">
+<Copy StartSeek="0" EndSeek="2946"/>
+<Insert>	printf("operstate %u\n,", *(unsigned char *)RTA_DATA(tb[IFLA_MTU]));
+</Insert>
+<Copy StartSeek="3036" EndSeek="8710"/>
+</Delta>
+<Delta Version="356" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:44:46000">
+<Copy StartSeek="0" EndSeek="2946"/>
+<Insert>	if (tb[IFLA_MTU])
+		printf("operstate %u\n,", *(unsigned char *)RTA_DATA(tb[IFLA_MTU]));
+</Insert>
+<Copy StartSeek="3048" EndSeek="8722"/>
+</Delta>
+<Delta Version="357" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:46:0000">
+<Copy StartSeek="0" EndSeek="2971"/>
+<Insert>		printf("operstate %u\n,", *(unsigned char *)RTA_DATA(tb[IFLA_OPERSTATE]));
+</Insert>
+<Copy StartSeek="3047" EndSeek="8721"/>
+</Delta>
+<Delta Version="358" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:46:55000">
+<Copy StartSeek="0" EndSeek="3071"/>
+<Insert>		printf("linkstate %u\n,", *(unsigned char *)RTA_DATA(tb[IFLA_LINKMODE]));
+</Insert>
+<Copy StartSeek="3146" EndSeek="8720"/>
+</Delta>
+<Delta Version="359" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:46:57000">
+<Copy StartSeek="0" EndSeek="3071"/>
+<Insert>		printf("linkstate %u\n", *(unsigned char *)RTA_DATA(tb[IFLA_LINKMODE]));
+</Insert>
+<Copy StartSeek="3145" EndSeek="8719"/>
+</Delta>
+<Delta Version="360" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:47:9000">
+<Copy StartSeek="0" EndSeek="2667"/>
+<Copy StartSeek="2747" EndSeek="8799"/>
+</Delta>
+<Delta Version="361" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="12:57:38000">
+<Copy StartSeek="0" EndSeek="2667"/>
+<Insert>	printf("change %u\n",ifi-&gt;ifi_change);
+</Insert>
+<Copy StartSeek="2708" EndSeek="8800"/>
+</Delta>
+<Delta Version="362" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="13:00:58000">
+<Copy StartSeek="0" EndSeek="7772"/>
+<Insert>			case RTM_NEWNEIGH:
+			case RTM_DELNEIGH:
+				ret = klna_ev_arp(h, NLMSG_DATA(buf));
+				break;
+</Insert>
+<Copy StartSeek="7898" EndSeek="8828"/>
+</Delta>
+<Delta Version="363" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="14:36:53000">
+<Copy StartSeek="0" EndSeek="7501"/>
+<Copy StartSeek="7608" EndSeek="7714"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7718" EndSeek="8938"/>
+</Delta>
+<Delta Version="364" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="14:48:57000">
+<Copy StartSeek="0" EndSeek="7501"/>
+<Insert>			#ifdef KLNA_ARP
+</Insert>
+<Copy StartSeek="7521" EndSeek="8939"/>
+</Delta>
+<Delta Version="365" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="14:49:4000">
+<Copy StartSeek="0" EndSeek="7501"/>
+<Insert>			#ifndef KLNA_ARP
+</Insert>
+<Copy StartSeek="7522" EndSeek="8940"/>
+</Delta>
+<Delta Version="366" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="14:49:21000">
+<Copy StartSeek="0" EndSeek="7884"/>
+<Insert>//      		case RTM_NEWNEIGH:
+//      		case RTM_DELNEIGH:
+//      			ret = klna_ev_arp(h, NLMSG_DATA(buf));
+//      			break;
+</Insert>
+<Copy StartSeek="8014" EndSeek="8944"/>
+</Delta>
+</DeltaFile>

@@ -1,0 +1,33 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="6" Comment="" Date="2012/05/17" Time="11:40:26000" NL="\10" Encoding="text">
+<Insert>fix ct timeout race on insmod &amp;&amp; rmmod
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/01/01" Time="16:34:55000">
+<Insert>
+</Insert>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="18:15:19000">
+<Insert>updated bridge_rule &amp;&amp; dpa_rule_ct
+</Insert>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="09:25:26000">
+<Insert>rt_rule modifications:
+-added mtu
+-grouped vars by size
+</Insert>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/05/06" Time="10:54:45000">
+<Insert>-review modifications
+</Insert>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/05/07" Time="14:49:1000">
+<Insert>removed remark
+</Insert>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/05/07" Time="15:33:6000">
+<Insert>print helper dst_port
+</Insert>
+</Delta>
+</DeltaFile>

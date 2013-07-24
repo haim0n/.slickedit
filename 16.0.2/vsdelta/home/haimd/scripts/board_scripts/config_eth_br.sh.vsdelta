@@ -1,0 +1,31 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1" Comment="" Date="2013/04/08" Time="20:23:55000" NL="\10" Encoding="text">
+<Insert>#!/bin/sh -x
+
+LAN_IF=eth0
+WAN_IF=pon0
+
+ifconfig $LAN_IF 0.0.0.0
+ifconfig $WAN_IF 0.0.0.0
+
+brctl addbr br0
+brctl addif br0 $LAN_IF
+brctl addif br0 $WAN_IF
+ifconfig br0 up
+brctl show
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/03/17" Time="16:56:30000">
+<Copy StartSeek="0" EndSeek="14"/>
+<Insert>ifconfig eth0 0.0.0.0
+ifconfig eth1 0.0.0.0
+</Insert>
+<Copy StartSeek="38" EndSeek="39"/>
+<Copy StartSeek="90" EndSeek="106"/>
+<Insert>brctl addif br0 eth0
+brctl addif br0 eth1
+</Insert>
+<Copy StartSeek="154" EndSeek="181"/>
+</Delta>
+</DeltaFile>

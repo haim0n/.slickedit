@@ -1,0 +1,3518 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="392" Comment="" Date="2012/03/28" Time="16:10:13000" NL="\10" Encoding="text">
+<Insert>/*
+ *	Marvell Kernel Learning Agent
+ * 
+ *      Authors:
+ *	Haim Daniel
+ *
+ *	This program is free software; you can redistribute it and/or
+ *	modify it under the terms of the GNU General Public License
+ *	as published by the Free Software Foundation; either version
+ *	2 of the License, or (at your option) any later version.
+ */
+
+#include &lt;linux/module.h&gt;
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/netdevice.h&gt;
+#include &lt;linux/notifier.h&gt;
+#include &lt;net/netevent.h&gt;
+#include &lt;net/neighbour.h&gt;
+#include &lt;vlan.h&gt;
+#include &lt;br_private.h&gt;
+#include &lt;net/netfilter/nf_conntrack.h&gt;
+#include &lt;net/netfilter/nf_conntrack_ecache.h&gt;
+#include &lt;net/netfilter/nf_conntrack_l3proto.h&gt;
+#include &lt;net/netfilter/nf_conntrack_l4proto.h&gt;
+
+#undef pr_fmt
+#define pr_fmt(fmt)	"dpa_klna: " fmt
+
+static char notify[256];
+module_param_string(notify, notify, sizeof(notify), 0644);
+MODULE_PARM_DESC(notify, "event type: arp, vlan, bridge, nf_ct");
+
+static enum NOTIFICATION_HOOK {
+	NOTIF_ARP	= 1,
+	NOTIF_VLAN 	= 2,
+	NOTIF_BRIDGE	= 4,
+	NOTIF_NFCT	= 8,
+} notif_mask;
+
+#ifdef CONFIG_NF_CONNTRACK_EVENTS
+static void dpa_klna_print_conntrack_tuple(struct nf_conn *ct)
+{
+	const struct nf_conntrack_l3proto *l3proto;
+	const struct nf_conntrack_l4proto *l4proto;
+
+	struct nf_conntrack_tuple *tuple = 
+		&amp;ct-&gt;tuplehash[IP_CT_DIR_ORIGINAL].tuple;
+
+	l3proto = __nf_ct_l3proto_find(nf_ct_l3num(ct));
+	NF_CT_ASSERT(l3proto);
+	l4proto = __nf_ct_l4proto_find(nf_ct_l3num(ct), nf_ct_protonum(ct));
+	NF_CT_ASSERT(l4proto);
+
+	pr_info("[%s] %pI4:%u -&gt; %pI4:%u\n",
+		l4proto-&gt;name,
+		&amp;tuple-&gt;src.u3.ip, ntohs(tuple-&gt;src.u.all),
+		&amp;tuple-&gt;dst.u3.ip, ntohs(tuple-&gt;dst.u.all));
+}
+
+static int dpa_klna_nf_ct_event(unsigned int events, struct nf_ct_event *item)
+{
+	struct nf_conn *ct = item-&gt;ct;
+
+	/* ignore our fake conntrack entry */
+	if (ct == &amp;nf_conntrack_untracked)
+		return 0;
+
+	if (events &amp; IPCT_DESTROY) {
+		pr_info("destroyed ct \n");
+		dpa_klna_print_conntrack_tuple(ct);
+	} else  if (events &amp; IPCT_NEW) {
+		pr_info("new ct\n");
+		dpa_klna_print_conntrack_tuple(ct);
+	} else if (events &amp; IPCT_RELATED) {
+		pr_info("related ct\n");
+		dpa_klna_print_conntrack_tuple(ct);
+	}
+
+	return 0;
+}
+
+static struct nf_ct_event_notifier dpa_klna_ct_notifier = {
+	.fcn = dpa_klna_nf_ct_event
+};
+#endif
+
+static int __dpa_klna_br_if_event(struct notifier_block *unused, unsigned long event, 
+			      void *ptr)
+{
+	struct net_device *dev = ptr;
+	struct net_bridge *br = dev-&gt;br_port-&gt;br;
+
+	switch (event) {
+
+	case NETDEV_REGISTER:
+		pr_info("if %s up at br [%s]\n", dev-&gt;name, br-&gt;dev-&gt;name);
+		break;
+
+	case NETDEV_UNREGISTER:
+		pr_info("if %s down at br [%s]\n", dev-&gt;name, br-&gt;dev-&gt;name);
+		break;
+	}
+	return NOTIFY_DONE;
+}
+
+static int __dpa_klna_bridge_event(struct notifier_block *unused, unsigned long event, 
+			      void *ptr)
+{
+	struct net_device *dev = ptr;
+	struct net_bridge *br;
+
+	br = netdev_priv(dev);
+
+	switch (event) {
+
+	case NETDEV_REGISTER:
+		pr_info("br up [%s]\n", dev-&gt;name);
+		break;
+
+	case NETDEV_UNREGISTER:
+		pr_info("br unreg [%s]\n", dev-&gt;name);
+		break;
+	}
+
+	return NOTIFY_DONE;
+}
+
+static int 
+__dpa_klna_vlan_device_event(struct notifier_block *unused, unsigned long event,
+			     void *ptr)
+{
+	struct net_device *dev = ptr;
+	struct vlan_dev_info *dev_info = vlan_dev_info(dev);
+
+	switch (event) {
+	case NETDEV_REGISTER:
+		pr_info("vlan register %s vid %u\n", dev-&gt;name, dev_info-&gt;vlan_id);
+		break;
+	case NETDEV_UNREGISTER:
+		pr_info("vlan unreg %s vid %u\n", dev-&gt;name, dev_info-&gt;vlan_id);
+		break;
+	}
+
+	return NOTIFY_DONE;
+}
+
+/* main dispatcher for netdev events */
+static int dpa_klna_netdev_event(struct notifier_block *unused, unsigned long event,
+			   void *ptr)
+{
+	struct net_device *dev = ptr;
+
+	pr_info("dpa_klna_netdev_dev %s event %lu\n",dev-&gt;name, event);
+
+	if ((notif_mask &amp; NOTIF_VLAN) &amp;&amp; is_vlan_dev(dev)) {
+		return __dpa_klna_vlan_device_event(unused, event, ptr);
+	} else if (notif_mask &amp; NOTIF_BRIDGE) {
+		if (dev-&gt;priv_flags &amp; IFF_EBRIDGE) {
+			return __dpa_klna_bridge_event(unused,event,ptr);
+		} else if (dev-&gt;br_port) {
+			return __dpa_klna_br_if_event(unused,event,ptr);
+		}
+	}
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block dpa_klna_netdev_notifier __read_mostly = {
+	.notifier_call = dpa_klna_netdev_event,
+};
+
+static void dpa_klna_klna_neigh_update(struct neighbour *neigh)
+{
+	
+	struct net_device *nd = neigh-&gt;dev;
+	u32 addr = *(u32 *) neigh-&gt;primary_key;
+	u8 *ha = neigh-&gt;ha;
+	
+	if (!ha) {
+		pr_err("null ha!\n");
+		return;
+	}
+
+	pr_info("[arp] %s:  %x:%x:%x:%x:%x:%x	  " NIPQUAD_FMT "\n", 
+		(nd ? nd-&gt;name : "NULL dev"),
+		ha[0],ha[1],ha[2],ha[3],ha[4],ha[5],
+		NIPQUAD(addr));
+
+	return;
+}
+
+static int dpa_klna_neigh_callback(struct notifier_block *self, unsigned long event,
+		       void *ctx)
+{
+	printk(KERN_ERR "(%s:%d) event %lu\n", __func__, __LINE__, event);
+
+	switch (event) {
+	case (NETEVENT_NEIGH_UPDATE): {
+		dpa_klna_klna_neigh_update((struct neighbour *)ctx);
+		break;
+	}
+	default:
+		break;
+	}
+	return 0;
+}
+
+static struct notifier_block nb = {
+	.notifier_call = dpa_klna_neigh_callback
+};
+
+
+/* HAIM FIXME: need to unreg the notifiers according to the notif_mask bitfield */
+static int __init dpa_klna_klna_init(void)
+{
+	int err = 0;
+
+	pr_info("init\n");
+	if (strstr(notify,"arp")) {
+		pr_info("reg arp\n");
+		err = register_netevent_notifier(&amp;nb);
+		if (err) {
+			unregister_netevent_notifier(&amp;nb);
+		} else 
+			notif_mask |= NOTIF_ARP;
+	}
+	if (strstr(notify,"vlan")) {
+		pr_info("reg vlan\n");
+			notif_mask |= NOTIF_VLAN;
+	}
+	if (strstr(notify,"bridge")) {
+      		pr_info("reg bridge\n");
+			notif_mask |= NOTIF_BRIDGE;
+	}
+
+	if (notif_mask &amp; (NOTIF_VLAN | NOTIF_BRIDGE)) {
+		err = register_netdevice_notifier(&amp;dpa_klna_netdev_notifier);
+		if (err) {
+			unregister_netdevice_notifier(&amp;dpa_klna_netdev_notifier);
+		}
+	}
+#ifdef CONFIG_NF_CONNTRACK_EVENTS
+	if (strstr(notify,"nf_ct")) {
+		pr_info("reg nf_conntrack\n");
+		err = nf_conntrack_register_notifier(&amp;dpa_klna_ct_notifier);
+		if (err) {
+			nf_conntrack_unregister_notifier(&amp;dpa_klna_ct_notifier);
+		} else
+			notif_mask |= NOTIF_NFCT;
+	}
+#else
+	#warning "CONFIG_NF_CONNTRACK_EVENTS undefined!"
+#endif
+
+	return err;
+}
+
+static void __exit dpa_klna_klna_exit(void)
+{
+	pr_info("exit\n");
+	if (notif_mask &amp; NOTIF_ARP) {
+		pr_info("unreg arp\n");
+		unregister_netevent_notifier(&amp;nb);
+	}
+	if (notif_mask &amp; (NOTIF_VLAN | NOTIF_BRIDGE)) {
+		pr_info("unreg dpa_klna_netdev\n");
+		unregister_netdevice_notifier(&amp;dpa_klna_netdev_notifier);
+	}
+#ifdef CONFIG_NF_CONNTRACK_EVENTS
+	if (notif_mask &amp; NOTIF_NFCT) {
+		pr_info("unreg nf_ct\n");
+		nf_conntrack_unregister_notifier(&amp;dpa_klna_ct_notifier);
+	}
+#endif
+}
+
+module_init(dpa_klna_klna_init)
+module_exit(dpa_klna_klna_exit)
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Haim Daniel &lt;haim.daniel@gmail.com&gt;");
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="10:58:56000">
+<Copy StartSeek="0" EndSeek="469"/>
+<Insert>#include &lt;linux/init.h&gt;
+#include &lt;linux/llc.h&gt;
+#include &lt;net/llc.h&gt;
+#include &lt;net/stp.h&gt;
+
+</Insert>
+<Copy StartSeek="470" EndSeek="495"/>
+<Insert>int (*br_should_route_hook)(struct sk_buff *skb);
+
+static const struct stp_proto br_stp_proto = {
+	.rcv	= br_stp_rcv,
+};
+
+static struct pernet_operations br_net_ops = {
+	.exit	= br_net_exit,
+};
+
+static int __init br_init(void)
+{
+</Insert>
+<Copy StartSeek="532" EndSeek="543"/>
+<Insert>	err = stp_proto_register(&amp;br_stp_proto);
+	if (err &lt; 0) {
+		printk(KERN_ERR "bridge: can't register sap for STP\n");
+		return err;
+	}
+
+	err = br_fdb_init();
+	if (err)
+		goto err_out;
+
+	err = register_pernet_subsys(&amp;br_net_ops);
+	if (err)
+		goto err_out1;
+
+	err = br_netfilter_init();
+	if (err)
+		goto err_out2;
+
+	err = register_netdevice_notifier(&amp;br_device_notifier);
+	if (err)
+		goto err_out3;
+
+	err = br_netlink_init();
+	if (err)
+		goto err_out4;
+
+	brioctl_set(br_ioctl_deviceless_stub);
+	br_handle_frame_hook = br_handle_frame;
+
+#if defined(CONFIG_ATM_LANE) || defined(CONFIG_ATM_LANE_MODULE)
+	br_fdb_test_addr_hook = br_fdb_test_addr;
+#endif
+
+	return 0;
+err_out4:
+	unregister_netdevice_notifier(&amp;br_device_notifier);
+err_out3:
+	br_netfilter_fini();
+err_out2:
+	unregister_pernet_subsys(&amp;br_net_ops);
+err_out1:
+	br_fdb_fini();
+err_out:
+	stp_proto_unregister(&amp;br_stp_proto);
+</Insert>
+<Copy StartSeek="543" EndSeek="559"/>
+<Insert>static void __exit br_deinit(void)
+</Insert>
+<Copy StartSeek="594" EndSeek="596"/>
+<Insert>	stp_proto_unregister(&amp;br_stp_proto);
+
+	br_netlink_fini();
+	unregister_netdevice_notifier(&amp;br_device_notifier);
+	brioctl_set(NULL);
+
+	unregister_pernet_subsys(&amp;br_net_ops);
+
+	rcu_barrier(); /* Wait for completion of call_rcu()'s */
+
+	br_netfilter_fini();
+#if defined(CONFIG_ATM_LANE) || defined(CONFIG_ATM_LANE_MODULE)
+	br_fdb_test_addr_hook = NULL;
+#endif
+
+	br_handle_frame_hook = NULL;
+	br_fdb_fini();
+}
+
+</Insert>
+<Copy StartSeek="600" EndSeek="734"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="10:59:52000">
+<Copy StartSeek="0" EndSeek="600"/>
+<Insert>EXPORT_SYMBOL(br_should_route_hook);
+
+module_init(br_init)
+module_exit(br_deinit)
+</Insert>
+<Copy StartSeek="647" EndSeek="699"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:00:2000">
+<Copy StartSeek="0" EndSeek="470"/>
+<Copy StartSeek="496" EndSeek="696"/>
+<Insert>MODULE_VERSION(BR_VERSION);
+</Insert>
+<Copy StartSeek="726" EndSeek="727"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:00:28000">
+<Copy StartSeek="0" EndSeek="496"/>
+<Insert>#include "br_private.h"
+
+
+</Insert>
+<Copy StartSeek="496" EndSeek="701"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:00:32000">
+<Copy StartSeek="0" EndSeek="496"/>
+<Copy StartSeek="499" EndSeek="704"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:00:34000">
+<Copy StartSeek="0" EndSeek="497"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="571" EndSeek="776"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:04:7000">
+<Copy StartSeek="0" EndSeek="617"/>
+<Insert>
+</Insert>
+<Copy StartSeek="689" EndSeek="847"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:05:41000">
+<Copy StartSeek="0" EndSeek="657"/>
+<Insert>
+</Insert>
+<Copy StartSeek="657" EndSeek="846"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:05:42000">
+<Copy StartSeek="0" EndSeek="617"/>
+<Copy StartSeek="618" EndSeek="847"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:05:49000">
+<Copy StartSeek="0" EndSeek="438"/>
+<Copy StartSeek="464" EndSeek="873"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:06:3000">
+<Copy StartSeek="0" EndSeek="523"/>
+<Copy StartSeek="524" EndSeek="597"/>
+<Insert>
+</Insert>
+<Copy StartSeek="597" EndSeek="873"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:06:15000">
+<Copy StartSeek="0" EndSeek="523"/>
+<Insert>
+</Insert>
+<Copy StartSeek="961" EndSeek="997"/>
+<Insert>	.notifier_call = neigh_callback
+</Insert>
+<Copy StartSeek="1033" EndSeek="1313"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:07:16000">
+<Copy StartSeek="0" EndSeek="642"/>
+<Insert>	case (NETEVENT_NEIGH_UPDATE):{
+</Insert>
+<Copy StartSeek="675" EndSeek="733"/>
+<Insert>	case (NETEVENT_PMTU_UPDATE):
+		break;
+	case (NETEVENT_REDIRECT):{
+		struct netevent_redirect *nr = ctx;
+		cxgb_redirect(nr-&gt;old, nr-&gt;new);
+		cxgb_neigh_update(nr-&gt;new-&gt;neighbour);
+		break;
+	}
+</Insert>
+<Copy StartSeek="733" EndSeek="743"/>
+<Copy StartSeek="806" EndSeek="1184"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:07:44000">
+<Copy StartSeek="0" EndSeek="743"/>
+<Insert>		printk(KERN_ERR "(%s:%d) event %lu\n", __func__, __LINE__,);
+</Insert>
+<Copy StartSeek="812" EndSeek="1190"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:07:54000">
+<Copy StartSeek="0" EndSeek="624"/>
+<Copy StartSeek="692" EndSeek="811"/>
+<Insert>		printk(KERN_ERR "(%s:%d) event %lu\n", __func__, __LINE__, event);
+</Insert>
+<Copy StartSeek="811" EndSeek="1189"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:08:2000">
+<Copy StartSeek="0" EndSeek="438"/>
+<Copy StartSeek="466" EndSeek="720"/>
+<Copy StartSeek="721" EndSeek="1218"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:08:28000">
+<Copy StartSeek="0" EndSeek="772"/>
+<Insert>		cxgb_neigh_update((struct neighbour *)ctx);
+</Insert>
+<Copy StartSeek="821" EndSeek="1221"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:09:12000">
+<Copy StartSeek="0" EndSeek="524"/>
+<Insert>#define BR_VERSION	"2.3"
+
+
+</Insert>
+<Copy StartSeek="524" EndSeek="1163"/>
+<Insert>MODULE_VERSION(KLNA_VERSION);
+
+</Insert>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:09:40000">
+<Copy StartSeek="0" EndSeek="1163"/>
+<Insert>
+</Insert>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:09:41000">
+<Copy StartSeek="0" EndSeek="524"/>
+<Copy StartSeek="1662" EndSeek="2301"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:12:31000">
+<Copy StartSeek="0" EndSeek="524"/>
+<Insert>void mv_klna_neigh_update(struct t3cdev *dev, struct neighbour *neigh)
+</Insert>
+<Copy StartSeek="575" EndSeek="2281"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:17:4000">
+<Copy StartSeek="0" EndSeek="577"/>
+<Insert>	struct sk_buff_head arpq;
+</Insert>
+<Copy StartSeek="577" EndSeek="634"/>
+<Copy StartSeek="635" EndSeek="676"/>
+<Insert>	int ifidx = neigh-&gt;dev-&gt;ifindex;
+</Insert>
+<Copy StartSeek="713" EndSeek="2258"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:17:42000">
+<Copy StartSeek="0" EndSeek="713"/>
+<Insert>	int hash = arp_hash(addr, ifidx, d);
+
+	read_lock_bh(&amp;d-&gt;lock);
+	for (e = d-&gt;l2tab[hash].first; e; e = e-&gt;next)
+		if (e-&gt;addr == addr &amp;&amp; e-&gt;ifindex == ifidx) {
+			spin_lock(&amp;e-&gt;lock);
+			goto found;
+		}
+	read_unlock_bh(&amp;d-&gt;lock);
+</Insert>
+<Copy StartSeek="715" EndSeek="2030"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:18:13000">
+<Copy StartSeek="0" EndSeek="577"/>
+<Insert>	struct l2t_entry *e;
+	struct l2t_data *d = L2DATA(dev);
+
+</Insert>
+<Copy StartSeek="579" EndSeek="620"/>
+<Copy StartSeek="642" EndSeek="681"/>
+<Copy StartSeek="733" EndSeek="2048"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:19:49000">
+<Copy StartSeek="0" EndSeek="642"/>
+<Copy StartSeek="643" EndSeek="2049"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:19:51000">
+<Copy StartSeek="0" EndSeek="620"/>
+<Insert>	u8 *ha = &amp;neigh-&gt;ha;
+
+</Insert>
+<Copy StartSeek="620" EndSeek="657"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="682" EndSeek="2049"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:20:8000">
+<Copy StartSeek="0" EndSeek="524"/>
+<Copy StartSeek="575" EndSeek="730"/>
+<Insert>
+	
+</Insert>
+<Copy StartSeek="758" EndSeek="2125"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:23:36000">
+<Copy StartSeek="0" EndSeek="810"/>
+<Copy StartSeek="811" EndSeek="820"/>
+<Insert>
+found:
+	__skb_queue_head_init(&amp;arpq);
+
+	read_unlock(&amp;d-&gt;lock);
+	if (atomic_read(&amp;e-&gt;refcnt)) {
+		if (neigh != e-&gt;neigh)
+			neigh_replace(e, neigh);
+
+		if (e-&gt;state == L2T_STATE_RESOLVING) {
+			if (neigh-&gt;nud_state &amp; NUD_FAILED) {
+				skb_queue_splice_init(&amp;e-&gt;arpq, &amp;arpq);
+			} else if (neigh-&gt;nud_state &amp; (NUD_CONNECTED|NUD_STALE))
+				setup_l2e_send_pending(dev, NULL, e);
+		} else {
+			e-&gt;state = neigh-&gt;nud_state &amp; NUD_CONNECTED ?
+			    L2T_STATE_VALID : L2T_STATE_STALE;
+			if (memcmp(e-&gt;dmac, neigh-&gt;ha, 6))
+				setup_l2e_send_pending(dev, NULL, e);
+		}
+	}
+	spin_unlock_bh(&amp;e-&gt;lock);
+
+	if (!skb_queue_empty(&amp;arpq))
+		handle_failed_resolution(dev, &amp;arpq);
+}
+
+</Insert>
+<Copy StartSeek="823" EndSeek="1462"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:23:52000">
+<Copy StartSeek="0" EndSeek="744"/>
+<Insert>		pr_err()
+</Insert>
+<Copy StartSeek="765" EndSeek="1472"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:24:10000">
+<Copy StartSeek="0" EndSeek="744"/>
+<Insert>		pr_err("null ha");
+</Insert>
+<Copy StartSeek="767" EndSeek="1474"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:24:42000">
+<Copy StartSeek="0" EndSeek="767"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="780" EndSeek="1484"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:24:47000">
+<Copy StartSeek="0" EndSeek="780"/>
+<Insert>	for (i = 6; i; i--) {
+		neigh-&gt;ha
+</Insert>
+<Copy StartSeek="837" EndSeek="840"/>
+<Insert>	neigh-&gt;ha, 6
+
+</Insert>
+<Copy StartSeek="892" EndSeek="1543"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:34:41000">
+<Copy StartSeek="0" EndSeek="840"/>
+<Insert>	printk(" ip: %u:%u:%u:%u\n", *ha), NIPQUAD(addr));
+</Insert>
+<Copy StartSeek="886" EndSeek="1537"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:34:48000">
+<Copy StartSeek="0" EndSeek="744"/>
+<Insert>		pr_err("null ha\n");
+</Insert>
+<Copy StartSeek="768" EndSeek="1538"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:41:1000">
+<Copy StartSeek="0" EndSeek="814"/>
+<Insert>		printk("%u:\n", *ha);
+</Insert>
+<Copy StartSeek="839" EndSeek="1539"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:41:18000">
+<Copy StartSeek="0" EndSeek="842"/>
+<Insert>	printk(" ip: %u:%u:%u:%u\n", NIPQUAD(addr));
+</Insert>
+<Copy StartSeek="889" EndSeek="1540"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:42:35000">
+<Copy StartSeek="0" EndSeek="842"/>
+<Insert>	pr_info(" ip: %u:%u:%u:%u\n", NIPQUAD(addr));
+</Insert>
+<Copy StartSeek="888" EndSeek="1539"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:42:58000">
+<Copy StartSeek="0" EndSeek="842"/>
+<Insert>	pr_info(" ip: " NIPQUAD_FMT, NIPQUAD(addr));
+</Insert>
+<Copy StartSeek="887" EndSeek="1538"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:43:3000">
+<Copy StartSeek="0" EndSeek="842"/>
+<Copy StartSeek="843" EndSeek="1539"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:43:17000">
+<Copy StartSeek="0" EndSeek="492"/>
+<Copy StartSeek="518" EndSeek="1565"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:52:27000">
+<Copy StartSeek="0" EndSeek="518"/>
+<Insert>#include &lt;linux/etherdevice.h&gt;
+</Insert>
+<Copy StartSeek="551" EndSeek="1567"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:52:31000">
+<Copy StartSeek="0" EndSeek="492"/>
+<Insert>#include &lt;net/neigbour.h&gt;
+</Insert>
+<Copy StartSeek="519" EndSeek="1568"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:52:50000">
+<Copy StartSeek="0" EndSeek="737"/>
+<Insert>	u8 *ha = &amp;neigh-&gt;ha;
+</Insert>
+<Copy StartSeek="758" EndSeek="1567"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:53:13000">
+<Copy StartSeek="0" EndSeek="700"/>
+<Copy StartSeek="708" EndSeek="1575"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:53:32000">
+<Copy StartSeek="0" EndSeek="850"/>
+<Insert>		pr_info("%u:\n", *ha);
+	}
+
+</Insert>
+<Copy StartSeek="896" EndSeek="1592"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:54:9000">
+<Copy StartSeek="0" EndSeek="817"/>
+<Insert>	for (i = 0; i &lt; 6; i++; ha++) {
+</Insert>
+<Copy StartSeek="850" EndSeek="1592"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:54:18000">
+<Copy StartSeek="0" EndSeek="850"/>
+<Insert>		if (ha) {
+</Insert>
+<Copy StartSeek="861" EndSeek="887"/>
+<Insert>		}
+	}
+
+</Insert>
+<Copy StartSeek="891" EndSeek="1587"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:55:15000">
+<Copy StartSeek="0" EndSeek="768"/>
+<Copy StartSeek="799" EndSeek="1618"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:56:21000">
+<Copy StartSeek="0" EndSeek="768"/>
+<Insert>	pr_info("from %s", nd-&gt;name);
+</Insert>
+<Copy StartSeek="815" EndSeek="1634"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:56:36000">
+<Copy StartSeek="0" EndSeek="768"/>
+<Insert>	pr_info("from %s", (nd ? nd-&gt;name : "NULL"));
+</Insert>
+<Copy StartSeek="817" EndSeek="1636"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:56:41000">
+<Copy StartSeek="0" EndSeek="899"/>
+<Insert>		if (ha) 
+			pr_info("%u:\n", *ha);
+	}
+
+</Insert>
+<Copy StartSeek="951" EndSeek="1647"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:57:10000">
+<Copy StartSeek="0" EndSeek="899"/>
+<Insert>		if (!ha) 
+			return;
+</Insert>
+<Copy StartSeek="899" EndSeek="1624"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:57:20000">
+<Copy StartSeek="0" EndSeek="866"/>
+<Insert>	for (i = 0; i &lt; 6; i++, ha++) {
+</Insert>
+<Copy StartSeek="898" EndSeek="923"/>
+<Insert>	}
+
+</Insert>
+<Copy StartSeek="924" EndSeek="1620"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:57:24000">
+<Copy StartSeek="0" EndSeek="866"/>
+<Insert>	for (i = 0; i &lt; 6; i++, ha++) 
+</Insert>
+<Copy StartSeek="899" EndSeek="924"/>
+<Insert>
+</Insert>
+<Copy StartSeek="928" EndSeek="1624"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:57:29000">
+<Copy StartSeek="0" EndSeek="1550"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1586" EndSeek="1659"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:58:1000">
+<Copy StartSeek="0" EndSeek="1550"/>
+<Copy StartSeek="1569" EndSeek="1678"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:58:19000">
+<Copy StartSeek="0" EndSeek="1550"/>
+<Insert>	pr_info("exit\n")
+</Insert>
+<Copy StartSeek="1570" EndSeek="1679"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:58:20000">
+<Copy StartSeek="0" EndSeek="928"/>
+<Insert>	pr_info(" ip: "NIPQUAD_FMT, NIPQUAD(addr));
+</Insert>
+<Copy StartSeek="978" EndSeek="1684"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:58:32000">
+<Copy StartSeek="0" EndSeek="1431"/>
+<Copy StartSeek="1451" EndSeek="1704"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:58:58000">
+<Copy StartSeek="0" EndSeek="1384"/>
+<Insert>static int __init klna_init(void)
+</Insert>
+<Copy StartSeek="1421" EndSeek="1541"/>
+<Insert>static void __exit klna_exit(void)
+</Insert>
+<Copy StartSeek="1579" EndSeek="1710"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:59:19000">
+<Copy StartSeek="0" EndSeek="1641"/>
+<Insert>module_init(klna_init)
+module_exit(klna_exit)
+</Insert>
+<Copy StartSeek="1693" EndSeek="1716"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="11:59:30000">
+<Copy StartSeek="0" EndSeek="1716"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:00:11000">
+<Copy StartSeek="0" EndSeek="899"/>
+<Insert>		pr_info("%u:\n", *ha);
+</Insert>
+<Copy StartSeek="924" EndSeek="1770"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:18:40000">
+<Copy StartSeek="0" EndSeek="899"/>
+<Insert>		pr_info("%x:\n", *ha);
+</Insert>
+<Copy StartSeek="922" EndSeek="1768"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:21:9000">
+<Copy StartSeek="0" EndSeek="899"/>
+<Insert>		pr_info("%x:", *ha);
+</Insert>
+<Copy StartSeek="921" EndSeek="1767"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:25:10000">
+<Copy StartSeek="0" EndSeek="899"/>
+<Insert>		printk("%x:", *ha);
+	}
+</Insert>
+<Copy StartSeek="927" EndSeek="928"/>
+<Insert>	pr_info(" ip: "NIPQUAD_FMT "\n", NIPQUAD(addr));
+</Insert>
+<Copy StartSeek="976" EndSeek="1768"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:28:58000">
+<Copy StartSeek="0" EndSeek="899"/>
+<Insert>		sprintf(buf++, "%x");
+</Insert>
+<Copy StartSeek="924" EndSeek="1769"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:29:12000">
+<Copy StartSeek="0" EndSeek="924"/>
+<Insert>		}
+</Insert>
+<Copy StartSeek="927" EndSeek="1768"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:29:27000">
+<Copy StartSeek="0" EndSeek="899"/>
+<Insert>		sprintf(buf++, "%0x");
+</Insert>
+<Copy StartSeek="929" EndSeek="1773"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:29:46000">
+<Copy StartSeek="0" EndSeek="766"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="781" EndSeek="1786"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:30:35000">
+<Copy StartSeek="0" EndSeek="781"/>
+<Copy StartSeek="782" EndSeek="1787"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:30:36000">
+<Copy StartSeek="0" EndSeek="745"/>
+<Insert>	u8 *ha = neigh-&gt;ha;
+</Insert>
+<Copy StartSeek="772" EndSeek="1793"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:31:18000">
+<Copy StartSeek="0" EndSeek="745"/>
+<Insert>	u8 *tmp, *ha = neigh-&gt;ha;
+</Insert>
+<Copy StartSeek="745" EndSeek="760"/>
+<Insert>
+</Insert>
+<Copy StartSeek="796" EndSeek="1801"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:31:33000">
+<Copy StartSeek="0" EndSeek="927"/>
+<Insert>		sprintf(buf++, "%0x", *ha);
+</Insert>
+<Copy StartSeek="957" EndSeek="1801"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:31:46000">
+<Copy StartSeek="0" EndSeek="961"/>
+<Insert>	pr_info("%s "NIPQUAD_FMT "\n", NIPQUAD(addr));
+</Insert>
+<Copy StartSeek="1014" EndSeek="1806"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:32:29000">
+<Copy StartSeek="0" EndSeek="927"/>
+<Insert>		sprintf(tmp++, "%0x", *ha);
+</Insert>
+<Copy StartSeek="956" EndSeek="1805"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:35:11000">
+<Copy StartSeek="0" EndSeek="927"/>
+<Insert>		sprintf(tmp++, "%x", *ha);
+</Insert>
+<Copy StartSeek="956" EndSeek="1805"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:35:25000">
+<Copy StartSeek="0" EndSeek="927"/>
+<Insert>		pr_info(tmp++, "%x", *ha);
+</Insert>
+<Copy StartSeek="949" EndSeek="1798"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:35:31000">
+<Copy StartSeek="0" EndSeek="953"/>
+<Insert>	pr_info("%s "NIPQUAD_FMT "\n", buf, NIPQUAD(addr));
+</Insert>
+<Copy StartSeek="1007" EndSeek="1799"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:35:44000">
+<Copy StartSeek="0" EndSeek="953"/>
+<Insert>	pr_info("ip: "NIPQUAD_FMT "\n", buf, NIPQUAD(addr));
+</Insert>
+<Copy StartSeek="1008" EndSeek="1800"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:35:47000">
+<Copy StartSeek="0" EndSeek="953"/>
+<Insert>	pr_info(" ip: "NIPQUAD_FMT "\n", buf, NIPQUAD(addr));
+</Insert>
+<Copy StartSeek="1003" EndSeek="1795"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:35:51000">
+<Copy StartSeek="0" EndSeek="745"/>
+<Insert>	char buf[16];
+	u8 *tmp = buf, *ha = neigh-&gt;ha;
+	
+
+</Insert>
+<Copy StartSeek="769" EndSeek="1768"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:36:11000">
+<Copy StartSeek="0" EndSeek="659"/>
+<Copy StartSeek="696" EndSeek="745"/>
+<Insert>	struct net_device *nd = neigh-&gt;dev;
+</Insert>
+<Copy StartSeek="745" EndSeek="1768"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:36:17000">
+<Copy StartSeek="0" EndSeek="737"/>
+<Insert>	u32 i;
+</Insert>
+<Copy StartSeek="749" EndSeek="1772"/>
+</Delta>
+<Delta Version="84" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:36:22000">
+<Copy StartSeek="0" EndSeek="737"/>
+<Insert>	u32 i = 0;
+</Insert>
+<Copy StartSeek="745" EndSeek="1768"/>
+</Delta>
+<Delta Version="85" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:36:25000">
+<Copy StartSeek="0" EndSeek="922"/>
+<Insert>	}
+
+</Insert>
+<Copy StartSeek="995" EndSeek="1837"/>
+</Delta>
+<Delta Version="86" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:47:24000">
+<Copy StartSeek="0" EndSeek="926"/>
+<Insert>	pr_info("%x:%x:%x:%x:%x:%x", ha[0],ha[1],ha[2],ha[3],ha[4],ha[5]);
+</Insert>
+<Copy StartSeek="1000" EndSeek="1843"/>
+</Delta>
+<Delta Version="87" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:48:11000">
+<Copy StartSeek="0" EndSeek="867"/>
+<Insert>	for (i = 0; i &lt; 6; i++, ha++) {
+		pr_info("%x", *ha);
+
+	}
+</Insert>
+<Copy StartSeek="949" EndSeek="1866"/>
+</Delta>
+<Delta Version="88" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:48:45000">
+<Copy StartSeek="0" EndSeek="949"/>
+<Insert>	pr_info("%0x:%0x:%0x:%0x:%0x:%0x", ha[0],ha[1],ha[2],ha[3],ha[4],ha[5]);
+</Insert>
+<Copy StartSeek="1017" EndSeek="1860"/>
+</Delta>
+<Delta Version="89" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:49:54000">
+<Copy StartSeek="0" EndSeek="949"/>
+<Insert>	pr_info("%x:%x:%x:%x:%x:%x", ha[0],ha[1],ha[2],ha[3],ha[4],ha[5]);
+</Insert>
+<Copy StartSeek="1023" EndSeek="1866"/>
+</Delta>
+<Delta Version="90" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:50:12000">
+<Copy StartSeek="0" EndSeek="769"/>
+<Insert>	pr_info("from %s: ", (nd ? nd-&gt;name : "NULL"));
+</Insert>
+<Copy StartSeek="822" EndSeek="1870"/>
+</Delta>
+<Delta Version="91" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:50:55000">
+<Copy StartSeek="0" EndSeek="769"/>
+<Insert>	pr_info("from %s: ", (nd ? nd-&gt;name : "NULL dev"));
+</Insert>
+<Copy StartSeek="817" EndSeek="1865"/>
+</Delta>
+<Delta Version="92" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:50:58000">
+<Copy StartSeek="0" EndSeek="866"/>
+<Insert>//      for (i = 0; i &lt; 6; i++, ha++) {
+//      	pr_info("%x", *ha);
+//
+//      }
+</Insert>
+<Copy StartSeek="867" EndSeek="1784"/>
+</Delta>
+<Delta Version="93" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:51:7000">
+<Copy StartSeek="0" EndSeek="737"/>
+<Insert>	u32 i;
+</Insert>
+<Copy StartSeek="737" EndSeek="1776"/>
+</Delta>
+<Delta Version="94" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:51:13000">
+<Copy StartSeek="0" EndSeek="760"/>
+<Insert>
+</Insert>
+<Copy StartSeek="760" EndSeek="1775"/>
+</Delta>
+<Delta Version="95" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:51:14000">
+<Copy StartSeek="0" EndSeek="858"/>
+<Insert>	pr_info("%0x:%0x:%0x:%0x:%0x:%0x", ha[0],ha[1],ha[2],ha[3],ha[4],ha[5]);
+</Insert>
+<Copy StartSeek="934" EndSeek="1777"/>
+</Delta>
+<Delta Version="96" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:51:34000">
+<Copy StartSeek="0" EndSeek="858"/>
+<Insert>	pr_info("%0.8x:%0x:%0x:%0x:%0x:%0x", ha[0],ha[1],ha[2],ha[3],ha[4],ha[5]);
+</Insert>
+<Copy StartSeek="925" EndSeek="1768"/>
+</Delta>
+<Delta Version="97" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:52:4000">
+<Copy StartSeek="0" EndSeek="858"/>
+<Insert>	pr_info("%x:%x:%x:%x:%:%x", ha[0],ha[1],ha[2],ha[3],ha[4],ha[5]);
+
+</Insert>
+<Copy StartSeek="966" EndSeek="1808"/>
+</Delta>
+<Delta Version="98" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:52:58000">
+<Copy StartSeek="0" EndSeek="858"/>
+<Insert>	pr_info("%s: %x:%x:%x:%x:%:%x", 
+</Insert>
+<Copy StartSeek="891" EndSeek="923"/>
+<Insert>		ha[0],ha[1],ha[2],ha[3],ha[4],ha[5],);
+
+</Insert>
+<Copy StartSeek="968" EndSeek="1810"/>
+</Delta>
+<Delta Version="99" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:53:30000">
+<Copy StartSeek="0" EndSeek="858"/>
+<Insert>	pr_info("%s %x:%x:%x:%x:%:%x", 
+</Insert>
+<Copy StartSeek="904" EndSeek="975"/>
+<Insert>		);
+</Insert>
+<Copy StartSeek="994" EndSeek="995"/>
+<Insert>	pr_info(" ip: "NIPQUAD_FMT "\n", NIPQUAD(addr));
+</Insert>
+<Copy StartSeek="1031" EndSeek="1823"/>
+</Delta>
+<Delta Version="100" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:53:58000">
+<Copy StartSeek="0" EndSeek="995"/>
+<Insert>	pr_info(" ip: "NIPQUAD_FMT "\n",);
+</Insert>
+<Copy StartSeek="995" EndSeek="1787"/>
+</Delta>
+<Delta Version="101" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:54:1000">
+<Copy StartSeek="0" EndSeek="858"/>
+<Insert>	pr_info("%s 	%x:%x:%x:%x:%:%x" NIPQUAD_FMT, 
+</Insert>
+<Copy StartSeek="904" EndSeek="1787"/>
+</Delta>
+<Delta Version="102" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:54:15000">
+<Copy StartSeek="0" EndSeek="858"/>
+<Insert>	pr_info("%s  %x:%x:%x:%x:%:%x" NIPQUAD_FMT, 
+</Insert>
+<Copy StartSeek="892" EndSeek="963"/>
+<Insert>		 NIPQUAD(addr));
+
+</Insert>
+<Copy StartSeek="997" EndSeek="1789"/>
+</Delta>
+<Delta Version="103" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:55:20000">
+<Copy StartSeek="0" EndSeek="858"/>
+<Insert>	pr_info("%s  %x:%x:%x:%x:%:%x", 
+</Insert>
+<Copy StartSeek="904" EndSeek="975"/>
+<Insert>		NIPQUAD_FMT,
+</Insert>
+<Copy StartSeek="979" EndSeek="1790"/>
+</Delta>
+<Delta Version="104" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:55:29000">
+<Copy StartSeek="0" EndSeek="975"/>
+<Insert>		,
+</Insert>
+<Copy StartSeek="975" EndSeek="1786"/>
+</Delta>
+<Delta Version="105" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:55:32000">
+<Copy StartSeek="0" EndSeek="858"/>
+<Insert>	pr_info("%s  %x:%x:%x:%x:%:%x" NIPQUAD_FMT, 
+</Insert>
+<Copy StartSeek="905" EndSeek="1787"/>
+</Delta>
+<Delta Version="106" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:55:55000">
+<Copy StartSeek="0" EndSeek="858"/>
+<Insert>	pr_info("%s:  %x:%x:%x:%x:%:%x" NIPQUAD_FMT, 
+</Insert>
+<Copy StartSeek="906" EndSeek="1788"/>
+</Delta>
+<Delta Version="107" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:56:7000">
+<Copy StartSeek="0" EndSeek="858"/>
+<Insert>	pr_info("%s:  %x:%x:%x:%x:%x:%x" NIPQUAD_FMT, 
+</Insert>
+<Copy StartSeek="911" EndSeek="1793"/>
+</Delta>
+<Delta Version="108" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:56:38000">
+<Copy StartSeek="0" EndSeek="760"/>
+<Insert>	pr_info("%s: ", (nd ? nd-&gt;name : "NULL dev"));
+</Insert>
+<Copy StartSeek="760" EndSeek="1745"/>
+</Delta>
+<Delta Version="109" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:56:44000">
+<Copy StartSeek="0" EndSeek="810"/>
+<Insert>	pr_info("%s:  %x:%x:%x:%x:%x:%x" NIPQUAD_FMT "\n", 
+</Insert>
+<Copy StartSeek="866" EndSeek="1748"/>
+</Delta>
+<Delta Version="110" Comment="" NL="\10" Encoding="text" Date="2012/02/07" Time="12:57:53000">
+<Copy StartSeek="0" EndSeek="810"/>
+<Insert>	pr_info("%s:  %x:%x:%x:%x:%x:%x	  " NIPQUAD_FMT "\n", 
+</Insert>
+<Copy StartSeek="872" EndSeek="1754"/>
+</Delta>
+<Delta Version="111" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:21:12000">
+<Copy StartSeek="0" EndSeek="604"/>
+<Copy StartSeek="605" EndSeek="1755"/>
+</Delta>
+<Delta Version="112" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:23:34000">
+<Copy StartSeek="0" EndSeek="605"/>
+<Copy StartSeek="723" EndSeek="1873"/>
+</Delta>
+<Delta Version="113" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:28:6000">
+<Copy StartSeek="0" EndSeek="606"/>
+<Insert>
+
+
+</Insert>
+<Copy StartSeek="1349" EndSeek="2613"/>
+</Delta>
+<Delta Version="114" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:31:14000">
+<Copy StartSeek="0" EndSeek="1083"/>
+<Copy StartSeek="1084" EndSeek="2614"/>
+</Delta>
+<Delta Version="115" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:31:25000">
+<Copy StartSeek="0" EndSeek="1217"/>
+<Insert>	struct vlan_group *grp;
+	int i, flgs;
+</Insert>
+<Copy StartSeek="1217" EndSeek="2575"/>
+</Delta>
+<Delta Version="116" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:31:38000">
+<Copy StartSeek="0" EndSeek="1247"/>
+<Insert>	if (is_vlan_dev(dev))
+</Insert>
+<Copy StartSeek="1284" EndSeek="1322"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="1351" EndSeek="2350"/>
+<Insert>		goto exit;
+</Insert>
+<Copy StartSeek="2362" EndSeek="2363"/>
+<Insert>exit:
+</Insert>
+<Copy StartSeek="2368" EndSeek="2613"/>
+</Delta>
+<Delta Version="117" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:32:46000">
+<Copy StartSeek="0" EndSeek="688"/>
+<Copy StartSeek="893" EndSeek="1286"/>
+<Insert>}
+
+static int vlan_device_event(struct notifier_block *unused, unsigned long event,
+			     void *ptr)
+{
+	struct net_device *dev = ptr;
+	struct net_device *vlandev;
+
+	if (!is_vlan_dev(dev))
+		goto out;
+
+		__mv_vlan_device_event(dev, event);
+</Insert>
+<Copy StartSeek="1286" EndSeek="2577"/>
+</Delta>
+<Delta Version="118" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:33:13000">
+<Copy StartSeek="0" EndSeek="911"/>
+<Insert>	case NETDEV_CHANGENAME:
+		vlan_proc_rem_dev(dev);
+		if (vlan_proc_add_dev(dev) &lt; 0)
+			pr_warning("8021q: failed to change proc name for %s\n",
+					dev-&gt;name);
+		break;
+</Insert>
+<Copy StartSeek="911" EndSeek="1112"/>
+<Copy StartSeek="1131" EndSeek="2425"/>
+</Delta>
+<Delta Version="119" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:33:41000">
+<Copy StartSeek="0" EndSeek="1112"/>
+<Insert>	default:
+		break;
+	}
+</Insert>
+<Copy StartSeek="1115" EndSeek="2406"/>
+</Delta>
+<Delta Version="120" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:33:58000">
+<Copy StartSeek="0" EndSeek="855"/>
+<Insert>
+</Insert>
+<Copy StartSeek="914" EndSeek="2464"/>
+</Delta>
+<Delta Version="121" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:35:35000">
+<Copy StartSeek="0" EndSeek="826"/>
+<Insert>	struct net_device *vlandev;
+</Insert>
+<Copy StartSeek="826" EndSeek="963"/>
+<Insert>		if (vlan_proc_add_dev(dev) &lt; 0)
+			pr_warning("8021q: failed to add proc entry for %s\n",
+					dev-&gt;name);
+</Insert>
+<Copy StartSeek="1028" EndSeek="2391"/>
+</Delta>
+<Delta Version="122" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:38:13000">
+<Copy StartSeek="0" EndSeek="963"/>
+<Insert>		pr_info("register %s vid %u\n", dev-&gt;name, dev_info-&gt;vlan_id);
+</Insert>
+<Copy StartSeek="1033" EndSeek="1067"/>
+<Copy StartSeek="1134" EndSeek="2463"/>
+</Delta>
+<Delta Version="123" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:39:16000">
+<Copy StartSeek="0" EndSeek="963"/>
+<Insert>		pr_info("vlan register %s vid %u\n", dev-&gt;name, dev_info-&gt;vlan_id);
+</Insert>
+<Copy StartSeek="1048" EndSeek="1082"/>
+<Insert>		pr_info("vlan unreg %s vid %u\n", dev-&gt;name, dev_info-&gt;vlan_id);
+</Insert>
+<Copy StartSeek="1164" EndSeek="2493"/>
+</Delta>
+<Delta Version="124" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:40:22000">
+<Copy StartSeek="0" EndSeek="963"/>
+<Insert>		pr_info("vlan register %s vid %u\n", dev_info-&gt;real_dev-&gt;name, dev_info-&gt;vlan_id);
+</Insert>
+<Copy StartSeek="1033" EndSeek="1067"/>
+<Insert>		pr_info("vlan unreg %s vid %u\n", dev_info-&gt;real_dev-&gt;name, dev_info-&gt;vlan_id);
+</Insert>
+<Copy StartSeek="1134" EndSeek="2463"/>
+</Delta>
+<Delta Version="125" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:40:40000">
+<Copy StartSeek="0" EndSeek="604"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="689" EndSeek="2546"/>
+</Delta>
+<Delta Version="126" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:45:31000">
+<Copy StartSeek="0" EndSeek="628"/>
+<Insert>module_param_string(notify, notify, sizeof(notify), 755);
+</Insert>
+<Copy StartSeek="687" EndSeek="2547"/>
+</Delta>
+<Delta Version="127" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:46:1000">
+<Copy StartSeek="0" EndSeek="2233"/>
+<Insert>	err = register_netevent_notifier(&amp;nb);
+</Insert>
+<Copy StartSeek="2307" EndSeek="2581"/>
+</Delta>
+<Delta Version="128" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:48:26000">
+<Copy StartSeek="0" EndSeek="2233"/>
+<Insert>	if (!strcmp(notify,"arp")) {
+</Insert>
+<Copy StartSeek="2262" EndSeek="2303"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="2303" EndSeek="2577"/>
+</Delta>
+<Delta Version="129" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:48:47000">
+<Copy StartSeek="0" EndSeek="2233"/>
+<Insert>	if (!strcmp(notify,"arp")) 
+</Insert>
+<Copy StartSeek="2263" EndSeek="2304"/>
+<Copy StartSeek="2307" EndSeek="2330"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2407" EndSeek="2657"/>
+</Delta>
+<Delta Version="130" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:49:9000">
+<Copy StartSeek="0" EndSeek="604"/>
+<Insert>static char notify[20];
+</Insert>
+<Copy StartSeek="629" EndSeek="2234"/>
+<Insert>	if (!strcmp(notify,"arp")) {
+</Insert>
+<Copy StartSeek="2264" EndSeek="2331"/>
+<Insert>	if (!strcmp(notify,"vlan")) {
+</Insert>
+<Copy StartSeek="2362" EndSeek="2658"/>
+</Delta>
+<Delta Version="131" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:49:45000">
+<Copy StartSeek="0" EndSeek="2403"/>
+<Insert> }
+
+
+</Insert>
+<Copy StartSeek="2437" EndSeek="2687"/>
+</Delta>
+<Delta Version="132" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:50:0000">
+<Copy StartSeek="0" EndSeek="2305"/>
+<Insert>	}
+	if (err) 
+		goto out;
+</Insert>
+<Copy StartSeek="2333" EndSeek="2689"/>
+</Delta>
+<Delta Version="133" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:50:12000">
+<Copy StartSeek="0" EndSeek="2364"/>
+<Insert>		err = register_netevent_notifier(&amp;nb);
+</Insert>
+<Copy StartSeek="2423" EndSeek="2707"/>
+</Delta>
+<Delta Version="134" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:52:16000">
+<Copy StartSeek="0" EndSeek="2317"/>
+<Insert>			goto out;
+</Insert>
+<Copy StartSeek="2331" EndSeek="2436"/>
+<Insert>			goto out;
+</Insert>
+<Copy StartSeek="2450" EndSeek="2709"/>
+</Delta>
+<Delta Version="135" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:52:30000">
+<Copy StartSeek="0" EndSeek="2459"/>
+<Insert>out:
+</Insert>
+<Copy StartSeek="2501" EndSeek="2746"/>
+</Delta>
+<Delta Version="136" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:52:45000">
+<Copy StartSeek="0" EndSeek="2514"/>
+<Copy StartSeek="2533" EndSeek="2765"/>
+</Delta>
+<Delta Version="137" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:53:15000">
+<Copy StartSeek="0" EndSeek="2514"/>
+<Insert>out1:
+</Insert>
+<Copy StartSeek="2574" EndSeek="2819"/>
+</Delta>
+<Delta Version="138" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:53:31000">
+<Copy StartSeek="0" EndSeek="2365"/>
+<Insert>		err = register_netdevice_notifier(&amp;vlan_notifier_block);
+</Insert>
+<Copy StartSeek="2427" EndSeek="2518"/>
+<Insert>out1:	unregister_netdevice_notifier(&amp;vlan_notifier_block);
+</Insert>
+<Copy StartSeek="2580" EndSeek="2825"/>
+</Delta>
+<Delta Version="139" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:53:57000">
+<Copy StartSeek="0" EndSeek="690"/>
+<Insert>
+</Insert>
+<Copy StartSeek="690" EndSeek="2824"/>
+</Delta>
+<Delta Version="140" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:54:19000">
+<Copy StartSeek="0" EndSeek="553"/>
+<Copy StartSeek="598" EndSeek="2869"/>
+</Delta>
+<Delta Version="141" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:55:22000">
+<Copy StartSeek="0" EndSeek="553"/>
+<Insert>enum NOTIFY_TYPE {
+</Insert>
+<Copy StartSeek="573" EndSeek="2870"/>
+</Delta>
+<Delta Version="142" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:55:36000">
+<Copy StartSeek="0" EndSeek="553"/>
+<Insert>enum NOTIFICATION {
+</Insert>
+<Copy StartSeek="578" EndSeek="2875"/>
+</Delta>
+<Delta Version="143" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:55:43000">
+<Copy StartSeek="0" EndSeek="599"/>
+<Insert>};
+</Insert>
+<Copy StartSeek="613" EndSeek="2886"/>
+</Delta>
+<Delta Version="144" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:55:51000">
+<Copy StartSeek="0" EndSeek="578"/>
+<Insert>	ARP = 1,
+	VLAN = 2,
+</Insert>
+<Copy StartSeek="599" EndSeek="2325"/>
+<Copy StartSeek="2354" EndSeek="2915"/>
+</Delta>
+<Delta Version="145" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:56:41000">
+<Copy StartSeek="0" EndSeek="578"/>
+<Insert>	ARP = 0,
+	VLAN = 1,
+</Insert>
+<Copy StartSeek="591" EndSeek="2907"/>
+</Delta>
+<Delta Version="146" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:56:49000">
+<Copy StartSeek="0" EndSeek="2317"/>
+<Insert>		set_bit(ARP,notif_mask |= 
+</Insert>
+<Copy StartSeek="2345" EndSeek="2906"/>
+</Delta>
+<Delta Version="147" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:57:2000">
+<Copy StartSeek="0" EndSeek="2446"/>
+<Copy StartSeek="2475" EndSeek="2935"/>
+</Delta>
+<Delta Version="148" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:57:15000">
+<Copy StartSeek="0" EndSeek="2766"/>
+<Insert>	unregister_netevent_notifier(&amp;nb);
+}
+
+
+</Insert>
+<Copy StartSeek="2942" EndSeek="3071"/>
+</Delta>
+<Delta Version="149" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:58:11000">
+<Copy StartSeek="0" EndSeek="2801"/>
+<Copy StartSeek="2827" EndSeek="2903"/>
+<Copy StartSeek="2930" EndSeek="3124"/>
+</Delta>
+<Delta Version="150" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="10:58:30000">
+<Copy StartSeek="0" EndSeek="519"/>
+<Copy StartSeek="547" EndSeek="3152"/>
+</Delta>
+<Delta Version="151" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:00:12000">
+<Copy StartSeek="0" EndSeek="519"/>
+<Insert>#include &lt;net/8021q/vlan.h&gt;
+</Insert>
+<Copy StartSeek="537" EndSeek="3142"/>
+</Delta>
+<Delta Version="152" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:00:40000">
+<Copy StartSeek="0" EndSeek="982"/>
+<Insert>	struct vlan_dev_info *dev_info = vlan_dev_info(vlandev);
+</Insert>
+<Copy StartSeek="1036" EndSeek="3138"/>
+</Delta>
+<Delta Version="153" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:10:32000">
+<Copy StartSeek="0" EndSeek="762"/>
+<Insert>static void __mv_vlan_device_event(struct net_device *dev, unsigned long event)
+{
+	
+}
+
+static int vlan_device_event(struct notifier_block *unused, unsigned long event,
+</Insert>
+<Copy StartSeek="846" EndSeek="3054"/>
+</Delta>
+<Delta Version="154" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:10:49000">
+<Copy StartSeek="0" EndSeek="2247"/>
+<Insert>		set_bit(ARP,&amp;notif_mask);
+</Insert>
+<Copy StartSeek="2272" EndSeek="3051"/>
+</Delta>
+<Delta Version="155" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:14:16000">
+<Copy StartSeek="0" EndSeek="2373"/>
+<Insert>		set_bit(VLAN,&amp;notif_mask);
+</Insert>
+<Copy StartSeek="2399" EndSeek="3048"/>
+</Delta>
+<Delta Version="156" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:14:22000">
+<Copy StartSeek="0" EndSeek="1202"/>
+<Insert>		vlan_proc_rem_dev(dev);
+</Insert>
+<Copy StartSeek="1202" EndSeek="3022"/>
+</Delta>
+<Delta Version="157" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:14:39000">
+<Copy StartSeek="0" EndSeek="2447"/>
+<Insert>			goto out2;
+</Insert>
+<Copy StartSeek="2461" EndSeek="3022"/>
+</Delta>
+<Delta Version="158" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:14:51000">
+<Copy StartSeek="0" EndSeek="2464"/>
+<Insert>
+ }
+
+
+</Insert>
+<Copy StartSeek="2464" EndSeek="3016"/>
+</Delta>
+<Delta Version="159" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:15:16000">
+<Copy StartSeek="0" EndSeek="2464"/>
+<Copy StartSeek="2482" EndSeek="3034"/>
+</Delta>
+<Delta Version="160" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:15:42000">
+<Copy StartSeek="0" EndSeek="2482"/>
+<Copy StartSeek="2484" EndSeek="3036"/>
+</Delta>
+<Delta Version="161" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:15:46000">
+<Copy StartSeek="0" EndSeek="2464"/>
+<Insert>out:
+</Insert>
+<Copy StartSeek="2465" EndSeek="2479"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2479" EndSeek="3031"/>
+</Delta>
+<Delta Version="162" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:15:51000">
+<Copy StartSeek="0" EndSeek="2478"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2478" EndSeek="3030"/>
+</Delta>
+<Delta Version="163" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:15:53000">
+<Copy StartSeek="0" EndSeek="2672"/>
+<Insert>	if (test_bit(ARP, &amp;notif_mask)) {
+</Insert>
+<Copy StartSeek="2702" EndSeek="3025"/>
+</Delta>
+<Delta Version="164" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:17:0000">
+<Copy StartSeek="0" EndSeek="2672"/>
+<Insert>	if (notif_mask &amp;= 1&lt;&lt;ARP)) {
+</Insert>
+<Copy StartSeek="2701" EndSeek="3024"/>
+</Delta>
+<Delta Version="165" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:17:25000">
+<Copy StartSeek="0" EndSeek="2767"/>
+<Insert>	if (test_bit(VLAN, &amp;notif_mask)) {
+</Insert>
+<Copy StartSeek="2806" EndSeek="3027"/>
+</Delta>
+<Delta Version="166" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:17:44000">
+<Copy StartSeek="0" EndSeek="2767"/>
+<Insert>	if (test_bit(notif_mask &amp; 1&lt;&lt;VLAN)) {
+</Insert>
+<Copy StartSeek="2796" EndSeek="3017"/>
+</Delta>
+<Delta Version="167" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:18:5000">
+<Copy StartSeek="0" EndSeek="2672"/>
+<Insert>	if (notif_mask &amp; 1&lt;&lt;ARP)) {
+</Insert>
+<Copy StartSeek="2700" EndSeek="3016"/>
+</Delta>
+<Delta Version="168" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:18:20000">
+<Copy StartSeek="0" EndSeek="2246"/>
+<Copy StartSeek="2270" EndSeek="3040"/>
+</Delta>
+<Delta Version="169" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:19:32000">
+<Copy StartSeek="0" EndSeek="2397"/>
+<Copy StartSeek="2422" EndSeek="3065"/>
+</Delta>
+<Delta Version="170" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:19:39000">
+<Copy StartSeek="0" EndSeek="990"/>
+<Copy StartSeek="1013" EndSeek="3088"/>
+</Delta>
+<Delta Version="171" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:22:43000">
+<Copy StartSeek="0" EndSeek="990"/>
+<Insert>	pr_info("mv_vlan\n");
+</Insert>
+<Copy StartSeek="1029" EndSeek="3104"/>
+</Delta>
+<Delta Version="172" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:22:53000">
+<Copy StartSeek="0" EndSeek="990"/>
+<Insert>	pr_info("mv_vlan event %lu\n",event);
+</Insert>
+<Copy StartSeek="1030" EndSeek="3105"/>
+</Delta>
+<Delta Version="173" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:22:56000">
+<Copy StartSeek="0" EndSeek="2231"/>
+<Insert>	if (!strstr(notify,"arp")) {
+</Insert>
+<Copy StartSeek="2260" EndSeek="2379"/>
+<Insert>	if (!strstr(notify,"vlan")) {
+</Insert>
+<Copy StartSeek="2409" EndSeek="3103"/>
+</Delta>
+<Delta Version="174" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:35:3000">
+<Copy StartSeek="0" EndSeek="990"/>
+<Insert>	pr_info("mv_vlan event %lu\n", event);
+</Insert>
+<Copy StartSeek="990" EndSeek="3063"/>
+</Delta>
+<Delta Version="175" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:36:33000">
+<Copy StartSeek="0" EndSeek="1948"/>
+<Insert>		mv_klna_neigh_update((struct neighbour *)ctx);
+</Insert>
+<Copy StartSeek="1998" EndSeek="3064"/>
+</Delta>
+<Delta Version="176" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:38:55000">
+<Copy StartSeek="0" EndSeek="1357"/>
+<Insert>void mv_klna_neigh_update(struct neighbour *neigh)
+</Insert>
+<Copy StartSeek="1409" EndSeek="3065"/>
+</Delta>
+<Delta Version="177" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:38:59000">
+<Copy StartSeek="0" EndSeek="762"/>
+<Insert>static int mv_vlan_device_event(struct notifier_block *unused, unsigned long event,
+</Insert>
+<Copy StartSeek="847" EndSeek="1314"/>
+<Insert>	.notifier_call = mv_vlan_device_event,
+</Insert>
+<Copy StartSeek="1355" EndSeek="3067"/>
+</Delta>
+<Delta Version="178" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:39:11000">
+<Copy StartSeek="0" EndSeek="762"/>
+<Insert>static int _mv_vlan_device_event(struct notifier_block *unused, unsigned long event,
+</Insert>
+<Copy StartSeek="846" EndSeek="1313"/>
+<Insert>	.notifier_call = _mv_vlan_device_event,
+</Insert>
+<Copy StartSeek="1353" EndSeek="3065"/>
+</Delta>
+<Delta Version="179" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:40:3000">
+<Copy StartSeek="0" EndSeek="1357"/>
+<Insert>void _mv_klna_neigh_update(struct neighbour *neigh)
+</Insert>
+<Copy StartSeek="1408" EndSeek="3064"/>
+</Delta>
+<Delta Version="180" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:40:22000">
+<Copy StartSeek="0" EndSeek="1948"/>
+<Insert>		_mv_klna_neigh_update((struct neighbour *)ctx);
+</Insert>
+<Copy StartSeek="1997" EndSeek="3063"/>
+</Delta>
+<Delta Version="181" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:40:27000">
+<Copy StartSeek="0" EndSeek="2933"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2933" EndSeek="3062"/>
+</Delta>
+<Delta Version="182" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:42:36000">
+<Copy StartSeek="0" EndSeek="2985"/>
+<Insert>MODULE_LICENSE("GPL");
+</Insert>
+<Copy StartSeek="3016" EndSeek="3070"/>
+</Delta>
+<Delta Version="183" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:43:27000">
+<Copy StartSeek="0" EndSeek="2985"/>
+<Insert>MODULE_LICENSE("Proprietary");
+</Insert>
+<Copy StartSeek="3008" EndSeek="3062"/>
+</Delta>
+<Delta Version="184" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:43:58000">
+<Copy StartSeek="0" EndSeek="2985"/>
+<Insert>MODULE_LICENSE("GPL");
+</Insert>
+<Copy StartSeek="3010" EndSeek="3064"/>
+</Delta>
+<Delta Version="185" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:44:6000">
+<Copy StartSeek="0" EndSeek="2985"/>
+<Insert>//MODULE_LICENSE("GPL");
+</Insert>
+<Copy StartSeek="3008" EndSeek="3062"/>
+</Delta>
+<Delta Version="186" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="11:44:45000">
+<Copy StartSeek="0" EndSeek="762"/>
+<Copy StartSeek="852" EndSeek="3152"/>
+</Delta>
+<Delta Version="187" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:06:1000">
+<Copy StartSeek="0" EndSeek="762"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2111" EndSeek="4500"/>
+</Delta>
+<Delta Version="188" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:06:55000">
+<Copy StartSeek="0" EndSeek="762"/>
+<Insert>static int mv_br_device_event(struct notifier_block *unused, unsigned long event, void *ptr)
+{
+</Insert>
+<Copy StartSeek="867" EndSeek="4510"/>
+</Delta>
+<Delta Version="189" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:07:51000">
+<Copy StartSeek="0" EndSeek="898"/>
+<Insert>	struct net_bridge_port *p = dev-&gt;br_port;
+</Insert>
+<Copy StartSeek="926" EndSeek="951"/>
+<Copy StartSeek="1022" EndSeek="4566"/>
+</Delta>
+<Delta Version="190" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:20:37000">
+<Copy StartSeek="0" EndSeek="1022"/>
+<Copy StartSeek="1023" EndSeek="4567"/>
+</Delta>
+<Delta Version="191" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:21:35000">
+<Copy StartSeek="0" EndSeek="1148"/>
+<Insert>		dev_set_mtu(br-&gt;dev, br_min_mtu(br));
+</Insert>
+<Copy StartSeek="1148" EndSeek="4527"/>
+</Delta>
+<Delta Version="192" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:22:43000">
+<Copy StartSeek="0" EndSeek="1183"/>
+<Insert>		spin_lock_bh(&amp;br-&gt;lock);
+		br_fdb_changeaddr(p, dev-&gt;dev_addr);
+		br_stp_recalculate_bridge_id(br);
+		spin_unlock_bh(&amp;br-&gt;lock);
+</Insert>
+<Copy StartSeek="1183" EndSeek="4396"/>
+</Delta>
+<Delta Version="193" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:22:47000">
+<Copy StartSeek="0" EndSeek="609"/>
+<Copy StartSeek="618" EndSeek="4405"/>
+</Delta>
+<Delta Version="194" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:23:7000">
+<Copy StartSeek="0" EndSeek="3854"/>
+<Copy StartSeek="4028" EndSeek="4029"/>
+<Copy StartSeek="4030" EndSeek="4580"/>
+</Delta>
+<Delta Version="195" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:23:27000">
+<Copy StartSeek="0" EndSeek="3912"/>
+<Insert>		pr_info("reg vlan\n");
+</Insert>
+<Copy StartSeek="3939" EndSeek="4582"/>
+</Delta>
+<Delta Version="196" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:23:30000">
+<Copy StartSeek="0" EndSeek="3939"/>
+<Insert>		err = register_netdevice_notifier(&amp;mv_vlan_notifier_block);
+</Insert>
+<Copy StartSeek="4000" EndSeek="4581"/>
+</Delta>
+<Delta Version="197" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:23:58000">
+<Copy StartSeek="0" EndSeek="4012"/>
+<Insert>			goto out1;
+</Insert>
+<Copy StartSeek="4026" EndSeek="4581"/>
+</Delta>
+<Delta Version="198" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:24:17000">
+<Copy StartSeek="0" EndSeek="4012"/>
+<Insert>			goto out3;
+</Insert>
+<Copy StartSeek="4026" EndSeek="4581"/>
+</Delta>
+<Delta Version="199" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:24:22000">
+<Copy StartSeek="0" EndSeek="4175"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="4255" EndSeek="4658"/>
+</Delta>
+<Delta Version="200" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:24:35000">
+<Copy StartSeek="0" EndSeek="4176"/>
+<Insert>out2:	unregister_netdevice_notifier(&amp;mv_vlan_notifier_block);
+</Insert>
+<Copy StartSeek="4237" EndSeek="4657"/>
+</Delta>
+<Delta Version="201" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:24:59000">
+<Copy StartSeek="0" EndSeek="2586"/>
+<Insert>static struct notifier_block mv_vlan_notifier_block __read_mostly = {
+</Insert>
+<Copy StartSeek="2650" EndSeek="3757"/>
+<Insert>		err = register_netdevice_notifier(&amp;mv_vlan_notifier_block);
+</Insert>
+<Copy StartSeek="3813" EndSeek="4088"/>
+<Insert>out1:	unregister_netdevice_notifier(&amp;mv_vlan_notifier_block);
+</Insert>
+<Copy StartSeek="4144" EndSeek="4446"/>
+<Insert>		unregister_netdevice_notifier(&amp;mv_vlan_notifier_block);
+</Insert>
+<Copy StartSeek="4498" EndSeek="4633"/>
+</Delta>
+<Delta Version="202" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:25:27000">
+<Copy StartSeek="0" EndSeek="3813"/>
+<Insert>		if (err) 
+</Insert>
+<Copy StartSeek="3824" EndSeek="4632"/>
+</Delta>
+<Delta Version="203" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:27:20000">
+<Copy StartSeek="0" EndSeek="3647"/>
+<Insert>		if (err) 
+</Insert>
+<Copy StartSeek="3658" EndSeek="3986"/>
+<Insert>		if (err) 
+</Insert>
+<Copy StartSeek="3997" EndSeek="4630"/>
+</Delta>
+<Delta Version="204" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:27:28000">
+<Copy StartSeek="0" EndSeek="3557"/>
+<Insert>		notif_mask |= 1&lt;&lt; ARP;
+</Insert>
+<Copy StartSeek="3557" EndSeek="3647"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="3675" EndSeek="3705"/>
+<Insert>		notif_mask |= 1&lt;&lt; VLAN;
+</Insert>
+<Copy StartSeek="3705" EndSeek="3811"/>
+<Insert>	}
+	if (strstr(notify,"bridge")) {
+</Insert>
+<Copy StartSeek="3811" EndSeek="3837"/>
+<Copy StartSeek="3872" EndSeek="3985"/>
+<Insert>	}
+
+</Insert>
+<Copy StartSeek="4016" EndSeek="4017"/>
+<Copy StartSeek="4018" EndSeek="4632"/>
+</Delta>
+<Delta Version="205" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:28:19000">
+<Copy StartSeek="0" EndSeek="3633"/>
+<Insert>			goto out0;
+</Insert>
+<Copy StartSeek="3671" EndSeek="4656"/>
+</Delta>
+<Delta Version="206" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:31:18000">
+<Copy StartSeek="0" EndSeek="3622"/>
+<Insert>		if (err)
+</Insert>
+<Copy StartSeek="3635" EndSeek="3673"/>
+<Insert>		notif_mask |= 1&lt;&lt; ARP;
+	}
+</Insert>
+<Copy StartSeek="3712" EndSeek="4669"/>
+</Delta>
+<Delta Version="207" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:31:49000">
+<Copy StartSeek="0" EndSeek="3823"/>
+<Insert>		if (err)
+			goto out1;
+		notif_mask |= 1&lt;&lt; VLAN;
+	}
+</Insert>
+<Copy StartSeek="3929" EndSeek="4721"/>
+</Delta>
+<Delta Version="208" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:32:23000">
+<Copy StartSeek="0" EndSeek="4049"/>
+<Insert>		if (err)
+			goto out2;
+		notif_mask |= 1&lt;&lt; BRIDGE;
+	}
+
+</Insert>
+<Copy StartSeek="4161" EndSeek="4162"/>
+<Copy StartSeek="4163" EndSeek="4777"/>
+</Delta>
+<Delta Version="209" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:32:46000">
+<Copy StartSeek="0" EndSeek="4176"/>
+<Insert>out0:
+	unregister_netevent_notifier(&amp;nb);
+	return err;
+
+out1:	unregister_netdevice_notifier(&amp;mv_vlan_notifier);
+	return err;
+
+out2:	unregister_netdevice_notifier(&amp;mv_br_device_notifier);
+	return err;
+
+}
+
+</Insert>
+<Copy StartSeek="4179" EndSeek="4576"/>
+</Delta>
+<Delta Version="210" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:32:59000">
+<Copy StartSeek="0" EndSeek="4163"/>
+<Copy StartSeek="4208" EndSeek="4621"/>
+</Delta>
+<Delta Version="211" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:34:57000">
+<Copy StartSeek="0" EndSeek="4163"/>
+<Insert>	if (err) {
+		find_next_bit(&amp;notif_mask,)
+</Insert>
+<Copy StartSeek="4186" EndSeek="4189"/>
+<Copy StartSeek="4194" EndSeek="4607"/>
+</Delta>
+<Delta Version="212" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:38:33000">
+<Copy StartSeek="0" EndSeek="4163"/>
+<Insert>	while (notif_mask) {
+
+	}
+		
+	
+</Insert>
+<Copy StartSeek="4163" EndSeek="4576"/>
+</Delta>
+<Delta Version="213" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:39:57000">
+<Copy StartSeek="0" EndSeek="3458"/>
+<Copy StartSeek="3523" EndSeek="4641"/>
+</Delta>
+<Delta Version="214" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:41:51000">
+<Copy StartSeek="0" EndSeek="3459"/>
+<Insert>/* HAIM FIXME: unreg the notifiers according to the bitfield */
+</Insert>
+<Copy StartSeek="3534" EndSeek="4652"/>
+</Delta>
+<Delta Version="215" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:41:57000">
+<Copy StartSeek="0" EndSeek="3459"/>
+<Insert>/* HAIM FIXME: unreg the notifiers according to the notif_mask bitfield */
+</Insert>
+<Copy StartSeek="3542" EndSeek="4660"/>
+</Delta>
+<Delta Version="216" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:42:2000">
+<Copy StartSeek="0" EndSeek="907"/>
+<Insert>	struct net_bridge_port *p;
+	struct net_bridge *br;
+
+</Insert>
+<Copy StartSeek="909" EndSeek="961"/>
+<Insert>	p = dev-&gt;br_port;
+
+	/* not a port of a bridge */
+	if (p == NULL)
+		return NOTIFY_DONE;
+
+	br = p-&gt;br;
+
+</Insert>
+<Copy StartSeek="987" EndSeek="4532"/>
+</Delta>
+<Delta Version="217" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:46:55000">
+<Copy StartSeek="0" EndSeek="1005"/>
+<Insert>	case NETDEV_CHANGEMTU:
+		break;
+
+	case NETDEV_CHANGEADDR:
+		break;
+
+</Insert>
+<Copy StartSeek="1005" EndSeek="1026"/>
+<Insert>		br_port_carrier_check(p);
+</Insert>
+<Copy StartSeek="1026" EndSeek="4435"/>
+</Delta>
+<Delta Version="218" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:47:2000">
+<Copy StartSeek="0" EndSeek="1036"/>
+<Insert>	case NETDEV_FEAT_CHANGE:
+		spin_lock_bh(&amp;br-&gt;lock);
+		if (netif_running(br-&gt;dev))
+			br_features_recompute(br);
+		spin_unlock_bh(&amp;br-&gt;lock);
+		break;
+
+</Insert>
+<Copy StartSeek="1036" EndSeek="4283"/>
+</Delta>
+<Delta Version="219" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:47:6000">
+<Copy StartSeek="0" EndSeek="907"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="932" EndSeek="1078"/>
+<Insert>		spin_lock_bh(&amp;br-&gt;lock);
+		if (br-&gt;dev-&gt;flags &amp; IFF_UP)
+			br_stp_disable_port(p);
+		spin_unlock_bh(&amp;br-&gt;lock);
+</Insert>
+<Copy StartSeek="1114" EndSeek="4228"/>
+</Delta>
+<Delta Version="220" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:48:22000">
+<Copy StartSeek="0" EndSeek="1078"/>
+<Insert>		pr_info("br down %s\n",dev-&gt;name)
+</Insert>
+<Copy StartSeek="1115" EndSeek="4229"/>
+</Delta>
+<Delta Version="221" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:48:27000">
+<Copy StartSeek="0" EndSeek="1142"/>
+<Insert>		if (netif_carrier_ok(dev) &amp;&amp; (br-&gt;dev-&gt;flags &amp; IFF_UP)) {
+			spin_lock_bh(&amp;br-&gt;lock);
+			br_stp_enable_port(p);
+			spin_unlock_bh(&amp;br-&gt;lock);
+		}
+</Insert>
+<Copy StartSeek="1177" EndSeek="4116"/>
+</Delta>
+<Delta Version="222" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:48:43000">
+<Copy StartSeek="0" EndSeek="1247"/>
+<Insert>	/* Events that may cause spanning tree to refresh */
+	if (event == NETDEV_CHANGEADDR || event == NETDEV_UP ||
+	    event == NETDEV_CHANGE || event == NETDEV_DOWN)
+		br_ifinfo_notify(RTM_NEWLINK, p);
+
+</Insert>
+<Copy StartSeek="1247" EndSeek="3915"/>
+</Delta>
+<Delta Version="223" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:48:58000">
+<Copy StartSeek="0" EndSeek="1212"/>
+<Insert>		br_del_if(br, dev);
+</Insert>
+<Copy StartSeek="1250" EndSeek="3931"/>
+</Delta>
+<Delta Version="224" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:49:10000">
+<Copy StartSeek="0" EndSeek="932"/>
+<Copy StartSeek="933" EndSeek="3932"/>
+</Delta>
+<Delta Version="225" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:51:37000">
+<Copy StartSeek="0" EndSeek="932"/>
+<Insert>
+</Insert>
+<Copy StartSeek="975" EndSeek="3974"/>
+</Delta>
+<Delta Version="226" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:52:0000">
+<Copy StartSeek="0" EndSeek="932"/>
+<Insert>	pr_info("mv bridge dev %s\n", dev-&gt;name);
+</Insert>
+<Copy StartSeek="992" EndSeek="3991"/>
+</Delta>
+<Delta Version="227" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:52:13000">
+<Copy StartSeek="0" EndSeek="1046"/>
+<Insert>	br = netdev_priv(dev)
+</Insert>
+<Copy StartSeek="1070" EndSeek="3992"/>
+</Delta>
+<Delta Version="228" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:52:30000">
+<Copy StartSeek="0" EndSeek="1323"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1328" EndSeek="3996"/>
+</Delta>
+<Delta Version="229" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:52:50000">
+<Copy StartSeek="0" EndSeek="2917"/>
+<Insert>	int err;
+</Insert>
+<Copy StartSeek="2931" EndSeek="4000"/>
+</Delta>
+<Delta Version="230" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:53:1000">
+<Copy StartSeek="0" EndSeek="932"/>
+<Insert>	pr_info("mv bridge dev %s event %lu\n", dev-&gt;name, event);
+</Insert>
+<Copy StartSeek="988" EndSeek="3996"/>
+</Delta>
+<Delta Version="231" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:55:0000">
+<Copy StartSeek="0" EndSeek="1182"/>
+<Insert>	case NETDEV_UP:
+</Insert>
+<Copy StartSeek="1205" EndSeek="4002"/>
+</Delta>
+<Delta Version="232" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:55:28000">
+<Copy StartSeek="0" EndSeek="1116"/>
+<Insert>	case NETDEV_DOWN:
+		pr_info("br down %s\n",dev-&gt;name);
+		break;
+
+</Insert>
+<Copy StartSeek="1116" EndSeek="3936"/>
+</Delta>
+<Delta Version="233" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:55:54000">
+<Copy StartSeek="0" EndSeek="1039"/>
+<Insert>
+	
+</Insert>
+<Copy StartSeek="1041" EndSeek="3935"/>
+</Delta>
+<Delta Version="234" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:56:8000">
+<Copy StartSeek="0" EndSeek="932"/>
+<Insert>	pr_info("mv_br dev %s event %lu\n", dev-&gt;name, event);
+</Insert>
+<Copy StartSeek="932" EndSeek="3879"/>
+</Delta>
+<Delta Version="235" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:57:5000">
+<Copy StartSeek="0" EndSeek="932"/>
+<Copy StartSeek="988" EndSeek="3935"/>
+</Delta>
+<Delta Version="236" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="12:57:9000">
+<Copy StartSeek="0" EndSeek="932"/>
+<Insert>	pr_info("mv_br dev %s event %lu\n", dev-&gt;name, event);
+</Insert>
+<Copy StartSeek="995" EndSeek="1145"/>
+<Insert>		pr_info("br up %s\n",dev-&gt;name);
+</Insert>
+<Copy StartSeek="1181" EndSeek="3943"/>
+</Delta>
+<Delta Version="237" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="13:01:3000">
+<Copy StartSeek="0" EndSeek="1091"/>
+<Insert>	case NETDEV_CHANGE:
+		break;
+
+</Insert>
+<Copy StartSeek="1092" EndSeek="3913"/>
+</Delta>
+<Delta Version="238" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="14:43:57000">
+<Copy StartSeek="0" EndSeek="932"/>
+<Insert>//      pr_info("mv_br dev %s event %lu\n", dev-&gt;name, event);
+</Insert>
+<Copy StartSeek="932" EndSeek="3850"/>
+</Delta>
+<Delta Version="239" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="14:44:2000">
+<Copy StartSeek="0" EndSeek="571"/>
+<Copy StartSeek="622" EndSeek="685"/>
+<Insert>#undef pr_fmt
+#define pr_fmt(fmt)	"mv_klna: " fmt
+
+</Insert>
+<Copy StartSeek="685" EndSeek="3850"/>
+</Delta>
+<Delta Version="240" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="15:54:2000">
+<Copy StartSeek="0" EndSeek="622"/>
+<Copy StartSeek="707" EndSeek="769"/>
+<Insert>
+static char notify[256];
+module_param_string(notify, notify, sizeof(notify), 0644);
+
+
+</Insert>
+<Copy StartSeek="769" EndSeek="3848"/>
+</Delta>
+<Delta Version="241" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="15:54:11000">
+<Copy StartSeek="0" EndSeek="707"/>
+<Insert>enum NOTIFICATION_HOOK {
+</Insert>
+<Copy StartSeek="739" EndSeek="3855"/>
+</Delta>
+<Delta Version="242" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="15:54:14000">
+<Copy StartSeek="0" EndSeek="3723"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="3823" EndSeek="3952"/>
+</Delta>
+<Delta Version="243" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="15:54:49000">
+<Copy StartSeek="0" EndSeek="3754"/>
+<Insert>		pr_info("unreg arp\n");
+</Insert>
+<Copy StartSeek="3782" EndSeek="3954"/>
+</Delta>
+<Delta Version="244" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="15:54:51000">
+<Copy StartSeek="0" EndSeek="3782"/>
+<Insert>		unregister_netevent_notifier(&amp;nb);
+</Insert>
+<Copy StartSeek="3839" EndSeek="3974"/>
+</Delta>
+<Delta Version="245" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="15:54:58000">
+<Copy StartSeek="0" EndSeek="1885"/>
+<Insert>void mv_klna_neigh_update(struct neighbour *neigh)
+</Insert>
+<Copy StartSeek="1943" EndSeek="3981"/>
+</Delta>
+<Delta Version="246" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="15:56:5000">
+<Copy StartSeek="0" EndSeek="3447"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="3736" EndSeek="4268"/>
+</Delta>
+<Delta Version="247" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:04:33000">
+<Copy StartSeek="0" EndSeek="3447"/>
+<Insert>	if (strstr(notify,"nf_conn")) {
+</Insert>
+<Copy StartSeek="3478" EndSeek="4266"/>
+</Delta>
+<Delta Version="248" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:04:40000">
+<Copy StartSeek="0" EndSeek="706"/>
+<Insert>
+</Insert>
+<Copy StartSeek="770" EndSeek="3574"/>
+<Insert>		err = register_netdevice_notifier(&amp;mv_br_device_notifier);
+</Insert>
+<Copy StartSeek="3630" EndSeek="3643"/>
+<Insert>			unregister_netdevice_notifier(&amp;mv_br_device_notifier);
+</Insert>
+<Copy StartSeek="3696" EndSeek="3738"/>
+<Insert>nf_conntrack_register_notifier(&amp;ctnl_notifier);
+</Insert>
+<Copy StartSeek="3739" EndSeek="4272"/>
+</Delta>
+<Delta Version="249" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:06:24000">
+<Copy StartSeek="0" EndSeek="706"/>
+<Insert>MODULE_PARM_DESC(notify, "event type: arp vlan bridge nf_ct");
+</Insert>
+<Copy StartSeek="772" EndSeek="4275"/>
+</Delta>
+<Delta Version="250" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:06:42000">
+<Copy StartSeek="0" EndSeek="842"/>
+<Copy StartSeek="927" EndSeek="4360"/>
+</Delta>
+<Delta Version="251" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:07:51000">
+<Copy StartSeek="0" EndSeek="3662"/>
+<Insert>		err = nf_conntrack_register_notifier(&amp;ctnl_notifier);
+</Insert>
+<Copy StartSeek="3719" EndSeek="3732"/>
+<Insert>			nf_conntrack_unregister_notifier(&amp;ctnl_notifier);
+</Insert>
+<Copy StartSeek="3786" EndSeek="4362"/>
+</Delta>
+<Delta Version="252" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:08:5000">
+<Copy StartSeek="0" EndSeek="827"/>
+<Copy StartSeek="832" EndSeek="4367"/>
+</Delta>
+<Delta Version="253" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:08:23000">
+<Copy StartSeek="0" EndSeek="827"/>
+<Insert>	NF,
+</Insert>
+<Copy StartSeek="834" EndSeek="4369"/>
+</Delta>
+<Delta Version="254" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:08:26000">
+<Copy StartSeek="0" EndSeek="3802"/>
+<Insert>			notif_mask |= 1&lt;&lt; BRIDGE;
+</Insert>
+<Copy StartSeek="3829" EndSeek="4367"/>
+</Delta>
+<Delta Version="255" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:08:47000">
+<Copy StartSeek="0" EndSeek="4235"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="4352" EndSeek="4481"/>
+</Delta>
+<Delta Version="256" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:09:18000">
+<Copy StartSeek="0" EndSeek="4348"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="4351" EndSeek="4480"/>
+</Delta>
+<Delta Version="257" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:09:23000">
+<Copy StartSeek="0" EndSeek="849"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="4008" EndSeek="4062"/>
+<Insert>	.fcn = mv_nf_ct_event,
+</Insert>
+<Copy StartSeek="4085" EndSeek="7636"/>
+</Delta>
+<Delta Version="258" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:11:14000">
+<Copy StartSeek="0" EndSeek="849"/>
+<Insert>static int
+mv_nf_ct_event(unsigned int events, struct nf_ct_event *item)
+{
+</Insert>
+<Copy StartSeek="924" EndSeek="7636"/>
+</Delta>
+<Delta Version="259" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:11:17000">
+<Copy StartSeek="0" EndSeek="849"/>
+<Insert>static int mv_nf_ct_event(unsigned int events, struct nf_ct_event *item)
+{
+</Insert>
+<Copy StartSeek="925" EndSeek="7637"/>
+</Delta>
+<Delta Version="260" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:11:19000">
+<Copy StartSeek="0" EndSeek="849"/>
+<Insert>static int 
+mv_nf_ct_event(unsigned int events, struct nf_ct_event *item)
+{
+</Insert>
+<Copy StartSeek="924" EndSeek="7636"/>
+</Delta>
+<Delta Version="261" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:11:21000">
+<Copy StartSeek="0" EndSeek="537"/>
+<Copy StartSeek="577" EndSeek="7676"/>
+</Delta>
+<Delta Version="262" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:13:20000">
+<Copy StartSeek="0" EndSeek="964"/>
+<Insert>	struct nlmsghdr *nlh;
+	struct nfgenmsg *nfmsg;
+	struct nlattr *nest_parms;
+</Insert>
+<Copy StartSeek="964" EndSeek="996"/>
+<Insert>	struct sk_buff *skb;
+</Insert>
+<Copy StartSeek="996" EndSeek="7578"/>
+</Delta>
+<Delta Version="263" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:13:34000">
+<Copy StartSeek="0" EndSeek="1059"/>
+<Copy StartSeek="1105" EndSeek="7624"/>
+</Delta>
+<Delta Version="264" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:14:25000">
+<Copy StartSeek="0" EndSeek="1192"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1198" EndSeek="3987"/>
+<Copy StartSeek="3994" EndSeek="7636"/>
+</Delta>
+<Delta Version="265" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:14:43000">
+<Copy StartSeek="0" EndSeek="3987"/>
+<Insert>#endif
+</Insert>
+<Copy StartSeek="3988" EndSeek="4001"/>
+<Insert>
+</Insert>
+<Copy StartSeek="4009" EndSeek="7637"/>
+</Delta>
+<Delta Version="266" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:27:29000">
+<Copy StartSeek="0" EndSeek="4001"/>
+<Insert>#endif
+</Insert>
+<Copy StartSeek="4002" EndSeek="4083"/>
+<Insert>
+</Insert>
+<Copy StartSeek="4090" EndSeek="7637"/>
+</Delta>
+<Delta Version="267" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:27:34000">
+<Copy StartSeek="0" EndSeek="889"/>
+<Copy StartSeek="895" EndSeek="1198"/>
+<Insert>#if 0
+</Insert>
+<Copy StartSeek="1199" EndSeek="7638"/>
+</Delta>
+<Delta Version="268" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:27:40000">
+<Copy StartSeek="0" EndSeek="6763"/>
+<Copy StartSeek="6769" EndSeek="6996"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7003" EndSeek="7405"/>
+<Copy StartSeek="7411" EndSeek="7524"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="7534" EndSeek="7663"/>
+</Delta>
+<Delta Version="269" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:28:4000">
+<Copy StartSeek="0" EndSeek="5201"/>
+<Copy StartSeek="5307" EndSeek="7769"/>
+</Delta>
+<Delta Version="270" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:29:40000">
+<Copy StartSeek="0" EndSeek="5093"/>
+<Insert>static struct notifier_block mv_vlan_notifier __read_mostly = {
+	.notifier_call = mv_vlan_device_event,
+};
+
+
+</Insert>
+<Copy StartSeek="5691" EndSeek="8258"/>
+</Delta>
+<Delta Version="271" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:30:3000">
+<Copy StartSeek="0" EndSeek="5279"/>
+<Insert>	if (!is_vlan_dev(dev))
+</Insert>
+<Copy StartSeek="5356" EndSeek="5368"/>
+<Insert>
+</Insert>
+<Copy StartSeek="5372" EndSeek="8314"/>
+</Delta>
+<Delta Version="272" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:30:47000">
+<Copy StartSeek="0" EndSeek="5304"/>
+<Insert>		return mv_vlan_device_event(*unused, event, *ptr)
+</Insert>
+<Copy StartSeek="5357" EndSeek="8315"/>
+</Delta>
+<Delta Version="273" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:30:48000">
+<Copy StartSeek="0" EndSeek="5357"/>
+<Insert>		goto out;
+	}
+
+</Insert>
+<Copy StartSeek="5361" EndSeek="8303"/>
+</Delta>
+<Delta Version="274" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:30:54000">
+<Copy StartSeek="0" EndSeek="4803"/>
+<Insert>	if (!is_vlan_dev(dev))
+		goto out;
+</Insert>
+<Copy StartSeek="4853" EndSeek="5371"/>
+<Insert>	}
+
+</Insert>
+<Copy StartSeek="5391" EndSeek="8333"/>
+</Delta>
+<Delta Version="275" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:31:11000">
+<Copy StartSeek="0" EndSeek="5293"/>
+<Insert>	if (is_vlan_dev(dev)) {
+</Insert>
+<Copy StartSeek="5344" EndSeek="8359"/>
+</Delta>
+<Delta Version="276" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:32:25000">
+<Copy StartSeek="0" EndSeek="5397"/>
+<Insert>	} else if () {
+	}
+
+</Insert>
+<Copy StartSeek="5482" EndSeek="8424"/>
+</Delta>
+<Delta Version="277" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:33:25000">
+<Copy StartSeek="0" EndSeek="5438"/>
+<Insert>		   (dev-&gt;priv_flags &amp; IFF_EBRIDGE)) {
+	}
+
+</Insert>
+<Copy StartSeek="5505" EndSeek="8447"/>
+</Delta>
+<Delta Version="278" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:33:43000">
+<Copy StartSeek="0" EndSeek="5397"/>
+<Insert>	} else if ((notif_mask &amp; 1&lt;&lt;BRIDGE) &amp;&amp; 
+		   (dev-&gt;priv_flags &amp; IFF_EBRIDGE || 
+		    dev-&gt;br_port)) {
+	}
+
+</Insert>
+<Copy StartSeek="5532" EndSeek="8474"/>
+</Delta>
+<Delta Version="279" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:35:5000">
+<Copy StartSeek="0" EndSeek="5532"/>
+<Insert>	switch (event) {
+	case NETDEV_REGISTER:
+		pr_info("vlan register %s vid %u\n", dev-&gt;name, dev_info-&gt;vlan_id);
+		break;
+	case NETDEV_UNREGISTER:
+		pr_info("vlan unreg %s vid %u\n", dev-&gt;name, dev_info-&gt;vlan_id);
+		break;
+	}
+</Insert>
+<Copy StartSeek="5532" EndSeek="8250"/>
+</Delta>
+<Delta Version="280" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:35:22000">
+<Copy StartSeek="0" EndSeek="5482"/>
+<Copy StartSeek="5483" EndSeek="5519"/>
+<Insert>		       }
+	}
+</Insert>
+<Copy StartSeek="5534" EndSeek="8252"/>
+</Delta>
+<Delta Version="281" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:36:35000">
+<Copy StartSeek="0" EndSeek="4803"/>
+<Insert>//      if (!is_vlan_dev(dev))
+//      	goto out;
+
+</Insert>
+<Copy StartSeek="4803" EndSeek="8201"/>
+</Delta>
+<Delta Version="282" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:36:43000">
+<Copy StartSeek="0" EndSeek="4612"/>
+<Insert>static int mv_vlan_device_event(struct notifier_block *unused, unsigned long event,
+</Insert>
+<Copy StartSeek="4697" EndSeek="5294"/>
+<Insert>		return mv_vlan_device_event(*unused, event, *ptr);
+</Insert>
+<Copy StartSeek="5348" EndSeek="8203"/>
+</Delta>
+<Delta Version="283" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:36:51000">
+<Copy StartSeek="0" EndSeek="4612"/>
+<Insert>static int _mv_vlan_device_event(struct notifier_block *unused, unsigned long event,
+</Insert>
+<Copy StartSeek="4698" EndSeek="5295"/>
+<Insert>		return _mv_vlan_device_event(*unused, event, *ptr);
+</Insert>
+<Copy StartSeek="5350" EndSeek="8205"/>
+</Delta>
+<Delta Version="284" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:36:58000">
+<Copy StartSeek="0" EndSeek="4612"/>
+<Insert>static int __mv_vlan_device_event(struct notifier_block *unused, unsigned long event,
+</Insert>
+<Copy StartSeek="4699" EndSeek="8206"/>
+</Delta>
+<Delta Version="285" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:37:9000">
+<Copy StartSeek="0" EndSeek="5059"/>
+<Copy StartSeek="5099" EndSeek="8246"/>
+</Delta>
+<Delta Version="286" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:37:38000">
+<Copy StartSeek="0" EndSeek="4092"/>
+<Insert>static int mv_br_device_event(struct notifier_block *unused, unsigned long event, 
+</Insert>
+<Copy StartSeek="4177" EndSeek="4255"/>
+<Insert>	if (!(dev-&gt;priv_flags &amp; IFF_EBRIDGE))
+		goto out;
+</Insert>
+<Copy StartSeek="4320" EndSeek="4539"/>
+<Insert>struct notifier_block mv_br_device_notifier = {
+	.notifier_call = mv_br_device_event
+};
+</Insert>
+<Copy StartSeek="4640" EndSeek="5505"/>
+<Insert>
+</Insert>
+<Copy StartSeek="5555" EndSeek="8324"/>
+</Delta>
+<Delta Version="287" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:38:24000">
+<Copy StartSeek="0" EndSeek="4255"/>
+<Insert>//      if (!(dev-&gt;priv_flags &amp; IFF_EBRIDGE))
+//      	goto out;
+	
+</Insert>
+<Copy StartSeek="4255" EndSeek="4472"/>
+<Insert>//struct notifier_block mv_br_device_notifier = {
+//        .notifier_call = mv_br_device_event
+//};
+
+</Insert>
+<Copy StartSeek="4472" EndSeek="8155"/>
+</Delta>
+<Delta Version="288" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:39:58000">
+<Copy StartSeek="0" EndSeek="4393"/>
+<Insert>		pr_info("br unreg %s\n",dev-&gt;name);
+</Insert>
+<Copy StartSeek="4432" EndSeek="8156"/>
+</Delta>
+<Delta Version="289" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:40:5000">
+<Copy StartSeek="0" EndSeek="4322"/>
+<Insert>		pr_info("br up %s\n", dev-&gt;name);
+</Insert>
+<Copy StartSeek="4360" EndSeek="4395"/>
+<Insert>		pr_info("br unreg %s\n", dev-&gt;name);
+</Insert>
+<Copy StartSeek="4436" EndSeek="8160"/>
+</Delta>
+<Delta Version="290" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:40:21000">
+<Copy StartSeek="0" EndSeek="4199"/>
+<Copy StartSeek="4310" EndSeek="8271"/>
+</Delta>
+<Delta Version="291" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:40:57000">
+<Copy StartSeek="0" EndSeek="4092"/>
+<Insert>static int __mv_br_device_event(struct notifier_block *unused, unsigned long event, 
+</Insert>
+<Copy StartSeek="4173" EndSeek="8267"/>
+</Delta>
+<Delta Version="292" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:41:7000">
+<Copy StartSeek="0" EndSeek="5534"/>
+<Insert>
+</Insert>
+<Copy StartSeek="5580" EndSeek="8312"/>
+</Delta>
+<Delta Version="293" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:41:25000">
+<Copy StartSeek="0" EndSeek="5448"/>
+<Insert>			       __mv_br_device_event(unused,event,ptr);
+</Insert>
+<Copy StartSeek="5505" EndSeek="5541"/>
+<Insert>			       __mv_br_if_event(unused,event,ptr);
+</Insert>
+<Copy StartSeek="5594" EndSeek="8326"/>
+</Delta>
+<Delta Version="294" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:41:42000">
+<Copy StartSeek="0" EndSeek="4195"/>
+<Copy StartSeek="4250" EndSeek="4251"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="4447" EndSeek="8574"/>
+</Delta>
+<Delta Version="295" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:41:58000">
+<Copy StartSeek="0" EndSeek="4226"/>
+<Insert>	struct net_bridge *br;
+</Insert>
+<Copy StartSeek="4269" EndSeek="4270"/>
+<Insert>	br = netdev_priv(dev);
+</Insert>
+<Copy StartSeek="4301" EndSeek="8600"/>
+</Delta>
+<Delta Version="296" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:42:33000">
+<Copy StartSeek="0" EndSeek="4344"/>
+<Insert>		pr_info("br up [%s]\n", dev-&gt;name);
+</Insert>
+<Copy StartSeek="4406" EndSeek="8624"/>
+</Delta>
+<Delta Version="297" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:44:22000">
+<Copy StartSeek="0" EndSeek="4441"/>
+<Insert>		pr_info("br unreg [%s]\n", dev-&gt;name);
+</Insert>
+<Copy StartSeek="4505" EndSeek="8647"/>
+</Delta>
+<Delta Version="298" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:44:30000">
+<Copy StartSeek="0" EndSeek="537"/>
+<Copy StartSeek="561" EndSeek="8671"/>
+</Delta>
+<Delta Version="299" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:47:19000">
+<Copy StartSeek="0" EndSeek="4541"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="4565" EndSeek="8692"/>
+</Delta>
+<Delta Version="300" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:49:7000">
+<Copy StartSeek="0" EndSeek="4921"/>
+<Insert>out:
+</Insert>
+<Copy StartSeek="4922" EndSeek="8688"/>
+</Delta>
+<Delta Version="301" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:49:18000">
+<Copy StartSeek="0" EndSeek="5670"/>
+<Insert>		return __mv_vlan_device_event(*unused, event, *ptr);
+</Insert>
+<Copy StartSeek="5723" EndSeek="8686"/>
+</Delta>
+<Delta Version="302" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:49:49000">
+<Copy StartSeek="0" EndSeek="5364"/>
+<Insert>out:
+</Insert>
+<Copy StartSeek="5365" EndSeek="8682"/>
+</Delta>
+<Delta Version="303" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:50:5000">
+<Copy StartSeek="0" EndSeek="5719"/>
+<Insert>	} else if ((notif_mask &amp; 1&lt;&lt;BRIDGE) {
+</Insert>
+<Copy StartSeek="5759" EndSeek="8683"/>
+</Delta>
+<Delta Version="304" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:51:0000">
+<Copy StartSeek="0" EndSeek="5965"/>
+<Insert>out:
+</Insert>
+<Copy StartSeek="5966" EndSeek="8679"/>
+</Delta>
+<Delta Version="305" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:51:18000">
+<Copy StartSeek="0" EndSeek="5990"/>
+<Insert>//static struct notifier_block mv_vlan_notifier __read_mostly = {
+//        .notifier_call = mv_vlan_device_event,
+//};
+
+
+</Insert>
+<Copy StartSeek="5990" EndSeek="8557"/>
+</Delta>
+<Delta Version="306" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:51:25000">
+<Copy StartSeek="0" EndSeek="4294"/>
+<Insert>//      br = netdev_priv(dev);
+
+</Insert>
+<Copy StartSeek="4294" EndSeek="8525"/>
+</Delta>
+<Delta Version="307" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:51:33000">
+<Copy StartSeek="0" EndSeek="4294"/>
+<Copy StartSeek="4326" EndSeek="8557"/>
+</Delta>
+<Delta Version="308" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:51:37000">
+<Copy StartSeek="0" EndSeek="5560"/>
+<Insert>	struct vlan_dev_info *dev_info = vlan_dev_info(dev);
+
+</Insert>
+<Copy StartSeek="5561" EndSeek="8503"/>
+</Delta>
+<Delta Version="309" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:51:53000">
+<Copy StartSeek="0" EndSeek="5508"/>
+<Insert>			     void *ptr)
+</Insert>
+<Copy StartSeek="5525" EndSeek="5703"/>
+<Insert>		       if (dev-&gt;priv_flags &amp; IFF_EBRIDGE) {
+			       return __mv_br_device_event(unused,event,ptr);
+		       } else if (dev-&gt;br_port) {
+			       return __mv_br_if_event(unused,event,ptr);
+		       }
+</Insert>
+<Copy StartSeek="5871" EndSeek="8466"/>
+</Delta>
+<Delta Version="310" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:52:10000">
+<Copy StartSeek="0" EndSeek="7172"/>
+<Insert>		err = register_netdevice_notifier(&amp;mv_vlan_notifier);
+		if (err) {
+			unregister_netdevice_notifier(&amp;mv_vlan_notifier);
+		} else 
+</Insert>
+<Copy StartSeek="7331" EndSeek="7393"/>
+<Insert>		pr_info("reg bridge\n");
+		err = register_netdevice_notifier(&amp;mv_br_device_notifier);
+		if (err) {
+			unregister_netdevice_notifier(&amp;mv_br_device_notifier);
+		} else
+</Insert>
+<Copy StartSeek="7596" EndSeek="8528"/>
+</Delta>
+<Delta Version="311" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:53:5000">
+<Copy StartSeek="0" EndSeek="8040"/>
+<Insert>	if (notif_mask &amp; 1&lt;&lt;VLAN) {
+		pr_info("unreg vlan\n");
+		unregister_netdevice_notifier(&amp;mv_vlan_notifier);
+	}
+	if (notif_mask &amp; 1&lt;&lt;BRIDGE) {
+		pr_info("unreg brige\n");
+		unregister_netdevice_notifier(&amp;mv_br_device_notifier);
+	}
+</Insert>
+<Copy StartSeek="8326" EndSeek="8584"/>
+</Delta>
+<Delta Version="312" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:53:39000">
+<Copy StartSeek="0" EndSeek="8040"/>
+<Insert>//      if (notif_mask &amp; 1&lt;&lt;VLAN) {
+//      	pr_info("unreg vlan\n");
+//      	unregister_netdevice_notifier(&amp;mv_vlan_notifier);
+//      }
+</Insert>
+<Copy StartSeek="8165" EndSeek="8570"/>
+</Delta>
+<Delta Version="313" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:56:47000">
+<Copy StartSeek="0" EndSeek="8083"/>
+<Insert>		pr_info("unreg vlan\n");
+</Insert>
+<Copy StartSeek="8115" EndSeek="8575"/>
+</Delta>
+<Delta Version="314" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:57:10000">
+<Copy StartSeek="0" EndSeek="8115"/>
+<Insert>		unregister_netdevice_notifier(&amp;mv_vlan_notifier);
+</Insert>
+<Copy StartSeek="8169" EndSeek="8577"/>
+</Delta>
+<Delta Version="315" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:57:23000">
+<Copy StartSeek="0" EndSeek="8172"/>
+<Insert>//      if (notif_mask &amp; 1&lt;&lt;BRIDGE) {
+//      	pr_info("unreg brige\n");
+//      	unregister_netdevice_notifier(&amp;mv_br_device_notifier);
+//      }
+</Insert>
+<Copy StartSeek="8172" EndSeek="8430"/>
+</Delta>
+<Delta Version="316" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:57:27000">
+<Copy StartSeek="0" EndSeek="7628"/>
+<Copy StartSeek="7789" EndSeek="8591"/>
+</Delta>
+<Delta Version="317" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:58:49000">
+<Copy StartSeek="0" EndSeek="7628"/>
+<Insert>	inotif_mask &amp; (1&lt;&lt;VLAN | 1&lt;&lt;BRIDGE)) {
+</Insert>
+<Copy StartSeek="7667" EndSeek="8590"/>
+</Delta>
+<Delta Version="318" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:58:58000">
+<Copy StartSeek="0" EndSeek="7628"/>
+<Insert>	notif_mask &amp; (1&lt;&lt;VLAN | 1&lt;&lt;BRIDGE)) {
+</Insert>
+<Copy StartSeek="7671" EndSeek="8594"/>
+</Delta>
+<Delta Version="319" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:59:5000">
+<Copy StartSeek="0" EndSeek="7628"/>
+<Copy StartSeek="7629" EndSeek="8595"/>
+</Delta>
+<Delta Version="320" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:59:8000">
+<Copy StartSeek="0" EndSeek="7672"/>
+<Insert>	err = register_netdevice_notifier(&amp;mv_netdev_event);
+	if (err) {
+		unregister_netdevice_notifier(&amp;mv_netdev_event);
+	}
+
+</Insert>
+<Copy StartSeek="7799" EndSeek="8601"/>
+</Delta>
+<Delta Version="321" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:59:19000">
+<Copy StartSeek="0" EndSeek="7672"/>
+<Insert>		err = register_netdevice_notifier(&amp;mv_netdev_event);
+</Insert>
+<Copy StartSeek="7730" EndSeek="7743"/>
+<Insert>			unregister_netdevice_notifier(&amp;mv_netdev_event);
+</Insert>
+<Copy StartSeek="7798" EndSeek="8607"/>
+</Delta>
+<Delta Version="322" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="16:59:53000">
+<Copy StartSeek="0" EndSeek="5559"/>
+<Copy StartSeek="5618" EndSeek="8666"/>
+</Delta>
+<Delta Version="323" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="17:03:14000">
+<Copy StartSeek="0" EndSeek="5618"/>
+<Copy StartSeek="5619" EndSeek="8667"/>
+</Delta>
+<Delta Version="324" Comment="" NL="\10" Encoding="text" Date="2012/02/08" Time="17:03:16000">
+<Copy StartSeek="0" EndSeek="913"/>
+<Insert>#if 0
+</Insert>
+<Copy StartSeek="947" EndSeek="8695"/>
+</Delta>
+<Delta Version="325" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="10:04:2000">
+<Copy StartSeek="0" EndSeek="1288"/>
+<Insert>		type = IPCTNL_MSG_CT_DELETE;
+		group = NFNLGRP_CONNTRACK_DESTROY;
+</Insert>
+<Copy StartSeek="1289" EndSeek="8628"/>
+</Delta>
+<Delta Version="326" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="10:08:31000">
+<Copy StartSeek="0" EndSeek="947"/>
+<Copy StartSeek="1007" EndSeek="1348"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1392" EndSeek="8731"/>
+</Delta>
+<Delta Version="327" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:10:8000">
+<Copy StartSeek="0" EndSeek="947"/>
+<Insert>static void _print_conntrack_tuple(struct nf_conn *ct)
+</Insert>
+<Copy StartSeek="1003" EndSeek="8732"/>
+</Delta>
+<Delta Version="328" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:10:11000">
+<Copy StartSeek="0" EndSeek="1005"/>
+<Insert>
+}
+</Insert>
+<Copy StartSeek="1268" EndSeek="8992"/>
+</Delta>
+<Delta Version="329" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:14:9000">
+<Copy StartSeek="0" EndSeek="1265"/>
+<Insert>
+}
+</Insert>
+<Copy StartSeek="1267" EndSeek="8991"/>
+</Delta>
+<Delta Version="330" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:14:11000">
+<Copy StartSeek="0" EndSeek="1265"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="2115" EndSeek="9839"/>
+</Delta>
+<Delta Version="331" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:15:41000">
+<Copy StartSeek="0" EndSeek="1265"/>
+<Insert>	if (seq_printf(s, "%-8s %u %-8s %u %ld ",
+</Insert>
+<Copy StartSeek="1298" EndSeek="1332"/>
+<Insert>		l4proto-&gt;name, nf_ct_protonum(ct),
+		timer_pending(&amp;ct-&gt;timeout)
+		? (long)(ct-&gt;timeout.expires - jiffies)/HZ : 0) != 0)
+	 goto release;
+
+</Insert>
+<Copy StartSeek="1371" EndSeek="9728"/>
+</Delta>
+<Delta Version="332" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:17:14000">
+<Copy StartSeek="0" EndSeek="1265"/>
+<Insert>	pr_info("%-8s %u %-8s %u %ld ",
+</Insert>
+<Copy StartSeek="1299" EndSeek="9729"/>
+</Delta>
+<Delta Version="333" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:17:30000">
+<Copy StartSeek="0" EndSeek="1372"/>
+<Insert>	 if (l4proto-&gt;print_conntrack &amp;&amp; l4proto-&gt;print_conntrack(s, ct))
+		 goto release;
+
+</Insert>
+<Copy StartSeek="1441" EndSeek="9713"/>
+</Delta>
+<Delta Version="334" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:27:20000">
+<Copy StartSeek="0" EndSeek="1372"/>
+<Insert>	pr_info("%pI4 -&gt; dst=%pI4", &amp;tuple-&gt;src.u3.ip, &amp;tuple-&gt;dst.u3.ip);
+
+	 if (print_tuple(s, &amp;ct-&gt;tuplehash[IP_CT_DIR_ORIGINAL].tuple,
+			 l3proto, l4proto))
+		 goto release;
+
+	 if (seq_print_acct(s, ct, IP_CT_DIR_ORIGINAL))
+		 goto release;
+
+	 if (!(test_bit(IPS_SEEN_REPLY_BIT, &amp;ct-&gt;status)))
+		 if (seq_printf(s, "[UNREPLIED] "))
+			 goto release;
+
+	 if (print_tuple(s, &amp;ct-&gt;tuplehash[IP_CT_DIR_REPLY].tuple,
+			 l3proto, l4proto))
+		 goto release;
+
+	 if (seq_print_acct(s, ct, IP_CT_DIR_REPLY))
+		 goto release;
+
+	 if (test_bit(IPS_ASSURED_BIT, &amp;ct-&gt;status))
+		 if (seq_printf(s, "[ASSURED] "))
+			 goto release;
+}
+
+</Insert>
+<Copy StartSeek="1445" EndSeek="9169"/>
+</Delta>
+<Delta Version="335" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:30:14000">
+<Copy StartSeek="0" EndSeek="1895"/>
+<Insert>		type = IPCTNL_MSG_CT_NEW;
+		flags = NLM_F_CREATE|NLM_F_EXCL;
+		group = NFNLGRP_CONNTRACK_NEW;
+	} else  if (events) {
+		type = IPCTNL_MSG_CT_NEW;
+		group = NFNLGRP_CONNTRACK_UPDATE;
+</Insert>
+<Copy StartSeek="1895" EndSeek="8986"/>
+</Delta>
+<Delta Version="336" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:31:14000">
+<Copy StartSeek="0" EndSeek="1916"/>
+<Insert>	if (!item-&gt;report &amp;&amp; !nfnetlink_has_listeners(group))
+		return 0;
+
+	skb = nlmsg_new(ctnetlink_nlmsg_size(ct), GFP_ATOMIC);
+	if (skb == NULL)
+		goto errout;
+
+	type |= NFNL_SUBSYS_CTNETLINK &lt;&lt; 8;
+	nlh = nlmsg_put(skb, item-&gt;pid, 0, type, sizeof(*nfmsg), flags);
+	if (nlh == NULL)
+		goto nlmsg_failure;
+
+	nfmsg = nlmsg_data(nlh);
+	nfmsg-&gt;nfgen_family = nf_ct_l3num(ct);
+	nfmsg-&gt;version	= NFNETLINK_V0;
+	nfmsg-&gt;res_id	= 0;
+
+	rcu_read_lock();
+	nest_parms = nla_nest_start(skb, CTA_TUPLE_ORIG | NLA_F_NESTED);
+	if (!nest_parms)
+		goto nla_put_failure;
+	if (ctnetlink_dump_tuples(skb, nf_ct_tuple(ct, IP_CT_DIR_ORIGINAL)) &lt; 0)
+		goto nla_put_failure;
+	nla_nest_end(skb, nest_parms);
+
+	nest_parms = nla_nest_start(skb, CTA_TUPLE_REPLY | NLA_F_NESTED);
+	if (!nest_parms)
+		goto nla_put_failure;
+	if (ctnetlink_dump_tuples(skb, nf_ct_tuple(ct, IP_CT_DIR_REPLY)) &lt; 0)
+		goto nla_put_failure;
+	nla_nest_end(skb, nest_parms);
+
+	if (ctnetlink_dump_id(skb, ct) &lt; 0)
+		goto nla_put_failure;
+
+	if (ctnetlink_dump_status(skb, ct) &lt; 0)
+		goto nla_put_failure;
+
+	if (events &amp; (1 &lt;&lt; IPCT_DESTROY)) {
+		if (ctnetlink_dump_counters(skb, ct, IP_CT_DIR_ORIGINAL) &lt; 0 ||
+		    ctnetlink_dump_counters(skb, ct, IP_CT_DIR_REPLY) &lt; 0)
+			goto nla_put_failure;
+	} else {
+		if (ctnetlink_dump_timeout(skb, ct) &lt; 0)
+			goto nla_put_failure;
+
+		if (events &amp; (1 &lt;&lt; IPCT_PROTOINFO)
+		    &amp;&amp; ctnetlink_dump_protoinfo(skb, ct) &lt; 0)
+			goto nla_put_failure;
+
+</Insert>
+<Copy StartSeek="1916" EndSeek="2042"/>
+<Insert>#ifdef CONFIG_NF_CONNTRACK_SECMARK
+		if ((events &amp; (1 &lt;&lt; IPCT_SECMARK) || ct-&gt;secmark)
+		    &amp;&amp; ctnetlink_dump_secmark(skb, ct) &lt; 0)
+			goto nla_put_failure;
+#endif
+
+</Insert>
+<Copy StartSeek="2042" EndSeek="2264"/>
+<Insert>#ifdef CONFIG_NF_CONNTRACK_MARK
+	if ((events &amp; (1 &lt;&lt; IPCT_MARK) || ct-&gt;mark)
+	    &amp;&amp; ctnetlink_dump_mark(skb, ct) &lt; 0)
+		goto nla_put_failure;
+#endif
+	rcu_read_unlock();
+
+	nlmsg_end(skb, nlh);
+	err = nfnetlink_send(skb, item-&gt;pid, group, item-&gt;report, GFP_ATOMIC);
+	if (err == -ENOBUFS || err == -EAGAIN)
+		return -ENOBUFS;
+
+	return 0;
+
+nla_put_failure:
+	rcu_read_unlock();
+	nlmsg_cancel(skb, nlh);
+nlmsg_failure:
+	kfree_skb(skb);
+errout:
+	nfnetlink_set_err(0, group, -ENOBUFS);
+
+</Insert>
+<Copy StartSeek="2264" EndSeek="6918"/>
+</Delta>
+<Delta Version="337" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:32:1000">
+<Copy StartSeek="0" EndSeek="1895"/>
+<Copy StartSeek="1896" EndSeek="6919"/>
+</Delta>
+<Delta Version="338" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:32:4000">
+<Copy StartSeek="0" EndSeek="1896"/>
+<Copy StartSeek="1913" EndSeek="1987"/>
+<Insert>		    &amp;&amp; ctnetlink_dump_helpinfo(skb, ct) &lt; 0)
+			goto nla_put_failure;
+
+		if (events &amp; (1 &lt;&lt; IPCT_RELATED) &amp;&amp;
+		    ctnetlink_dump_master(skb, ct) &lt; 0)
+			goto nla_put_failure;
+
+</Insert>
+<Copy StartSeek="1988" EndSeek="6758"/>
+</Delta>
+<Delta Version="339" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:33:29000">
+<Copy StartSeek="0" EndSeek="1830"/>
+<Insert>	} else  if (events &amp; ((1 &lt;&lt; IPCT_NEW) | (1 &lt;&lt; IPCT_RELATED))) {
+</Insert>
+<Copy StartSeek="1871" EndSeek="1872"/>
+<Insert>	} else if () {
+</Insert>
+<Copy StartSeek="1916" EndSeek="6762"/>
+</Delta>
+<Delta Version="340" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:34:11000">
+<Copy StartSeek="0" EndSeek="1786"/>
+<Insert>		pr_info("destroyed ct \n",ct-&gt;ct_general)
+</Insert>
+<Copy StartSeek="1816" EndSeek="6748"/>
+</Delta>
+<Delta Version="341" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:34:22000">
+<Copy StartSeek="0" EndSeek="1816"/>
+<Copy StartSeek="1847" EndSeek="6779"/>
+</Delta>
+<Delta Version="342" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:34:34000">
+<Copy StartSeek="0" EndSeek="1888"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1944" EndSeek="6834"/>
+</Delta>
+<Delta Version="343" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:34:55000">
+<Copy StartSeek="0" EndSeek="1942"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="1942" EndSeek="1986"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2044" EndSeek="6889"/>
+</Delta>
+<Delta Version="344" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:35:7000">
+<Copy StartSeek="0" EndSeek="2064"/>
+<Insert>
+		if ((events &amp; (1 &lt;&lt; IPCT_HELPER) || nfct_help(ct))
+
+		if (events &amp; (1 &lt;&lt; IPCT_NATSEQADJ) &amp;&amp;
+		    ctnetlink_dump_nat_seq_adj(skb, ct) &lt; 0)
+			goto nla_put_failure;
+	}
+
+</Insert>
+<Copy StartSeek="2068" EndSeek="6722"/>
+</Delta>
+<Delta Version="345" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:35:16000">
+<Copy StartSeek="0" EndSeek="2064"/>
+<Insert>	}
+
+</Insert>
+<Copy StartSeek="2065" EndSeek="6719"/>
+</Delta>
+<Delta Version="346" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:35:20000">
+<Copy StartSeek="0" EndSeek="2044"/>
+<Insert>	} else
+		return 0;
+
+</Insert>
+<Copy StartSeek="2048" EndSeek="6702"/>
+</Delta>
+<Delta Version="347" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:35:31000">
+<Copy StartSeek="0" EndSeek="6444"/>
+<Insert>#if 0
+</Insert>
+<Copy StartSeek="6478" EndSeek="6730"/>
+</Delta>
+<Delta Version="348" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:36:37000">
+<Copy StartSeek="0" EndSeek="5900"/>
+<Insert>#if 0
+</Insert>
+<Copy StartSeek="5934" EndSeek="6758"/>
+</Delta>
+<Delta Version="349" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:36:44000">
+<Copy StartSeek="0" EndSeek="6472"/>
+<Copy StartSeek="6473" EndSeek="6759"/>
+</Delta>
+<Delta Version="350" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:36:51000">
+<Copy StartSeek="0" EndSeek="6472"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6472" EndSeek="6758"/>
+</Delta>
+<Delta Version="351" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:36:54000">
+<Copy StartSeek="0" EndSeek="2329"/>
+<Insert>//      br = netdev_priv(dev);
+
+</Insert>
+<Copy StartSeek="2329" EndSeek="6726"/>
+</Delta>
+<Delta Version="352" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:38:0000">
+<Copy StartSeek="0" EndSeek="6129"/>
+<Copy StartSeek="6185" EndSeek="6782"/>
+</Delta>
+<Delta Version="353" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:45:14000">
+<Copy StartSeek="0" EndSeek="601"/>
+<Copy StartSeek="649" EndSeek="6830"/>
+</Delta>
+<Delta Version="354" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:45:57000">
+<Copy StartSeek="0" EndSeek="649"/>
+<Copy StartSeek="697" EndSeek="6878"/>
+</Delta>
+<Delta Version="355" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:46:7000">
+<Copy StartSeek="0" EndSeek="1361"/>
+<Insert>	pr_info("%-8s %u %-8s %u %ld\n",
+</Insert>
+<Copy StartSeek="1391" EndSeek="6874"/>
+</Delta>
+<Delta Version="356" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:46:23000">
+<Copy StartSeek="0" EndSeek="1361"/>
+<Insert>	pr_info("%-8s %u %-8s %u\n",
+		l3proto-&gt;name, nf_ct_l3num(ct),
+		l4proto-&gt;name, nf_ct_protonum(ct));
+
+</Insert>
+<Copy StartSeek="1361" EndSeek="1431"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="1539" EndSeek="6876"/>
+</Delta>
+<Delta Version="357" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:46:30000">
+<Copy StartSeek="0" EndSeek="1192"/>
+<Copy StartSeek="1273" EndSeek="6957"/>
+</Delta>
+<Delta Version="358" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:50:8000">
+<Copy StartSeek="0" EndSeek="1229"/>
+<Insert>		&amp;ct-&gt;tuplehash[IP_CT_DIR_ORIGINAL].tuple
+</Insert>
+<Copy StartSeek="1273" EndSeek="6958"/>
+</Delta>
+<Delta Version="359" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:50:10000">
+<Copy StartSeek="0" EndSeek="601"/>
+<Copy StartSeek="648" EndSeek="7005"/>
+</Delta>
+<Delta Version="360" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:50:40000">
+<Copy StartSeek="0" EndSeek="1838"/>
+<Insert>	pr_info("%s: event %lu\n", __func__, event);
+</Insert>
+<Copy StartSeek="1886" EndSeek="7007"/>
+</Delta>
+<Delta Version="361" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:51:10000">
+<Copy StartSeek="0" EndSeek="1775"/>
+<Insert>	unsigned int type;
+	unsigned int flags = 0, group;
+	int err;
+
+</Insert>
+<Copy StartSeek="1776" EndSeek="6945"/>
+</Delta>
+<Delta Version="362" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:51:31000">
+<Copy StartSeek="0" EndSeek="6356"/>
+<Copy StartSeek="6420" EndSeek="7009"/>
+</Delta>
+<Delta Version="363" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:51:56000">
+<Copy StartSeek="0" EndSeek="6362"/>
+<Insert>	#warning "CONFIG_NF_CONNTRACK_EVENTS undefined!"
+</Insert>
+<Copy StartSeek="6389" EndSeek="6986"/>
+</Delta>
+<Delta Version="364" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:52:2000">
+<Copy StartSeek="0" EndSeek="6356"/>
+<Insert>#if 1
+	#warning "dummy warning!"
+#endif
+
+
+</Insert>
+<Copy StartSeek="6356" EndSeek="6944"/>
+</Delta>
+<Delta Version="365" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:52:17000">
+<Copy StartSeek="0" EndSeek="1560"/>
+<Copy StartSeek="1673" EndSeek="7057"/>
+</Delta>
+<Delta Version="366" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:57:18000">
+<Copy StartSeek="0" EndSeek="1561"/>
+<Insert>	pr_info("%s/%s %pI4 -&gt; dst=%pI4\n", 
+</Insert>
+<Copy StartSeek="1595" EndSeek="7053"/>
+</Delta>
+<Delta Version="367" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:57:37000">
+<Copy StartSeek="0" EndSeek="1669"/>
+<Insert>	pr_info("%-8s %u %-8s %u\n", 
+	 l3proto-&gt;name, nf_ct_l3num(ct),
+	 l4proto-&gt;name, nf_ct_protonum(ct));
+</Insert>
+<Copy StartSeek="1792" EndSeek="7073"/>
+</Delta>
+<Delta Version="368" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:57:49000">
+<Copy StartSeek="0" EndSeek="1561"/>
+<Insert>	pr_info("%s/%s %pI4 -&gt; %pI4\n", 
+</Insert>
+<Copy StartSeek="1594" EndSeek="7072"/>
+</Delta>
+<Delta Version="369" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:57:52000">
+<Copy StartSeek="0" EndSeek="1490"/>
+<Insert>	pr_info("%pI4 -&gt; dst=%pI4\n", &amp;tuple-&gt;src.u3.ip, &amp;tuple-&gt;dst.u3.ip);
+</Insert>
+<Copy StartSeek="1567" EndSeek="7079"/>
+</Delta>
+<Delta Version="370" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:58:16000">
+<Copy StartSeek="0" EndSeek="1911"/>
+<Insert>	pr_info("%s: events %#x\n", __func__, events);
+</Insert>
+<Copy StartSeek="1911" EndSeek="7031"/>
+</Delta>
+<Delta Version="371" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:59:6000">
+<Copy StartSeek="0" EndSeek="1568"/>
+<Insert>	pr_info("%s/%s %pI4 -&gt; %pI4\n",
+</Insert>
+<Copy StartSeek="1607" EndSeek="1681"/>
+<Copy StartSeek="1809" EndSeek="7165"/>
+</Delta>
+<Delta Version="372" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="14:59:41000">
+<Copy StartSeek="0" EndSeek="1568"/>
+<Insert>	pr_info("%s/%s %pI4:%u -&gt; %pI4:%u\n",
+		l3proto-&gt;name, l4proto-&gt;name,
+</Insert>
+<Copy StartSeek="1623" EndSeek="7149"/>
+</Delta>
+<Delta Version="373" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="15:00:17000">
+<Copy StartSeek="0" EndSeek="1623"/>
+<Insert>		&amp;tuple-&gt;src.u3.ip, &amp;tuple-&gt;dst.u3.ip);
+
+</Insert>
+<Copy StartSeek="1705" EndSeek="7189"/>
+</Delta>
+<Delta Version="374" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="15:01:46000">
+<Copy StartSeek="0" EndSeek="1623"/>
+<Insert>		&amp;tuple-&gt;src.u3.ip, &amp;tuple-&gt;src.u.tcp,
+		&amp;tuple-&gt;dst.u3.ip, &amp;tuple-&gt;dst.u.tcp);
+</Insert>
+<Copy StartSeek="1702" EndSeek="7187"/>
+</Delta>
+<Delta Version="375" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="15:02:2000">
+<Copy StartSeek="0" EndSeek="1623"/>
+<Insert>		&amp;tuple-&gt;src.u3.ip, tuple-&gt;src.u.tcp,
+		&amp;tuple-&gt;dst.u3.ip, tuple-&gt;dst.u.tcp);
+</Insert>
+<Copy StartSeek="1716" EndSeek="7201"/>
+</Delta>
+<Delta Version="376" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="15:02:20000">
+<Copy StartSeek="0" EndSeek="1623"/>
+<Insert>		&amp;tuple-&gt;src.u3.ip, ntohs(tuple-&gt;src.u.tcp),
+</Insert>
+<Copy StartSeek="1667" EndSeek="7199"/>
+</Delta>
+<Delta Version="377" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="15:03:45000">
+<Copy StartSeek="0" EndSeek="1623"/>
+<Insert>		&amp;tuple-&gt;src.u3.ip, ntohs(tuple-&gt;src.all),
+		&amp;tuple-&gt;dst.u3.ip, ntohs(tuple-&gt;dst.u.tcp));
+</Insert>
+<Copy StartSeek="1718" EndSeek="7203"/>
+</Delta>
+<Delta Version="378" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="15:04:3000">
+<Copy StartSeek="0" EndSeek="1623"/>
+<Insert>		&amp;tuple-&gt;src.u3.ip, ntohs(tuple-&gt;src.u3.all),
+</Insert>
+<Copy StartSeek="1669" EndSeek="7202"/>
+</Delta>
+<Delta Version="379" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="15:05:57000">
+<Copy StartSeek="0" EndSeek="1669"/>
+<Insert>		&amp;tuple-&gt;dst.u3.ip, ntohs(tuple-&gt;dst.u3.all));
+</Insert>
+<Copy StartSeek="1716" EndSeek="7201"/>
+</Delta>
+<Delta Version="380" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="15:06:20000">
+<Copy StartSeek="0" EndSeek="1490"/>
+<Insert>//      pr_info("%pI4 -&gt; dst=%pI4\n", &amp;tuple-&gt;src.u3.ip, &amp;tuple-&gt;dst.u3.ip);
+
+</Insert>
+<Copy StartSeek="1490" EndSeek="1638"/>
+<Insert>
+//      pr_info("%s/%s %pI4 -&gt; %pI4\n",
+//       l3proto-&gt;name, l4proto-&gt;name,
+//       &amp;tuple-&gt;src.u3.ip, &amp;tuple-&gt;dst.u3.ip);
+
+//      pr_info("%-8s %u %-8s %u\n",
+//       l3proto-&gt;name, nf_ct_l3num(ct),
+//       l4proto-&gt;name, nf_ct_protonum(ct));
+
+
+}
+
+</Insert>
+<Copy StartSeek="1641" EndSeek="6869"/>
+</Delta>
+<Delta Version="381" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="15:08:0000">
+<Copy StartSeek="0" EndSeek="2150"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2150" EndSeek="6868"/>
+</Delta>
+<Delta Version="382" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="15:08:20000">
+<Copy StartSeek="0" EndSeek="1090"/>
+<Insert>static void __print_conntrack_tuple(struct nf_conn *ct)
+</Insert>
+<Copy StartSeek="1149" EndSeek="1907"/>
+<Insert>		__print_conntrack_tuple(ct);
+</Insert>
+<Copy StartSeek="1941" EndSeek="2005"/>
+<Insert>		__print_conntrack_tuple(ct);
+</Insert>
+<Copy StartSeek="2039" EndSeek="2110"/>
+<Insert>		__print_conntrack_tuple(ct);
+</Insert>
+<Copy StartSeek="2144" EndSeek="6880"/>
+</Delta>
+<Delta Version="383" Comment="" NL="\10" Encoding="text" Date="2012/02/09" Time="16:45:10000">
+<Copy StartSeek="0" EndSeek="3"/>
+<Insert> *	Marvell Kernel Learning Agent 
+</Insert>
+<Copy StartSeek="36" EndSeek="57"/>
+<Insert> *	Haim Daniel		&lt;haimdaniel@gmail.com&gt;
+</Insert>
+<Copy StartSeek="72" EndSeek="1065"/>
+<Insert>static void __mv_print_conntrack_tuple(struct nf_conn *ct)
+</Insert>
+<Copy StartSeek="1122" EndSeek="1880"/>
+<Insert>		__mv_print_conntrack_tuple(ct);
+</Insert>
+<Copy StartSeek="1912" EndSeek="1976"/>
+<Insert>		__mv_print_conntrack_tuple(ct);
+</Insert>
+<Copy StartSeek="2008" EndSeek="2079"/>
+<Insert>		__mv_print_conntrack_tuple(ct);
+</Insert>
+<Copy StartSeek="2111" EndSeek="5301"/>
+<Insert>//      	err = register_netdevice_notifier(&amp;mv_vlan_notifier);
+//      	if (err) {
+//      		unregister_netdevice_notifier(&amp;mv_vlan_notifier);
+//      	} else
+</Insert>
+<Copy StartSeek="5301" EndSeek="5363"/>
+<Insert>//      	pr_info("reg bridge\n");
+//      	err = register_netdevice_notifier(&amp;mv_br_device_notifier);
+//      	if (err) {
+//      		unregister_netdevice_notifier(&amp;mv_br_device_notifier);
+//      	} else
+</Insert>
+<Copy StartSeek="5396" EndSeek="6518"/>
+</Delta>
+<Delta Version="384" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="15:38:2000">
+<Copy StartSeek="0" EndSeek="987"/>
+<Insert>	ARP,
+	VLAN,
+	BRIDGE,
+	NFCT,
+</Insert>
+<Copy StartSeek="1033" EndSeek="1830"/>
+<Insert>	if (events &amp; (1 &lt;&lt; IPCT_DESTROY)) {
+</Insert>
+<Copy StartSeek="1862" EndSeek="1924"/>
+<Insert>	} else  if (events &amp; (1 &lt;&lt; IPCT_NEW)) {
+</Insert>
+<Copy StartSeek="1958" EndSeek="2013"/>
+<Insert>	} else if (events &amp; (1 &lt;&lt; IPCT_RELATED)) {
+</Insert>
+<Copy StartSeek="2050" EndSeek="3686"/>
+<Insert>	if ((notif_mask &amp; 1&lt;&lt;VLAN) &amp;&amp; is_vlan_dev(dev)) {
+</Insert>
+<Copy StartSeek="3734" EndSeek="3787"/>
+<Insert>	} else if ((notif_mask &amp; 1&lt;&lt;BRIDGE)) {
+</Insert>
+<Copy StartSeek="3822" EndSeek="5207"/>
+<Insert>			notif_mask |= 1&lt;&lt; ARP;
+</Insert>
+<Copy StartSeek="5229" EndSeek="5287"/>
+<Insert>			notif_mask |= 1&lt;&lt; VLAN;
+</Insert>
+<Copy StartSeek="5310" EndSeek="5378"/>
+<Insert>			notif_mask |= 1&lt;&lt; BRIDGE;
+</Insert>
+<Copy StartSeek="5403" EndSeek="5407"/>
+<Insert>	if (notif_mask &amp; (1&lt;&lt;VLAN | 1&lt;&lt;BRIDGE)) {
+</Insert>
+<Copy StartSeek="5444" EndSeek="5808"/>
+<Insert>			notif_mask |= 1&lt;&lt; NFCT;
+</Insert>
+<Copy StartSeek="5831" EndSeek="5974"/>
+<Insert>	if (notif_mask &amp; 1&lt;&lt;ARP) {
+</Insert>
+<Copy StartSeek="5999" EndSeek="6065"/>
+<Insert>	if (notif_mask &amp; (1&lt;&lt;VLAN | 1&lt;&lt;BRIDGE)) {
+</Insert>
+<Copy StartSeek="6102" EndSeek="6225"/>
+<Insert>	if (notif_mask &amp; 1&lt;&lt;NFCT) {
+</Insert>
+<Copy StartSeek="6251" EndSeek="6474"/>
+</Delta>
+<Delta Version="385" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="15:43:2000">
+<Copy StartSeek="0" EndSeek="987"/>
+<Insert>	ARP	= 1,
+	VLAN 	= 2,
+</Insert>
+<Copy StartSeek="1021" EndSeek="3698"/>
+<Insert>	if ((notif_mask &amp; VLAN) &amp;&amp; is_vlan_dev(dev)) {
+</Insert>
+<Copy StartSeek="3752" EndSeek="5225"/>
+<Insert>			notif_mask |= ARP;
+</Insert>
+<Copy StartSeek="5253" EndSeek="5311"/>
+<Insert>			notif_mask |= VLAN;
+</Insert>
+<Copy StartSeek="5340" EndSeek="5437"/>
+<Insert>	if (notif_mask &amp; (VLAN | BRIDGE)) {
+</Insert>
+<Copy StartSeek="5480" EndSeek="6010"/>
+<Insert>	if (notif_mask &amp; ARP) {
+</Insert>
+<Copy StartSeek="6041" EndSeek="6107"/>
+<Insert>	if (notif_mask &amp; (VLAN | BRIDGE)) {
+</Insert>
+<Copy StartSeek="6150" EndSeek="6522"/>
+</Delta>
+<Delta Version="386" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="15:44:17000">
+<Copy StartSeek="0" EndSeek="1021"/>
+<Insert>	BRIDGE	= 4,
+</Insert>
+<Copy StartSeek="1040" EndSeek="3811"/>
+<Insert>	} else if (notif_mask &amp; BRIDGE) {
+</Insert>
+<Copy StartSeek="3852" EndSeek="5420"/>
+<Insert>			notif_mask |= BRIDGE;
+</Insert>
+<Copy StartSeek="5451" EndSeek="5455"/>
+<Insert>	if (notif_mask &amp; (NOTIF_VLAN | BRIDGE)) {
+</Insert>
+<Copy StartSeek="5504" EndSeek="6131"/>
+<Insert>	if (notif_mask &amp; (NOTIF_VLAN | BRIDGE)) {
+</Insert>
+<Copy StartSeek="6180" EndSeek="6552"/>
+</Delta>
+<Delta Version="387" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="15:44:32000">
+<Copy StartSeek="0" EndSeek="1040"/>
+<Insert>	NFCT	= 8,
+</Insert>
+<Copy StartSeek="1057" EndSeek="5874"/>
+<Insert>			notif_mask |= NFCT;
+</Insert>
+<Copy StartSeek="5903" EndSeek="6315"/>
+<Insert>	if (notif_mask &amp; NFCT) {
+</Insert>
+<Copy StartSeek="6347" EndSeek="6570"/>
+</Delta>
+<Delta Version="388" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="15:44:53000">
+<Copy StartSeek="0" EndSeek="1854"/>
+<Insert>	if (events &amp; (IPCT_DESTROY)) {
+</Insert>
+<Copy StartSeek="1884" EndSeek="6568"/>
+</Delta>
+<Delta Version="389" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="15:46:1000">
+<Copy StartSeek="0" EndSeek="719"/>
+<Insert>//#include &lt;linux/etherdevice.h&gt;
+
+</Insert>
+<Copy StartSeek="720" EndSeek="6535"/>
+</Delta>
+<Delta Version="390" Comment="" NL="\10" Encoding="text" Date="2012/03/28" Time="14:33:8000">
+<Copy StartSeek="0" EndSeek="734"/>
+<Insert>#define pr_fmt(fmt)	"mv_klna: " fmt
+</Insert>
+<Copy StartSeek="771" EndSeek="1074"/>
+<Insert>static void mv_print_conntrack_tuple(struct nf_conn *ct)
+</Insert>
+<Copy StartSeek="1137" EndSeek="1632"/>
+<Insert>static int mv_nf_ct_event(unsigned int events, struct nf_ct_event *item)
+</Insert>
+<Copy StartSeek="1711" EndSeek="1894"/>
+<Insert>		mv_print_conntrack_tuple(ct);
+</Insert>
+<Copy StartSeek="1932" EndSeek="1989"/>
+<Insert>		mv_print_conntrack_tuple(ct);
+</Insert>
+<Copy StartSeek="2027" EndSeek="2091"/>
+<Insert>		mv_print_conntrack_tuple(ct);
+</Insert>
+<Copy StartSeek="2129" EndSeek="2147"/>
+<Insert>static struct nf_ct_event_notifier mv_ct_notifier = {
+	.fcn = mv_nf_ct_event
+</Insert>
+<Copy StartSeek="2236" EndSeek="2247"/>
+<Insert>static int __mv_br_if_event(struct notifier_block *unused, unsigned long event, 
+</Insert>
+<Copy StartSeek="2334" EndSeek="2670"/>
+<Insert>static int __mv_br_device_event(struct notifier_block *unused, unsigned long event, 
+</Insert>
+<Copy StartSeek="2761" EndSeek="3069"/>
+<Insert>__mv_vlan_device_event(struct notifier_block *unused, unsigned long event,
+</Insert>
+<Copy StartSeek="3150" EndSeek="3546"/>
+<Insert>static int mv_netdev_event(struct notifier_block *unused, unsigned long event,
+</Insert>
+<Copy StartSeek="3631" EndSeek="3682"/>
+<Insert>	pr_info("mv_netdev_dev %s event %lu\n",dev-&gt;name, event);
+</Insert>
+<Copy StartSeek="3747" EndSeek="3802"/>
+<Insert>		return __mv_vlan_device_event(unused, event, ptr);
+</Insert>
+<Copy StartSeek="3861" EndSeek="3941"/>
+<Insert>			return __mv_br_device_event(unused,event,ptr);
+</Insert>
+<Copy StartSeek="3997" EndSeek="4026"/>
+<Insert>			return __mv_br_if_event(unused,event,ptr);
+</Insert>
+<Copy StartSeek="4078" EndSeek="4110"/>
+<Insert>static struct notifier_block mv_netdev_notifier __read_mostly = {
+	.notifier_call = mv_netdev_event,
+</Insert>
+<Copy StartSeek="4223" EndSeek="4227"/>
+<Insert>static void mv_klna_neigh_update(struct neighbour *neigh)
+</Insert>
+<Copy StartSeek="4291" EndSeek="4610"/>
+<Insert>static int mv_neigh_callback(struct notifier_block *self, unsigned long event,
+</Insert>
+<Copy StartSeek="4695" EndSeek="4837"/>
+<Insert>		mv_klna_neigh_update((struct neighbour *)ctx);
+</Insert>
+<Copy StartSeek="4892" EndSeek="4976"/>
+<Insert>	.notifier_call = mv_neigh_callback
+</Insert>
+<Copy StartSeek="5018" EndSeek="5106"/>
+<Insert>static int __init mv_klna_init(void)
+</Insert>
+<Copy StartSeek="5149" EndSeek="5608"/>
+<Insert>		err = register_netdevice_notifier(&amp;mv_netdev_notifier);
+</Insert>
+<Copy StartSeek="5672" EndSeek="5685"/>
+<Insert>			unregister_netdevice_notifier(&amp;mv_netdev_notifier);
+</Insert>
+<Copy StartSeek="5746" EndSeek="5851"/>
+<Insert>		err = nf_conntrack_register_notifier(&amp;mv_ct_notifier);
+</Insert>
+<Copy StartSeek="5914" EndSeek="5927"/>
+<Insert>			nf_conntrack_unregister_notifier(&amp;mv_ct_notifier);
+</Insert>
+<Copy StartSeek="5987" EndSeek="6108"/>
+<Insert>static void __exit mv_klna_exit(void)
+</Insert>
+<Copy StartSeek="6152" EndSeek="6320"/>
+<Insert>		pr_info("unreg mv_netdev\n");
+		unregister_netdevice_notifier(&amp;mv_netdev_notifier);
+</Insert>
+<Copy StartSeek="6418" EndSeek="6515"/>
+<Insert>		nf_conntrack_unregister_notifier(&amp;mv_ct_notifier);
+</Insert>
+<Copy StartSeek="6574" EndSeek="6587"/>
+<Insert>module_init(mv_klna_init)
+module_exit(mv_klna_exit)
+</Insert>
+<Copy StartSeek="6651" EndSeek="6728"/>
+</Delta>
+<Delta Version="391" Comment="" NL="\10" Encoding="text" Date="2012/03/28" Time="15:50:42000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Insert>static int __dpa_klna_br_device_event(struct notifier_block *unused, unsigned long event, 
+</Insert>
+<Copy StartSeek="2758" EndSeek="3938"/>
+<Insert>			return __dpa_klna_br_device_event(unused,event,ptr);
+</Insert>
+<Copy StartSeek="3991" EndSeek="6722"/>
+</Delta>
+</DeltaFile>

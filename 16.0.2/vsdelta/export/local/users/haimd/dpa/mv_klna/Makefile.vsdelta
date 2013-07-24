@@ -1,0 +1,26 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1" Comment="" Date="2012/03/28" Time="15:51:6000" NL="\10" Encoding="text">
+<Insert>obj-m += dpa_klna.o
+CROSS_COMPILER ?= /export/filer/shared/tools/arm-sdk3.3-sft/bin/arm-mv5sft-linux-gnueabi-
+KSRC ?= /export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg
+EXTRA_CFLAGS += -Inet/8021q/ -Inet/bridge
+
+all:
+	make -C $(KSRC) ARCH=arm SUBDIRS=`pwd` CROSS_COMPILE=$(CROSS_COMPILER) modules
+
+.PHONY: clean
+clean:
+	make -C $(KSRC) ARCH=arm SUBDIRS=`pwd` clean
+install:
+	cp -i dpa_klna.ko /export/local/users/haimd/dist/sdk5_0_-rd/boot/
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/03/28" Time="14:32:25000">
+<Insert>obj-m += mv_klna.o
+</Insert>
+<Copy StartSeek="20" EndSeek="392"/>
+<Insert>	cp -i mv_klna.ko /export/local/users/haimd/dist/sdk5_0_-rd/boot/
+</Insert>
+</Delta>
+</DeltaFile>

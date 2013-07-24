@@ -1,0 +1,140 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="9" Comment="" Date="2013/06/13" Time="10:18:13000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* dpa_mod.c
+*
+* DESCRIPTION:
+*     DPA module sources.
+* 
+*******************************************************************************/
+
+#include &lt;linux/module.h&gt;
+#include &lt;linux/moduleparam.h&gt;
+#include &lt;linux/interrupt.h&gt;
+#include &lt;linux/time.h&gt;
+#include &lt;linux/delay.h&gt;
+
+#include &lt;dpa_os.h&gt;
+#include &lt;dpa.h&gt;
+#include "proc_fs.h"
+
+#include &lt;eth/eth.h&gt;
+#include &lt;log/log.h&gt;
+#include &lt;xml/ezxml.h&gt;
+#include &lt;util/string.h&gt;
+#include &lt;util/mem.h&gt;
+#include &lt;util/queue.h&gt;
+#include &lt;util/timer.h&gt;
+#include &lt;common/mvTypes.h&gt;
+#include &lt;mv_hal/neta/pnc/mvPnc.h&gt;
+
+#ifdef MODULE_LICENSE
+MODULE_LICENSE("MARVELL");
+#endif
+
+static void __exit dpa_mod_exit(void) {
+  dpa_proc_fs_shutdown();
+}
+module_exit(dpa_mod_exit);
+
+
+static int __init dpa_mod_init(void) {
+  printk(KERN_INFO "\nMarvell Data Processing Acceleration Engine.\n%s\n\n", dpa_get_version());
+
+  if (dpa_proc_fs_init()) {
+      goto fail;
+  }
+  pnc_default_init();
+  return 0;
+
+fail:
+  dpa_mod_exit();
+
+  return -1;
+}
+module_init(dpa_mod_init);
+
+/* gcc compatibility garbage */
+void __aeabi_unwind_cpp_pr0(void) {
+}
+
+void __aeabi_unwind_cpp_pr1(void) {
+}</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/05/23" Time="11:31:1000">
+<Copy StartSeek="0" EndSeek="1151"/>
+<Insert>  printk(KERN_INFO "\nMarvell Data Processing Acceleration Engine.\n%s\n\n", dpa_get_version());
+</Insert>
+<Copy StartSeek="1260" EndSeek="1548"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="11:38:26000">
+<Copy StartSeek="0" EndSeek="1151"/>
+<Insert>  printk(KERN_INFO "\nMarvell Data Processing Acceleration Engine.\n%s\n\n", zte_api_fast_l3_get_version());
+</Insert>
+<Copy StartSeek="1248" EndSeek="1536"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/05/27" Time="11:45:55000">
+<Copy StartSeek="0" EndSeek="735"/>
+<Insert>#include "dev.h"
+</Insert>
+<Copy StartSeek="735" EndSeek="1042"/>
+<Insert>  dpa_dev_shutdown();
+}
+</Insert>
+<Copy StartSeek="1044" EndSeek="1210"/>
+<Insert>
+  if (dpa_dev_init()) {
+      goto fail;
+  }
+
+
+</Insert>
+<Copy StartSeek="1210" EndSeek="1259"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1281" EndSeek="1470"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/06/11" Time="21:25:31000">
+<Copy StartSeek="0" EndSeek="917"/>
+<Insert>
+</Insert>
+<Copy StartSeek="940" EndSeek="1492"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/06/11" Time="21:26:10000">
+<Copy StartSeek="0" EndSeek="917"/>
+<Insert>#include &lt;pnc/mvPnc.h&gt;
+</Insert>
+<Copy StartSeek="945" EndSeek="1497"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/06/11" Time="21:27:49000">
+<Copy StartSeek="0" EndSeek="917"/>
+<Insert>#include &lt;neta/pnc/mvPnc.h&gt;
+</Insert>
+<Copy StartSeek="952" EndSeek="1504"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2013/06/11" Time="21:38:33000">
+<Copy StartSeek="0" EndSeek="917"/>
+<Copy StartSeek="945" EndSeek="1532"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2013/06/11" Time="21:42:38000">
+<Copy StartSeek="0" EndSeek="1321"/>
+<Insert>  pnc_default_init();
+</Insert>
+<Copy StartSeek="1324" EndSeek="1513"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2013/06/13" Time="10:17:35000">
+<Copy StartSeek="0" EndSeek="1321"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="1343" EndSeek="1532"/>
+</Delta>
+</DeltaFile>

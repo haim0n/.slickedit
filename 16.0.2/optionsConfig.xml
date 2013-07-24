@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<History>
+	<Option Path="Appearance &gt; Colors" DateChanged="20120718054425889" ChangeMethod="0">
+	</Option>
+	<Option Path="Appearance &gt; Fonts" DateChanged="20100804093519554">
+	</Option>
+	<Option Path="Tools &gt; Version Control Setup" DateChanged="20110106103500321">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; ANSI-C &gt; Indent" DateChanged="20081023080149961">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; C/C++ &gt; Adaptive Formatting" DateChanged="20090727142514366">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; C/C++ &gt; Indent" DateChanged="20090727142458398">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; C/C++ &gt; Context Tagging®" DateChanged="20090609072434480">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; C/C++ &gt; Aliases" DateChanged="20091102132448410">
+	</Option>
+	<Option Path="Languages &gt; Scripting Languages &gt; Perl &gt; Auto-Complete" DateChanged="20081109111738800">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; C/C++ &gt; Auto-Complete" DateChanged="20081109111753766">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; C/C++ &gt; Comments" DateChanged="20090223155430471">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; C/C++ &gt; Comment Wrap" DateChanged="20081116092731029">
+	</Option>
+	<Option Path="Appearance &gt; General &gt; Current line highlight" DateChanged="20081221091205731">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; C/C++ &gt; View" DateChanged="20090506084534351">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; ANSI-C &gt; View" DateChanged="20081123072740934">
+	</Option>
+	<Option Path="Appearance &gt; Toolbars" DateChanged="20081124140341818">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; C/C++ &gt; C/C++ Formatting Options" DateChanged="20091119063426912">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; C/C++ &gt; Word Wrap" DateChanged="20090506084814431">
+	</Option>
+	<Option Path="Appearance &gt; General &gt; Vertical line column" DateChanged="20120531131631218" ChangeMethod="0">
+	</Option>
+	<Option Path="Appearance &gt; General &gt; Window left margin" DateChanged="20090614144915803">
+	</Option>
+	<Option Path="Appearance &gt; General &gt; Vertical scroll bar" DateChanged="20120531131613717" ChangeMethod="0">
+	</Option>
+	<Option Path="Appearance &gt; General &gt; Vertical line color" DateChanged="20120531131659303" ChangeMethod="0">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; C/C++ &gt; Color Coding" DateChanged="20110213111648220">
+	</Option>
+	<Option Path="Appearance &gt; General &gt; Cursor style" DateChanged="20090623052458829">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; C/C++ &gt; General" DateChanged="20090727142907026">
+	</Option>
+	<Option Path="File Options &gt; Load &gt; Auto reload" DateChanged="20120812164931819" ChangeMethod="0">
+	</Option>
+	<Option Path="Languages &gt; Assembly Languages &gt; Unix Assembly &gt; Color Coding" DateChanged="20100112122017415">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; C/C++ &gt; C/C++ Preprocessing" DateChanged="20100708110843138">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; ANSI-C &gt; Color Coding" DateChanged="20100804105250595">
+	</Option>
+	<Option Path="Languages &gt; User-Defined Languages &gt; linux_patch &gt; Comments" DateChanged="20100811072238090">
+	</Option>
+	<Option Path="Languages &gt; User-Defined Languages &gt; linux_patch &gt; View" DateChanged="20100811072436258">
+	</Option>
+	<Option Path="Languages &gt; User-Defined Languages &gt; linux_patch &gt; Color Coding" DateChanged="20100811074235154">
+	</Option>
+	<Option Path="Languages &gt; User-Defined Languages &gt; linux_patch &gt; General" DateChanged="20100811073932622">
+	</Option>
+	<Option Path="Editing &gt; Editor Windows &gt; Maximize first window" DateChanged="20100824104002884">
+	</Option>
+	<Option Path="Editing &gt; Editor Windows &gt; New window width" DateChanged="20100824104002884">
+	</Option>
+	<Option Path="Editing &gt; Editor Windows &gt; New window height" DateChanged="20100824104002884">
+	</Option>
+	<Option Path="File Options &gt; Load &gt; Reload on switch buffer" DateChanged="20110308082656220">
+	</Option>
+	<Option Path="Languages &gt; Application Languages &gt; Language=c &gt; Color Coding" DateChanged="20120102092326507" ChangeMethod="0">
+	</Option>
+	<Option Path="Appearance &gt; Symbol Coloring" DateChanged="20120718060409401" ChangeMethod="0">
+	</Option>
+	<Option Path="Application Options &gt; Auto Restore &gt; Auto restore workspace" DateChanged="20120102084500964" ChangeMethod="0">
+	</Option>
+	<Option Path="Tools &gt; Version Control &gt; Version Control Setup" DateChanged="20120826081931431" ChangeMethod="0">
+	</Option>
+	<Option Path="Editing &gt; Context Tagging® &gt; Use background thread when possible" DateChanged="20120307092357085" ChangeMethod="0">
+	</Option>
+	<Option Path="Editing &gt; Context Tagging® &gt; Number of tagging threads to start" DateChanged="20120307092357085" ChangeMethod="0">
+	</Option>
+	<Option Path="Languages &gt; Miscellaneous Languages &gt; Language=mak &gt; View" DateChanged="20120718054205334" ChangeMethod="0">
+	</Option>
+	<Option Path="File Options &gt; Open &gt; Set current directory when switching buffers" DateChanged="20120808080251195" ChangeMethod="0">
+	</Option>
+	<Option Path="Languages &gt; Scripting Languages &gt; Language=bourneshell &gt; View" DateChanged="20130701105118304" ChangeMethod="0">
+	</Option>
+</History>

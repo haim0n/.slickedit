@@ -1,0 +1,215 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1" Comment="" Date="2012/06/25" Time="14:33:41000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2010, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* DESCRIPTION:
+*       
+* 
+*******************************************************************************/
+#include &lt;linux/module.h&gt;
+#include &lt;linux/moduleparam.h&gt;
+#include &lt;linux/proc_fs.h&gt;
+
+#include "eth_if.h"
+
+#define MV_CPU_LE
+#include "gbe/mvNeta.h"
+#include "gbe/mvNetaRegs.h"
+#include "gbe/mvEthRegs.h"
+
+
+#ifdef MODULE_LICENSE
+MODULE_LICENSE("MARVELL");
+#endif
+
+typedef struct {
+  unsigned char   h_dest[6];       /* destination eth addr */
+  unsigned char   h_source[6];     /* source ether addr    */
+  u16             h_proto;        /* packet type ID field */
+//unsigned char   data[200];
+} __attribute__((packed)) ethhdr;
+
+struct timer_list eth_timer;
+struct proc_dir_entry *eth_if_proc_dir;
+u32 dpa_cycle_count[2];
+int fwd_done = 0;
+
+#if 0
+void tx_test(void)
+{
+	int i, n;
+	ethhdr *eth_hdr;
+	void* pkt = NULL;
+
+	pkt = kmalloc(1500, GFP_ATOMIC);
+	eth_hdr = (ethhdr *) pkt;
+
+	memset(pkt, 0, 1500);
+	eth_hdr-&gt;h_dest[0] = 0xF0;
+	eth_hdr-&gt;h_dest[1] = 0xDE;
+	eth_hdr-&gt;h_dest[2] = 0xF1;
+	eth_hdr-&gt;h_dest[3] = 0x3C;
+	eth_hdr-&gt;h_dest[4] = 0x5B;
+	eth_hdr-&gt;h_dest[5] = 0x68;
+
+	eth_hdr-&gt;h_source[0] = 0x00;
+	eth_hdr-&gt;h_source[1] = 0x50;
+	eth_hdr-&gt;h_source[2] = 0x43;
+	eth_hdr-&gt;h_source[3] = 0x01;
+	eth_hdr-&gt;h_source[4] = 0x0F;
+	eth_hdr-&gt;h_source[5] = 0x0F;
+
+	eth_hdr-&gt;h_proto = 0x0800;
+
+	for (i = 0; i &lt; 10; i++) {
+		eth_hdr-&gt;data[i] = i;
+		eth_if_tx(ETH_PORT, pkt, 1000);
+		msleep(1);
+		n = mvNetaTxqSentDescNumGet(ETH_PORT, 0, ETH_TXQ);
+		printk("\nMMP ETH: sent %d\n", n);
+	}
+
+	kfree(pkt);
+}
+#endif /* tx_test() */
+
+void eth_poll_timer(unsigned long unused) 
+{
+	
+	unsigned long delay;
+
+//      PERF_COUNTER_RESET(0);
+//      PERF_COUNTER_START(0, PERF_COUNTER_TYPE_CYCLE_COUNT);
+//      PERF_BEGIN(dpa_cycle_count[0], 0);
+//      done = eth_if_rx(ETH_RX_PORT, RX_QUOTA);
+	fwd_done = eth_if_fwd(ETH_RX_PORT, ETH_TX_PORT, RX_QUOTA);
+//      PERF_END(dpa_cycle_count[0], 0)
+//      delay = (fwd_done &lt;  RX_QUOTA ? HZ/10 : 1);
+	delay = 1;
+	mod_timer(&amp;eth_timer, jiffies + delay);
+}
+
+static void __init eth_if_timer_init(struct timer_list *timer)
+{
+	init_timer(timer);
+	timer-&gt;expires = jiffies + HZ;
+	timer-&gt;function = eth_poll_timer;
+	add_timer(timer);
+}
+
+static void eth_if_timer_clean(struct timer_list *timer)
+{
+	del_timer(timer);
+}
+
+void mmp_log(int level, const char* format, ...) {
+  char      buf[256];
+  va_list   argptr;
+  int len;
+
+  va_start( argptr, format);
+  len = vsnprintf(buf,sizeof(buf),format, argptr);
+  va_end( argptr);
+  printk("&lt;0&gt; %d: %s\n", level, buf);
+}
+
+static int eth_if_mod_perf_read(char *buffer, char **buffer_location, off_t offset,
+				 int buffer_length, int *zero, void *ptr)
+{
+	u32 *stats = dpa_cycle_count;
+
+	int n = sprintf(buffer, "0=%u done=%d, avg=%d\n", 
+			dpa_cycle_count[0], fwd_done, (fwd_done ? dpa_cycle_count[0]/fwd_done : -1));
+
+
+	*stats++ = 0;
+	*stats = 0;
+	
+	return n;
+}
+
+static int eth_if_mod_create_proc(void)
+{
+	eth_if_proc_dir = proc_mkdir("eth_if", NULL);
+	if (!eth_if_proc_dir) {
+		printk(KERN_ERR "Error creating proc dir\n");
+		return -EEXIST;
+	}
+
+	create_proc_read_entry("perf", 0, eth_if_proc_dir, eth_if_mod_perf_read, NULL);
+	return 0;
+}
+
+static void eth_if_mod_remove_proc(void)
+{
+	remove_proc_entry("perf", eth_if_proc_dir);
+	remove_proc_entry("eth_if", NULL);
+}  
+
+static int __init eth_if_mod_init(void)
+{
+	eth_if_config_t cfg = {
+		.state = ETH_IF_STATE_UP,
+		.port = ETH_RX_PORT,
+		.rxq = ETH_RXQ,
+		.txq = ETH_TXQ,
+//      	.rx_callback = eth_tx_fwd /*eth_rx_callback */,
+	};
+	if (eth_if_init(&amp;cfg) &lt; 0) {
+		return -1;
+	}
+	cfg.port = ETH_TX_PORT;
+//      cfg.rx_callback = NULL; /* we xmit in uni-dir as a test ..*/
+	if (eth_if_init(&amp;cfg) &lt; 0) {
+		return -1;
+	}
+
+	if (eth_if_mod_create_proc())
+		return -EINVAL;
+
+	eth_if_timer_init(&amp;eth_timer);
+//      rx_test();
+/*  
+  printk("MMP ETH: REsetting.....\n");
+   
+  eth_if_txq_reinit();
+
+  printk("MMP ETH: re-init done\n");
+  tx_test();
+*/
+	return 0;
+}
+module_init(eth_if_mod_init);
+
+static void __exit eth_if_mod_exit(void)
+{
+	eth_if_mod_remove_proc();
+	eth_if_timer_clean(&amp;eth_timer);
+	eth_if_shutdown(ETH_RX_PORT);
+	eth_if_shutdown(ETH_TX_PORT);
+	
+}
+module_exit(eth_if_mod_exit);
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="14:32:0000">
+<Copy StartSeek="0" EndSeek="2012"/>
+<Insert>	PERF_COUNTER_RESET(0);
+	PERF_COUNTER_START(0, PERF_COUNTER_TYPE_CYCLE_COUNT);
+	PERF_BEGIN(dpa_cycle_count[0], 0);
+</Insert>
+<Copy StartSeek="2148" EndSeek="2257"/>
+<Insert>	PERF_END(dpa_cycle_count[0], 0)
+</Insert>
+<Copy StartSeek="2297" EndSeek="4528"/>
+</Delta>
+</DeltaFile>

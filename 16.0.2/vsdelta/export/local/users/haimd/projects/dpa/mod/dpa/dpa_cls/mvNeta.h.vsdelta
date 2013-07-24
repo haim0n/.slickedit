@@ -1,0 +1,66 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1" Comment="" Date="2012/07/17" Time="15:18:50000" NL="\10" Encoding="text">
+<Insert>#ifndef __MV_DPA_NETA_H
+#define __MV_DPA_NETA_H
+#define NETA_RX_IP_IS_FRAG(status)     ((status) &amp; NETA_RX_IP4_FRAG_MASK)
+#define NETA_RX_IP_SET_FRAG(rxd)       ((rxd)-&gt;status |= NETA_RX_IP4_FRAG_MASK)
+
+#define NETA_RX_L4_CSUM_IS_OK(status)  ((status) &amp; NETA_RX_L4_CSUM_OK_MASK)
+#define	NETA_RX_L4_CSUM_SET_OK(rxd)    ((rxd)-&gt;status |= NETA_RX_L4_CSUM_OK_MASK)
+
+#define NETA_RX_IS_PPPOE(rxd)          ((rxd)-&gt;pncInfo &amp; NETA_PNC_PPPOE)
+#define NETA_RX_SET_PPPOE(rxd)         ((rxd)-&gt;pncInfo |= NETA_PNC_PPPOE)
+
+#define NETA_RX_GET_IPHDR_OFFSET(rxd)       (((rxd)-&gt;status &amp; NETA_RX_L3_OFFSET_MASK) &gt;&gt; NETA_RX_L3_OFFSET_OFFS)
+#define NETA_RX_SET_IPHDR_OFFSET(rxd, offs) ((rxd)-&gt;status |= ((offs) &lt;&lt; NETA_RX_L3_OFFSET_OFFS) &amp; NETA_RX_L3_OFFSET_MASK)
+
+#define NETA_RX_GET_IPHDR_HDRLEN(rxd)       (((rxd)-&gt;status &amp; NETA_RX_IP_HLEN_MASK) &gt;&gt; NETA_RX_IP_HLEN_OFFS)
+#define NETA_RX_SET_IPHDR_HDRLEN(rxd, hlen) ((rxd)-&gt;status |= ((hlen) &lt;&lt; NETA_RX_IP_HLEN_OFFS) &amp; NETA_RX_IP_HLEN_MASK)
+
+//#ifdef CONFIG_MV_ETH_PNC
+
+#define NETA_RX_IS_VLAN(rxd)           ((rxd)-&gt;pncInfo &amp; NETA_PNC_VLAN)
+#define NETA_RX_SET_VLAN(rxd)          ((rxd)-&gt;pncInfo |= NETA_PNC_VLAN)
+
+#define NETA_RX_L3_IS_IP4(status)      (((status) &amp; NETA_RX_L3_MASK) == NETA_RX_L3_IP4)
+#define NETA_RX_L3_SET_IP4(rxd)        ((rxd)-&gt;status |= NETA_RX_L3_IP4)
+
+#define NETA_RX_L3_IS_IP4_ERR(status)  (((status) &amp; NETA_RX_L3_MASK) == NETA_RX_L3_IP4_ERR)
+#define NETA_RX_L3_SET_IP4_ERR(rxd)    ((rxd)-&gt;status |= NETA_RX_L3_IP4_ERR)
+
+#define NETA_RX_L3_IS_IP6(status)      (((status) &amp; NETA_RX_L3_MASK) == NETA_RX_L3_IP6)
+#define NETA_RX_L3_SET_IP6(rxd)        ((rxd)-&gt;status |= NETA_RX_L3_IP6)
+
+#define NETA_RX_L3_IS_UN(status)       (((status) &amp; NETA_RX_L3_MASK) == NETA_RX_L3_UN)
+#define NETA_RX_L3_SET_UN(rxd)         ((rxd)-&gt;status |= NETA_RX_L3_UN)
+
+#define NETA_RX_L4_IS_TCP(status)      (((status) &amp; NETA_RX_L4_MASK) == NETA_RX_L4_TCP)
+#define NETA_RX_L4_SET_TCP(rxd)        ((rxd)-&gt;status |= NETA_RX_L4_TCP)
+
+#define NETA_RX_L4_IS_UDP(status)      (((status) &amp; NETA_RX_L4_MASK) == NETA_RX_L4_UDP)
+#define NETA_RX_L4_SET_UDP(rxd)        ((rxd)-&gt;status |= NETA_RX_L4_UDP)
+
+#define NETA_RX_L4_IS_OTHER(status)    (((status) &amp; NETA_RX_L4_MASK) == NETA_RX_L4_OTHER)
+#define NETA_RX_L4_SET_OTHER(rxd)      ((rxd)-&gt;status |= NETA_RX_L4_OTHER)
+
+typedef struct eth_pbuf {
+	void *osInfo;
+	MV_ULONG physAddr;
+	MV_U8 *pBuf;
+	MV_U16 bytes;
+	MV_U16 offset;
+	MV_U8  pool;
+	MV_U8  reserved;
+	MV_U16 vlanId;
+} MV_ETH_PKT;
+
+#endif
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/07/17" Time="15:06:27000">
+<Copy StartSeek="0" EndSeek="2294"/>
+<Copy StartSeek="2463" EndSeek="2471"/>
+</Delta>
+</DeltaFile>

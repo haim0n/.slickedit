@@ -1,0 +1,51 @@
+<!DOCTYPE Compilers SYSTEM "http://www.slickedit.com/dtd/vse/10.0/compilers.dtd">
+<Compilers Version="10.0">
+	<C_Configuration Name="GCC-4.1.2-i586-pc-linux-gnu" Header="sysconfig/vsparser/g++-linux.h">
+		<Includes>
+			<Include Dir="/usr/lib/gcc/i586-pc-linux-gnu/4.1.2/include/" />
+			<Include Dir="/usr/include/" />
+		</Includes>
+	</C_Configuration>
+	<C_Configuration Name="GCC-3.4.6-i586-pc-linux-gnu" Header="sysconfig/vsparser/g++-linux.h">
+		<Includes>
+			<Include Dir="/usr/lib/gcc/i586-pc-linux-gnu/3.4.6/include/" />
+			<Include Dir="/usr/include/" />
+		</Includes>
+	</C_Configuration>
+	<C_Configuration Name="GCC-4.2-i486-linux-gnu" Header="sysconfig/vsparser/g++-linux.h">
+		<Includes>
+			<Include Dir="/usr/lib/gcc/i486-linux-gnu/4.2/include/" />
+			<Include Dir="/usr/include/" />
+		</Includes>
+	</C_Configuration>
+	<C_Configuration Name="GCC-3.4.6-i486-linux-gnu" Header="sysconfig/vsparser/g++-linux.h">
+		<Includes>
+			<Include Dir="/usr/lib/gcc/i486-linux-gnu/3.4.6/include/" />
+			<Include Dir="/usr/include/" />
+		</Includes>
+	</C_Configuration>
+	<C_Configuration Name="GCC-4.3.2-i486-linux-gnu" Header="sysconfig/vsparser/g++-linux.h">
+		<Includes>
+			<Include Dir="/usr/include/c++/4.3.2/" />
+			<Include Dir="/usr/include/c++/4.3.2/i486-linux-gnu/" />
+			<Include Dir="/usr/lib/gcc/i486-linux-gnu/4.3.2/include-fixed/" />
+			<Include Dir="/usr/include/" />
+		</Includes>
+	</C_Configuration>
+	<C_Configuration Name="GCC-4.3-i486-linux-gnu" Header="sysconfig/vsparser/g++-linux.h">
+		<Includes>
+			<Include Dir="/usr/include/c++/4.3/" />
+			<Include Dir="/usr/include/c++/4.3/i486-linux-gnu/" />
+			<Include Dir="/usr/lib/gcc/i486-linux-gnu/4.3/include-fixed/" />
+			<Include Dir="/usr/include/" />
+		</Includes>
+	</C_Configuration>
+	<C_Configuration Name="GCC-4.4-i486-linux-gnu" Header="sysconfig/vsparser/g++-linux.h">
+		<Includes>
+			<Include Dir="/usr/include/c++/4.4/" />
+			<Include Dir="/usr/include/c++/4.4/i486-linux-gnu/" />
+			<Include Dir="/usr/lib/gcc/i486-linux-gnu/4.4/include-fixed/" />
+			<Include Dir="/usr/include/" />
+		</Includes>
+	</C_Configuration>
+</Compilers>

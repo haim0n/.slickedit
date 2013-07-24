@@ -1,0 +1,185 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="7" Comment="" Date="2013/06/30" Time="18:23:44000" NL="\10" Encoding="text">
+<Insert>#!/bin/sh
+
+    echo "ADP PNC Configuration"
+    ######################################
+    Eth0Mac=`ifconfig eth0 | grep HWaddr | awk '{print $5}'`
+    Eth1Mac=`ifconfig eth1 | grep HWaddr | awk '{print $5}'`
+    PonMac=`ifconfig pon0 | grep HWaddr | awk '{print $5}'`
+    BCMac=FF:FF:FF:FF:FF:FF
+    MCMac=01:00:00:00:00:00
+
+    ifconfig eth0 1.1.1.100 netmask 255.255.255.0
+    ifconfig pon0 2.2.2.100 netmask 255.255.255.0
+
+    echo "[RCS]: Forward rules"
+    cd /sys/devices/platform/tpm/cfg_frwd
+    echo frwd_cpu  0x20000 0 0   &gt; frwd_rule_set
+
+    echo "[RCS]: L2 keys"
+    cd /sys/devices/platform/tpm/cfg_l2
+
+    echo "[RCS]: L2_ETH0_MAC_KEY"
+    echo mtm_gmac0 00:00:00:00:00:00 00:00:00:00:00:00 $Eth0Mac ff:ff:ff:ff:ff:ff &gt; l2_key_mac_addr_rule_set
+
+    echo "[RCS]: L2_ETH1_MAC_KEY"
+    echo mtm_gmac1 00:00:00:00:00:00 00:00:00:00:00:00 $Eth1Mac ff:ff:ff:ff:ff:ff &gt; l2_key_mac_addr_rule_set
+
+    echo "[RCS]: L2_PON0_MAC_KEY"
+    echo mtm_DS 00:00:00:00:00:00 00:00:00:00:00:00 $PonMac ff:ff:ff:ff:ff:ff &gt; l2_key_mac_addr_rule_set
+
+    echo "[RCS]: L2_BC_MAC_KEY"
+    echo l2_BC 00:00:00:00:00:00 00:00:00:00:00:00 $BCMac ff:ff:ff:ff:ff:ff &gt; l2_key_mac_addr_rule_set
+
+    echo "[RCS]: L2_MC_MAC_KEY"
+    echo l2_MC 00:00:00:00:00:00 00:00:00:00:00:00 $MCMac 01:00:00:00:00:00 &gt; l2_key_mac_addr_rule_set
+
+    echo "[RCS]: L2 rules"
+    cd /sys/devices/platform/tpm/cfg_l2
+
+    echo "[RCS]: L2_PON0_MAC_RULE"
+    echo 0 wan 0 0x1 0x0 0x20 l3 mtm_DS frwd_empty mod_empty 0x0000 &gt; l2_rule_add
+
+    echo "[RCS]: L2_ETH0_1_MAC_RULE"
+    echo 0 UNI_0 1 0x1 0x0 0x20 l3 mtm_gmac0 frwd_empty mod_empty 0x0000 &gt; l2_rule_add
+    echo 0 UNI_1 2 0x1 0x0 0x20 l3 mtm_gmac1 frwd_empty mod_empty 0x0000 &gt; l2_rule_add
+
+    echo "[RCS]: DS_BROADCAST_RULE"
+    echo 0 wan 3 0x1 0x0 0x16 l3 l2_BC frwd_cpu mod_empty 0x0000 &gt; l2_rule_add
+
+    echo "[RCS]: US_BROADCAST_RULE"
+    echo 0 UNI_0 4 0x1 0x0 0x16 l3 l2_BC frwd_cpu mod_empty 0x0000 &gt; l2_rule_add
+    echo 0 UNI_1 5 0x1 0x0 0x16 l3 l2_BC frwd_cpu mod_empty 0x0000 &gt; l2_rule_add
+
+    echo "[RCS]: DS_MULTICAST_RULE"
+    echo 0 wan 6 0x1 0x0 0x16 l3 l2_MC  frwd_cpu mod_empty 0x0000 &gt; l2_rule_add
+
+    echo "[RCS]: US_MULTICAST_RULE"
+    echo 0 UNI_0 7 0x1 0x0 0x16 l3 l2_MC frwd_cpu mod_empty 0x0000 &gt; l2_rule_add
+    echo 0 UNI_1 8 0x1 0x0 0x16 l3 l2_MC frwd_cpu mod_empty 0x0000 &gt; l2_rule_add
+
+    echo "[RCS]: DS_ANY_RULE"
+    echo 0 wan 9 0x0 0x0 0x16 l3 l2_key_empty frwd_cpu mod_empty 0x0000 &gt; l2_rule_add
+
+    echo "[RCS]: US_ANY_RULE"
+    echo 0 UNI_0 10 0x0 0x0 0x16 l3 l2_key_empty frwd_cpu mod_empty 0x0000 &gt; l2_rule_add
+    echo 0 UNI_1 11 0x0 0x0 0x16 l3 l2_key_empty frwd_cpu mod_empty 0x0000 &gt; l2_rule_add
+
+    echo "[RCS]: L3 keys"
+    cd /sys/devices/platform/tpm/cfg_l3
+
+    echo "[RCS]: ETH_IPV4_o_ETHERNET_KEY"
+    echo ipv4oEth 0x0800 &gt; l3_key_ethertype_rule_set
+
+    echo "[RCS]: ETH_IPV6_o_ETHERNET_KEY"
+    echo ipv6oEth 0x86dd &gt; l3_key_ethertype_rule_set
+
+    echo "[RCS]: ETH_IPV4_o_PPPOE_KEY"
+    echo ipv4oPpp 0 0x0021 &gt; l3_key_pppoe_rule_set
+    echo ipv4oPpp 0x8864   &gt; l3_key_ethertype_rule_set
+
+    echo "[RCS]: L3 rules"
+    cd /sys/devices/platform/tpm/cfg_l3
+
+    echo "[RCS]: ETH_DS_ANY"
+    echo 0 wan 0 0x00 0x00 0x16 done l3_key_empty frwd_cpu &gt; l3_rule_add
+
+    echo "[RCS]: ETH_US_ANY"
+    echo 0 UNI_0 0 0x00 0x00 0x16 done l3_key_empty frwd_cpu &gt; l3_rule_add
+    echo 0 UNI_1 0 0x00 0x00 0x16 done l3_key_empty frwd_cpu &gt; l3_rule_add
+
+    echo "[RCS]: ETH_DS_IPV4_o_PPPOE_RULE"
+    echo 0 wan 0 0x0050 0x0000 0x00 ipv4 ipv4oPpp frwd_empty &gt; l3_rule_add
+
+    echo "[RCS]: ETH_US_IPV4_o_PPPOE_RULE"
+    echo 0 UNI_0 0 0x0050 0x0000 0x00 ipv4 ipv4oPpp frwd_empty &gt; l3_rule_add
+    echo 0 UNI_1 0 0x0050 0x0000 0x00 ipv4 ipv4oPpp frwd_empty &gt; l3_rule_add
+
+    echo "[RCS]: ETH_DS_IPV4_o_ETHERNET_RULE"
+    echo 0 wan 0 0x0010 0x0000 0x00 ipv4 ipv4oEth frwd_empty &gt; l3_rule_add
+
+    echo "[RCS]: ETH_US_IPV4_o_ETHERNET_RULE"
+    echo 0 UNI_0 0 0x0010 0x0000 0x00 ipv4 ipv4oEth frwd_empty &gt; l3_rule_add
+    echo 0 UNI_1 0 0x0010 0x0000 0x00 ipv4 ipv4oEth frwd_empty &gt; l3_rule_add
+
+    echo "[RCS]: Ipv4 rules"
+    cd /sys/devices/platform/tpm/cfg_ipv4
+
+    echo "[RCS]: DEF_IPV4_DS_RULE"
+    echo 0 wan 0 0x0000 0x0000 0x16 done 0x0000 ipv4_key_empty frwd_cpu mod_empty &gt; ipv4_rule_add
+
+    echo "[RCS]: DEF_IPV4_US_RULE"
+    echo 0 UNI_0 1 0x0000 0x0000 0x16 done 0x0000 ipv4_key_empty frwd_cpu mod_empty &gt; ipv4_rule_add
+    echo 0 UNI_1 2 0x0000 0x0000 0x16 done 0x0000 ipv4_key_empty frwd_cpu mod_empty &gt; ipv4_rule_add
+
+exit 0
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="14:14:45000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>auto_mode=no
+cmd_line=`cat /proc/cmdline`
+for cmd in $cmd_line
+do
+    n=`echo $cmd | grep -c "AutomationMode"`
+    if [ "$n" != "0" ]; then
+        auto_mode=`echo $cmd | cut -d"=" -f2`
+        break
+    fi
+done
+
+if [ "$auto_mode" != "yes" ]; then
+    sleep 10
+
+</Insert>
+<Copy StartSeek="11" EndSeek="92"/>
+<Insert>    Eth0Mac=00:50:43:00:02:02
+    Eth1Mac=00:50:43:00:02:03
+    PonMac=00:50:43:02:00:00
+</Insert>
+<Copy StartSeek="268" EndSeek="4520"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="18:22:21000">
+<Copy StartSeek="0" EndSeek="92"/>
+<Insert>    Eth0Mac=ifconfig eth0 | grep HWaddr | awk '{print $5}'
+    Eth1Mac=ifconfig eth1 | grep HWaddr | awk '{print $5}'
+    PonMac=ifconfig pon0 | grep HWaddr | awk '{print $5}'
+</Insert>
+<Copy StartSeek="274" EndSeek="4526"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="18:22:35000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>    echo "[RCS]: Start Golden Script"
+</Insert>
+<Copy StartSeek="44" EndSeek="4521"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="18:23:25000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>    echo "ADP PNC Config Script"
+</Insert>
+<Copy StartSeek="51" EndSeek="4528"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="18:23:29000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>    echo "ADP PNC Configuration Script"
+</Insert>
+<Copy StartSeek="49" EndSeek="4526"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="18:23:33000">
+<Copy StartSeek="0" EndSeek="11"/>
+<Insert>    echo "ADP PNC Configuration init"
+</Insert>
+<Copy StartSeek="44" EndSeek="4510"/>
+<Insert>fi
+
+exit 0
+</Insert>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="18:23:42000">
+<Copy StartSeek="0" EndSeek="4511"/>
+<Insert>    exit 0
+</Insert>
+</Delta>
+</DeltaFile>

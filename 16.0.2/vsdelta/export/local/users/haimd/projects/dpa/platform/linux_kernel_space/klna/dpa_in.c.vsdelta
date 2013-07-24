@@ -1,0 +1,290 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="36" Comment="" Date="2012/06/21" Time="11:01:24000" NL="\10" Encoding="text">
+<Insert>#include &lt;mv_hal/neta/gbe/mvNeta.h&gt;
+#include &lt;mv_hal/neta/gbe/mvNetaRegs.h&gt;
+
+#include &lt;mv_drivers_lsp/mv_neta/net_dev/mv_netdev.h&gt;
+#include &lt;dpa_basic_types.h&gt;
+#include &lt;linux/ip.h&gt;
+#include &lt;linux/ipv6.h&gt;
+
+/* HAIM FIXME : move it to header file  */
+struct dpa_classify_info {
+	//layer2 header
+	struct {
+		uint8_t dmac[6];
+		uint8_t smac[6];
+		uint16_t vlan_tag;
+		uint16_t pppoe_sid;
+		uint16_t eth_type;
+	} l2;
+
+	//layer3 header
+	union l3 {
+		struct iphdr iph;
+		struct ipv6hdr ip6h;
+	} u3;
+	
+
+	//layer4 header
+	union l4 {
+		struct tcphdr th;
+		struct udphdr uh;
+	} u4;
+
+	uint32_t pkt_type;
+};
+
+static struct dpa_classify_info dpa_cls;
+
+int dpa_classify(struct eth_port *ep, struct neta_rx_desc *rx_desc,
+				struct eth_pbuf *pkt)
+{
+	struct sk_buff *skb = pkt-&gt;pBuf;
+
+	memset(&amp;dpa_cls, 0, sizeof(dpa_cls));
+
+
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/06/20" Time="18:00:52000">
+<Copy StartSeek="1" EndSeek="109"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/06/20" Time="18:01:0000">
+<Copy StartSeek="0" EndSeek="1"/>
+<Insert>int dpa_classify(struct eth_port *pp, int rxq, struct neta_rx_desc *rx_desc,
+</Insert>
+<Copy StartSeek="69" EndSeek="100"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:04:7000">
+<Copy StartSeek="0" EndSeek="97"/>
+<Insert>
+</Insert>
+<Copy StartSeek="131" EndSeek="133"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:04:40000">
+<Copy StartSeek="0" EndSeek="131"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:04:42000">
+<Copy StartSeek="0" EndSeek="1"/>
+<Copy StartSeek="2" EndSeek="136"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:09:2000">
+<Insert>
+</Insert>
+<Copy StartSeek="54" EndSeek="189"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:10:14000">
+<Copy StartSeek="0" EndSeek="54"/>
+<Insert>
+</Insert>
+<Copy StartSeek="105" EndSeek="239"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:10:28000">
+<Insert>#include &lt;plat-feroceon/mv_hal/neta/gbe/mvNetaRegs.h&gt;
+</Insert>
+<Copy StartSeek="0" EndSeek="50"/>
+<Insert>
+</Insert>
+<Copy StartSeek="106" EndSeek="240"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:10:31000">
+<Insert>#include &lt;plat-feroceon/mv_hal/neta/gbe/mvNeta.h&gt;
+#include &lt;plat-feroceon/mv_hal/neta/gbe/mvNetaRegs.h&gt;
+</Insert>
+<Copy StartSeek="76" EndSeek="77"/>
+<Insert>
+</Insert>
+<Copy StartSeek="77" EndSeek="211"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:11:11000">
+<Copy StartSeek="0" EndSeek="77"/>
+<Copy StartSeek="122" EndSeek="256"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:11:33000">
+<Copy StartSeek="0" EndSeek="253"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:17:26000">
+<Copy StartSeek="0" EndSeek="77"/>
+<Insert>#include &lt;mv_drivers_lsp/neta/gbe/mvNeta.h&gt;
+</Insert>
+<Copy StartSeek="124" EndSeek="258"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:17:42000">
+<Copy StartSeek="0" EndSeek="77"/>
+<Insert>#include &lt;mv_drivers_lsp/mv_neta/gbe/mvNeta.h&gt;
+</Insert>
+<Copy StartSeek="130" EndSeek="264"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:17:52000">
+<Copy StartSeek="0" EndSeek="77"/>
+<Insert>#include &lt;mv_drivers_lsp/mv_neta/netdev/mv_netdev.h&gt;
+</Insert>
+<Copy StartSeek="131" EndSeek="265"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:18:6000">
+<Copy StartSeek="0" EndSeek="132"/>
+<Copy StartSeek="133" EndSeek="266"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:46:57000">
+<Copy StartSeek="0" EndSeek="132"/>
+<Insert>
+</Insert>
+<Copy StartSeek="586" EndSeek="719"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:47:30000">
+<Copy StartSeek="0" EndSeek="582"/>
+<Insert>};
+</Insert>
+<Copy StartSeek="594" EndSeek="728"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:47:38000">
+<Copy StartSeek="0" EndSeek="249"/>
+<Insert>	uint16_t vlan1_gap;
+	uint16_t vlan1;
+	uint16_t vlan2_gap;
+	uint16_t vlan2;
+	uint16_t vlan_layer;
+
+</Insert>
+<Copy StartSeek="250" EndSeek="266"/>
+<Insert>	uint32_t pppoe_gap;
+	uint16_t ppp_tag;
+</Insert>
+<Copy StartSeek="266" EndSeek="590"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:48:9000">
+<Copy StartSeek="0" EndSeek="325"/>
+<Insert>	struct iphdr iph;
+	struct ipv6hdr ip6h;
+
+</Insert>
+<Copy StartSeek="389" EndSeek="406"/>
+<Insert>	struct tcphdr th;
+	struct udphdr uh;
+
+</Insert>
+<Copy StartSeek="463" EndSeek="630"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:49:5000">
+<Copy StartSeek="0" EndSeek="483"/>
+<Insert>
+</Insert>
+<Copy StartSeek="483" EndSeek="629"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:49:11000">
+<Copy StartSeek="0" EndSeek="213"/>
+<Insert>	//vlan header 
+</Insert>
+<Copy StartSeek="213" EndSeek="233"/>
+<Insert>
+	//pppoe header
+</Insert>
+<Copy StartSeek="233" EndSeek="596"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:49:23000">
+<Copy StartSeek="0" EndSeek="131"/>
+<Insert>
+</Insert>
+<Copy StartSeek="161" EndSeek="625"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:50:19000">
+<Copy StartSeek="0" EndSeek="160"/>
+<Insert>
+</Insert>
+<Copy StartSeek="183" EndSeek="647"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:53:53000">
+<Copy StartSeek="0" EndSeek="182"/>
+<Insert>
+</Insert>
+<Copy StartSeek="207" EndSeek="671"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:54:9000">
+<Copy StartSeek="0" EndSeek="422"/>
+<Insert>	} u;
+</Insert>
+<Copy StartSeek="429" EndSeek="672"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:54:29000">
+<Copy StartSeek="0" EndSeek="501"/>
+<Insert>	};
+</Insert>
+<Copy StartSeek="508" EndSeek="675"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:54:35000">
+<Copy StartSeek="0" EndSeek="251"/>
+<Insert>	uint8_t dmac[6];
+	uint8_t smac[6];
+
+	uint16_t vlan_tag;
+	uint16_t pppoe_sid;
+
+</Insert>
+<Copy StartSeek="348" EndSeek="693"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:57:8000">
+<Copy StartSeek="0" EndSeek="342"/>
+<Insert>	}
+	
+
+</Insert>
+<Copy StartSeek="350" EndSeek="695"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:57:13000">
+<Copy StartSeek="0" EndSeek="342"/>
+<Copy StartSeek="363" EndSeek="388"/>
+<Insert>	uint16_t eth_type;
+</Insert>
+<Copy StartSeek="388" EndSeek="696"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:57:31000">
+<Copy StartSeek="0" EndSeek="550"/>
+<Insert>} cls_info;
+</Insert>
+<Copy StartSeek="553" EndSeek="687"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:59:23000">
+<Copy StartSeek="0" EndSeek="554"/>
+<Copy StartSeek="557" EndSeek="690"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:59:35000">
+<Copy StartSeek="0" EndSeek="554"/>
+<Insert>	
+
+</Insert>
+<Copy StartSeek="555" EndSeek="688"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="10:59:44000">
+<Copy StartSeek="0" EndSeek="207"/>
+<Copy StartSeek="250" EndSeek="597"/>
+<Insert>
+</Insert>
+<Copy StartSeek="605" EndSeek="738"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:00:1000">
+<Copy StartSeek="0" EndSeek="597"/>
+<Insert>struct 
+</Insert>
+<Copy StartSeek="639" EndSeek="772"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:00:28000">
+<Copy StartSeek="0" EndSeek="769"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/06/21" Time="11:00:55000">
+<Copy StartSeek="0" EndSeek="769"/>
+<Copy StartSeek="770" EndSeek="810"/>
+<Insert>}
+</Insert>
+</Delta>
+</DeltaFile>

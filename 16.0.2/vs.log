@@ -1,0 +1,580 @@
+ Slick-C STACK TRACE ******************************
+ Created on 10/7/2008 at 15:27:44 (517 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-5433
+ Invalid XMLCFG handle
+
+ 0x880da60 -xmlcfg-get-modify(-1)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+makefile.ex 17703 GetProjectFiles(/users/haimd/projects/xsl/xsl.vpj,308,,<empty>,,0,1,0,-1,)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+wkspace.ex 39134 wkspace:GetAllFilesInWorkspace(308)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+wkspace.ex 39986 _MaybeRetagWorkspace(0,0,0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 44290 _actapp_makefile(0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+files.ex 8859 call_list(_actapp_,0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+files.ex 9035 _on_activate_app(0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+wkspace.ex 41247 _ProjectHandle(/users/haimd/projects/xsl/xsl.vpj,0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 41528 toolbarBuildFilterList(/users/haimd/projects/xsl/xsl.vpj,1)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 44238 toolbarUpdateFilterList(/users/haimd/projects/xsl/xsl.vpj,1,22)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 35700 project:doOK()   p_window_id: 295   p_object: OI_COMMAND_BUTTON   p_name: _ok
+project.ex 35268 _project_form._ok.\x{15d5}()   p_window_id: 181   p_object: OI_LIST_BOX   p_name: _srcfile_list
+dlgeditv.ex 7426 show(-mdi -modal -xy _project_form,/users/haimd/projects/xsl/xsl.vpj,5,0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 281 project:project_edit2(0,/users/haimd/projects/xsl/xsl.vpj)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 395 project_edit(0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+ptoolbar.ex 11280 projecttbAddToProject()   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+ Slick-C STACK TRACE ******************************
+ Created on 10/7/2008 at 15:27:47 (684 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-5433
+ Invalid XMLCFG handle
+
+ 0x880d7b0 -xmlcfg-find-simple-array(-1,/Project/Files//F[contains(@N,'[\*\?\[\]\^\\]','r')],<empty>,0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 41588 toolbarBuildFilterList(/users/haimd/projects/xsl/xsl.vpj,1)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 44238 toolbarUpdateFilterList(/users/haimd/projects/xsl/xsl.vpj,1,22)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 35700 project:doOK()   p_window_id: 295   p_object: OI_COMMAND_BUTTON   p_name: _ok
+project.ex 35268 _project_form._ok.\x{15d5}()   p_window_id: 181   p_object: OI_LIST_BOX   p_name: _srcfile_list
+dlgeditv.ex 7426 show(-mdi -modal -xy _project_form,/users/haimd/projects/xsl/xsl.vpj,5,0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 281 project:project_edit2(0,/users/haimd/projects/xsl/xsl.vpj)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 395 project_edit(0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+ptoolbar.ex 11280 projecttbAddToProject()   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+ Slick-C STACK TRACE ******************************
+ Created on 10/7/2008 at 15:30:39 (230 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-5433
+ Invalid XMLCFG handle
+
+ 0x880da60 -xmlcfg-get-modify(-1)   p_window_id: 5   p_object: OI_FORM   p_name: 
+makefile.ex 17703 GetProjectFiles(/users/haimd/projects/xsl/xsl.vpj,312,,<empty>,,0,1,0,-1,)   p_window_id: 5   p_object: OI_FORM   p_name: 
+wkspace.ex 39134 wkspace:GetAllFilesInWorkspace(312)   p_window_id: 5   p_object: OI_FORM   p_name: 
+wkspace.ex 39986 _MaybeRetagWorkspace(0,0,0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+project.ex 44290 _actapp_makefile(0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+files.ex 8859 call_list(_actapp_,0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+files.ex 9035 _on_activate_app(0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+wkspace.ex 41247 _ProjectHandle(/users/haimd/projects/xsl/xsl.vpj,0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+projutil.ex 8137 _projectToolGetList(<empty>,<empty>,
+   3:   [0]=
+   3:   [1]=
+   3:   [2]=
+   3:   [3]=
+   3:   [4]=
+   3:   [5]=
+   4:   [0]=
+   4:   [1]=
+   4:   [2]=
+   4:   [3]=
+   4:   [4]=
+   4:   [5]=
+   5:   
+   6:   /users/haimd/projects/xsl/xsl.vpj
+   p_window_id: 325
+   p_object: OI_PICTURE_BOX
+   p_name: ctlframe
+menu.ex 5811 _OnUpdateInit(
+   1:   ._typename()=CMDUI
+   1:   .menu-handle=0
+   1:   .menu-pos=(null)
+   1:   .inMenuBar=(null)
+   1:   .reserved=(null)
+   1:   .button-wid=1
+   2:   0
+   p_window_id: 325
+   p_object: OI_PICTURE_BOX
+   p_name: ctlframe
+toolbar.ex 51356 _tbOnUpdate(0)   p_window_id: 325   p_object: OI_PICTURE_BOX   p_name: ctlframe
+autosave.ex 426 _as_callback()   p_window_id: 325   p_object: OI_PICTURE_BOX   p_name: ctlframe
+dlgeditv.ex 7426 show(-mdi -modal -xy _project_form,/users/haimd/projects/xsl/xsl.vpj,5,0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 281 project:project_edit2(0,/users/haimd/projects/xsl/xsl.vpj)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 395 project_edit(0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+ptoolbar.ex 11280 projecttbAddToProject()   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+ Slick-C STACK TRACE ******************************
+ Created on 10/7/2008 at 15:30:42 (574 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-5433
+ Invalid XMLCFG handle
+
+ 0x880da60 -xmlcfg-get-modify(-1)   p_window_id: 5   p_object: OI_FORM   p_name: 
+makefile.ex 17703 GetProjectFiles(/users/haimd/projects/xsl/xsl.vpj,319,,<empty>,,0,1,0,-1,)   p_window_id: 5   p_object: OI_FORM   p_name: 
+wkspace.ex 39134 wkspace:GetAllFilesInWorkspace(319)   p_window_id: 5   p_object: OI_FORM   p_name: 
+wkspace.ex 39986 _MaybeRetagWorkspace(0,0,0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+project.ex 44290 _actapp_makefile(0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+files.ex 8859 call_list(_actapp_,0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+files.ex 9035 _on_activate_app(0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+wkspace.ex 41247 _ProjectHandle(/users/haimd/projects/xsl/xsl.vpj,0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+projutil.ex 8137 _projectToolGetList(<empty>,<empty>,
+   3:   [0]=
+   3:   [1]=
+   3:   [2]=
+   3:   [3]=
+   3:   [4]=
+   3:   [5]=
+   4:   [0]=
+   4:   [1]=
+   4:   [2]=
+   4:   [3]=
+   4:   [4]=
+   4:   [5]=
+   5:   
+   6:   /users/haimd/projects/xsl/xsl.vpj
+   p_window_id: 325
+   p_object: OI_PICTURE_BOX
+   p_name: ctlframe
+menu.ex 5811 _OnUpdateInit(
+   1:   ._typename()=CMDUI
+   1:   .menu-handle=0
+   1:   .menu-pos=(null)
+   1:   .inMenuBar=(null)
+   1:   .reserved=(null)
+   1:   .button-wid=1
+   2:   0
+   p_window_id: 325
+   p_object: OI_PICTURE_BOX
+   p_name: ctlframe
+toolbar.ex 51356 _tbOnUpdate(0)   p_window_id: 325   p_object: OI_PICTURE_BOX   p_name: ctlframe
+autosave.ex 426 _as_callback(xsl.vpj)   p_window_id: 325   p_object: OI_PICTURE_BOX   p_name: ctlframe
+dlgeditv.ex 7426 show(-mdi -modal -xy _project_form,/users/haimd/projects/xsl/xsl.vpj,5,0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+ Slick-C STACK TRACE ******************************
+ Created on 10/7/2008 at 15:30:45 (663 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-5433
+ Invalid XMLCFG handle
+
+ 0x880da60 -xmlcfg-get-modify(-1)   p_window_id: 5   p_object: OI_FORM   p_name: 
+makefile.ex 17703 GetProjectFiles(/users/haimd/projects/xsl/xsl.vpj,310,,<empty>,,0,1,0,-1,)   p_window_id: 5   p_object: OI_FORM   p_name: 
+wkspace.ex 39134 wkspace:GetAllFilesInWorkspace(310)   p_window_id: 5   p_object: OI_FORM   p_name: 
+wkspace.ex 39986 _MaybeRetagWorkspace(0,0,0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+project.ex 44290 _actapp_makefile(0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+files.ex 8859 call_list(_actapp_,0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+files.ex 9035 _on_activate_app(0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+wkspace.ex 41247 _ProjectHandle(/users/haimd/projects/xsl/xsl.vpj,0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+projutil.ex 8137 _projectToolGetList(<empty>,<empty>,
+   3:   [0]=
+   3:   [1]=
+   3:   [2]=
+   3:   [3]=
+   3:   [4]=
+   3:   [5]=
+   4:   [0]=
+   4:   [1]=
+   4:   [2]=
+   4:   [3]=
+   4:   [4]=
+   4:   [5]=
+   5:   
+   6:   /users/haimd/projects/xsl/xsl.vpj
+   p_window_id: 325
+   p_object: OI_PICTURE_BOX
+   p_name: ctlframe
+menu.ex 5811 _OnUpdateInit(
+   1:   ._typename()=CMDUI
+   1:   .menu-handle=0
+   1:   .menu-pos=(null)
+   1:   .inMenuBar=(null)
+   1:   .reserved=(null)
+   1:   .button-wid=1
+   2:   0
+   p_window_id: 325
+   p_object: OI_PICTURE_BOX
+   p_name: ctlframe
+toolbar.ex 51356 _tbOnUpdate(0)   p_window_id: 325   p_object: OI_PICTURE_BOX   p_name: ctlframe
+autosave.ex 426 _as_callback(xsl.vpj)   p_window_id: 325   p_object: OI_PICTURE_BOX   p_name: ctlframe
+dlgeditv.ex 7426 show(-mdi -modal -xy _project_form,/users/haimd/projects/xsl/xsl.vpj,5,0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 281 project:project_edit2(0,/users/haimd/projects/xsl/xsl.vpj)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+project.ex 395 project_edit(0)   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+ptoolbar.ex 11280 projecttbAddToProject()   p_window_id: 23   p_object: OI_TREE_VIEW   p_name: _proj_tooltab_tree
+ Slick-C STACK TRACE ******************************
+ Created on 11/16/2008 at 11:19:40 (225 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-3015
+ Invalid argument
+
+tagform.ex 1921 RetagFilesInTagFile2(/local/ws-612b604/xsl.vtg,231,224,0,0,1,1,0,0,0,0,1,0,0,0)   p_window_id: 231 (invalid)
+tagform.ex 7688 _workspace_update_files_retag(0,1,0,0,1,0,1,0,0)   p_window_id: 231 (invalid)
+tagform.ex 8204 _tag_form.ctlrebuild_tag_file.\x{5ed}()   p_window_id: 231 (invalid)
+ Slick-C STACK TRACE ******************************
+ Created on 11/27/2008 at 19:11:16 (58 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-3015
+ Invalid argument
+
+tagform.ex 1921 RetagFilesInTagFile2(/local/ws-612/xsl.vtg,293,254,0,0,1,1,1,0,0,0,1,0,0,0)   p_window_id: 293 (invalid)
+tagform.ex 7688 _workspace_update_files_retag(0,1,1,0,1,0,1,0,0)   p_window_id: 293 (invalid)
+tagform.ex 8204 _tag_form.ctlrebuild_tag_file.\x{5ed}()   p_window_id: 293 (invalid)
+ Slick-C STACK TRACE ******************************
+ Created on 1/5/2009 at 15:59:24 (354 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-3015
+ Invalid argument
+
+wkspace.ex 38182 _workspace_properties_form.ctlclose.\x{292c}()   p_window_id: 135   p_object: OI_COMMAND_BUTTON   p_name: ctlclose
+dlgman.ex 1205 _ainh_dlg_manager.K()   p_window_id: 224   p_object: OI_FORM   p_name: _workspace_properties_form
+dlgeditv.ex 7426 show(-mdi -modal -xy _project_form,/local/ws-613/xsl.vpj,3,)   p_window_id: 173   p_object: OI_TREE_VIEW   p_name: ctltree1
+project.ex 281 project:project_edit2(,/local/ws-613/xsl.vpj)   p_window_id: 173   p_object: OI_TREE_VIEW   p_name: ctltree1
+project.ex 434 project_edit()   p_window_id: 173   p_object: OI_TREE_VIEW   p_name: ctltree1
+wkspace.ex 38285 _workspace_properties_form.ctlproperties.\x{2930}()   p_window_id: 173   p_object: OI_TREE_VIEW   p_name: ctltree1
+dlgeditv.ex 7426 show(-modal _workspace_properties_form)   p_window_id: 183   p_object: OI_EDITOR   p_name: 
+wkspace.ex 9420 workspace_properties()   p_window_id: 183   p_object: OI_EDITOR   p_name: 
+ Slick-C STACK TRACE ******************************
+ Created on 1/5/2009 at 15:59:26 (983 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-3015
+ Invalid argument
+
+wkspace.ex 38182 _workspace_properties_form.ctlclose.\x{292c}()   p_window_id: 135   p_object: OI_COMMAND_BUTTON   p_name: ctlclose
+dlgman.ex 1205 _ainh_dlg_manager.K()   p_window_id: 224   p_object: OI_FORM   p_name: _workspace_properties_form
+dlgeditv.ex 7426 show(-mdi -modal -xy _project_form,/local/ws-613/xsl.vpj,3,)   p_window_id: 173   p_object: OI_TREE_VIEW   p_name: ctltree1
+project.ex 281 project:project_edit2(,/local/ws-613/xsl.vpj)   p_window_id: 173   p_object: OI_TREE_VIEW   p_name: ctltree1
+project.ex 434 project_edit()   p_window_id: 173   p_object: OI_TREE_VIEW   p_name: ctltree1
+wkspace.ex 38285 _workspace_properties_form.ctlproperties.\x{2930}()   p_window_id: 173   p_object: OI_TREE_VIEW   p_name: ctltree1
+dlgeditv.ex 7426 show(-modal _workspace_properties_form)   p_window_id: 183   p_object: OI_EDITOR   p_name: 
+wkspace.ex 9420 workspace_properties()   p_window_id: 183   p_object: OI_EDITOR   p_name: 
+ Slick-C STACK TRACE ******************************
+ Created on 2/11/2009 at 17:38:5 (208 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-3015
+ Invalid argument
+
+tags.ex 31319 cancel_form_cancelled(250)   p_window_id: 5   p_object: OI_FORM   p_name: 
+project.ex 38729 _TagUpdateFromViews(/local/ws.630/xsl.vtg,301,300,0,/local/ws.630/xsl.vpj,<empty>,<empty>,1)   p_window_id: 296 (invalid)
+project.ex 39639 project:save_source_filenames(141)   p_window_id: 296 (invalid)
+project.ex 33084 project:okFiles(1)   p_window_id: 296 (invalid)
+project.ex 35522 project:doOK()   p_window_id: 296 (invalid)
+project.ex 35268 _project_form._ok.\x{15d5}()   p_window_id: 274   p_object: OI_EDITOR   p_name: 
+dlgeditv.ex 7426 show(-mdi -modal -xy _project_form,/local/ws.630/xsl.vpj,3,)   p_window_id: 274   p_object: OI_EDITOR   p_name: 
+project.ex 281 project:project_edit2(,/local/ws.630/xsl.vpj)   p_window_id: 274   p_object: OI_EDITOR   p_name: 
+project.ex 434 project_edit()   p_window_id: 274   p_object: OI_EDITOR   p_name: 
+ Slick-C STACK TRACE ******************************
+ Created on 4/26/2009 at 17:13:33 (769 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-3015
+ Invalid argument
+
+tags.ex 31319 cancel_form_cancelled(250)   p_window_id: 5   p_object: OI_FORM   p_name: 
+project.ex 38729 _TagUpdateFromViews(/local/ws.630/xsl.vtg,193,192,0,/local/ws.630/xsl.vpj,<empty>,<empty>,1)   p_window_id: 188 (invalid)
+project.ex 39639 project:save_source_filenames(124)   p_window_id: 188 (invalid)
+project.ex 33084 project:okFiles(1)   p_window_id: 188 (invalid)
+project.ex 35522 project:doOK()   p_window_id: 188 (invalid)
+project.ex 35268 _project_form._ok.\x{15d5}()   p_window_id: 96 (invalid)
+dlgeditv.ex 7426 show(-mdi -modal -xy _project_form,/local/ws.630/xsl.vpj,5,0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+project.ex 281 project:project_edit2(0,/local/ws.630/xsl.vpj)   p_window_id: 111 (invalid)
+project.ex 434 project_edit(0)   p_window_id: 111 (invalid)
+projutil.ex 2369 show_project_properties_files_tab(Release)   p_window_id: 111 (invalid)
+project.ex 2459 workspace_new_project2(/local/ws.630/xsl.vpj,Generic C/C++,xsl,/local/ws.630/xsl.vpw,0,1,,,0,<empty>,0,1)   p_window_id: 111 (invalid)
+wkspace.ex 31377 workspace_new_project(1,Generic C/C++,xsl,/local/ws.630/,0,xsl,)   p_window_id: 111 (invalid)
+wkspace.ex 32875 _workspace_new_form.ctlok.\x{2442}()   p_window_id: 124 (invalid)
+dlgeditv.ex 7426 show(-modal _workspace_new_form,P)   p_window_id: 5   p_object: OI_FORM   p_name: 
+wkspace.ex 30506 workspace_new(1,<empty>,<empty>)   p_window_id: 5   p_object: OI_FORM   p_name: 
+ Slick-C STACK TRACE ******************************
+ Created on 7/2/2009 at 10:44:22 (51 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-3015
+ Invalid argument
+
+diffinsertsym.ex 598 _diff_insert_symbol_form.ctlok.m(/local/ws.sitepsd/xsl/src/kernel/psd/psddefine.h,MAX_SITES_TO_QUERY define,36,36,/local/ws.siteqos/xsl/src/kernel/psd/psddefine.h,0,95,68,35)
+   p_window_id: 107
+   p_object: OI_COMMAND_BUTTON
+   p_name: ctlok
+dlgeditv.ex 6708 show(-modal _diff_insert_symbol_form,/local/ws.sitepsd/xsl/src/kernel/psd/psddefine.h,MAX_SITES_TO_QUERY define,36,36,/local/ws.siteqos/xsl/src/kernel/psd/psddefine.h,0,95,68,35)
+   p_window_id: 70
+   p_object: OI_COMMAND_BUTTON
+   p_name: ctlcopy_right
+diffinsertsym.ex 1482 _DiffInsertSymbol(/local/ws.sitepsd/xsl/src/kernel/psd/psddefine.h,MAX_SITES_TO_QUERY define,36,36,/local/ws.siteqos/xsl/src/kernel/psd/psddefine.h,95,68,0,35)
+   p_window_id: 70
+   p_object: OI_COMMAND_BUTTON
+   p_name: ctlcopy_right
+diffmf.ex 20003 _difftree_output_form.ctlleft.\x{cfa}()   p_window_id: 70   p_object: OI_COMMAND_BUTTON   p_name: ctlcopy_right
+diff.ex 20434 diff:MFDiff(@35099,0)   p_window_id: 2   p_object: OI_DESKTOP   p_name: 
+diff.ex 15110 diff:MFDiff2(
+   1:   ._typename()=DIFF-SETUP-DATA
+   1:   .ReadOnly1=0
+   1:   .ReadOnly2=0
+   1:   .Quiet=0
+   1:   .Interleaved=0
+   1:   .Modal=0
+   1:   .File1IsBuffer=0
+   1:   .File2IsBuffer=0
+   1:   .NoMap=1
+   1:   .Preserve1=0
+   1:   .Preserve2=0
+   1:   .BufferIndex1=-1
+   1:   .BufferIndex2=-1
+   1:   .ViewId1=0
+   1:   .ViewId2=0
+   1:   .ViewOnly=0
+   1:   .Comment=
+   1:   .CommentButtonCaption=
+   1:   .File1Title=
+   1:   .File2Title=
+   1:   .DialogTitle=
+   1:   .File1Name=/local/ws.sitepsd/xsl/src/kernel/psd/ip_psd.c
+   1:   .File2Name=/local/ws.siteqos/xsl/src/kernel/psd/ip_psd.c
+   1:   .FileSpec=
+   1:   .ExcludeFileSpec=
+   1:   .Recursive=0
+   1:   .ImaginaryLineCaption=Imaginary Buffer Line
+   1:   .AutoClose=0
+   1:   .File1FirstLine=0
+   1:   .File1LastLine=0
+   1:   .File2FirstLine=0
+   1:   .File2LastLine=0
+   1:   .RecordFileWidth=0
+   1:   .ShowAlways=0
+   1:   .ParentWIDToRegister=0
+   1:   .OkPtr=
+   1:   .DiffTags=0
+   1:   .FileListInfo=
+   1:   .DiffStateFile=
+   1:   .CompareOnly=0
+   1:   .SaveButton1Caption=
+   1:   .SaveButton2Caption=
+   1:   .SymbolName=
+   1:   .SetOptionsOnly=0
+   2:   0
+   3:   1
+   p_window_id: 5
+   p_object: OI_FORM
+   p_name: 
+diff.ex 5313 diff(-modal -restorefromini,0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+ Slick-C STACK TRACE ******************************
+ Created on 7/2/2009 at 10:44:23 (921 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+diff.ex 20434 diff:MFDiff(@35099,0)   p_window_id: 2   p_object: OI_DESKTOP   p_name: 
+diff.ex 15110 diff:MFDiff2(
+   1:   ._typename()=DIFF-SETUP-DATA
+   1:   .ReadOnly1=0
+   1:   .ReadOnly2=0
+   1:   .Quiet=0
+   1:   .Interleaved=0
+   1:   .Modal=0
+   1:   .File1IsBuffer=0
+   1:   .File2IsBuffer=0
+   1:   .NoMap=1
+   1:   .Preserve1=0
+   1:   .Preserve2=0
+   1:   .BufferIndex1=-1
+   1:   .BufferIndex2=-1
+   1:   .ViewId1=0
+   1:   .ViewId2=0
+   1:   .ViewOnly=0
+   1:   .Comment=
+   1:   .CommentButtonCaption=
+   1:   .File1Title=
+   1:   .File2Title=
+   1:   .DialogTitle=
+   1:   .File1Name=/local/ws.sitepsd/xsl/src/kernel/psd/ip_psd.c
+   1:   .File2Name=/local/ws.siteqos/xsl/src/kernel/psd/ip_psd.c
+   1:   .FileSpec=
+   1:   .ExcludeFileSpec=
+   1:   .Recursive=0
+   1:   .ImaginaryLineCaption=Imaginary Buffer Line
+   1:   .AutoClose=0
+   1:   .File1FirstLine=0
+   1:   .File1LastLine=0
+   1:   .File2FirstLine=0
+   1:   .File2LastLine=0
+   1:   .RecordFileWidth=0
+   1:   .ShowAlways=0
+   1:   .ParentWIDToRegister=0
+   1:   .OkPtr=
+   1:   .DiffTags=0
+   1:   .FileListInfo=
+   1:   .DiffStateFile=
+   1:   .CompareOnly=0
+   1:   .SaveButton1Caption=
+   1:   .SaveButton2Caption=
+   1:   .SymbolName=
+   1:   .SetOptionsOnly=0
+   2:   0
+   3:   1
+   p_window_id: 5
+   p_object: OI_FORM
+   p_name: 
+diff.ex 5313 diff(-modal -restorefromini,0)   p_window_id: 5   p_object: OI_FORM   p_name: 
+ Slick-C STACK TRACE ******************************
+ Created on 7/7/2009 at 14:29:4 (778 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-2088
+ Invalid object handle
+
+codehelp.ex 8404 _update_function_help(0)   p_window_id: 224   p_object: OI_EDITOR   p_name: 
+codehelp.ex 24205 codehelp:still_in_function_help(922)   p_window_id: 224   p_object: OI_EDITOR   p_name: 
+codehelp.ex 25423 codehelp:still_in_code_help(0)   p_window_id: 224   p_object: OI_EDITOR   p_name: 
+codehelp.ex 23542 _CodeHelp()   p_window_id: 250   p_object: OI_TEXT_BOX   p_name: ctl_filter
+autosave.ex 431 _as_callback()   p_window_id: 250   p_object: OI_TEXT_BOX   p_name: ctl_filter
+ Slick-C STACK TRACE ******************************
+ Created on 2/15/2010 at 18:12:9 (500 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-3045
+ Control ctl-macro-name referenced but does not exist
+
+ppedit.ex 4589 _c_ppedit_form.ctl_new_btn.\x{44f}()   p_window_id: 334 (invalid)
+ Slick-C STACK TRACE ******************************
+ Created on 3/2/2011 at 17:28:49 (963 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-2088
+ Invalid object handle
+
+codehelp.ex 8404 _update_function_help(0)   p_window_id: 127   p_object: OI_EDITOR   p_name: 
+codehelp.ex 24205 codehelp:still_in_function_help(718)   p_window_id: 127   p_object: OI_EDITOR   p_name: 
+codehelp.ex 25423 codehelp:still_in_code_help(0)   p_window_id: 127   p_object: OI_EDITOR   p_name: 
+codehelp.ex 23542 _CodeHelp()   p_window_id: 123   p_object: OI_TEXT_BOX   p_name: ctl_filter
+autosave.ex 431 _as_callback()   p_window_id: 123   p_object: OI_TEXT_BOX   p_name: ctl_filter
+ Slick-C STACK TRACE ******************************
+ Created on 3/8/2011 at 12:14:34 (258 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-3015
+ Invalid argument
+
+dlgman.ex 1252 _ainh_dlg_manager.K()   p_window_id: 88   p_object: OI_FORM   p_name: _retrysave_form
+dlgeditv.ex 7426 show(-modal _auto_file_reload_form,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2)   p_window_id: 3   p_object: OI_MDI_FORM   p_name: 
+files.ex 9643 _ReloadCurFile(71,20110308082701000,1,1,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 10372 _ReloadFiles(1,0)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 10828 _actapp_files(1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 8859 call_list(_actapp_,1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 9035 _on_activate_app(1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+dlgeditv.ex 7426 show(-modal _retrysave_form,Unable to save /local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2
+Access denied,1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 5973 _save_status(-5,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,10)
+   p_window_id: 89
+   p_object: OI_EDITOR
+   p_name: 
+files.ex 5674 save(+FTEXT ,10)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 4328 save_as(+ftext  /local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,10)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+guiopen.ex 2553 gui_save_as()   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+ Slick-C STACK TRACE ******************************
+ Created on 3/8/2011 at 12:14:37 (750 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-3015
+ Invalid argument
+
+dlgman.ex 1252 _ainh_dlg_manager.K()   p_window_id: 88   p_object: OI_FORM   p_name: _retrysave_form
+dlgeditv.ex 7426 show(-modal _auto_file_reload_form,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2)   p_window_id: 3   p_object: OI_MDI_FORM   p_name: 
+files.ex 9643 _ReloadCurFile(71,20110308082701000,1,1,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 10372 _ReloadFiles(1,0)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 10828 _actapp_files(1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 8859 call_list(_actapp_,1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 9035 _on_activate_app(1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+dlgeditv.ex 7426 show(-modal _retrysave_form,Unable to save /local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2
+Access denied,1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 5973 _save_status(-5,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,10)
+   p_window_id: 89
+   p_object: OI_EDITOR
+   p_name: 
+files.ex 5674 save(+FTEXT ,10)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 4328 save_as(+ftext  /local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,10)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+guiopen.ex 2553 gui_save_as()   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+ Slick-C STACK TRACE ******************************
+ Created on 3/8/2011 at 12:14:43 (269 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-3015
+ Invalid argument
+
+dlgman.ex 1252 _ainh_dlg_manager.K()   p_window_id: 88   p_object: OI_FORM   p_name: _retrysave_form
+dlgeditv.ex 7426 show(-modal _auto_file_reload_form,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2)   p_window_id: 3   p_object: OI_MDI_FORM   p_name: 
+files.ex 9643 _ReloadCurFile(71,20110308082701000,1,1,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 10372 _ReloadFiles(1,0)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 10828 _actapp_files(1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 8859 call_list(_actapp_,1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 9035 _on_activate_app(1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+dlgeditv.ex 7426 show(-modal _retrysave_form,Unable to save /local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2
+Access denied,1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 5973 _save_status(-5,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,10)
+   p_window_id: 89
+   p_object: OI_EDITOR
+   p_name: 
+files.ex 5674 save(+FTEXT ,10)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 4328 save_as(+ftext  /local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,10)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+guiopen.ex 2553 gui_save_as()   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+ Slick-C STACK TRACE ******************************
+ Created on 3/8/2011 at 12:14:43 (281 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-3015
+ Invalid argument
+
+dlgman.ex 1252 _ainh_dlg_manager.K()   p_window_id: 88   p_object: OI_FORM   p_name: _retrysave_form
+dlgeditv.ex 7426 show(-modal _auto_file_reload_form,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2)   p_window_id: 3   p_object: OI_MDI_FORM   p_name: 
+files.ex 9643 _ReloadCurFile(71,20110308082701000,1,1,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 10372 _ReloadFiles(1,0)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 10828 _actapp_files(1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 8859 call_list(_actapp_,1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 9035 _on_activate_app(1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+dlgeditv.ex 7426 show(-modal _retrysave_form,Unable to save /local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2
+Access denied,1)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 5973 _save_status(-5,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,/local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,10)
+   p_window_id: 89
+   p_object: OI_EDITOR
+   p_name: 
+files.ex 5674 save(+FTEXT ,10)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+files.ex 4328 save_as(+ftext  /local/ws.710_newcvs/xsl/kernel/2.6.34/mm/xsl_alloc.c.haim.keep2,10)   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+guiopen.ex 2553 gui_save_as()   p_window_id: 89   p_object: OI_EDITOR   p_name: 
+ Slick-C STACK TRACE ******************************
+ Created on 8/8/2011 at 10:6:51 (277 ms)
+ SlickEdit Version 13.0.2.0 Copyright 1988-2008 SlickEdit Inc.
+ Edit module and type "st -f <offset>" to get the
+ run-time error position
+
+ error code=-2088
+ Invalid object handle
+
+codehelp.ex 8404 _update_function_help(0)   p_window_id: 220   p_object: OI_EDITOR   p_name: 
+codehelp.ex 24205 codehelp:still_in_function_help(738)   p_window_id: 220   p_object: OI_EDITOR   p_name: 
+codehelp.ex 25423 codehelp:still_in_code_help(0)   p_window_id: 220   p_object: OI_EDITOR   p_name: 
+codehelp.ex 23542 _CodeHelp()   p_window_id: 261   p_object: OI_TEXT_BOX   p_name: ctl_tb_option_input
+autosave.ex 431 _as_callback()   p_window_id: 261   p_object: OI_TEXT_BOX   p_name: ctl_tb_option_input

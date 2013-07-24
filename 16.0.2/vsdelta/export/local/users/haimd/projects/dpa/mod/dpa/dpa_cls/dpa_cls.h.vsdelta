@@ -1,0 +1,86 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="3" Comment="" Date="2012/08/02" Time="10:25:33000" NL="\10" Encoding="text">
+<Insert>#ifndef _DPA_CLS_H_
+#define _DPA_CLS_H_
+
+struct dpa_pri_key {
+	uint32_t sip;
+	uint32_t dip;
+	/* HAIM FIXME : add IPV6 */
+	uint16_t sport;
+	uint16_t dport;
+	uint32_t protocol; /* NOTE: u32 is for padding */
+};
+
+enum dpa_entry_states {
+	DPE_NEW = 0,
+	DPE_LRN,
+	DPE_FWD,
+	DPE_LCL,
+};
+
+char *dpa_entry_state_names[]  = {
+	"NEW",
+	"LRN",
+	"FWD",
+	"LCL",
+};
+#define SET_DPE_STATUS(dpe, stat) ((dpe)-&gt;state = (stat))
+
+enum dpa_mod_operations {
+	DPE_MOD_L2 = 1,
+	DPE_MOD_NAT = 2,
+};
+
+struct dpa_l2 {
+	uint8_t dmac[6];
+	uint8_t smac[6];
+	uint16_t eth_type;
+	uint16_t vlan_tag;
+	uint16_t pppoe_sid;
+};
+
+struct dpa_counters {
+	uint32_t rx_hits;
+	uint32_t fwd_hits;
+	uint32_t stable;
+};
+
+struct dpa_entry {
+	struct {
+		struct dpa_pri_key cls_tuple;
+		struct dpa_l2 l2;
+	} org;
+	struct dpa_entry *next;
+	uint32_t state;
+	struct {
+		struct dpa_pri_key mod_tuple;
+		struct dpa_l2 l2;
+		void *tx_port;
+	} mod;
+	struct dpa_counters counters;
+	uint32_t mod_ops;
+};
+#endif /* _DPA_CLS_H_ */
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="10:23:45000">
+<Insert>#ifndef __DPA_CLS__H__
+#define __DPA_CLS__H__
+</Insert>
+<Copy StartSeek="40" EndSeek="947"/>
+<Insert>#endif /* __DPA_CLS__H__ */
+</Insert>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="10:23:53000">
+<Copy StartSeek="0" EndSeek="40"/>
+<Copy StartSeek="41" EndSeek="973"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="10:23:58000">
+<Copy StartSeek="0" EndSeek="352"/>
+<Insert>
+</Insert>
+<Copy StartSeek="352" EndSeek="972"/>
+</Delta>
+</DeltaFile>

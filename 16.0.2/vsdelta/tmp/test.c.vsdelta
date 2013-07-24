@@ -1,0 +1,2063 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="257" Comment="" Date="2013/07/17" Time="18:59:51000" NL="\10" Encoding="text">
+<Insert>#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;netdb.h&gt;
+#include &lt;string.h&gt;
+
+static void rev_resolve(void) 
+{
+
+	struct sockaddr_in a; 
+	int error=0; 
+	char hostname[NI_MAXHOST]; 
+
+	memset((void*)&amp;a, 0 , sizeof(a)); 
+	a.sin_family = AF_INET; 
+
+	if (inet_aton("157.166.249.10", &amp;(a.sin_addr)) == 0) {
+		printf("inet_aton returned zero \n"); 
+		return; 
+	}
+
+	if ((error = getnameinfo((struct sockaddr*)&amp;a, 
+				 sizeof(struct sockaddr),
+				 hostname, sizeof(hostname), NULL,0,0))) {
+
+		printf("getnameinfo returned error \n");
+		return;
+	}
+
+	printf("Hostname obtained is %s\n",hostname); 
+}
+
+void foo(int i)
+{
+	do {
+		printf("i=%d\n",i);
+		continue;
+	} while (i--);
+}
+int main(int argc, char **argv)
+{
+	foo(10);
+	return 0;
+}
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/01/17" Time="18:02:32000">
+<Insert>/* test.c */
+#include &lt;stdio.h&gt;
+
+int global_data = 4;
+int global_data_2;
+
+int main(int argc, char **argv) 
+{ 
+	int local_data = 3; printf("Hello World\n"); 
+	printf("global_data = %dn", global_data); 
+	printf("global_data_2 = %dn", global_data_2); 
+	printf("local_data = %dn", local_data); 
+	return 0;
+}
+</Insert>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/06/11" Time="16:17:57000">
+<Copy StartSeek="0" EndSeek="21"/>
+<Insert>typedef unsigned long long u64;
+extern unsigned int  _hash , _hmodulus , _hoffset;
+
+</Insert>
+<Copy StartSeek="235" EndSeek="270"/>
+<Insert>	unsigned int  hash, hmodulus, hoffset;
+
+	hash = _hash;
+	hmodulus = _hmodulus;
+	hoffset = _hoffset;
+	return (((u64)hash * hmodulus) &gt;&gt; 32) + hoffset;
+	//return (hash % hmodulus) + hoffset;
+}
+</Insert>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:03:33000">
+<Copy StartSeek="0" EndSeek="21"/>
+<Copy StartSeek="129" EndSeek="391"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:04:11000">
+<Copy StartSeek="0" EndSeek="129"/>
+<Copy StartSeek="130" EndSeek="392"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:04:12000">
+<Copy StartSeek="0" EndSeek="379"/>
+<Copy StartSeek="418" EndSeek="431"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:04:36000">
+<Copy StartSeek="0" EndSeek="130"/>
+<Copy StartSeek="194" EndSeek="495"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:05:19000">
+<Copy StartSeek="0" EndSeek="194"/>
+<Copy StartSeek="195" EndSeek="496"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:05:20000">
+<Insert>#include &lt;stdlib.h&gt;
+
+</Insert>
+<Copy StartSeek="42" EndSeek="517"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:05:29000">
+<Copy StartSeek="0" EndSeek="151"/>
+<Insert>typedef uint32_t unsigned int;
+typedef uint16_t unsigned short;
+</Insert>
+<Copy StartSeek="216" EndSeek="518"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:06:2000">
+<Copy StartSeek="0" EndSeek="151"/>
+<Insert>typedef unsigned int uint32_t ;
+typedef unsigned short uint16_t;
+</Insert>
+<Copy StartSeek="218" EndSeek="520"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:06:14000">
+<Copy StartSeek="0" EndSeek="42"/>
+<Insert>unsigned int a[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+unsigned int b[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+</Insert>
+<Copy StartSeek="152" EndSeek="522"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:06:46000">
+<Copy StartSeek="0" EndSeek="153"/>
+<Copy StartSeek="186" EndSeek="503"/>
+<Insert>	printf("a == b %u\n", comp_eth(a,b));
+</Insert>
+<Copy StartSeek="543" EndSeek="556"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:07:10000">
+<Copy StartSeek="0" EndSeek="42"/>
+<Insert>unsigned char a[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+unsigned char b[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+
+typedef unsigned char 	uint8_t ;
+</Insert>
+<Copy StartSeek="74" EndSeek="142"/>
+<Copy StartSeek="254" EndSeek="556"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:07:17000">
+<Copy StartSeek="0" EndSeek="142"/>
+<Insert>unsigned char a[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+unsigned char b[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+</Insert>
+<Copy StartSeek="240" EndSeek="544"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:07:25000">
+<Copy StartSeek="0" EndSeek="491"/>
+<Insert>	printf("a == b %u\n", comp_eth((a,b));
+</Insert>
+<Copy StartSeek="553" EndSeek="566"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:07:46000">
+<Copy StartSeek="0" EndSeek="191"/>
+<Insert>uint8_t b[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+</Insert>
+<Copy StartSeek="240" EndSeek="566"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:07:57000">
+<Copy StartSeek="0" EndSeek="191"/>
+<Insert>uint8_t b[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,11};
+</Insert>
+<Copy StartSeek="240" EndSeek="566"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:08:3000">
+<Copy StartSeek="0" EndSeek="142"/>
+<Insert>uint8_t a[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+</Insert>
+<Copy StartSeek="191" EndSeek="566"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:08:26000">
+<Copy StartSeek="0" EndSeek="142"/>
+<Insert>uint8_t a[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,11};
+</Insert>
+<Copy StartSeek="191" EndSeek="566"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:08:32000">
+<Copy StartSeek="0" EndSeek="456"/>
+<Copy StartSeek="562" EndSeek="672"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:14:22000">
+<Copy StartSeek="0" EndSeek="559"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="663" EndSeek="773"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:14:51000">
+<Copy StartSeek="0" EndSeek="698"/>
+<Insert>	printf("a == b %u\n", comp_eth((uint32_t*)a,(uint32_t *)b));
+</Insert>
+<Copy StartSeek="712" EndSeek="725"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:15:7000">
+<Copy StartSeek="0" EndSeek="698"/>
+<Insert>	foo(0x1000);
+</Insert>
+<Copy StartSeek="729" EndSeek="742"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:15:28000">
+<Copy StartSeek="0" EndSeek="494"/>
+<Insert>	printf("(unsigned long)(p + 1) = %lu", (unsigned long)(p + 1));
+	printf("(unsigned long)((unsigned long *)p + 1) = %lu", 
+</Insert>
+<Copy StartSeek="621" EndSeek="746"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:15:38000">
+<Copy StartSeek="0" EndSeek="494"/>
+<Insert>	printf("(unsigned long)(p + 1) = %lu\n", (unsigned long)(p + 1));
+	printf("(unsigned long)((unsigned long *)p + 1) = %lu\n", 
+</Insert>
+<Copy StartSeek="619" EndSeek="744"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:16:0000">
+<Copy StartSeek="0" EndSeek="494"/>
+<Insert>	printf("(unsigned long)(p + 1) = %x\n", (unsigned long)(p + 1));
+	printf("(unsigned long)((unsigned long *)p + 1) = %x\n", 
+</Insert>
+<Copy StartSeek="619" EndSeek="744"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:16:9000">
+<Copy StartSeek="0" EndSeek="494"/>
+<Insert>	printf("(unsigned long)(p + 1) = %p\n", (unsigned long)(p + 1));
+	printf("(unsigned long)((unsigned long *)p + 1) = %p\n", 
+</Insert>
+<Copy StartSeek="621" EndSeek="746"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:16:37000">
+<Copy StartSeek="0" EndSeek="667"/>
+<Copy StartSeek="738" EndSeek="817"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="12:42:35000">
+<Copy StartSeek="0" EndSeek="667"/>
+<Insert>int _memcmp(const void *a, const void *b)
+</Insert>
+<Copy StartSeek="718" EndSeek="747"/>
+<Copy StartSeek="748" EndSeek="783"/>
+<Insert>	foo((unsigned long *)0x1000);
+</Insert>
+<Copy StartSeek="792" EndSeek="805"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="12:42:44000">
+<Copy StartSeek="0" EndSeek="783"/>
+<Insert>	return 
+</Insert>
+<Copy StartSeek="811" EndSeek="824"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="12:42:58000">
+<Copy StartSeek="0" EndSeek="667"/>
+<Insert>volatile int _memcmp(const void *a, const void *b)
+</Insert>
+<Copy StartSeek="694" EndSeek="800"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="12:50:16000">
+<Copy StartSeek="0" EndSeek="759"/>
+<Insert>	return _memcmp(main, foo);
+</Insert>
+<Copy StartSeek="778" EndSeek="791"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/08/14" Time="12:50:33000">
+<Copy StartSeek="0" EndSeek="42"/>
+<Copy StartSeek="971" EndSeek="1720"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="18:16:29000">
+<Copy StartSeek="0" EndSeek="1688"/>
+<Insert>	return _memcmp();
+</Insert>
+<Copy StartSeek="1742" EndSeek="1755"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="18:17:3000">
+<Copy StartSeek="0" EndSeek="59"/>
+<Insert>  void *rx_desc; /* Associated rx descriptor if recved pkt */
+</Insert>
+<Copy StartSeek="130" EndSeek="722"/>
+<Insert>  void 		*eth_hdr; /* ETH header pointer */
+  void  	*ip_hdr; /* IP header pointer */  
+</Insert>
+<Copy StartSeek="824" EndSeek="994"/>
+<Insert>typedef unsigned char 	uint8_t;
+typedef unsigned int 	uint32_t ;
+typedef unsigned short 	uint16_t;
+</Insert>
+<Copy StartSeek="1112" EndSeek="1113"/>
+<Insert>uint8_t a[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+uint8_t b[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+</Insert>
+<Copy StartSeek="1225" EndSeek="1392"/>
+<Insert>	 *(uint16_t *)eth32 == *(uint16_t *)pkt32);
+</Insert>
+<Copy StartSeek="1449" EndSeek="1823"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:24:13000">
+<Copy StartSeek="0" EndSeek="41"/>
+<Insert>
+</Insert>
+<Copy StartSeek="403" EndSeek="2184"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:24:27000">
+<Copy StartSeek="0" EndSeek="420"/>
+<Insert>  eth_rx_desc_t *rx_desc; /* Associated rx descriptor if recved pkt */
+</Insert>
+<Copy StartSeek="482" EndSeek="1074"/>
+<Insert>  dpa_eth_hdr_t *eth_hdr; /* ETH header pointer */
+  dpa_ip_hdr_t  *ip_hdr; /* IP header pointer */  
+</Insert>
+<Copy StartSeek="1159" EndSeek="2158"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:24:42000">
+<Copy StartSeek="0" EndSeek="1329"/>
+<Insert>typedef unsigned char 	unsigned short;
+typedef unsigned int 	unsigned short ;
+typedef unsigned short 	unsigned short;
+
+</Insert>
+<Copy StartSeek="1329" EndSeek="2039"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:25:1000">
+<Copy StartSeek="0" EndSeek="682"/>
+<Insert>  uint8_t        queue; /* Ethernet queue */ 
+</Insert>
+<Copy StartSeek="727" EndSeek="2038"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:25:17000">
+<Copy StartSeek="0" EndSeek="682"/>
+<Insert>//uint8_t        queue; /* Ethernet queue */
+</Insert>
+<Copy StartSeek="728" EndSeek="2039"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:25:31000">
+<Copy StartSeek="0" EndSeek="1228"/>
+<Insert>  uint8_t        reserved[22]; /* Reserved. Must make eth_pkt_t cache-line aligned */
+</Insert>
+<Copy StartSeek="1314" EndSeek="2039"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:25:35000">
+<Copy StartSeek="0" EndSeek="1228"/>
+<Insert>  uint8_t        reserved[19]; /* Reserved. Must make eth_pkt_t cache-line aligned */
+</Insert>
+<Copy StartSeek="1313" EndSeek="2038"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:25:47000">
+<Copy StartSeek="0" EndSeek="1228"/>
+<Insert>  uint8_t        reserved[1]; /* Reserved. Must make eth_pkt_t cache-line aligned */
+</Insert>
+<Copy StartSeek="1314" EndSeek="2039"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:25:51000">
+<Copy StartSeek="0" EndSeek="1228"/>
+<Insert>  uint8_t        reserved[18]; /* Reserved. Must make eth_pkt_t cache-line aligned */
+</Insert>
+<Copy StartSeek="1314" EndSeek="2039"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:26:0000">
+<Copy StartSeek="0" EndSeek="1228"/>
+<Insert>  uint8_t        reserved[17]; /* Reserved. Must make eth_pkt_t cache-line aligned */
+</Insert>
+<Copy StartSeek="1314" EndSeek="2039"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:26:8000">
+<Copy StartSeek="0" EndSeek="1228"/>
+<Insert>  uint8_t        reserved[16]; /* Reserved. Must make eth_pkt_t cache-line aligned */
+</Insert>
+<Copy StartSeek="1314" EndSeek="2039"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:26:15000">
+<Copy StartSeek="0" EndSeek="1228"/>
+<Insert>  uint8_t        reserved[15]; /* Reserved. Must make eth_pkt_t cache-line aligned */
+</Insert>
+<Copy StartSeek="1314" EndSeek="2039"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:26:23000">
+<Copy StartSeek="0" EndSeek="420"/>
+<Insert>  void *rx_desc; /* Associated rx descriptor if recved pkt */
+</Insert>
+<Copy StartSeek="491" EndSeek="691"/>
+<Insert>  uint32_t        queue; /* Ethernet queue */
+</Insert>
+<Copy StartSeek="737" EndSeek="1083"/>
+<Insert>  void *eth_hdr; /* ETH header pointer */
+  void  *ip_hdr; /* IP header pointer */  
+</Insert>
+<Copy StartSeek="1185" EndSeek="1254"/>
+<Insert>  uint8_t        reserved[12]; /* Reserved. Must make eth_pkt_t cache-line aligned */
+</Insert>
+<Copy StartSeek="1340" EndSeek="2065"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:27:23000">
+<Copy StartSeek="0" EndSeek="420"/>
+<Insert>  eth_rx_desc_t *rx_desc; /* Associated rx descriptor if recved pkt */
+</Insert>
+<Copy StartSeek="482" EndSeek="1074"/>
+<Insert>  dpa_eth_hdr_t *eth_hdr; /* ETH header pointer */
+  dpa_ip_hdr_t  *ip_hdr; /* IP header pointer */  
+</Insert>
+<Copy StartSeek="1159" EndSeek="2039"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:27:46000">
+<Copy StartSeek="0" EndSeek="812"/>
+<Insert>  uint8_t        prio; /* pkt priority */
+</Insert>
+<Copy StartSeek="855" EndSeek="2040"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:27:59000">
+<Copy StartSeek="0" EndSeek="403"/>
+<Insert>typedef struct {
+</Insert>
+<Copy StartSeek="431" EndSeek="2051"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:28:19000">
+<Copy StartSeek="0" EndSeek="403"/>
+<Insert>typedef __packed__ struct {
+</Insert>
+<Copy StartSeek="420" EndSeek="1315"/>
+<Insert>} eth_pkt_t;
+</Insert>
+<Copy StartSeek="1352" EndSeek="2064"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:29:37000">
+<Copy StartSeek="0" EndSeek="812"/>
+<Insert>  uint32_t        prio; /* pkt priority */
+</Insert>
+<Copy StartSeek="854" EndSeek="2063"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:29:45000">
+<Copy StartSeek="0" EndSeek="1228"/>
+<Insert>  uint8_t        reserved[22]; /* Reserved. Must make eth_pkt_t cache-line aligned */
+</Insert>
+<Copy StartSeek="1314" EndSeek="2063"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:29:54000">
+<Copy StartSeek="0" EndSeek="1228"/>
+<Insert>  uint8_t        reserved[20]; /* Reserved. Must make eth_pkt_t cache-line aligned */
+</Insert>
+<Copy StartSeek="1314" EndSeek="2063"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="09:30:0000">
+<Copy StartSeek="0" EndSeek="812"/>
+<Insert>  uint32_t       prio; /* pkt priority */
+</Insert>
+<Copy StartSeek="853" EndSeek="1227"/>
+<Insert>  uint8_t        reserved[18]; /* Reserved. Must make eth_pkt_t cache-line aligned */
+</Insert>
+<Copy StartSeek="1313" EndSeek="2062"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="10:07:36000">
+<Copy StartSeek="0" EndSeek="812"/>
+<Insert>  uint8_t       prio; /* pkt priority */
+</Insert>
+<Copy StartSeek="854" EndSeek="2063"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/10/16" Time="10:08:1000">
+<Copy StartSeek="0" EndSeek="1466"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1797" EndSeek="2393"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:08:50000">
+<Copy StartSeek="0" EndSeek="1466"/>
+<Copy StartSeek="1467" EndSeek="2394"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:08:55000">
+<Copy StartSeek="0" EndSeek="1465"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1529" EndSeek="1530"/>
+<Copy StartSeek="1531" EndSeek="2458"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:09:33000">
+<Copy StartSeek="0" EndSeek="1531"/>
+<Insert>void dpa_mdf_vlan_rem(eth_pkt_t *pkt)
+</Insert>
+<Copy StartSeek="1564" EndSeek="2453"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:09:40000">
+<Copy StartSeek="0" EndSeek="1566"/>
+<Insert>	dpa_eth_hdr_t *eth = pkt-&gt;eth_hdr;
+</Insert>
+<Copy StartSeek="1593" EndSeek="2444"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:09:48000">
+<Copy StartSeek="0" EndSeek="1530"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1710" EndSeek="2623"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:10:4000">
+<Copy StartSeek="0" EndSeek="1530"/>
+<Copy StartSeek="1552" EndSeek="2645"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:10:12000">
+<Copy StartSeek="0" EndSeek="1962"/>
+<Insert>	pkt-&gt;eth_hdr += VLAN_HDR_SZ;
+	pkt-&gt;buff += VLAN_HDR_SZ;
+	pkt-&gt;size -= VLAN_HDR_SZ;
+</Insert>
+<Copy StartSeek="2067" EndSeek="2666"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:10:27000">
+<Copy StartSeek="0" EndSeek="1962"/>
+<Insert>//      pkt-&gt;eth_hdr += VLAN_HDR_SZ;
+</Insert>
+<Copy StartSeek="1983" EndSeek="2650"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:10:55000">
+<Copy StartSeek="0" EndSeek="2583"/>
+<Insert>	printf("sizeof(eth_pkt_t) %u\n", sizeof(eth_pkt_t));
+</Insert>
+<Copy StartSeek="2643" EndSeek="2656"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:11:57000">
+<Copy StartSeek="0" EndSeek="2583"/>
+<Insert>	for (i = 0; i &lt; sizeof(c); i++) {
+</Insert>
+<Copy StartSeek="2620" EndSeek="2658"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:12:19000">
+<Copy StartSeek="0" EndSeek="1465"/>
+<Insert>unsigned char c[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17};
+</Insert>
+<Copy StartSeek="1531" EndSeek="2660"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:12:26000">
+<Copy StartSeek="0" EndSeek="1734"/>
+<Insert>void dpa_mdf_vlan_rem(void *pkt)
+</Insert>
+<Copy StartSeek="1762" EndSeek="1764"/>
+<Insert>	dpa_eth_hdr_t *eth = pkt;
+</Insert>
+<Copy StartSeek="1764" EndSeek="2628"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:12:47000">
+<Copy StartSeek="0" EndSeek="2553"/>
+<Insert>	for (i = pkt; i &lt; sizeof(c); i++) {
+</Insert>
+<Copy StartSeek="2596" EndSeek="2634"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:13:33000">
+<Copy StartSeek="0" EndSeek="2563"/>
+<Insert>	for (pkt; i &lt; sizeof(c); i++) {
+</Insert>
+<Copy StartSeek="2598" EndSeek="2636"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:13:40000">
+<Copy StartSeek="0" EndSeek="2563"/>
+<Insert>	for (i = c; i &lt; sizeof(c); i++) {
+</Insert>
+<Copy StartSeek="2600" EndSeek="2638"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:13:48000">
+<Copy StartSeek="0" EndSeek="2563"/>
+<Insert>	for (i = pkt; i &lt; sizeof(c); i++) {
+</Insert>
+<Copy StartSeek="2593" EndSeek="2631"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:13:52000">
+<Copy StartSeek="0" EndSeek="2593"/>
+<Insert>		printf("%d", c[i]);
+</Insert>
+<Copy StartSeek="2617" EndSeek="2633"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:13:58000">
+<Copy StartSeek="0" EndSeek="2593"/>
+<Insert>		printf("%d", pkt[i]);
+</Insert>
+<Copy StartSeek="2615" EndSeek="2631"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:14:2000">
+<Copy StartSeek="0" EndSeek="2563"/>
+<Insert>	for (i = pkt; i &lt; 14; i++) {
+</Insert>
+<Copy StartSeek="2593" EndSeek="2631"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:14:14000">
+<Copy StartSeek="0" EndSeek="2618"/>
+<Copy StartSeek="2695" EndSeek="2708"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:14:32000">
+<Copy StartSeek="0" EndSeek="2694"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2694" EndSeek="2707"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:14:34000">
+<Copy StartSeek="0" EndSeek="1764"/>
+<Copy StartSeek="1776" EndSeek="2719"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:15:24000">
+<Copy StartSeek="0" EndSeek="1764"/>
+<Insert>	eth = pkt;
+</Insert>
+<Copy StartSeek="1791" EndSeek="2734"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:15:30000">
+<Copy StartSeek="0" EndSeek="1791"/>
+<Copy StartSeek="1792" EndSeek="2735"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:15:31000">
+<Copy StartSeek="0" EndSeek="1960"/>
+<Insert>	pkt += VLAN_HDR_SZ;
+</Insert>
+<Copy StartSeek="1987" EndSeek="2741"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:17:15000">
+<Copy StartSeek="0" EndSeek="1465"/>
+<Insert>unsigned char pkt[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17};
+</Insert>
+<Copy StartSeek="1530" EndSeek="2740"/>
+</Delta>
+<Delta Version="84" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:18:14000">
+<Copy StartSeek="0" EndSeek="1465"/>
+<Insert>unsigned char *pkt = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17};
+</Insert>
+<Copy StartSeek="1531" EndSeek="2741"/>
+</Delta>
+<Delta Version="85" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:18:28000">
+<Copy StartSeek="0" EndSeek="1465"/>
+<Insert>unsigned char pkt[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17};
+
+</Insert>
+<Copy StartSeek="1565" EndSeek="2774"/>
+</Delta>
+<Delta Version="86" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:18:40000">
+<Copy StartSeek="0" EndSeek="1533"/>
+<Insert>unsigned char *pkt = &amp;pkt_b[];
+</Insert>
+<Copy StartSeek="1562" EndSeek="2772"/>
+</Delta>
+<Delta Version="87" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:18:42000">
+<Copy StartSeek="0" EndSeek="1533"/>
+<Insert>unsigned char *pkt = &amp;pkt_b;
+</Insert>
+<Copy StartSeek="1553" EndSeek="2763"/>
+</Delta>
+<Delta Version="88" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:18:57000">
+<Copy StartSeek="0" EndSeek="2619"/>
+<Copy StartSeek="2634" EndSeek="2778"/>
+</Delta>
+<Delta Version="89" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:19:4000">
+<Copy StartSeek="0" EndSeek="1982"/>
+<Insert>	&amp;(pkt[0]) += VLAN_HDR_SZ;
+</Insert>
+<Copy StartSeek="2003" EndSeek="2772"/>
+</Delta>
+<Delta Version="90" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:19:15000">
+<Copy StartSeek="0" EndSeek="2613"/>
+<Insert>	pkt = &amp;pkt_b;
+</Insert>
+<Copy StartSeek="2627" EndSeek="2771"/>
+</Delta>
+<Delta Version="91" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:19:37000">
+<Copy StartSeek="0" EndSeek="2613"/>
+<Copy StartSeek="2638" EndSeek="2652"/>
+<Insert>	for (i = pkt; i &lt; 18; i++) {
+</Insert>
+<Copy StartSeek="2686" EndSeek="2800"/>
+</Delta>
+<Delta Version="92" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:20:38000">
+<Copy StartSeek="0" EndSeek="2652"/>
+<Insert>	for (i = pkt; count &lt; 18; i++) {
+</Insert>
+<Copy StartSeek="2695" EndSeek="2809"/>
+</Delta>
+<Delta Version="93" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:20:44000">
+<Copy StartSeek="0" EndSeek="2741"/>
+<Insert>	for (i = pkt; i &lt; 18; i++) {
+</Insert>
+<Copy StartSeek="2784" EndSeek="2822"/>
+</Delta>
+<Delta Version="94" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:20:49000">
+<Copy StartSeek="0" EndSeek="2695"/>
+<Insert>		printf("%d", *pkt);
+</Insert>
+<Copy StartSeek="2715" EndSeek="2820"/>
+</Delta>
+<Delta Version="95" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:21:12000">
+<Copy StartSeek="0" EndSeek="2782"/>
+<Insert>		printf("%d", *pkt);
+</Insert>
+<Copy StartSeek="2802" EndSeek="2818"/>
+</Delta>
+<Delta Version="96" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:21:14000">
+<Copy StartSeek="0" EndSeek="2718"/>
+<Copy StartSeek="2733" EndSeek="2833"/>
+</Delta>
+<Delta Version="97" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:21:27000">
+<Copy StartSeek="0" EndSeek="1465"/>
+<Insert>unsigned char pkt_b[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,15,16,17};
+</Insert>
+<Copy StartSeek="1533" EndSeek="2833"/>
+</Delta>
+<Delta Version="98" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:21:45000">
+<Copy StartSeek="0" EndSeek="2652"/>
+<Copy StartSeek="2653" EndSeek="2834"/>
+</Delta>
+<Delta Version="99" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:21:51000">
+<Copy StartSeek="0" EndSeek="1786"/>
+<Insert>	unsigned char *eth = pkt;
+</Insert>
+<Copy StartSeek="1815" EndSeek="2836"/>
+</Delta>
+<Delta Version="100" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:22:9000">
+<Copy StartSeek="0" EndSeek="1984"/>
+<Insert>	pkt += VLAN_HDR_SZ;
+</Insert>
+<Copy StartSeek="2005" EndSeek="2836"/>
+</Delta>
+<Delta Version="101" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:25:11000">
+<Copy StartSeek="0" EndSeek="1786"/>
+<Insert>	unsigned char *eth = pkt_b;
+</Insert>
+<Copy StartSeek="1815" EndSeek="2836"/>
+</Delta>
+<Delta Version="102" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:25:17000">
+<Copy StartSeek="0" EndSeek="1984"/>
+<Insert>	eth += VLAN_HDR_SZ;
+</Insert>
+<Copy StartSeek="2005" EndSeek="2836"/>
+</Delta>
+<Delta Version="103" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:25:22000">
+<Copy StartSeek="0" EndSeek="2757"/>
+<Insert>	for (i = pkt; count &lt; 18; i++, count++) {
+</Insert>
+<Copy StartSeek="2789" EndSeek="2825"/>
+</Delta>
+<Delta Version="104" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:25:53000">
+<Copy StartSeek="0" EndSeek="2789"/>
+<Insert>		printf("%d", *i);
+</Insert>
+<Copy StartSeek="2821" EndSeek="2837"/>
+</Delta>
+<Delta Version="105" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:26:1000">
+<Copy StartSeek="0" EndSeek="2655"/>
+<Insert>	for (i = pkt; count &lt; 18; i++, count++) {
+		printf("%d", *i);
+</Insert>
+<Copy StartSeek="2719" EndSeek="2838"/>
+</Delta>
+<Delta Version="106" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:26:6000">
+<Copy StartSeek="0" EndSeek="2605"/>
+<Insert>	char *i;
+</Insert>
+<Copy StartSeek="2605" EndSeek="2828"/>
+</Delta>
+<Delta Version="107" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:26:9000">
+<Copy StartSeek="0" EndSeek="1815"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1843" EndSeek="2855"/>
+</Delta>
+<Delta Version="108" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:26:36000">
+<Copy StartSeek="0" EndSeek="2672"/>
+<Insert>	for ( ; count &lt; 18; count++) {
+</Insert>
+<Copy StartSeek="2704" EndSeek="2855"/>
+</Delta>
+<Delta Version="109" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:26:50000">
+<Copy StartSeek="0" EndSeek="2775"/>
+<Insert>	for ( ; count &lt; 18; count++) {
+</Insert>
+<Copy StartSeek="2807" EndSeek="2855"/>
+</Delta>
+<Delta Version="110" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:26:54000">
+<Copy StartSeek="0" EndSeek="2775"/>
+<Insert>	for ( ; count &lt; 15; count++) {
+</Insert>
+<Copy StartSeek="2816" EndSeek="2864"/>
+</Delta>
+<Delta Version="111" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:27:9000">
+<Copy StartSeek="0" EndSeek="2672"/>
+<Insert>	for ( ; count &lt; 17; count++) {
+</Insert>
+<Copy StartSeek="2713" EndSeek="2873"/>
+</Delta>
+<Delta Version="112" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:27:14000">
+<Copy StartSeek="0" EndSeek="2860"/>
+<Copy StartSeek="2875" EndSeek="2888"/>
+</Delta>
+<Delta Version="113" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:28:46000">
+<Copy StartSeek="0" EndSeek="2597"/>
+<Copy StartSeek="2733" EndSeek="3024"/>
+</Delta>
+<Delta Version="114" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:42:13000">
+<Copy StartSeek="0" EndSeek="2727"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2756" EndSeek="3052"/>
+</Delta>
+<Delta Version="115" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:42:45000">
+<Copy StartSeek="0" EndSeek="2761"/>
+<Copy StartSeek="2762" EndSeek="3053"/>
+</Delta>
+<Delta Version="116" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:45:48000">
+<Copy StartSeek="0" EndSeek="1465"/>
+<Copy StartSeek="1521" EndSeek="3109"/>
+</Delta>
+<Delta Version="117" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:47:2000">
+<Copy StartSeek="0" EndSeek="2815"/>
+<Insert>}
+
+int main(int argc , char **argv)
+{
+	unsigned int count = 0;
+	pkt = pkt_b;
+
+	for (count = 0 ; count &lt; 17; count++) {
+		printf("%d", *(pkt + count));
+	}
+</Insert>
+<Copy StartSeek="2815" EndSeek="2830"/>
+<Insert>	dpa_mdf_vlan_rem();
+	for (count = 0 ; count &lt; 15; count++) {
+		printf("%d", *(pkt + count));
+	}
+	printf("\n");
+</Insert>
+<Copy StartSeek="2868" EndSeek="2881"/>
+</Delta>
+<Delta Version="118" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:47:22000">
+<Copy StartSeek="0" EndSeek="2868"/>
+<Copy StartSeek="2896" EndSeek="2909"/>
+</Delta>
+<Delta Version="119" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:47:37000">
+<Copy StartSeek="0" EndSeek="2653"/>
+<Insert>static void test_ops(int *a, int *b, int count)
+</Insert>
+<Copy StartSeek="2703" EndSeek="2911"/>
+</Delta>
+<Delta Version="120" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:47:51000">
+<Copy StartSeek="0" EndSeek="2653"/>
+<Insert>static void test_ops(char *a, char *b, int count)
+</Insert>
+<Copy StartSeek="2703" EndSeek="2911"/>
+</Delta>
+<Delta Version="121" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:48:6000">
+<Copy StartSeek="0" EndSeek="2713"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2729" EndSeek="2926"/>
+</Delta>
+<Delta Version="122" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:48:18000">
+<Copy StartSeek="0" EndSeek="2729"/>
+<Copy StartSeek="2730" EndSeek="2927"/>
+</Delta>
+<Delta Version="123" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:48:18000">
+<Copy StartSeek="0" EndSeek="2801"/>
+<Insert>		printf("a[%u]", a[count]);
+</Insert>
+<Copy StartSeek="2832" EndSeek="2929"/>
+</Delta>
+<Delta Version="124" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:48:23000">
+<Copy StartSeek="0" EndSeek="2736"/>
+<Insert>		*--a = *--b;
+</Insert>
+<Copy StartSeek="2751" EndSeek="2929"/>
+</Delta>
+<Delta Version="125" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:48:42000">
+<Copy StartSeek="0" EndSeek="1353"/>
+<Insert>unsigned short a[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+</Insert>
+<Copy StartSeek="1408" EndSeek="1464"/>
+<Insert>unsigned short c[] = {13,12,11,10,9,8,7,6,5,4,3,2,1,0};
+</Insert>
+<Copy StartSeek="1519" EndSeek="2927"/>
+</Delta>
+<Delta Version="126" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:49:12000">
+<Copy StartSeek="0" EndSeek="2886"/>
+<Insert>	test_ops(a, c, sizeof(a));
+</Insert>
+<Copy StartSeek="2907" EndSeek="2920"/>
+</Delta>
+<Delta Version="127" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:50:1000">
+<Copy StartSeek="0" EndSeek="2734"/>
+<Insert>		*--d = *--s;
+</Insert>
+<Copy StartSeek="2749" EndSeek="2920"/>
+</Delta>
+<Delta Version="128" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:50:33000">
+<Copy StartSeek="0" EndSeek="2734"/>
+<Copy StartSeek="2749" EndSeek="2935"/>
+</Delta>
+<Delta Version="129" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:50:54000">
+<Copy StartSeek="0" EndSeek="2734"/>
+<Insert>		printf("a");
+</Insert>
+<Copy StartSeek="2734" EndSeek="2920"/>
+</Delta>
+<Delta Version="130" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:51:6000">
+<Copy StartSeek="0" EndSeek="2749"/>
+<Insert>	} while (count);
+</Insert>
+<Copy StartSeek="2769" EndSeek="2922"/>
+</Delta>
+<Delta Version="131" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:51:8000">
+<Copy StartSeek="0" EndSeek="2749"/>
+<Insert>	} while (count--);
+</Insert>
+<Copy StartSeek="2769" EndSeek="2922"/>
+</Delta>
+<Delta Version="132" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:51:11000">
+<Copy StartSeek="0" EndSeek="2703"/>
+<Insert>	int i;
+</Insert>
+<Copy StartSeek="2719" EndSeek="2930"/>
+</Delta>
+<Delta Version="133" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:51:38000">
+<Copy StartSeek="0" EndSeek="2757"/>
+<Insert>	} while (--count);
+</Insert>
+<Copy StartSeek="2773" EndSeek="2926"/>
+</Delta>
+<Delta Version="134" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:51:43000">
+<Copy StartSeek="0" EndSeek="2805"/>
+<Insert>		printf("a[%u]", tmp[count]);
+</Insert>
+<Copy StartSeek="2833" EndSeek="2923"/>
+</Delta>
+<Delta Version="135" Comment="" NL="\10" Encoding="text" Date="2012/11/27" Time="16:52:18000">
+<Copy StartSeek="0" EndSeek="2651"/>
+<Insert>static void test_ops(char *d, char *s, int count)
+</Insert>
+<Copy StartSeek="2721" EndSeek="2943"/>
+</Delta>
+<Delta Version="136" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="09:31:36000">
+<Copy StartSeek="0" EndSeek="2777"/>
+<Copy StartSeek="2867" EndSeek="3033"/>
+</Delta>
+<Delta Version="137" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="09:37:33000">
+<Copy StartSeek="0" EndSeek="2723"/>
+<Insert>	int i = count;
+</Insert>
+<Copy StartSeek="2723" EndSeek="2740"/>
+<Insert>	do {
+		*++d = *++s;
+		*++d = *++s;
+		*++d = *++s;
+		*++d = *++s;
+		*++d = *++s;
+		*++d = *++s;
+		*++d = *++s;
+	} while (--i);
+</Insert>
+<Copy StartSeek="2839" EndSeek="2989"/>
+</Delta>
+<Delta Version="138" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="09:37:51000">
+<Copy StartSeek="0" EndSeek="2839"/>
+<Insert>	for (i = 0; i &lt; count; i ++) {
+</Insert>
+<Copy StartSeek="2868" EndSeek="2986"/>
+</Delta>
+<Delta Version="139" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="09:37:59000">
+<Copy StartSeek="0" EndSeek="2868"/>
+<Insert>		printf("%u", tmp[count]);
+</Insert>
+<Copy StartSeek="2892" EndSeek="2982"/>
+</Delta>
+<Delta Version="140" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="09:38:9000">
+<Copy StartSeek="0" EndSeek="2651"/>
+<Insert>static void test_ops(unsigned short *d, unsigned short *s, int count)
+</Insert>
+<Copy StartSeek="2689" EndSeek="2691"/>
+<Insert>	char *tmp = d;
+
+	*++d = *++s;
+	*++d = *++s;
+	*++d = *++s;
+	*++d = *++s;
+	*++d = *++s;
+	*++d = *++s;
+	*++d = *++s;
+
+	for (i = 0; i &lt; 18; i ++) {
+		printf("%u", tmp[i]);
+	}
+	printf("\n");
+}
+
+</Insert>
+<Copy StartSeek="2919" EndSeek="2988"/>
+</Delta>
+<Delta Version="141" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="09:59:23000">
+<Copy StartSeek="0" EndSeek="2919"/>
+<Copy StartSeek="2920" EndSeek="2989"/>
+</Delta>
+<Delta Version="142" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="09:59:24000">
+<Copy StartSeek="0" EndSeek="403"/>
+<Copy StartSeek="404" EndSeek="2990"/>
+</Delta>
+<Delta Version="143" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="09:59:49000">
+<Copy StartSeek="0" EndSeek="403"/>
+<Insert>
+</Insert>
+<Copy StartSeek="403" EndSeek="2989"/>
+</Delta>
+<Delta Version="144" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="10:00:2000">
+<Copy StartSeek="0" EndSeek="1353"/>
+<Insert>unsigned char a[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+</Insert>
+<Copy StartSeek="1420" EndSeek="2967"/>
+<Insert>	test_ops(a, c, 14);
+</Insert>
+<Copy StartSeek="2987" EndSeek="3000"/>
+</Delta>
+<Delta Version="145" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="10:00:29000">
+<Copy StartSeek="0" EndSeek="2967"/>
+<Copy StartSeek="3009" EndSeek="3042"/>
+</Delta>
+<Delta Version="146" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="10:02:3000">
+<Copy StartSeek="0" EndSeek="2663"/>
+<Copy StartSeek="3209" EndSeek="3588"/>
+</Delta>
+<Delta Version="147" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="10:02:21000">
+<Copy StartSeek="0" EndSeek="3478"/>
+<Copy StartSeek="3596" EndSeek="3706"/>
+</Delta>
+<Delta Version="148" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:17:44000">
+<Copy StartSeek="0" EndSeek="3573"/>
+<Insert>	} while (--size)
+	
+</Insert>
+<Copy StartSeek="3607" EndSeek="3720"/>
+</Delta>
+<Delta Version="149" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:18:1000">
+<Copy StartSeek="0" EndSeek="3592"/>
+<Copy StartSeek="3593" EndSeek="3721"/>
+</Delta>
+<Delta Version="150" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:18:4000">
+<Copy StartSeek="0" EndSeek="3688"/>
+<Copy StartSeek="3715" EndSeek="3748"/>
+</Delta>
+<Delta Version="151" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:18:31000">
+<Copy StartSeek="0" EndSeek="3715"/>
+<Insert>	dpa_mdf_vlan_rem()
+</Insert>
+<Copy StartSeek="3762" EndSeek="3775"/>
+</Delta>
+<Delta Version="152" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:18:44000">
+<Copy StartSeek="0" EndSeek="3688"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3688" EndSeek="3774"/>
+</Delta>
+<Delta Version="153" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:18:45000">
+<Copy StartSeek="0" EndSeek="3714"/>
+<Insert>	dpa_mdf_vlan_rem();
+</Insert>
+<Copy StartSeek="3738" EndSeek="3777"/>
+</Delta>
+<Delta Version="154" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:18:56000">
+<Copy StartSeek="0" EndSeek="3121"/>
+<Insert>
+	pkt-&gt;eth_hdr += VLAN_HDR_SZ;
+	pkt-&gt;buff += VLAN_HDR_SZ;
+	pkt-&gt;size -= VLAN_HDR_SZ;
+}
+
+void dpa_mdf_vlan_rem(eth_pkt_t *pkt)
+{
+	dpa_eth_hdr_t *eth = pkt-&gt;eth_hdr;
+	uint8_t *s = (uint8_t*)eth + sizeof(dpa_eth_hdr_t) - sizeof(uint16_t);
+	uint8_t *d = s + VLAN_HDR_SZ;
+	
+
+</Insert>
+<Copy StartSeek="3159" EndSeek="3545"/>
+</Delta>
+<Delta Version="155" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:20:32000">
+<Copy StartSeek="0" EndSeek="1822"/>
+<Insert>void dpa_mdf_vlan_rem(void)
+{
+	unsigned char *pkt = pkt_b;
+	unsigned char *eth = pkt;
+
+	uint8_t *s = (uint8_t*)eth + sizeof(dpa_eth_hdr_t);
+	uint8_t *d = s + VLAN_HDR_SZ;
+	uint32_t count = sizeof(dpa_eth_hdr_t);
+
+	do {
+		*--d = *--s;
+	} while (--count);
+
+	pkt += VLAN_HDR_SZ;
+//      pkt-&gt;buff += VLAN_HDR_SZ;
+//      pkt-&gt;size -= VLAN_HDR_SZ;
+}
+
+</Insert>
+<Copy StartSeek="1822" EndSeek="3198"/>
+</Delta>
+<Delta Version="156" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:20:47000">
+<Copy StartSeek="0" EndSeek="3088"/>
+<Insert>		.eth_hdr = &amp;a;
+</Insert>
+<Copy StartSeek="3105" EndSeek="3198"/>
+</Delta>
+<Delta Version="157" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:21:1000">
+<Copy StartSeek="0" EndSeek="3135"/>
+<Insert>	dpa_mdf_vlan_rem(pkt);
+</Insert>
+<Copy StartSeek="3160" EndSeek="3199"/>
+</Delta>
+<Delta Version="158" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:21:11000">
+<Copy StartSeek="0" EndSeek="2468"/>
+<Copy StartSeek="2492" EndSeek="2992"/>
+<Insert>		printf("%d",*a);
+</Insert>
+<Copy StartSeek="3011" EndSeek="3223"/>
+</Delta>
+<Delta Version="159" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:27:16000">
+<Copy StartSeek="0" EndSeek="2992"/>
+<Insert>		printf("%c",*a);
+</Insert>
+<Copy StartSeek="3011" EndSeek="3223"/>
+</Delta>
+<Delta Version="160" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:27:25000">
+<Copy StartSeek="0" EndSeek="2992"/>
+<Insert>		printf("%u",*a);
+</Insert>
+<Copy StartSeek="3020" EndSeek="3232"/>
+</Delta>
+<Delta Version="161" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:27:43000">
+<Copy StartSeek="0" EndSeek="2468"/>
+<Insert>	printf("*d16 %c *s16")
+</Insert>
+<Copy StartSeek="2499" EndSeek="3239"/>
+</Delta>
+<Delta Version="162" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:27:50000">
+<Copy StartSeek="0" EndSeek="2999"/>
+<Insert>		printf("%u",(*a) &amp; 0xff);
+</Insert>
+<Copy StartSeek="3018" EndSeek="3230"/>
+</Delta>
+<Delta Version="163" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:28:9000">
+<Copy StartSeek="0" EndSeek="2468"/>
+<Insert>//      printf("*d16 %c *s16")
+</Insert>
+<Copy StartSeek="2496" EndSeek="3227"/>
+</Delta>
+<Delta Version="164" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:28:43000">
+<Copy StartSeek="0" EndSeek="2468"/>
+<Insert>	printf("d=%u s=%u",*d,*s);
+</Insert>
+<Copy StartSeek="2512" EndSeek="3243"/>
+</Delta>
+<Delta Version="165" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:29:7000">
+<Copy StartSeek="0" EndSeek="2468"/>
+<Insert>	printf("d=%u s=%u",*(char *)d,*(char *)s);
+</Insert>
+<Copy StartSeek="2500" EndSeek="3231"/>
+</Delta>
+<Delta Version="166" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:29:31000">
+<Copy StartSeek="0" EndSeek="2468"/>
+<Insert>	printf("d=%u s=%u",*d16,*s16);
+</Insert>
+<Copy StartSeek="2502" EndSeek="3233"/>
+</Delta>
+<Delta Version="167" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:29:49000">
+<Copy StartSeek="0" EndSeek="2468"/>
+<Insert>	printf("d=%u s=%u\n",*d16,*s16);
+</Insert>
+<Copy StartSeek="2518" EndSeek="3249"/>
+</Delta>
+<Delta Version="168" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:30:35000">
+<Copy StartSeek="0" EndSeek="2536"/>
+<Copy StartSeek="2586" EndSeek="3299"/>
+</Delta>
+<Delta Version="169" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:31:10000">
+<Copy StartSeek="0" EndSeek="2445"/>
+<Insert>	s16 = (uint16_t *)b;
+</Insert>
+<Copy StartSeek="2467" EndSeek="3299"/>
+</Delta>
+<Delta Version="170" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:32:2000">
+<Copy StartSeek="0" EndSeek="2468"/>
+<Insert>	printf("d=%u s=%u\n",*(char *)d16,*(char *)s16);
+</Insert>
+<Copy StartSeek="2468" EndSeek="3249"/>
+</Delta>
+<Delta Version="171" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:32:21000">
+<Copy StartSeek="0" EndSeek="2486"/>
+<Insert>	printf("d=%u s=%u\n",*(char *)d16,*(char *)s16);
+</Insert>
+<Copy StartSeek="2486" EndSeek="3199"/>
+</Delta>
+<Delta Version="172" Comment="" NL="\10" Encoding="text" Date="2012/11/28" Time="11:32:23000">
+<Copy StartSeek="0" EndSeek="403"/>
+<Copy StartSeek="572" EndSeek="3368"/>
+</Delta>
+<Delta Version="173" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:24:12000">
+<Copy StartSeek="0" EndSeek="3201"/>
+<Copy StartSeek="3263" EndSeek="3430"/>
+</Delta>
+<Delta Version="174" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:24:36000">
+<Copy StartSeek="0" EndSeek="3201"/>
+<Insert>void dpa_entry_dup(struct dpa_entry *d, struct dpa_entry *d,)
+</Insert>
+<Copy StartSeek="3275" EndSeek="3442"/>
+</Delta>
+<Delta Version="175" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:25:25000">
+<Copy StartSeek="0" EndSeek="3272"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="3284" EndSeek="3451"/>
+</Delta>
+<Delta Version="176" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:25:33000">
+<Copy StartSeek="0" EndSeek="3321"/>
+<Insert>	eth_pkt_t pkt = {
+		.eth_hdr = &amp;a,
+	};
+	print_arr(a, sizeof(a));
+	dpa_mdf_vlan_rem(&amp;pkt);
+	print_arr(a, sizeof(a));
+</Insert>
+<Copy StartSeek="3337" EndSeek="3350"/>
+</Delta>
+<Delta Version="177" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:25:41000">
+<Copy StartSeek="0" EndSeek="3283"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3318" EndSeek="3355"/>
+<Insert>	dpa_entry_dup;
+</Insert>
+<Copy StartSeek="3380" EndSeek="3393"/>
+</Delta>
+<Delta Version="178" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:26:13000">
+<Copy StartSeek="0" EndSeek="3201"/>
+<Copy StartSeek="3236" EndSeek="3318"/>
+<Insert>volatile struct dpa_entry dummy_e;
+</Insert>
+<Copy StartSeek="3319" EndSeek="3394"/>
+</Delta>
+<Delta Version="179" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:26:20000">
+<Copy StartSeek="0" EndSeek="3236"/>
+<Insert>void dpa_entry_dup(struct dpa_entry *d)
+</Insert>
+<Copy StartSeek="3289" EndSeek="3291"/>
+<Insert>	struct dpa_entry s = {1};
+	
+	*d = s;
+</Insert>
+<Copy StartSeek="3332" EndSeek="3410"/>
+</Delta>
+<Delta Version="180" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:26:59000">
+<Copy StartSeek="0" EndSeek="3370"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="3370" EndSeek="3408"/>
+</Delta>
+<Delta Version="181" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:27:11000">
+<Copy StartSeek="0" EndSeek="3370"/>
+<Insert>	dpa_entry_dup(dummy_e);
+</Insert>
+<Copy StartSeek="3415" EndSeek="3428"/>
+</Delta>
+<Delta Version="182" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:27:41000">
+<Copy StartSeek="0" EndSeek="3291"/>
+<Insert>	struct dpa_entry s = ;
+</Insert>
+<Copy StartSeek="3291" EndSeek="3404"/>
+</Delta>
+<Delta Version="183" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:27:49000">
+<Copy StartSeek="0" EndSeek="3306"/>
+<Insert>	
+}
+
+</Insert>
+<Copy StartSeek="3309" EndSeek="3402"/>
+</Delta>
+<Delta Version="184" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:27:50000">
+<Copy StartSeek="0" EndSeek="3306"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="3327" EndSeek="3420"/>
+</Delta>
+<Delta Version="185" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:27:57000">
+<Copy StartSeek="0" EndSeek="3306"/>
+<Insert>	return *dummy_e;
+</Insert>
+<Copy StartSeek="3324" EndSeek="3420"/>
+</Delta>
+<Delta Version="186" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:28:0000">
+<Copy StartSeek="0" EndSeek="3291"/>
+<Copy StartSeek="3318" EndSeek="3447"/>
+</Delta>
+<Delta Version="187" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:28:40000">
+<Copy StartSeek="0" EndSeek="3318"/>
+<Insert>	dummy_e = *d;
+</Insert>
+<Copy StartSeek="3333" EndSeek="3447"/>
+</Delta>
+<Delta Version="188" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:28:45000">
+<Copy StartSeek="0" EndSeek="3333"/>
+<Insert>	return &amp;dummy_e;
+</Insert>
+<Copy StartSeek="3351" EndSeek="3447"/>
+</Delta>
+<Delta Version="189" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:28:50000">
+<Copy StartSeek="0" EndSeek="3201"/>
+<Insert>volatile struct dpa_entry dummy_e;
+</Insert>
+<Copy StartSeek="3202" EndSeek="3413"/>
+</Delta>
+<Delta Version="190" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:29:5000">
+<Copy StartSeek="0" EndSeek="3201"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3201" EndSeek="3412"/>
+</Delta>
+<Delta Version="191" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:29:6000">
+<Copy StartSeek="0" EndSeek="3201"/>
+<Insert>struct dpa_entry *dpa_entry_dup(struct dpa_entry *d)
+</Insert>
+<Copy StartSeek="3258" EndSeek="3260"/>
+<Insert>	struct dpa_entry dummy_b;
+</Insert>
+<Copy StartSeek="3289" EndSeek="3360"/>
+<Insert>	dpa_entry_dup((struct dpa_entry *)argv[1]);
+</Insert>
+<Copy StartSeek="3407" EndSeek="3420"/>
+</Delta>
+<Delta Version="192" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:31:14000">
+<Copy StartSeek="0" EndSeek="3304"/>
+<Copy StartSeek="3305" EndSeek="3421"/>
+</Delta>
+<Delta Version="193" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:32:27000">
+<Copy StartSeek="0" EndSeek="3201"/>
+<Copy StartSeek="3238" EndSeek="3297"/>
+<Insert>	struct dpa_pri_key dummy_b;
+</Insert>
+<Copy StartSeek="3297" EndSeek="3429"/>
+</Delta>
+<Delta Version="194" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:32:56000">
+<Copy StartSeek="0" EndSeek="3201"/>
+<Insert>volatile struct dpa_pri_key dummy_b;
+</Insert>
+<Copy StartSeek="3291" EndSeek="3482"/>
+</Delta>
+<Delta Version="195" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:34:28000">
+<Copy StartSeek="0" EndSeek="3291"/>
+<Insert>struct dpa_pri_key *dpa_entry_dup(struct dpa_pri_key *d)
+</Insert>
+<Copy StartSeek="3357" EndSeek="3491"/>
+</Delta>
+<Delta Version="196" Comment="" NL="\10" Encoding="text" Date="2012/12/02" Time="17:36:1000">
+<Copy StartSeek="0" EndSeek="3291"/>
+<Insert>volatile struct dpa_pri_key *dpa_entry_dup(struct dpa_pri_key *d)
+{
+	dummy_b = *d;
+
+	return &amp;dummy_b;
+}
+</Insert>
+<Copy StartSeek="3406" EndSeek="3407"/>
+<Copy StartSeek="3688" EndSeek="3723"/>
+<Insert>	dpa_entry_dup((struct dpa_pri_key *)argv[1]);
+</Insert>
+<Copy StartSeek="3785" EndSeek="3798"/>
+</Delta>
+<Delta Version="197" Comment="" NL="\10" Encoding="text" Date="2012/12/16" Time="08:58:28000">
+<Copy StartSeek="0" EndSeek="3554"/>
+<Insert>		DPA_DBG("%s", buf);
+</Insert>
+<Copy StartSeek="3575" EndSeek="3797"/>
+</Delta>
+<Delta Version="198" Comment="" NL="\10" Encoding="text" Date="2012/12/16" Time="08:58:37000">
+<Copy StartSeek="0" EndSeek="3438"/>
+<Insert>		dpa_snprintf(buf++, 1, "%#x");
+</Insert>
+<Copy StartSeek="3467" EndSeek="3793"/>
+</Delta>
+<Delta Version="199" Comment="" NL="\10" Encoding="text" Date="2012/12/16" Time="08:58:41000">
+<Copy StartSeek="0" EndSeek="3438"/>
+<Insert>		snprintf(buf++, 1, "%#x");
+</Insert>
+<Copy StartSeek="3469" EndSeek="3795"/>
+</Delta>
+<Delta Version="200" Comment="" NL="\10" Encoding="text" Date="2012/12/16" Time="09:01:4000">
+<Copy StartSeek="0" EndSeek="3438"/>
+<Insert>		snprintf(buf++, 128, "%#x");
+</Insert>
+<Copy StartSeek="3467" EndSeek="3793"/>
+</Delta>
+<Delta Version="201" Comment="" NL="\10" Encoding="text" Date="2012/12/16" Time="09:01:27000">
+<Copy StartSeek="0" EndSeek="3438"/>
+<Insert>		snprintf(buf++, 1, "%#x");
+</Insert>
+<Copy StartSeek="3467" EndSeek="3793"/>
+</Delta>
+<Delta Version="202" Comment="" NL="\10" Encoding="text" Date="2012/12/16" Time="09:01:42000">
+<Copy StartSeek="0" EndSeek="3438"/>
+<Insert>		snprintf(++buf, 1, "%#x");
+</Insert>
+<Copy StartSeek="3467" EndSeek="3793"/>
+</Delta>
+<Delta Version="203" Comment="" NL="\10" Encoding="text" Date="2012/12/16" Time="09:01:50000">
+<Copy StartSeek="0" EndSeek="3718"/>
+<Insert>	char tmp_buf[] = {0, 1, 2, 3,100}
+</Insert>
+<Copy StartSeek="3754" EndSeek="3794"/>
+</Delta>
+<Delta Version="204" Comment="" NL="\10" Encoding="text" Date="2012/12/16" Time="09:02:2000">
+<Copy StartSeek="0" EndSeek="3389"/>
+<Insert>	uint32_t i = 0;
+</Insert>
+<Copy StartSeek="3402" EndSeek="3790"/>
+</Delta>
+<Delta Version="205" Comment="" NL="\10" Encoding="text" Date="2012/12/16" Time="09:02:14000">
+<Copy StartSeek="0" EndSeek="3466"/>
+<Insert>	*buf ='\0';
+</Insert>
+<Copy StartSeek="3466" EndSeek="3777"/>
+</Delta>
+<Delta Version="206" Comment="" NL="\10" Encoding="text" Date="2012/12/16" Time="09:03:33000">
+<Copy StartSeek="0" EndSeek="41"/>
+<Insert>typedef signed char        int8_t;
+typedef unsigned char      uint8_t;
+typedef unsigned int       uint32_t;
+typedef unsigned short     uint16_t;
+typedef int                int32_t;
+typedef short              int16_t;
+typedef signed long long   int64_t;
+typedef unsigned long long uint64_t;
+typedef uint32_t           size_t;
+typedef int32_t            ssize_t;
+
+struct dpa_pri_key {
+	uint32_t sip;
+	uint32_t dip;
+	/* HAIM FIXME : add IPV6 */
+	uint16_t sport;
+	uint16_t dport;
+	uint32_t protocol; /* NOTE: u32 is for padding */
+};
+
+typedef struct {
+  void *rx_desc; /* Associated rx descriptor if recved pkt */
+  uint16_t       size; /* Data size in the buff */
+  uint16_t       offset; /* Data start offset in the buff */
+  uint8_t       *buff; /* Virtual memory */ 
+  uint8_t        port; /* Ethernet port */
+  uint8_t        queue; /* Ethernet queue */ 
+  uint8_t        pool_id;
+  uint8_t        status; /* Current processing status */ 
+  uint8_t        prio; /* pkt priority */
+  uint32_t       phys_addr; /* Phys. address of the buff */
+  uint32_t       cmd; /* Tx hardware command */
+  void          *os_handle; /* OS associated buffer, eg sk_buff */
+  void          *dpa_handle; /* DPA entry */
+  void *eth_hdr; /* ETH header pointer */
+  void  *ip_hdr; /* IP header pointer */  
+  uint16_t       alloc_size; /* Size of allocated memory for buff */
+  uint8_t        reserved[21]; /* Reserved. Must make eth_pkt_t cache-line aligned */
+} __attribute__((packed)) eth_pkt_t;
+
+
+unsigned char a[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17};
+unsigned short b[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13};
+unsigned char c[] = {13,12,11,10,9,8,7,6,5,4,3,2,1,0};
+unsigned char pkt_b[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16};
+unsigned char *pkt;
+
+#define VLAN_HDR_SZ 4
+typedef struct {
+  uint8_t  h_dest[6]; /* destination eth addr */
+  uint8_t  h_source[6]; /* source ether addr  */
+  uint16_t h_proto; /* packet type ID field */
+} dpa_eth_hdr_t;
+
+unsigned int comp_eth(unsigned int *eth32, unsigned int *pkt32)
+{
+	return (*(eth32++) == *(pkt32++) &amp;&amp; 
+	 *(eth32++) == *(pkt32++) &amp;&amp;
+	 *(eth32++) == *(pkt32++) &amp;&amp; 
+	 *(unsigned short *)eth32 == *(unsigned short *)pkt32);
+
+}
+
+unsigned long foo(unsigned long *p)
+{
+	printf("(unsigned long)(p + 1) = %lx\n", (unsigned long)(p + 1));
+	printf("(unsigned long)((unsigned long *)p + 1) = %lx\n", 
+	(unsigned long)((unsigned long *)p + 1));
+}
+
+volatile int _memcmp(void)
+{
+	return memcmp(a,b, 14);
+}
+
+static inline void __dpa_mdf_vlan_mem_mv_14b_16a(void *d, const void *s)
+{
+	register uint16_t *d16 , *s16;
+	d16 = (uint16_t *)d;
+	s16 = (uint16_t *)s;
+
+	*d16-- = *s16--;
+	*d16-- = *s16--;
+	*d16-- = *s16--;
+	*d16-- = *s16--;
+	*d16-- = *s16--;
+	*d16-- = *s16--;
+	*d16 = *s16;
+}
+
+void dpa_mdf_vlan_rem(eth_pkt_t *pkt)
+{
+	dpa_eth_hdr_t *eth = pkt-&gt;eth_hdr;
+	uint8_t *s = (uint8_t*)eth + sizeof(dpa_eth_hdr_t) - sizeof(uint16_t);
+	uint8_t *d = s + VLAN_HDR_SZ;
+	
+	__dpa_mdf_vlan_mem_mv_14b_16a(d, s);
+	pkt-&gt;eth_hdr += VLAN_HDR_SZ;
+	pkt-&gt;buff += VLAN_HDR_SZ;
+	pkt-&gt;size -= VLAN_HDR_SZ;
+}
+
+void print_arr(void *arr, unsigned int size)
+{
+	char *a = arr;
+	do {
+		printf("%u",*a);
+		++a;
+	} while (--size);
+
+	printf("\n");
+}
+
+volatile struct dpa_pri_key dummy_b = { .dip = 0x66, .dport = 0x666, .protocol = 0x69, };
+
+static void dpa_dump_pkt(uint8_t *pkt, uint32_t bytes)
+{
+//#ifdef DEBUG_DUMP_PKT
+	char buf[128];
+	uint32_t i;
+
+	for (i = 0; i &lt; bytes; i++) {
+		snprintf(buf++, 1, "%#x");
+	}
+//      DPA_DBG("%4x: ", i);
+//      for (i = 1; i&lt;= bytes; i++) {
+		printf("%s", buf);
+//      	if ((i &amp; 0xf) == 0) {
+//      		DPA_DBG("\n%4x: ", i);
+//      	}
+//      	pkt++;
+//      }
+//#endif
+}
+</Insert>
+<Copy StartSeek="67" EndSeek="102"/>
+<Insert>	char tmp_buf[] = {0, 1, 2, 3,100};
+	dpa_dump_pkt(tmp_buf, 4);
+</Insert>
+<Copy StartSeek="229" EndSeek="242"/>
+</Delta>
+<Delta Version="207" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:51:22000">
+<Copy StartSeek="0" EndSeek="181"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="256" EndSeek="315"/>
+</Delta>
+<Delta Version="208" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:52:12000">
+<Copy StartSeek="0" EndSeek="67"/>
+<Copy StartSeek="132" EndSeek="275"/>
+<Insert>				if (m * d == y) {
+</Insert>
+<Copy StartSeek="295" EndSeek="311"/>
+<Insert>				}
+</Insert>
+<Copy StartSeek="312" EndSeek="314"/>
+<Insert>	printf("%s\n", str1);
+	printf("%s\n", str2);
+</Insert>
+<Copy StartSeek="314" EndSeek="327"/>
+</Delta>
+<Delta Version="209" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:53:4000">
+<Copy StartSeek="0" EndSeek="67"/>
+<Insert>static void find_max(unsigned int *arr, unsigned int size)
+</Insert>
+<Copy StartSeek="94" EndSeek="96"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="205" EndSeek="400"/>
+</Delta>
+<Delta Version="210" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:54:21000">
+<Copy StartSeek="0" EndSeek="202"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="230" EndSeek="425"/>
+</Delta>
+<Delta Version="211" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:54:37000">
+<Copy StartSeek="0" EndSeek="96"/>
+<Insert>	unsigned int i, max = 0;
+</Insert>
+<Copy StartSeek="127" EndSeek="165"/>
+<Insert>		if (ycnt[i] &gt; max)
+			max = ycnt[i];
+</Insert>
+<Copy StartSeek="214" EndSeek="440"/>
+</Delta>
+<Delta Version="212" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:55:0000">
+<Copy StartSeek="0" EndSeek="218"/>
+<Insert>	printf("max %d", max);
+</Insert>
+<Copy StartSeek="247" EndSeek="445"/>
+</Delta>
+<Delta Version="213" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:55:5000">
+<Copy StartSeek="0" EndSeek="191"/>
+<Insert>			max_year = ycnt[i];
+</Insert>
+<Copy StartSeek="208" EndSeek="439"/>
+</Delta>
+<Delta Version="214" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:55:25000">
+<Copy StartSeek="0" EndSeek="96"/>
+<Insert>	unsigned int i, max_year = 0;
+</Insert>
+<Copy StartSeek="137" EndSeek="449"/>
+</Delta>
+<Delta Version="215" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:55:54000">
+<Copy StartSeek="0" EndSeek="96"/>
+<Insert>	unsigned int i, max_yr = 0, max_yr_cnt;
+</Insert>
+<Copy StartSeek="141" EndSeek="453"/>
+</Delta>
+<Delta Version="216" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:55:58000">
+<Copy StartSeek="0" EndSeek="141"/>
+<Copy StartSeek="142" EndSeek="454"/>
+</Delta>
+<Delta Version="217" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:56:1000">
+<Copy StartSeek="0" EndSeek="180"/>
+<Insert>		if (ycnt[i] &gt; max_year)
+</Insert>
+<Copy StartSeek="210" EndSeek="458"/>
+</Delta>
+<Delta Version="218" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:56:4000">
+<Copy StartSeek="0" EndSeek="180"/>
+<Insert>		if (ycnt[i] &gt; max_year_cnt)
+</Insert>
+<Copy StartSeek="212" EndSeek="229"/>
+<Insert>	}
+
+</Insert>
+<Copy StartSeek="237" EndSeek="464"/>
+</Delta>
+<Delta Version="219" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:56:22000">
+<Copy StartSeek="0" EndSeek="229"/>
+<Insert>		}
+	}
+
+</Insert>
+<Copy StartSeek="264" EndSeek="491"/>
+</Delta>
+<Delta Version="220" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="09:56:42000">
+<Copy StartSeek="0" EndSeek="180"/>
+<Insert>		if (ycnt[i] &gt; max_year_cnt) {
+</Insert>
+<Copy StartSeek="210" EndSeek="227"/>
+<Insert>			max_year_cnt = ycnt[i];
+</Insert>
+<Copy StartSeek="252" EndSeek="487"/>
+</Delta>
+<Delta Version="221" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:43:51000">
+<Copy StartSeek="0" EndSeek="210"/>
+<Insert>			max_year = i;
+</Insert>
+<Copy StartSeek="225" EndSeek="485"/>
+</Delta>
+<Delta Version="222" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:44:3000">
+<Copy StartSeek="0" EndSeek="258"/>
+<Insert>	printf("max %d", max_year);
+</Insert>
+<Copy StartSeek="285" EndSeek="483"/>
+</Delta>
+<Delta Version="223" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:44:11000">
+<Copy StartSeek="0" EndSeek="258"/>
+<Insert>	printf("max %d", max_yr);
+</Insert>
+<Copy StartSeek="322" EndSeek="520"/>
+</Delta>
+<Delta Version="224" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:44:26000">
+<Copy StartSeek="0" EndSeek="258"/>
+<Insert>	printf("max_year %d, total matches %d", max_yr, ycnt[max_yr]);
+</Insert>
+<Copy StartSeek="320" EndSeek="518"/>
+</Delta>
+<Delta Version="225" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:44:51000">
+<Copy StartSeek="0" EndSeek="486"/>
+<Insert>					ynct[y]++;
+</Insert>
+<Copy StartSeek="502" EndSeek="518"/>
+</Delta>
+<Delta Version="226" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:45:1000">
+<Copy StartSeek="0" EndSeek="382"/>
+<Insert>	for (y = 0; y &lt;= 99; y++)
+</Insert>
+<Copy StartSeek="409" EndSeek="518"/>
+</Delta>
+<Delta Version="227" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:45:28000">
+<Copy StartSeek="0" EndSeek="502"/>
+<Insert>
+
+
+</Insert>
+<Copy StartSeek="502" EndSeek="515"/>
+</Delta>
+<Delta Version="228" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:46:14000">
+<Copy StartSeek="0" EndSeek="502"/>
+<Copy StartSeek="516" EndSeek="529"/>
+</Delta>
+<Delta Version="229" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:46:31000">
+<Copy StartSeek="0" EndSeek="437"/>
+<Insert>			for (m = 1; m &lt;= 12; m++)
+</Insert>
+<Copy StartSeek="468" EndSeek="504"/>
+<Insert>
+</Insert>
+<Copy StartSeek="510" EndSeek="536"/>
+</Delta>
+<Delta Version="230" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:46:37000">
+<Copy StartSeek="0" EndSeek="258"/>
+<Insert>	printf("max_year %d, total matches %d", max_yr, max_yr_cnt);
+</Insert>
+<Copy StartSeek="322" EndSeek="538"/>
+</Delta>
+<Delta Version="231" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:46:49000">
+<Copy StartSeek="0" EndSeek="384"/>
+<Insert>	for (y = 1; y &lt;= 99; y++)
+		for (d = 1; d &lt;= 31; d++)
+</Insert>
+<Copy StartSeek="443" EndSeek="515"/>
+<Insert>
+</Insert>
+<Copy StartSeek="566" EndSeek="592"/>
+</Delta>
+<Delta Version="232" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:47:42000">
+<Copy StartSeek="0" EndSeek="519"/>
+<Insert>		printf("year %d matches %d",y, ycnt[y]);
+</Insert>
+<Copy StartSeek="564" EndSeek="594"/>
+</Delta>
+<Delta Version="233" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:47:53000">
+<Copy StartSeek="0" EndSeek="519"/>
+<Insert>		printf("year %d matches %d\n",y, ycnt[y]);
+	}
+
+</Insert>
+<Copy StartSeek="584" EndSeek="610"/>
+</Delta>
+<Delta Version="234" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:48:6000">
+<Copy StartSeek="0" EndSeek="42"/>
+<Copy StartSeek="99" EndSeek="667"/>
+</Delta>
+<Delta Version="235" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:51:37000">
+<Copy StartSeek="0" EndSeek="470"/>
+<Insert>		for (d = 1; d &lt;= 31; d++) {
+			for (m = 1; m &lt;= 12; m++) {
+</Insert>
+<Copy StartSeek="538" EndSeek="574"/>
+<Insert>			}
+</Insert>
+<Copy StartSeek="580" EndSeek="675"/>
+</Delta>
+<Delta Version="236" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:52:41000">
+<Copy StartSeek="0" EndSeek="42"/>
+<Insert>int months[12] = {31,28,31,30,31,30,31,31,30,31,30,31};
+</Insert>
+<Copy StartSeek="103" EndSeek="505"/>
+<Insert>			for (d = 1; d &lt;= months[m]; d++) {
+</Insert>
+<Copy StartSeek="548" EndSeek="685"/>
+</Delta>
+<Delta Version="237" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:53:8000">
+<Copy StartSeek="0" EndSeek="584"/>
+<Insert>				}
+</Insert>
+<Copy StartSeek="589" EndSeek="684"/>
+</Delta>
+<Delta Version="238" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:53:37000">
+<Copy StartSeek="0" EndSeek="387"/>
+<Copy StartSeek="465" EndSeek="762"/>
+</Delta>
+<Delta Version="239" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:54:42000">
+<Copy StartSeek="0" EndSeek="626"/>
+<Insert>				if (m * d == y)
+</Insert>
+<Copy StartSeek="674" EndSeek="690"/>
+<Insert>			}
+		}
+</Insert>
+<Copy StartSeek="705" EndSeek="796"/>
+</Delta>
+<Delta Version="240" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:55:6000">
+<Copy StartSeek="0" EndSeek="433"/>
+<Insert>	printf("d:%d m:%d y:%d\n");
+</Insert>
+<Copy StartSeek="470" EndSeek="804"/>
+</Delta>
+<Delta Version="241" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:55:36000">
+<Copy StartSeek="0" EndSeek="103"/>
+<Insert>
+</Insert>
+<Copy StartSeek="145" EndSeek="632"/>
+<Insert>			for (d = 1; d &lt;= days_in_mon[m]; d++) {
+</Insert>
+<Copy StartSeek="683" EndSeek="853"/>
+</Delta>
+<Delta Version="242" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="10:59:39000">
+<Copy StartSeek="0" EndSeek="632"/>
+<Insert>			for (d = 1; d &lt;= min(days_in_mon[m, y)]; d++) {
+</Insert>
+<Copy StartSeek="683" EndSeek="853"/>
+</Delta>
+<Delta Version="243" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:00:3000">
+<Copy StartSeek="0" EndSeek="602"/>
+<Insert>		for (m = 1; m &lt;= 12; m++) {
+</Insert>
+<Copy StartSeek="640" EndSeek="861"/>
+</Delta>
+<Delta Version="244" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:00:42000">
+<Insert>//#include &lt;stdlib.h&gt;
+</Insert>
+<Copy StartSeek="14" EndSeek="33"/>
+<Copy StartSeek="83" EndSeek="84"/>
+<Insert>int days_in_mon[12] = {31,28,31,30,31,30,31,31,30,31,30,31};
+#define min(a, b) ((a) &lt; (b) ? (a) : (b))
+unsigned int ycnt[100];
+
+static void find_max(void)
+{
+	unsigned int i, max_yr = 0, max_yr_cnt = 0;
+</Insert>
+<Copy StartSeek="152" EndSeek="153"/>
+<Insert>	for (i = 0; i &lt; sizeof(ycnt); i++) {
+		if (ycnt[i] &gt; max_yr_cnt) {
+			max_yr = i;
+			max_yr_cnt = ycnt[i];
+		}
+	}
+
+	printf("max_year %d, total matches %d\n", max_yr, max_yr_cnt);
+}
+
+static void print_date(int d, int m, int y)
+{
+	printf("d:%d m:%d y:%d\n", d, m,y);
+}
+</Insert>
+<Copy StartSeek="536" EndSeek="537"/>
+<Insert>int main(int argc , char **argv)
+{
+	unsigned int m, d, y;
+</Insert>
+<Copy StartSeek="594" EndSeek="595"/>
+<Insert>	for (y = 1; y &lt;= 99; y++) {
+		for (m = 1; m &lt;= min(12, y); m++) {
+			for (d = 1; d &lt;= min(days_in_mon[m], y); d++) {
+				if (m * d == y) {
+					print_date(d, m, y);
+					ycnt[y]++;
+				}
+			}
+		}
+		if (ycnt[y])
+			printf("year %d matches %d\n",y, ycnt[y]);
+	}
+
+	find_max();
+</Insert>
+<Copy StartSeek="930" EndSeek="943"/>
+</Delta>
+<Delta Version="245" Comment="" NL="\10" Encoding="text" Date="2013/03/04" Time="11:04:27000">
+<Copy StartSeek="0" EndSeek="53"/>
+<Insert>
+</Insert>
+<Copy StartSeek="73" EndSeek="965"/>
+</Delta>
+<Delta Version="246" Comment="" NL="\10" Encoding="text" Date="2013/03/04" Time="11:04:43000">
+<Copy StartSeek="0" EndSeek="346"/>
+<Insert>		      if((error = getnameinfo((struct sockaddr*)&amp;a, sizeof(struct 
+									   sockaddr), 
+					      hostname, sizeof(hostname), NULL,0,0))) { 
+</Insert>
+<Copy StartSeek="469" EndSeek="470"/>
+<Insert>		      printf("getnameinfo returned error \n"); 
+		      } 
+
+		      printf("Hostname obtained is %s\n",hostname); 
+
+
+</Insert>
+<Copy StartSeek="578" EndSeek="579"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="579" EndSeek="927"/>
+</Delta>
+<Delta Version="247" Comment="" NL="\10" Encoding="text" Date="2013/03/04" Time="11:05:28000">
+<Copy StartSeek="0" EndSeek="235"/>
+<Insert>	if (inet_aton("203.27.235.25", &amp;(a.sin_addr)) == 0) {
+</Insert>
+<Copy StartSeek="286" EndSeek="923"/>
+</Delta>
+<Delta Version="248" Comment="" NL="\10" Encoding="text" Date="2013/03/04" Time="11:05:49000">
+<Copy StartSeek="0" EndSeek="575"/>
+<Insert>char *reverse_resolve (const struct sockaddr_in *ip) {
+		char hostname[256];
+		if (0 != getnameinfo ((const struct sockaddr*) ip,
+					sizeof (struct sockaddr_in),
+					hostname, sizeof(hostname),
+					NULL, 0, 0))
+			return NULL;
+		return strdup (hostname);
+}
+
+</Insert>
+<Copy StartSeek="575" EndSeek="609"/>
+<Insert>	int x = x;
+	printf("x = %d\n", x);
+</Insert>
+<Copy StartSeek="625" EndSeek="638"/>
+<Insert>
+}
+</Insert>
+</Delta>
+<Delta Version="249" Comment="" NL="\10" Encoding="text" Date="2013/03/04" Time="11:06:8000">
+<Copy StartSeek="0" EndSeek="73"/>
+<Insert>static void rev_resolve() 
+{
+</Insert>
+<Copy StartSeek="104" EndSeek="105"/>
+<Insert>	struct sockaddr_in a; 
+	int error=0; 
+	char hostname[NI_MAXHOST]; 
+</Insert>
+<Copy StartSeek="176" EndSeek="177"/>
+<Insert>	memset((void*)&amp;a, 0 , sizeof(a)); 
+	a.sin_family = AF_INET; 
+</Insert>
+<Copy StartSeek="241" EndSeek="242"/>
+<Insert>	if (inet_aton("127.0.0.1", &amp;(a.sin_addr)) == 0) {
+		printf("inet_aton returned zero \n"); 
+		return; 
+	}
+</Insert>
+<Copy StartSeek="352" EndSeek="353"/>
+<Insert>	if((error = getnameinfo((struct sockaddr*)&amp;a, 
+				sizeof(struct sockaddr),
+				hostname, sizeof(hostname), NULL,0,0))) {
+</Insert>
+<Copy StartSeek="482" EndSeek="483"/>
+<Insert>		printf("getnameinfo returned error \n");
+		return;
+	} 
+</Insert>
+<Copy StartSeek="542" EndSeek="543"/>
+<Insert>	printf("Hostname obtained is %s\n",hostname); 
+}
+</Insert>
+<Copy StartSeek="595" EndSeek="596"/>
+<Insert>int main(int argc, char **argv)
+{
+	rev_resolve();
+	return 0;
+}
+</Insert>
+</Delta>
+<Delta Version="250" Comment="" NL="\10" Encoding="text" Date="2013/03/04" Time="11:06:35000">
+<Copy StartSeek="0" EndSeek="73"/>
+<Insert>	static void rev_resolve() 
+</Insert>
+<Copy StartSeek="105" EndSeek="670"/>
+</Delta>
+<Delta Version="251" Comment="" NL="\10" Encoding="text" Date="2013/03/04" Time="11:06:49000">
+<Insert>extern "C" {
+
+</Insert>
+<Copy StartSeek="0" EndSeek="654"/>
+<Insert>}
+</Insert>
+</Delta>
+<Delta Version="252" Comment="" NL="\10" Encoding="text" Date="2013/03/04" Time="11:06:52000">
+<Copy StartSeek="0" EndSeek="58"/>
+<Insert>
+</Insert>
+<Copy StartSeek="79" EndSeek="675"/>
+</Delta>
+<Delta Version="253" Comment="" NL="\10" Encoding="text" Date="2013/03/04" Time="11:07:12000">
+<Copy StartSeek="0" EndSeek="79"/>
+<Insert>	static void rev_resolve(void) 
+	{
+</Insert>
+<Copy StartSeek="112" EndSeek="113"/>
+<Insert>		struct sockaddr_in a; 
+		int error=0; 
+		char hostname[NI_MAXHOST]; 
+</Insert>
+<Copy StartSeek="181" EndSeek="182"/>
+<Insert>		memset((void*)&amp;a, 0 , sizeof(a)); 
+		a.sin_family = AF_INET; 
+</Insert>
+<Copy StartSeek="244" EndSeek="245"/>
+<Insert>		if (inet_aton("127.0.0.1", &amp;(a.sin_addr)) == 0) {
+			printf("inet_aton returned zero \n"); 
+			return; 
+		}
+</Insert>
+<Copy StartSeek="351" EndSeek="352"/>
+<Insert>		if ((error = getnameinfo((struct sockaddr*)&amp;a, 
+					 sizeof(struct sockaddr),
+					 hostname, sizeof(hostname), NULL,0,0))) {
+</Insert>
+<Copy StartSeek="478" EndSeek="479"/>
+<Insert>			printf("getnameinfo returned error \n");
+			return;
+		}
+</Insert>
+<Copy StartSeek="535" EndSeek="536"/>
+<Insert>		printf("Hostname obtained is %s\n",hostname); 
+	}
+</Insert>
+<Copy StartSeek="586" EndSeek="587"/>
+<Insert>	int main(int argc, char **argv)
+	{
+		rev_resolve();
+		return 0;
+	}
+</Insert>
+<Copy StartSeek="650" EndSeek="651"/>
+</Delta>
+<Delta Version="254" Comment="" NL="\10" Encoding="text" Date="2013/03/04" Time="11:07:26000">
+<Copy StartSeek="0" EndSeek="245"/>
+<Insert>	if (inet_aton("127.0.0.1", &amp;(a.sin_addr)) == 0) {
+</Insert>
+<Copy StartSeek="302" EndSeek="657"/>
+</Delta>
+<Delta Version="255" Comment="" NL="\10" Encoding="text" Date="2013/03/04" Time="11:07:56000">
+<Copy StartSeek="0" EndSeek="245"/>
+<Insert>	if (inet_aton("198.101.168.198", &amp;(a.sin_addr)) == 0) {
+</Insert>
+<Copy StartSeek="301" EndSeek="592"/>
+<Copy StartSeek="646" EndSeek="680"/>
+<Insert>	rev_resolve();
+</Insert>
+<Copy StartSeek="690" EndSeek="704"/>
+</Delta>
+<Delta Version="256" Comment="" NL="\10" Encoding="text" Date="2013/07/17" Time="18:59:37000">
+<Copy StartSeek="0" EndSeek="616"/>
+<Copy StartSeek="638" EndSeek="726"/>
+</Delta>
+</DeltaFile>

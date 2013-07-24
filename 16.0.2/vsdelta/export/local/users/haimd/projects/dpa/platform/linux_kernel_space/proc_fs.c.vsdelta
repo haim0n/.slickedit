@@ -1,0 +1,1899 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="203" Comment="" Date="2013/02/24" Time="15:55:13000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* proc_fs.c
+*
+* DESCRIPTION:
+*   DPA proc fs handlers.
+* 
+*******************************************************************************/
+
+#include &lt;linux/module.h&gt;
+#include &lt;linux/proc_fs.h&gt;
+#include &lt;linux/uaccess.h&gt;
+
+#include &lt;dpa.h&gt;
+
+#define MODULE_NAME "dpa"
+
+static struct proc_dir_entry *dpa_proc_dir, *dpa_proc_stats, *dpa_proc_cls;
+
+
+static int dpa_proc_stats_read(char *buffer, char **buffer_location, off_t offset,
+                            int buffer_length, int *zero, void *ptr)
+{
+  dpa_stats_t stats;
+  dpa_eth_stats_t *eth;
+  int port, n;
+
+  if (dpa_stats_get(&amp;stats)) {
+      n = sprintf(buffer, "Non available.\n");
+  } else {
+      /* Ethernet */
+      n = sprintf(buffer, "port\trx\ttx\trx_bts\ttx_bts\trx_err\ttx_err\trx_drp\ttx_drp\n");
+      for (port = 0; port &lt; DPA_ETH_MAX_PORT_NUM; port++) {
+           eth = &amp;stats.eth[port];
+           n += sprintf(buffer + n, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
+                        port, eth-&gt;rx_pkts, eth-&gt;tx_pkts, eth-&gt;rx_bytes, eth-&gt;tx_bytes, 
+                        eth-&gt;rx_errors, eth-&gt;tx_errors, eth-&gt;rx_dropped, eth-&gt;tx_dropped);
+      }
+      /* DPA */
+      n += sprintf(buffer + n, "\ndrop\tforwd\tlcl_rx\tlcl_tx\n");
+      n += sprintf(buffer + n, "%d\t%d\t%d\t%d\n",
+                   stats.pkt.dropped_pkts, stats.pkt.fwd_pkts, stats.pkt.lcl_rx_pkts,
+                   stats.pkt.lcl_tx_pkts);
+  }
+
+  return n;
+}
+
+
+static int dpa_proc_stats_write(struct file *file, const char __user *buffer,
+        unsigned long count, void *data)
+{
+  char cmd;
+
+  if (count &gt; 0) {
+    if (get_user(cmd, buffer))
+      return -EFAULT;
+    switch (cmd) {
+    case '0':
+      dpa_stats_reset();
+      break;
+    default:
+      break;
+    }
+
+  }
+  return count;
+}
+
+static int dpa_proc_cls_read(char *buffer, char **buffer_location, off_t offset,
+                            int buffer_length, int *zero, void *ptr)
+{
+  int n = 0;
+
+  n += sprintf(buffer, "\t0 - clear table\n"
+                       "\tf - fast path mode\n"
+                       "\ts - slow path mode\n");
+  return n;
+}
+
+
+static int dpa_proc_cls_write(struct file *file, const char __user *buffer,
+        unsigned long count, void *data)
+{
+  char cmd;
+
+  if (count &gt; 0) {
+    if (get_user(cmd, buffer))
+      return -EFAULT;
+    switch (cmd) {
+    case '0':
+      dpa_table_flush();
+      break;
+    case 's':
+      dpa_fwd_mode(DPA_FWD_MODE_S_PATH);
+      break;
+    case 'f':
+      dpa_fwd_mode(DPA_FWD_MODE_FAST);
+      break;
+
+    default:
+      break;
+    }
+
+  }
+  return count;
+}
+
+
+int dpa_proc_fs_init(void) {
+  int err;
+
+  dpa_proc_dir = proc_mkdir("dpa", NULL);
+  if (dpa_proc_dir == NULL) {
+      err = -ENOMEM;
+      goto no_dpa;
+  }
+
+  /* Statistics */
+  dpa_proc_stats = create_proc_entry("stats", 0666, dpa_proc_dir);
+  if (dpa_proc_stats == NULL) {
+      err = -ENOMEM;
+      goto no_stats;
+  }
+  dpa_proc_stats-&gt;read_proc = dpa_proc_stats_read;
+  dpa_proc_stats-&gt;write_proc = dpa_proc_stats_write;
+
+  /* Classifier */
+  dpa_proc_cls = create_proc_entry("cls", 200, dpa_proc_dir);
+  if (dpa_proc_cls == NULL) {
+      err = -ENOMEM;
+      goto no_cls;
+  }
+  dpa_proc_cls-&gt;read_proc = NULL;
+  dpa_proc_cls-&gt;write_proc = dpa_proc_cls_write;
+
+  return 0;
+
+no_cls:
+  remove_proc_entry("stats", dpa_proc_dir);
+
+no_stats:
+  remove_proc_entry(MODULE_NAME, NULL);
+
+no_dpa:
+  printk(KERN_ERR"Failed to init proc fs (%d)", err);
+
+  return err;
+}
+
+void dpa_proc_fs_shutdown(void) {
+  remove_proc_entry("cls", dpa_proc_dir);
+  remove_proc_entry("stats", dpa_proc_dir);
+  remove_proc_entry(MODULE_NAME, NULL);
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/09/09" Time="13:49:7000">
+<Copy StartSeek="0" EndSeek="2436"/>
+<Copy StartSeek="2487" EndSeek="3569"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="19:08:34000">
+<Copy StartSeek="0" EndSeek="2450"/>
+<Insert>      dpa_table_dump();
+      break;
+</Insert>
+<Copy StartSeek="2476" EndSeek="3558"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/01/07" Time="15:28:24000">
+<Copy StartSeek="0" EndSeek="2450"/>
+<Insert>      dpa_cls_dump_all();
+</Insert>
+<Copy StartSeek="2474" EndSeek="3556"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/01/07" Time="15:29:11000">
+<Copy StartSeek="0" EndSeek="2474"/>
+<Copy StartSeek="2487" EndSeek="3569"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/01/08" Time="14:21:48000">
+<Copy StartSeek="0" EndSeek="2990"/>
+<Insert>  dpa_proc_cls = create_proc_entry("cls", 200, dpa_proc_dir);
+</Insert>
+<Copy StartSeek="3053" EndSeek="3570"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/01/08" Time="14:38:23000">
+<Copy StartSeek="0" EndSeek="2990"/>
+<Insert>  dpa_proc_cls = create_proc_entry("cls", 0666, dpa_proc_dir);
+</Insert>
+<Copy StartSeek="3053" EndSeek="3570"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2013/01/08" Time="14:39:13000">
+<Copy StartSeek="0" EndSeek="2990"/>
+<Insert>  dpa_proc_cls = create_proc_entry("cls", 0200, dpa_proc_dir);
+</Insert>
+<Copy StartSeek="3053" EndSeek="3570"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2013/01/08" Time="14:39:21000">
+<Copy StartSeek="0" EndSeek="765"/>
+<Insert>
+</Insert>
+<Copy StartSeek="950" EndSeek="3754"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:00:2000">
+<Copy StartSeek="0" EndSeek="841"/>
+<Insert>     .open	= jif_open,
+</Insert>
+<Copy StartSeek="864" EndSeek="3754"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:00:13000">
+<Copy StartSeek="0" EndSeek="814"/>
+<Insert>     .owner	= THIS_MODULE,
+     .open	= cls_open,
+     .read	= seq_read,
+     .llseek	= seq_lseek,
+     .release	= single_release,
+ };
+
+</Insert>
+<Copy StartSeek="979" EndSeek="3783"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:01:11000">
+<Copy StartSeek="0" EndSeek="765"/>
+<Insert>static const struct file_operations cls_fops = {
+	.owner       = THIS_MODULE,
+	.open   = cls_open,
+	.write = dpa_proc_stats_write,
+	.read      = seq_read,
+	.llseek    = seq_lseek,
+	.release   = single_release,
+};
+
+</Insert>
+<Copy StartSeek="765" EndSeek="2542"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2745" EndSeek="3771"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:01:55000">
+<Copy StartSeek="0" EndSeek="2591"/>
+<Insert>	.owner  = THIS_MODULE,
+</Insert>
+<Copy StartSeek="2614" EndSeek="3770"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:03:30000">
+<Copy StartSeek="0" EndSeek="3190"/>
+<Insert>  dpa_proc_cls = create_proc_entry("cls", 0666, dpa_proc_dir);
+</Insert>
+<Copy StartSeek="3311" EndSeek="3828"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:05:15000">
+<Copy StartSeek="0" EndSeek="3253"/>
+<Insert>  dpa_proc_cls = proc_create("cls", 0666, dpa_proc_dir);
+</Insert>
+<Copy StartSeek="3321" EndSeek="3839"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:05:41000">
+<Copy StartSeek="0" EndSeek="3396"/>
+<Insert>  dpa_proc_cls-&gt;read_proc = NULL;
+  dpa_proc_cls-&gt;write_proc = dpa_proc_cls_write;
+</Insert>
+<Copy StartSeek="3479" EndSeek="3839"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:05:48000">
+<Copy StartSeek="0" EndSeek="765"/>
+<Copy StartSeek="766" EndSeek="2744"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2744" EndSeek="3839"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:06:11000">
+<Copy StartSeek="0" EndSeek="2543"/>
+<Copy StartSeek="2665" EndSeek="3961"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:09:36000">
+<Copy StartSeek="0" EndSeek="2543"/>
+<Insert>static int dpa_table_show()
+
+</Insert>
+<Copy StartSeek="2629" EndSeek="4018"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:13:23000">
+<Copy StartSeek="0" EndSeek="2626"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="2640" EndSeek="4029"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:13:32000">
+<Copy StartSeek="0" EndSeek="2626"/>
+<Copy StartSeek="2627" EndSeek="4030"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:13:33000">
+<Copy StartSeek="0" EndSeek="2703"/>
+<Insert>	return single_open(file, )
+</Insert>
+<Copy StartSeek="2752" EndSeek="4051"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:13:52000">
+<Copy StartSeek="0" EndSeek="615"/>
+<Copy StartSeek="643" EndSeek="4079"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:14:23000">
+<Copy StartSeek="0" EndSeek="2189"/>
+<Insert>static int dpa_proc_cls_write(struct file *file, const char __user *buffer,
+</Insert>
+<Copy StartSeek="2342" EndSeek="4156"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:15:13000">
+<Copy StartSeek="0" EndSeek="2189"/>
+<Insert>ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
+</Insert>
+<Copy StartSeek="2256" EndSeek="2336"/>
+<Insert>        unsigned long count, void *data)
+</Insert>
+<Copy StartSeek="2370" EndSeek="4143"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:15:46000">
+<Copy StartSeek="0" EndSeek="2189"/>
+<Insert>	ssize_t 		(struct file *, const char __user *, size_t, loff_t *);
+</Insert>
+<Copy StartSeek="2189" EndSeek="4076"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:16:24000">
+<Copy StartSeek="0" EndSeek="2188"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2188" EndSeek="4075"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:16:25000">
+<Copy StartSeek="0" EndSeek="2872"/>
+<Insert>	.write 	= dpa_proc_stats_write,
+</Insert>
+<Copy StartSeek="2903" EndSeek="4073"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:17:8000">
+<Copy StartSeek="0" EndSeek="2188"/>
+<Insert>static ssize_t dpa_proc_cls_write(struct file *file, const char __user *buffer,
+        size_t count, void *data)
+{
+</Insert>
+<Copy StartSeek="2308" EndSeek="4077"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:17:30000">
+<Copy StartSeek="0" EndSeek="2188"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2261" EndSeek="4149"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:18:19000">
+<Copy StartSeek="0" EndSeek="2188"/>
+<Insert>ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
+static int dpa_proc_cls_write(struct file *file, const char __user *buffer,
+        unsigned long count, void *data)
+</Insert>
+<Copy StartSeek="2357" EndSeek="4128"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:19:0000">
+<Copy StartSeek="0" EndSeek="2188"/>
+<Insert>				 (struct file *, const char __user *, size_t, size_t);
+</Insert>
+<Copy StartSeek="2249" EndSeek="2329"/>
+<Insert>        size_t count, size_t)
+</Insert>
+<Copy StartSeek="2366" EndSeek="4137"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:19:12000">
+<Copy StartSeek="0" EndSeek="2329"/>
+<Insert>        size_t count, loff_t * data)
+</Insert>
+<Copy StartSeek="2366" EndSeek="4137"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:19:18000">
+<Copy StartSeek="0" EndSeek="2188"/>
+<Insert>				 (struct file *, const char __user *, size_t, loff_t *);
+</Insert>
+<Copy StartSeek="2188" EndSeek="4076"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:19:20000">
+<Copy StartSeek="0" EndSeek="2627"/>
+<Insert>	seq_printf(m, "%d", 55);
+</Insert>
+<Copy StartSeek="2655" EndSeek="4078"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="11:22:2000">
+<Copy StartSeek="0" EndSeek="2627"/>
+<Insert>	seq_printf(m, "%d\n", 55);
+
+</Insert>
+<Copy StartSeek="2707" EndSeek="4129"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="13:27:49000">
+<Copy StartSeek="0" EndSeek="2677"/>
+<Insert>		seq_printf(m, "%u", i);
+</Insert>
+<Copy StartSeek="2702" EndSeek="4128"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="13:27:58000">
+<Copy StartSeek="0" EndSeek="2677"/>
+<Insert>		seq_printf(m, "abba");
+</Insert>
+<Copy StartSeek="2704" EndSeek="4130"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="13:30:53000">
+<Copy StartSeek="0" EndSeek="2677"/>
+<Insert>		seq_printf(m, "abba\n");
+</Insert>
+<Copy StartSeek="2709" EndSeek="4135"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="13:31:0000">
+<Copy StartSeek="0" EndSeek="2644"/>
+<Insert>	for (i = 0; i &lt; (1&lt;&lt;12); i++) {
+</Insert>
+<Copy StartSeek="2677" EndSeek="4135"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="15:08:54000">
+<Copy StartSeek="0" EndSeek="2677"/>
+<Insert>		seq_printf(m, "abba %d\n",i);
+</Insert>
+<Copy StartSeek="2717" EndSeek="4143"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2013/01/09" Time="15:09:1000">
+<Copy StartSeek="0" EndSeek="2570"/>
+<Copy StartSeek="4132" EndSeek="5705"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:04:11000">
+<Copy StartSeek="0" EndSeek="4107"/>
+<Insert>	DPA_INFO("%s", buf);
+</Insert>
+<Copy StartSeek="4135" EndSeek="5711"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:04:24000">
+<Copy StartSeek="0" EndSeek="4245"/>
+<Insert>		seq_printf(m, "abbadeadbeaf %d\n",i);
+	}
+
+</Insert>
+<Copy StartSeek="4327" EndSeek="5749"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:04:59000">
+<Copy StartSeek="0" EndSeek="4292"/>
+<Insert>		__entry_dump(&amp;dummy_ent, m);
+	}
+
+</Insert>
+<Copy StartSeek="4365" EndSeek="5787"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:05:14000">
+<Copy StartSeek="0" EndSeek="4329"/>
+<Insert>		if (ret) {
+</Insert>
+<Copy StartSeek="4340" EndSeek="4355"/>
+<Insert>		}
+	}
+
+</Insert>
+<Copy StartSeek="4359" EndSeek="5781"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:05:25000">
+<Copy StartSeek="0" EndSeek="688"/>
+<Insert>
+</Insert>
+<Copy StartSeek="723" EndSeek="5815"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:07:23000">
+<Copy StartSeek="0" EndSeek="688"/>
+<Insert>#include &lt;../../mod/dpa/dpa_cls.h&gt;
+</Insert>
+<Copy StartSeek="723" EndSeek="5815"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:07:29000">
+<Copy StartSeek="0" EndSeek="2604"/>
+<Insert>struct dpa_entry {
+	struct {
+		struct dpa_pri_key cls_tuple;
+		struct dpa_l2 l2;
+	} org;
+	struct dpa_entry *next;
+	uint32_t state;
+	struct {
+		struct dpa_pri_key mod_tuple;
+		struct dpa_l2 l2;
+		uint32_t tx_port;
+	} mod;
+	struct dpa_counters counters;
+	uint32_t mod_ops;
+} dummy_ent;
+
+</Insert>
+<Copy StartSeek="2633" EndSeek="5559"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:07:40000">
+<Copy StartSeek="0" EndSeek="2632"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2632" EndSeek="5558"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:07:42000">
+<Copy StartSeek="0" EndSeek="3989"/>
+<Copy StartSeek="4003" EndSeek="5572"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:07:57000">
+<Copy StartSeek="0" EndSeek="4150"/>
+<Insert>	return 0;
+</Insert>
+<Copy StartSeek="4163" EndSeek="5574"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:08:5000">
+<Copy StartSeek="0" EndSeek="2632"/>
+<Insert>static int __entry_dump(struct dpa_entry *dpe, seq_file *m)
+</Insert>
+<Copy StartSeek="2699" EndSeek="5581"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:08:53000">
+<Copy StartSeek="0" EndSeek="2915"/>
+<Insert>	tmp += dpa_sprintf(tmp,"\norg dmac= "MAC_FMT" smac= "MAC_FMT" eth_type:%#x vlan:%u\n",
+</Insert>
+<Copy StartSeek="2999" EndSeek="3112"/>
+<Insert>	tmp += dpa_sprintf(tmp,"org ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+</Insert>
+<Copy StartSeek="3190" EndSeek="3300"/>
+<Insert>	tmp += dpa_sprintf(tmp,"mod dmac= "MAC_FMT" smac= "MAC_FMT " eth_type:%#x vlan:%u\n",
+</Insert>
+<Copy StartSeek="3383" EndSeek="3499"/>
+<Insert>	tmp += dpa_sprintf(tmp,"mod ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+</Insert>
+<Copy StartSeek="3577" EndSeek="3707"/>
+<Insert>	dpa_sprintf(tmp,"state:%s rx_pkts:%u fwd:%u mod_ops:%#x\n",
+</Insert>
+<Copy StartSeek="3764" EndSeek="5561"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:09:23000">
+<Copy StartSeek="0" EndSeek="2879"/>
+<Insert>	char buf[1024];
+</Insert>
+<Copy StartSeek="2895" EndSeek="5560"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:09:34000">
+<Copy StartSeek="0" EndSeek="2879"/>
+<Insert>	char buf[100];
+</Insert>
+<Copy StartSeek="2895" EndSeek="5560"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:09:40000">
+<Copy StartSeek="0" EndSeek="2604"/>
+<Copy StartSeek="2722" EndSeek="5678"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:09:53000">
+<Copy StartSeek="0" EndSeek="3167"/>
+<Insert>		 dpa_ntohs(l2_org-&gt;eth_type), dpa_ntohs(l2_org-&gt;vlan_id));
+</Insert>
+<Copy StartSeek="3220" EndSeek="3317"/>
+<Insert>		 NIPQUAD(tup-&gt;sip), dpa_ntohs(tup-&gt;sport),
+		 NIPQUAD(tup-&gt;dip), dpa_ntohs(tup-&gt;dport));
+</Insert>
+<Copy StartSeek="3400" EndSeek="3484"/>
+<Insert>	  MAC_PFMT(l2_mod-&gt;dmac), MAC_PFMT(l2_mod-&gt;smac), dpa_ntohs(l2_mod-&gt;eth_type),
+		    dpa_ntohs(l2_mod-&gt;vlan_id));
+</Insert>
+<Copy StartSeek="3591" EndSeek="3692"/>
+<Insert>	  NIPQUAD(mod_tup-&gt;sip), dpa_ntohs(mod_tup-&gt;sport),
+	  NIPQUAD(mod_tup-&gt;dip), dpa_ntohs(mod_tup-&gt;dport));
+</Insert>
+<Copy StartSeek="3791" EndSeek="5646"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:10:11000">
+<Copy StartSeek="0" EndSeek="2721"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2792" EndSeek="5716"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:10:34000">
+<Copy StartSeek="0" EndSeek="2721"/>
+<Insert>char *dpa_entry_state_names[]  = {
+</Insert>
+<Copy StartSeek="2750" EndSeek="3913"/>
+<Insert>		 dpa_entry_state_names[dpe-&gt;state],
+</Insert>
+<Copy StartSeek="3945" EndSeek="5704"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:11:0000">
+<Copy StartSeek="0" EndSeek="4213"/>
+<Insert>		ret = __entry_dump(&amp;dummy_ent, m);
+		if (ret)
+			return ret;
+	}
+
+</Insert>
+<Copy StartSeek="4249" EndSeek="5673"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:21:45000">
+<Copy StartSeek="0" EndSeek="4133"/>
+<Insert>	for (i = 0; i &lt; (1&lt;&lt;14); i++) {
+</Insert>
+<Copy StartSeek="4165" EndSeek="5672"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:21:58000">
+<Copy StartSeek="0" EndSeek="4133"/>
+<Insert>	for (i = 0; i &lt; (1&lt;&lt;3); i++) {
+</Insert>
+<Copy StartSeek="4166" EndSeek="5673"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2013/01/14" Time="10:23:4000">
+<Copy StartSeek="0" EndSeek="2604"/>
+<Insert>#define MAC_PFMT(mac) mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
+#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+char *dpa_state_names[]  = {
+	"NEW",
+	"LRN",
+	"FWD",
+	"LCL",
+};
+
+struct dpa_entry dummy_ent;
+static int __entry_dump(struct dpa_entry *dpe, struct seq_file *m)
+{
+	struct dpa_pri_key *tup = &amp;dpe-&gt;org.cls_tuple;
+	struct dpa_pri_key *mod_tup = &amp;dpe-&gt;mod.mod_tuple;
+	struct dpa_l2 *l2_org = &amp;dpe-&gt;org.l2;
+	struct dpa_l2 *l2_mod = &amp;dpe-&gt;mod.l2;
+	char buf[512];
+	char *tmp = buf;
+
+	tmp += sprintf(tmp,"\norg dmac= "MAC_FMT" smac= "MAC_FMT" eth_type:%#x vlan:%u\n",
+		 MAC_PFMT(l2_org-&gt;dmac), MAC_PFMT(l2_org-&gt;smac),
+		 ntohs(l2_org-&gt;eth_type), ntohs(l2_org-&gt;vlan_id));
+
+	tmp += sprintf(tmp,"org ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+		 tup-&gt;protocol,
+		 NIPQUAD(tup-&gt;sip), ntohs(tup-&gt;sport),
+		 NIPQUAD(tup-&gt;dip), ntohs(tup-&gt;dport));
+
+	tmp += sprintf(tmp,"mod dmac= "MAC_FMT" smac= "MAC_FMT " eth_type:%#x vlan:%u\n",
+	  MAC_PFMT(l2_mod-&gt;dmac), MAC_PFMT(l2_mod-&gt;smac), ntohs(l2_mod-&gt;eth_type),
+		    ntohs(l2_mod-&gt;vlan_id));
+
+	tmp += sprintf(tmp,"mod ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+	  mod_tup-&gt;protocol,
+	  NIPQUAD(mod_tup-&gt;sip), ntohs(mod_tup-&gt;sport),
+	  NIPQUAD(mod_tup-&gt;dip), ntohs(mod_tup-&gt;dport));
+
+	sprintf(tmp,"state:%s rx_pkts:%u fwd:%u mod_ops:%#x\n",
+		 dpa_state_names[dpe-&gt;state],
+		 dpe-&gt;counters.rx_hits, dpe-&gt;counters.fwd_hits,
+		 dpe-&gt;mod_ops);
+
+	return seq_printf(m, buf);
+}
+
+</Insert>
+<Copy StartSeek="2604" EndSeek="2725"/>
+<Insert>//      	seq_printf(m, "abbadeadbeaf %d\n",i);
+		 __entry_dump(&amp;dummy_ent, m);
+	}
+
+</Insert>
+<Copy StartSeek="2783" EndSeek="3558"/>
+<Insert>//dpa_proc_cls = create_proc_entry("cls", 0666, dpa_proc_dir);
+</Insert>
+<Copy StartSeek="3558" EndSeek="3701"/>
+<Insert>//dpa_proc_cls-&gt;read_proc = NULL;
+//dpa_proc_cls-&gt;write_proc = dpa_proc_cls_write;
+
+</Insert>
+<Copy StartSeek="3701" EndSeek="4060"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="16:46:39000">
+<Copy StartSeek="0" EndSeek="2604"/>
+<Copy StartSeek="3907" EndSeek="5363"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="17:03:7000">
+<Copy StartSeek="0" EndSeek="2604"/>
+<Insert>static void dpa_entry_dump(struct dpa_entry *dpe)
+</Insert>
+<Copy StartSeek="2674" EndSeek="5383"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="17:03:38000">
+<Copy StartSeek="0" EndSeek="2604"/>
+<Insert>static void dpa_entry_dump(struct dpa_entry *dpe, struct seq_file *m)
+</Insert>
+<Copy StartSeek="2674" EndSeek="5383"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="17:03:44000">
+<Copy StartSeek="0" EndSeek="2854"/>
+<Insert>	char buf[1024];
+	char *tmp = buf;
+
+	tmp += dpa_sprintf(tmp,"\norg dmac= "MAC_FMT" smac= "MAC_FMT" eth_type:%#x vlan:%u\n",
+</Insert>
+<Copy StartSeek="2934" EndSeek="3053"/>
+<Insert>	tmp += dpa_sprintf(tmp,"org ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+</Insert>
+<Copy StartSeek="3126" EndSeek="3245"/>
+<Insert>	tmp += dpa_sprintf(tmp,"mod dmac= "MAC_FMT" smac= "MAC_FMT " eth_type:%#x vlan:%u\n",
+</Insert>
+<Copy StartSeek="3323" EndSeek="3442"/>
+<Insert>	tmp += dpa_sprintf(tmp,"mod ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+</Insert>
+<Copy StartSeek="3515" EndSeek="3654"/>
+<Insert>	dpa_sprintf(tmp,"state:%s rx_pkts:%u fwd:%u mod_ops:%#x\n",
+</Insert>
+<Copy StartSeek="3713" EndSeek="5310"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="17:04:48000">
+<Copy StartSeek="0" EndSeek="2604"/>
+<Insert>static void dpa_entry_show(struct dpa_entry *dpe, struct seq_file *m)
+</Insert>
+<Copy StartSeek="2673" EndSeek="5309"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="17:11:20000">
+<Copy StartSeek="0" EndSeek="3828"/>
+<Insert>	DPA_INFO("%s", buf);
+</Insert>
+<Copy StartSeek="3839" EndSeek="5298"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="17:12:6000">
+<Copy StartSeek="0" EndSeek="3244"/>
+<Insert>	seq_printf(m, "mod dmac= "MAC_FMT" smac= "MAC_FMT " eth_type:%#x vlan:%u\n",
+			   MAC_PFMT(l2_mod-&gt;dmac), MAC_PFMT(l2_mod-&gt;smac), dpa_ntohs(l2_mod-&gt;eth_type),
+			   dpa_ntohs(l2_mod-&gt;vlan_id));
+
+</Insert>
+<Copy StartSeek="3445" EndSeek="5302"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="17:13:12000">
+<Copy StartSeek="0" EndSeek="2604"/>
+<Copy StartSeek="2680" EndSeek="5378"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="17:16:13000">
+<Copy StartSeek="0" EndSeek="2676"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="2777" EndSeek="5475"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="17:17:53000">
+<Copy StartSeek="0" EndSeek="2694"/>
+<Insert>        if (*pos &gt; DPA_CLS_TBL_SZ - 1) {
+</Insert>
+<Copy StartSeek="2733" EndSeek="2762"/>
+<Insert>        }
+}
+
+</Insert>
+<Copy StartSeek="2765" EndSeek="5463"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="17:18:0000">
+<Copy StartSeek="0" EndSeek="2762"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="2813" EndSeek="5511"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="17:18:35000">
+<Copy StartSeek="0" EndSeek="2762"/>
+<Insert>        return dpa_cls_entry_get(uint32_t *pos)
+</Insert>
+<Copy StartSeek="2811" EndSeek="5512"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="17:18:37000">
+<Copy StartSeek="0" EndSeek="2762"/>
+<Copy StartSeek="2763" EndSeek="5513"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2013/01/15" Time="17:18:39000">
+<Copy StartSeek="0" EndSeek="2694"/>
+<Insert>        if (*pos &gt; DPA_CLS_TBL_SZ - 1)
+                return NULL;
+
+        return dpa_cls_entry_get(uint32_t *pos);
+}
+
+</Insert>
+<Copy StartSeek="2753" EndSeek="5451"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:07:39000">
+<Copy StartSeek="0" EndSeek="2695"/>
+<Insert>        return dpa_cls_get_first_valid(uint32_t *pos);
+</Insert>
+<Copy StartSeek="2749" EndSeek="5450"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:10:35000">
+<Copy StartSeek="0" EndSeek="2695"/>
+<Insert>        return dpa_cls_get_first_valid(uint32_t pos);
+</Insert>
+<Copy StartSeek="2740" EndSeek="5441"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:26:21000">
+<Copy StartSeek="0" EndSeek="2604"/>
+<Copy StartSeek="2670" EndSeek="5507"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:43:39000">
+<Copy StartSeek="0" EndSeek="2666"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2712" EndSeek="5552"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:43:58000">
+<Copy StartSeek="0" EndSeek="4353"/>
+<Insert>	return single_open(file, dpa_table_show, NULL);
+</Insert>
+<Copy StartSeek="4399" EndSeek="4402"/>
+<Insert>static const struct file_operations cls_fops = {
+	.owner	= THIS_MODULE,
+	.open   = cls_open,
+	.write 	= dpa_proc_cls_write,
+	.read   = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
+</Insert>
+<Copy StartSeek="4659" EndSeek="5608"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:46:15000">
+<Copy StartSeek="0" EndSeek="4291"/>
+<Copy StartSeek="4342" EndSeek="5659"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:46:52000">
+<Copy StartSeek="0" EndSeek="4338"/>
+<Insert>
+</Insert>
+<Copy StartSeek="4369" EndSeek="5689"/>
+</Delta>
+<Delta Version="84" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:47:10000">
+<Copy StartSeek="0" EndSeek="2715"/>
+<Insert>static void *dpa_entry_next(struct seq_file *m, void *v, loff_t *pos)
+</Insert>
+<Copy StartSeek="2789" EndSeek="4342"/>
+<Insert>        .start = dpa_cls_start
+}
+
+</Insert>
+<Copy StartSeek="4413" EndSeek="5730"/>
+</Delta>
+<Delta Version="85" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:47:39000">
+<Copy StartSeek="0" EndSeek="2604"/>
+<Insert>static void *dpa_cls_start(struct seq_file *m, loff_t *pos)
+</Insert>
+<Copy StartSeek="2668" EndSeek="2719"/>
+<Insert>static void *dpa_cls_entry_next(struct seq_file *m, void *v, loff_t *pos)
+</Insert>
+<Copy StartSeek="2791" EndSeek="4344"/>
+<Insert>        .start = dpa_cls_start,
+        .next =  dpa_cls_entry_next
+}
+
+</Insert>
+<Copy StartSeek="4419" EndSeek="5736"/>
+</Delta>
+<Delta Version="86" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:48:17000">
+<Copy StartSeek="0" EndSeek="4415"/>
+<Insert>
+</Insert>
+<Copy StartSeek="4447" EndSeek="5767"/>
+</Delta>
+<Delta Version="87" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:48:39000">
+<Copy StartSeek="0" EndSeek="2860"/>
+<Insert>static int dpa_entry_show(struct dpa_entry *dpe, struct seq_file *m)
+</Insert>
+<Copy StartSeek="2931" EndSeek="4417"/>
+<Insert>        .show = dpa_entry_show,
+</Insert>
+<Copy StartSeek="4451" EndSeek="5771"/>
+</Delta>
+<Delta Version="88" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:48:49000">
+<Copy StartSeek="0" EndSeek="4565"/>
+<Insert>//static const struct file_operations cls_fops = {
+//        .owner  = THIS_MODULE,
+//        .open   = cls_open,
+//        .write  = dpa_proc_cls_write,
+//        .read   = seq_read,
+//        .llseek = seq_lseek,
+//        .release = single_release,
+//};
+</Insert>
+<Copy StartSeek="4806" EndSeek="5755"/>
+</Delta>
+<Delta Version="89" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:49:7000">
+<Copy StartSeek="0" EndSeek="4299"/>
+<Insert>static const struct seq_operations cls_ops = {
+</Insert>
+<Copy StartSeek="4350" EndSeek="5759"/>
+</Delta>
+<Delta Version="90" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:49:34000">
+<Copy StartSeek="0" EndSeek="4520"/>
+<Insert>	return seq_open(file, dpa_table_show, NULL);
+</Insert>
+<Copy StartSeek="4564" EndSeek="5757"/>
+</Delta>
+<Delta Version="91" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:49:44000">
+<Copy StartSeek="0" EndSeek="4520"/>
+<Insert>	return seq_open(file, &amp;cls_seq_ops, NULL);
+</Insert>
+<Copy StartSeek="4558" EndSeek="5751"/>
+</Delta>
+<Delta Version="92" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:49:52000">
+<Copy StartSeek="0" EndSeek="4104"/>
+<Insert>static int dpa_table_show(struct seq_file *m, void *v)
+{
+	unsigned int i;
+	int ret = 0;
+	for (i = 0; i &lt; (1&lt;&lt;14); i++) {
+                seq_printf(m, "abbadeadbeaf %d\n",i);
+	}
+
+	return ret;
+}
+</Insert>
+<Copy StartSeek="4353" EndSeek="5806"/>
+</Delta>
+<Delta Version="93" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:50:43000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Insert>        return dpa_cls_get_first_valid(*pos);
+</Insert>
+<Copy StartSeek="2724" EndSeek="5814"/>
+</Delta>
+<Delta Version="94" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:51:22000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Insert>        return (void *)dpa_cls_get_first_valid(*pos);
+</Insert>
+<Copy StartSeek="2716" EndSeek="5806"/>
+</Delta>
+<Delta Version="95" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:52:7000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Insert>        return dpa_cls_get_first_valid(*pos);
+</Insert>
+<Copy StartSeek="2726" EndSeek="5816"/>
+</Delta>
+<Delta Version="96" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:52:15000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Insert>        return dpa_cls_get_first_valid((uint32_t)*pos);
+</Insert>
+<Copy StartSeek="2715" EndSeek="5805"/>
+</Delta>
+<Delta Version="97" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:52:43000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Insert>        return dpa_cls_get_first_valid(pos);
+</Insert>
+<Copy StartSeek="2727" EndSeek="5817"/>
+</Delta>
+<Delta Version="98" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:53:3000">
+<Copy StartSeek="0" EndSeek="2823"/>
+<Insert>        return dpa_cls_get_first_valid(pos);
+</Insert>
+<Copy StartSeek="2880" EndSeek="5829"/>
+</Delta>
+<Delta Version="99" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:53:20000">
+<Copy StartSeek="0" EndSeek="3135"/>
+<Insert>	seq_printf(m, "\norg dmac= "MAC_FMT" smac= "MAC_FMT" eth_type:%#x vlan:%u\n",
+</Insert>
+<Copy StartSeek="3212" EndSeek="5827"/>
+</Delta>
+<Delta Version="100" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:54:40000">
+<Copy StartSeek="0" EndSeek="2883"/>
+<Copy StartSeek="3001" EndSeek="5945"/>
+</Delta>
+<Delta Version="101" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:54:51000">
+<Copy StartSeek="0" EndSeek="3330"/>
+<Insert>			   MAC_PFMT(l2_org-&gt;dmac), MAC_PFMT(l2_org-&gt;smac),
+			   dpa_ntohs(l2_org-&gt;eth_type), dpa_ntohs(l2_org-&gt;vlan_id));
+</Insert>
+<Copy StartSeek="3466" EndSeek="3561"/>
+<Insert>			   NIPQUAD(tup-&gt;sip), dpa_ntohs(tup-&gt;sport),
+			   NIPQUAD(tup-&gt;dip), dpa_ntohs(tup-&gt;dport));
+</Insert>
+<Copy StartSeek="3650" EndSeek="3783"/>
+<Insert>		   dpa_ntohs(l2_mod-&gt;eth_type),
+		   dpa_ntohs(l2_mod-&gt;vlan_id));
+</Insert>
+<Copy StartSeek="3843" EndSeek="3942"/>
+<Insert>			   NIPQUAD(mod_tup-&gt;sip), dpa_ntohs(mod_tup-&gt;sport),
+			   NIPQUAD(mod_tup-&gt;dip), dpa_ntohs(mod_tup-&gt;dport));
+</Insert>
+<Copy StartSeek="4047" EndSeek="5939"/>
+</Delta>
+<Delta Version="102" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:55:46000">
+<Copy StartSeek="0" EndSeek="3330"/>
+<Insert>                   MAC_PFMT(l2_org-&gt;dmac), MAC_PFMT(l2_org-&gt;smac),
+                   ntohs(l2_org-&gt;eth_type), ntohs(l2_org-&gt;vlan_id));
+</Insert>
+<Copy StartSeek="3438" EndSeek="3512"/>
+<Insert>			   tup-&gt;protocol,
+			   NIPQUAD(tup-&gt;sip), ntohs(tup-&gt;sport),
+			   NIPQUAD(tup-&gt;dip), ntohs(tup-&gt;dport));
+</Insert>
+<Copy StartSeek="3619" EndSeek="3886"/>
+<Insert>			   mod_tup-&gt;protocol,
+			   NIPQUAD(mod_tup-&gt;sip), ntohs(mod_tup-&gt;sport),
+			   NIPQUAD(mod_tup-&gt;dip), ntohs(mod_tup-&gt;dport));
+</Insert>
+<Copy StartSeek="4013" EndSeek="4073"/>
+<Insert>		    dpa_entry_state_names[dpe-&gt;state],
+		    dpe-&gt;counters.rx_hits, dpe-&gt;counters.fwd_hits,
+		    dpe-&gt;mod_ops);
+</Insert>
+<Copy StartSeek="4185" EndSeek="5902"/>
+</Delta>
+<Delta Version="103" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:55:57000">
+<Copy StartSeek="0" EndSeek="4073"/>
+<Insert>		   dpa_entry_state_names[dpe-&gt;state],
+</Insert>
+<Copy StartSeek="4110" EndSeek="5899"/>
+</Delta>
+<Delta Version="104" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="11:58:1000">
+<Copy StartSeek="0" EndSeek="4014"/>
+<Insert>	seq_printf(m, "state:%s rx_pkts:%u fwd:%u mod_ops:%#x\n",
+		   dpa_get_state_name[dpe-&gt;state],
+</Insert>
+<Copy StartSeek="4201" EndSeek="5990"/>
+</Delta>
+<Delta Version="105" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="12:07:7000">
+<Copy StartSeek="0" EndSeek="3001"/>
+<Insert>static int dpa_cls_seq_show(struct dpa_entry *dpe, struct seq_file *m)
+{
+</Insert>
+<Copy StartSeek="3151" EndSeek="6067"/>
+</Delta>
+<Delta Version="106" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="12:08:45000">
+<Copy StartSeek="0" EndSeek="3044"/>
+<Insert>static int dpa_cls_seq_show(struct seq_file *m, )
+</Insert>
+<Copy StartSeek="3101" EndSeek="6074"/>
+</Delta>
+<Delta Version="107" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="12:09:43000">
+<Copy StartSeek="0" EndSeek="3001"/>
+<Insert>int (*show) (struct seq_file *m, void *v);
+</Insert>
+<Copy StartSeek="3001" EndSeek="6031"/>
+</Delta>
+<Delta Version="108" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="12:09:45000">
+<Copy StartSeek="0" EndSeek="4735"/>
+<Insert>}
+</Insert>
+<Copy StartSeek="4738" EndSeek="6032"/>
+</Delta>
+<Delta Version="109" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="12:10:10000">
+<Copy StartSeek="0" EndSeek="2730"/>
+<Copy StartSeek="2895" EndSeek="6197"/>
+</Delta>
+<Delta Version="110" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:24:24000">
+<Copy StartSeek="0" EndSeek="2774"/>
+<Insert>static void dpa_cls_seq_stop(struct seq_file *m, void *v);
+</Insert>
+<Copy StartSeek="2832" EndSeek="6196"/>
+</Delta>
+<Delta Version="111" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:24:24000">
+<Copy StartSeek="0" EndSeek="2730"/>
+<Insert>void (*stop) (struct seq_file *m, void *v);
+</Insert>
+<Copy StartSeek="2730" EndSeek="2788"/>
+<Insert>{
+        return dpa_cls_get_first_valid((uint32_t *)pos);
+}
+
+</Insert>
+<Copy StartSeek="2793" EndSeek="6095"/>
+</Delta>
+<Delta Version="112" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:24:33000">
+<Copy StartSeek="0" EndSeek="2788"/>
+<Insert>{ }
+
+</Insert>
+<Copy StartSeek="2793" EndSeek="6095"/>
+</Delta>
+<Delta Version="113" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:24:38000">
+<Copy StartSeek="0" EndSeek="4729"/>
+<Copy StartSeek="4763" EndSeek="6129"/>
+</Delta>
+<Delta Version="114" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:24:53000">
+<Copy StartSeek="0" EndSeek="4763"/>
+<Insert>        .next =  dpa_cls_seq_next,
+</Insert>
+<Copy StartSeek="4797" EndSeek="6128"/>
+</Delta>
+<Delta Version="115" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:25:46000">
+<Copy StartSeek="0" EndSeek="4118"/>
+<Insert>        /* HAIM FIXME : replace with string array */
+</Insert>
+<Copy StartSeek="4177" EndSeek="6134"/>
+</Delta>
+<Delta Version="116" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:31:19000">
+<Copy StartSeek="0" EndSeek="4398"/>
+<Insert>//static int dpa_table_show(struct seq_file *m, void *v)
+//{
+//        unsigned int i;
+//        int ret = 0;
+//        for (i = 0; i &lt; (1&lt;&lt;14); i++) {
+//                seq_printf(m, "abbadeadbeaf %d\n",i);
+//        }
+//
+//        return ret;
+//}
+
+</Insert>
+<Copy StartSeek="4398" EndSeek="5884"/>
+</Delta>
+<Delta Version="117" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:31:27000">
+<Copy StartSeek="0" EndSeek="3178"/>
+<Insert>	struct dpa_pri_key *tup = &amp;dpe-&gt;org.cls_tuple;
+	struct dpa_pri_key *mod_tup = &amp;dpe-&gt;mod.mod_tuple;
+	struct dpa_l2 *l2_org = &amp;dpe-&gt;org.l2;
+	struct dpa_l2 *l2_mod = &amp;dpe-&gt;mod.l2;
+
+	seq_printf(m, "org dmac= "MAC_FMT" smac= "MAC_FMT" eth_type:%#x vlan:%u\n",
+		   MAC_PFMT(l2_org-&gt;dmac), MAC_PFMT(l2_org-&gt;smac),
+		   ntohs(l2_org-&gt;eth_type), ntohs(l2_org-&gt;vlan_id));
+
+	seq_printf(m, "org ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+		   tup-&gt;protocol,
+		   NIPQUAD(tup-&gt;sip), ntohs(tup-&gt;sport),
+		   NIPQUAD(tup-&gt;dip), ntohs(tup-&gt;dport));
+
+	seq_printf(m, "mod dmac= "MAC_FMT" smac= "MAC_FMT " eth_type:%#x vlan:%u\n", 
+		   MAC_PFMT(l2_mod-&gt;dmac), MAC_PFMT(l2_mod-&gt;smac),
+		   ntohs(l2_mod-&gt;eth_type),
+		   ntohs(l2_mod-&gt;vlan_id));
+
+	seq_printf(m, "mod ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+		   mod_tup-&gt;protocol,
+		   NIPQUAD(mod_tup-&gt;sip), ntohs(mod_tup-&gt;sport),
+		   NIPQUAD(mod_tup-&gt;dip), ntohs(mod_tup-&gt;dport));
+
+        /* HAIM FIXME : replace state with string array */
+	seq_printf(m, "state:%d rx_pkts:%u fwd:%u mod_ops:%#x\n",
+//      	   dpa_get_state_name[dpe-&gt;state],
+                   dpe-&gt;state,
+		   dpe-&gt;counters.rx_hits, dpe-&gt;counters.fwd_hits,
+		   dpe-&gt;mod_ops);
+
+	return 0;
+</Insert>
+<Copy StartSeek="4708" EndSeek="6197"/>
+</Delta>
+<Delta Version="118" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:31:40000">
+<Copy StartSeek="0" EndSeek="3178"/>
+<Copy StartSeek="3220" EndSeek="6239"/>
+</Delta>
+<Delta Version="119" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:31:52000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Insert>        return dpa_cls_get_first_valid((uint32_t *)pos);
+}
+
+</Insert>
+<Copy StartSeek="2755" EndSeek="6264"/>
+</Delta>
+<Delta Version="120" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:37:53000">
+<Copy StartSeek="0" EndSeek="2732"/>
+<Copy StartSeek="2797" EndSeek="6329"/>
+</Delta>
+<Delta Version="121" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:38:6000">
+<Copy StartSeek="0" EndSeek="2732"/>
+<Insert>        printk(KERN_ERR "(%s:%d) ret %p\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="2802" EndSeek="6334"/>
+</Delta>
+<Delta Version="122" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:38:8000">
+<Copy StartSeek="0" EndSeek="2885"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="2957" EndSeek="6403"/>
+</Delta>
+<Delta Version="123" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:38:22000">
+<Copy StartSeek="0" EndSeek="3031"/>
+<Insert>        (*pos)++;
+
+</Insert>
+<Copy StartSeek="3031" EndSeek="6384"/>
+</Delta>
+<Delta Version="124" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:38:46000">
+<Copy StartSeek="0" EndSeek="3031"/>
+<Copy StartSeek="3102" EndSeek="6455"/>
+</Delta>
+<Delta Version="125" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:41:11000">
+<Copy StartSeek="0" EndSeek="2732"/>
+<Copy StartSeek="2733" EndSeek="6456"/>
+</Delta>
+<Delta Version="126" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:44:5000">
+<Copy StartSeek="0" EndSeek="3395"/>
+<Copy StartSeek="3453" EndSeek="6514"/>
+</Delta>
+<Delta Version="127" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:44:52000">
+<Copy StartSeek="0" EndSeek="3453"/>
+<Copy StartSeek="3454" EndSeek="6515"/>
+</Delta>
+<Delta Version="128" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:52:17000">
+<Copy StartSeek="0" EndSeek="3472"/>
+<Insert>                return;
+</Insert>
+<Copy StartSeek="3498" EndSeek="6517"/>
+</Delta>
+<Delta Version="129" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="14:52:24000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Insert>        void *ret = dpa_cls_get_first_valid((uint32_t *)pos);
+
+</Insert>
+<Copy StartSeek="2758" EndSeek="6542"/>
+</Delta>
+<Delta Version="130" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:27:12000">
+<Copy StartSeek="0" EndSeek="3128"/>
+<Insert>        return dpa_cls_get_first_valid((uint32_t *)pos);
+}
+
+</Insert>
+<Copy StartSeek="3209" EndSeek="6563"/>
+</Delta>
+<Delta Version="131" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:27:26000">
+<Copy StartSeek="0" EndSeek="5481"/>
+<Insert>        .write  = dpa_proc_cls_write,
+</Insert>
+<Copy StartSeek="5519" EndSeek="6563"/>
+</Delta>
+<Delta Version="132" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:31:14000">
+<Copy StartSeek="0" EndSeek="5576"/>
+<Insert>        .release = single_release,
+</Insert>
+<Copy StartSeek="5608" EndSeek="6560"/>
+</Delta>
+<Delta Version="133" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:31:28000">
+<Copy StartSeek="0" EndSeek="5481"/>
+<Insert>//      .write  = dpa_proc_cls_write,
+</Insert>
+<Copy StartSeek="5519" EndSeek="6560"/>
+</Delta>
+<Delta Version="134" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:32:21000">
+<Copy StartSeek="0" EndSeek="3441"/>
+<Insert>        printk(KERN_ERR "(%s:%d)\n", __func__, __LINE__);
+
+</Insert>
+<Copy StartSeek="3442" EndSeek="6502"/>
+</Delta>
+<Delta Version="135" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:32:35000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Insert>//      void *ret = dpa_cls_get_first_valid((uint32_t *)pos);
+        void *ret = NULL;
+</Insert>
+<Copy StartSeek="2758" EndSeek="2911"/>
+<Insert>        printk(KERN_ERR "(%s:%d) dummy stop\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="2980" EndSeek="3057"/>
+<Insert>        printk(KERN_ERR "(%s:%d) pos %d\n", __func__, __LINE__, *pos);
+        return NULL;
+//      return dpa_cls_get_first_valid((uint32_t *)pos);
+</Insert>
+<Copy StartSeek="3186" EndSeek="6482"/>
+</Delta>
+<Delta Version="136" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:33:3000">
+<Copy StartSeek="0" EndSeek="3466"/>
+<Insert>//        struct dpa_pri_key *tup = &amp;dpe-&gt;org.cls_tuple;
+//        struct dpa_pri_key *mod_tup = &amp;dpe-&gt;mod.mod_tuple;
+//        struct dpa_l2 *l2_org = &amp;dpe-&gt;org.l2;
+//        struct dpa_l2 *l2_mod = &amp;dpe-&gt;mod.l2;
+//
+//        seq_printf(m, "org dmac= "MAC_FMT" smac= "MAC_FMT" eth_type:%#x vlan:%u\n",
+//                   MAC_PFMT(l2_org-&gt;dmac), MAC_PFMT(l2_org-&gt;smac),
+//                   ntohs(l2_org-&gt;eth_type), ntohs(l2_org-&gt;vlan_id));
+//
+//        seq_printf(m, "org ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+//                   tup-&gt;protocol,
+//                   NIPQUAD(tup-&gt;sip), ntohs(tup-&gt;sport),
+//                   NIPQUAD(tup-&gt;dip), ntohs(tup-&gt;dport));
+//
+//        seq_printf(m, "mod dmac= "MAC_FMT" smac= "MAC_FMT " eth_type:%#x vlan:%u\n",
+//                   MAC_PFMT(l2_mod-&gt;dmac), MAC_PFMT(l2_mod-&gt;smac),
+//                   ntohs(l2_mod-&gt;eth_type),
+//                   ntohs(l2_mod-&gt;vlan_id));
+//
+//        seq_printf(m, "mod ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+//                   mod_tup-&gt;protocol,
+//                   NIPQUAD(mod_tup-&gt;sip), ntohs(mod_tup-&gt;sport),
+//                   NIPQUAD(mod_tup-&gt;dip), ntohs(mod_tup-&gt;dport));
+//
+//        /* HAIM FIXME : replace state with string array */
+//        seq_printf(m, "state:%d rx_pkts:%u fwd:%u mod_ops:%#x\n",
+////      	   dpa_get_state_name[dpe-&gt;state],
+//                   dpe-&gt;state,
+//                   dpe-&gt;counters.rx_hits, dpe-&gt;counters.fwd_hits,
+//                   dpe-&gt;mod_ops);
+//
+</Insert>
+<Copy StartSeek="4916" EndSeek="6420"/>
+</Delta>
+<Delta Version="137" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:33:36000">
+<Copy StartSeek="0" EndSeek="3422"/>
+<Insert>        if (!dpe)
+                return 0;
+</Insert>
+<Copy StartSeek="3422" EndSeek="6376"/>
+</Delta>
+<Delta Version="138" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:33:39000">
+<Copy StartSeek="0" EndSeek="3421"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3421" EndSeek="6375"/>
+</Delta>
+<Delta Version="139" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:33:41000">
+<Copy StartSeek="0" EndSeek="2732"/>
+<Insert>//      void *ret = NULL;
+        printk(KERN_ERR "(%s:%d) ret %p\n", __func__, __LINE__, ret);
+</Insert>
+<Copy StartSeek="2733" EndSeek="2816"/>
+<Insert>//      printk(KERN_ERR "(%s:%d) dummy stop\n", __func__, __LINE__);
+}
+
+</Insert>
+<Copy StartSeek="2819" EndSeek="2893"/>
+<Insert>//      printk(KERN_ERR "(%s:%d) pos %d\n", __func__, __LINE__, *pos);
+
+</Insert>
+<Copy StartSeek="2893" EndSeek="6139"/>
+</Delta>
+<Delta Version="140" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:34:16000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Insert>        void *ret = dpa_cls_get_first_valid((uint32_t *)pos);
+</Insert>
+<Copy StartSeek="2691" EndSeek="2692"/>
+<Insert>        return ret;
+</Insert>
+<Copy StartSeek="2749" EndSeek="6135"/>
+</Delta>
+<Delta Version="141" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:34:25000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Insert>        void *ret = 
+
+</Insert>
+<Copy StartSeek="2670" EndSeek="6113"/>
+</Delta>
+<Delta Version="142" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:34:27000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Copy StartSeek="2704" EndSeek="6147"/>
+</Delta>
+<Delta Version="143" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:41:11000">
+<Copy StartSeek="0" EndSeek="2901"/>
+<Insert>        return dpa_cls_get_first_valid((uint32_t *)pos);
+}
+
+</Insert>
+<Copy StartSeek="3124" EndSeek="6310"/>
+</Delta>
+<Delta Version="144" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:43:43000">
+<Copy StartSeek="0" EndSeek="2920"/>
+<Insert>        printk("pos %u\n", *pos);
+</Insert>
+<Copy StartSeek="3008" EndSeek="6364"/>
+</Delta>
+<Delta Version="145" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:44:29000">
+<Copy StartSeek="0" EndSeek="2991"/>
+<Insert>                
+</Insert>
+<Copy StartSeek="2991" EndSeek="6347"/>
+</Delta>
+<Delta Version="146" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:44:31000">
+<Copy StartSeek="0" EndSeek="3104"/>
+<Insert>        printk("pos %u\n", *pos);
+</Insert>
+<Copy StartSeek="3175" EndSeek="6384"/>
+</Delta>
+<Delta Version="147" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:44:37000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Insert>        printk("pos %u\n", *pos);
+</Insert>
+<Copy StartSeek="2741" EndSeek="6421"/>
+</Delta>
+<Delta Version="148" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:44:43000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Copy StartSeek="2689" EndSeek="6440"/>
+</Delta>
+<Delta Version="149" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:44:54000">
+<Copy StartSeek="0" EndSeek="2760"/>
+<Insert>        return dpa_cls_get_first_valid((uint32_t *)pos);
+}
+
+</Insert>
+<Copy StartSeek="2911" EndSeek="6531"/>
+</Delta>
+<Delta Version="150" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:45:2000">
+<Copy StartSeek="0" EndSeek="2689"/>
+<Insert>        printk(KERN_ERR "(%s:%d) pos %u\n", __func__, __LINE__, *pos);
+</Insert>
+<Copy StartSeek="2760" EndSeek="6531"/>
+</Delta>
+<Delta Version="151" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:48:8000">
+<Copy StartSeek="0" EndSeek="2817"/>
+<Insert>        printk(KERN_ERR "(%s:%d) pos %u\n", __func__, __LINE__, *pos);
+</Insert>
+<Copy StartSeek="2888" EndSeek="6531"/>
+</Delta>
+<Delta Version="152" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:48:19000">
+<Copy StartSeek="0" EndSeek="2760"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2778" EndSeek="6548"/>
+</Delta>
+<Delta Version="153" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:52:40000">
+<Copy StartSeek="0" EndSeek="2760"/>
+<Insert>        (*pos)++;
+</Insert>
+<Copy StartSeek="2760" EndSeek="2816"/>
+<Copy StartSeek="2834" EndSeek="6548"/>
+</Delta>
+<Delta Version="154" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:52:55000">
+<Copy StartSeek="0" EndSeek="3211"/>
+<Copy StartSeek="3229" EndSeek="6566"/>
+</Delta>
+<Delta Version="155" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:53:12000">
+<Copy StartSeek="0" EndSeek="2689"/>
+<Insert>        printk(KERN_ERR "(%s:%d) pos %d\n", __func__, __LINE__, *pos);
+</Insert>
+<Copy StartSeek="2689" EndSeek="6495"/>
+</Delta>
+<Delta Version="156" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:55:23000">
+<Copy StartSeek="0" EndSeek="2670"/>
+<Insert>        void *ret;
+        ret = dpa_cls_get_first_valid((uint32_t *)pos);
+</Insert>
+<Copy StartSeek="2732" EndSeek="6482"/>
+</Delta>
+<Delta Version="157" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:55:28000">
+<Copy StartSeek="0" EndSeek="2750"/>
+<Insert>        printk(KERN_ERR "(%s:%d) pos %d\n", __func__, __LINE__, *pos);
+</Insert>
+<Copy StartSeek="2759" EndSeek="6420"/>
+</Delta>
+<Delta Version="158" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:55:36000">
+<Copy StartSeek="0" EndSeek="2919"/>
+<Insert>        void *ret;
+        printk(KERN_ERR "(%s:%d) pos %u\n", __func__, __LINE__, *pos);
+        ret = dpa_cls_get_first_valid((uint32_t *)pos);
+</Insert>
+<Copy StartSeek="2981" EndSeek="6336"/>
+</Delta>
+<Delta Version="159" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:55:53000">
+<Copy StartSeek="0" EndSeek="2999"/>
+<Insert>//      return dpa_cls_get_first_valid((uint32_t *)pos);
+        printk(KERN_ERR "(%s:%d) pos %u\n", __func__, __LINE__, *pos);
+</Insert>
+<Copy StartSeek="3000" EndSeek="6209"/>
+</Delta>
+<Delta Version="160" Comment="" NL="\10" Encoding="text" Date="2013/01/16" Time="15:55:58000">
+<Copy StartSeek="0" EndSeek="4529"/>
+<Insert>//      	   dpa_get_state_name[dpe-&gt;state],
+</Insert>
+<Copy StartSeek="4529" EndSeek="6165"/>
+</Delta>
+<Delta Version="161" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="09:52:33000">
+<Copy StartSeek="0" EndSeek="3200"/>
+<Insert>        struct dpa_entry *dpe = (struct dpa_entry *)v;
+        struct dpa_pri_key *tup = &amp;dpe-&gt;org.cls_tuple;
+        struct dpa_pri_key *mod_tup = &amp;dpe-&gt;mod.mod_tuple;
+        struct dpa_l2 *l2_org = &amp;dpe-&gt;org.l2;
+        struct dpa_l2 *l2_mod = &amp;dpe-&gt;mod.l2;
+
+        seq_printf(m, "org dmac= "MAC_FMT" smac= "MAC_FMT" eth_type:%#x vlan:%u\n",
+                   MAC_PFMT(l2_org-&gt;dmac), MAC_PFMT(l2_org-&gt;smac),
+                   ntohs(l2_org-&gt;eth_type), ntohs(l2_org-&gt;vlan_id));
+
+        seq_printf(m, "org ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+                   tup-&gt;protocol,
+                   NIPQUAD(tup-&gt;sip), ntohs(tup-&gt;sport),
+                   NIPQUAD(tup-&gt;dip), ntohs(tup-&gt;dport));
+
+        seq_printf(m, "mod dmac= "MAC_FMT" smac= "MAC_FMT " eth_type:%#x vlan:%u\n",
+                   MAC_PFMT(l2_mod-&gt;dmac), MAC_PFMT(l2_mod-&gt;smac),
+                   ntohs(l2_mod-&gt;eth_type),
+                   ntohs(l2_mod-&gt;vlan_id));
+
+        seq_printf(m, "mod ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+                   mod_tup-&gt;protocol,
+                   NIPQUAD(mod_tup-&gt;sip), ntohs(mod_tup-&gt;sport),
+                   NIPQUAD(mod_tup-&gt;dip), ntohs(mod_tup-&gt;dport));
+
+        /* HAIM FIXME : replace state with string array */
+        seq_printf(m, "state:%d rx_pkts:%u fwd:%u mod_ops:%#x\n",
+                   dpe-&gt;state,
+                   dpe-&gt;counters.rx_hits, dpe-&gt;counters.fwd_hits,
+                   dpe-&gt;mod_ops);
+</Insert>
+<Copy StartSeek="4670" EndSeek="6175"/>
+</Delta>
+<Delta Version="162" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="09:52:37000">
+<Copy StartSeek="0" EndSeek="2222"/>
+<Copy StartSeek="2223" EndSeek="2498"/>
+<Insert>    case 'd':
+      dpa_table_dump();
+      break;
+</Insert>
+<Copy StartSeek="2498" EndSeek="6125"/>
+</Delta>
+<Delta Version="163" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="10:39:0000">
+<Copy StartSeek="0" EndSeek="3150"/>
+<Insert>//      struct dpa_entry *dpe = (struct dpa_entry *)v;
+//      struct dpa_pri_key *tup = &amp;dpe-&gt;org.cls_tuple;
+//      struct dpa_pri_key *mod_tup = &amp;dpe-&gt;mod.mod_tuple;
+//      struct dpa_l2 *l2_org = &amp;dpe-&gt;org.l2;
+//      struct dpa_l2 *l2_mod = &amp;dpe-&gt;mod.l2;
+//
+//      seq_printf(m, "org dmac= "MAC_FMT" smac= "MAC_FMT" eth_type:%#x vlan:%u\n",
+//                 MAC_PFMT(l2_org-&gt;dmac), MAC_PFMT(l2_org-&gt;smac),
+//                 ntohs(l2_org-&gt;eth_type), ntohs(l2_org-&gt;vlan_id));
+//
+//      seq_printf(m, "org ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+//                 tup-&gt;protocol,
+//                 NIPQUAD(tup-&gt;sip), ntohs(tup-&gt;sport),
+//                 NIPQUAD(tup-&gt;dip), ntohs(tup-&gt;dport));
+//
+//      seq_printf(m, "mod dmac= "MAC_FMT" smac= "MAC_FMT " eth_type:%#x vlan:%u\n",
+//                 MAC_PFMT(l2_mod-&gt;dmac), MAC_PFMT(l2_mod-&gt;smac),
+//                 ntohs(l2_mod-&gt;eth_type),
+//                 ntohs(l2_mod-&gt;vlan_id));
+//
+//      seq_printf(m, "mod ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+//                 mod_tup-&gt;protocol,
+//                 NIPQUAD(mod_tup-&gt;sip), ntohs(mod_tup-&gt;sport),
+//                 NIPQUAD(mod_tup-&gt;dip), ntohs(mod_tup-&gt;dport));
+//
+//      /* HAIM FIXME : replace state with string array */
+//      seq_printf(m, "state:%d rx_pkts:%u fwd:%u mod_ops:%#x\n",
+//                 dpe-&gt;state,
+//                 dpe-&gt;counters.rx_hits, dpe-&gt;counters.fwd_hits,
+//                 dpe-&gt;mod_ops);
+</Insert>
+<Copy StartSeek="4610" EndSeek="6115"/>
+</Delta>
+<Delta Version="164" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="10:39:9000">
+<Copy StartSeek="0" EndSeek="3090"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3090" EndSeek="6114"/>
+</Delta>
+<Delta Version="165" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="10:39:16000">
+<Copy StartSeek="0" EndSeek="3632"/>
+<Insert>        seq_printf(m, "org ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+</Insert>
+<Copy StartSeek="3704" EndSeek="5672"/>
+<Insert>
+</Insert>
+<Copy StartSeek="5672" EndSeek="6105"/>
+</Delta>
+<Delta Version="166" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:20:57000">
+<Copy StartSeek="0" EndSeek="3411"/>
+<Insert>        seq_printf(m, "org dmac= "MAC_FMT" smac= "MAC_FMT" eth_type:%#x vlan:%u\n",
+</Insert>
+<Copy StartSeek="3495" EndSeek="6105"/>
+</Delta>
+<Delta Version="167" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:22:49000">
+<Copy StartSeek="0" EndSeek="3411"/>
+<Insert>        seq_printf(m, "ORG dmac= "MAC_FMT" smac= "MAC_FMT" eth_type:%#x vlan:%u\n",
+</Insert>
+<Copy StartSeek="3496" EndSeek="6106"/>
+</Delta>
+<Delta Version="168" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:22:50000">
+<Copy StartSeek="0" EndSeek="3633"/>
+<Insert>        seq_printf(m, "org ipv4: "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+</Insert>
+<Copy StartSeek="3701" EndSeek="6102"/>
+</Delta>
+<Delta Version="169" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:22:52000">
+<Copy StartSeek="0" EndSeek="3496"/>
+<Insert>                   MAC_PFMT(l2_org-&gt;dmac), MAC_PFMT(l2_org-&gt;smac),
+</Insert>
+<Copy StartSeek="3584" EndSeek="6123"/>
+</Delta>
+<Delta Version="170" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:23:39000">
+<Copy StartSeek="0" EndSeek="3496"/>
+<Insert>                   MAC_PFMT(l2_org-&gt;smac),
+                   MAC_PFMT(l2_org-&gt;dmac), ,
+</Insert>
+<Copy StartSeek="3563" EndSeek="6102"/>
+</Delta>
+<Delta Version="171" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:23:47000">
+<Copy StartSeek="0" EndSeek="3633"/>
+<Insert>        seq_printf(m, "ipv4: "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+</Insert>
+<Copy StartSeek="3693" EndSeek="6094"/>
+</Delta>
+<Delta Version="172" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:24:8000">
+<Copy StartSeek="0" EndSeek="3633"/>
+<Insert>        seq_printf(m, NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+                   tup-&gt;protocol,
+</Insert>
+<Copy StartSeek="3697" EndSeek="3754"/>
+<Insert>                   NIPQUAD(tup-&gt;dip), ntohs(tup-&gt;dport));
+
+</Insert>
+<Copy StartSeek="3880" EndSeek="6131"/>
+</Delta>
+<Delta Version="173" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:25:16000">
+<Copy StartSeek="0" EndSeek="3811"/>
+<Insert>                   (tup-&gt;protocol == IP_PROTO_UDP ? "udp" : "tcp");
+</Insert>
+<Copy StartSeek="3878" EndSeek="6130"/>
+</Delta>
+<Delta Version="174" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:26:23000">
+<Copy StartSeek="0" EndSeek="3811"/>
+<Insert>                   (tup-&gt;protocol == IPPROTO_UDP ? "udp" : "tcp");
+</Insert>
+<Copy StartSeek="3879" EndSeek="6131"/>
+</Delta>
+<Delta Version="175" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:26:36000">
+<Copy StartSeek="0" EndSeek="3411"/>
+<Insert>        seq_printf(m, "ORG: dmac= "MAC_FMT" smac= "MAC_FMT" eth_type:%#x vlan:%u\n",
+</Insert>
+<Copy StartSeek="3487" EndSeek="3624"/>
+<Insert>        seq_printf(m, NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d[%s]\n",
+</Insert>
+<Copy StartSeek="3690" EndSeek="6124"/>
+</Delta>
+<Delta Version="176" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:27:24000">
+<Copy StartSeek="0" EndSeek="3411"/>
+<Insert>        seq_printf(m, "ORG: "MAC_FMT" -&gt; "MAC_FMT" eth_type:%#x vlan:%u\n",
+                   MAC_PFMT(l2_org-&gt;smac), MAC_PFMT(l2_org-&gt;dmac),
+</Insert>
+<Copy StartSeek="3562" EndSeek="3632"/>
+<Insert>        seq_printf(m, NIPQUAD_FMT":%d -&gt; "NIPQUAD_FMT":%d[%s]\n",
+</Insert>
+<Copy StartSeek="3746" EndSeek="3803"/>
+<Insert>                   NIPQUAD(tup-&gt;dip), ntohs(tup-&gt;dport),
+                   (tup-&gt;protocol == IPPROTO_UDP ? "udp" : "tcp"));
+
+</Insert>
+<Copy StartSeek="3862" EndSeek="6113"/>
+</Delta>
+<Delta Version="177" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:29:32000">
+<Copy StartSeek="0" EndSeek="3632"/>
+<Insert>        seq_printf(m, "org ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+                   tup-&gt;protocol,
+</Insert>
+<Copy StartSeek="3708" EndSeek="3765"/>
+<Insert>                   NIPQUAD(tup-&gt;dip), ntohs(tup-&gt;dport));
+
+</Insert>
+<Copy StartSeek="3891" EndSeek="6142"/>
+</Delta>
+<Delta Version="178" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:30:10000">
+<Copy StartSeek="0" EndSeek="3822"/>
+<Insert>                   (tup-&gt;protocol == IPPROTO_UDP ? "udp" : "tcp"));
+</Insert>
+<Copy StartSeek="3932" EndSeek="6184"/>
+</Delta>
+<Delta Version="179" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:30:49000">
+<Copy StartSeek="0" EndSeek="3822"/>
+<Insert>                   (tup-&gt;protocol == IPPROTO_UDP ? "udp" : (tup-&gt;protocol == IPPROTO_TCP ? "tcp" : "other"));
+</Insert>
+<Copy StartSeek="3931" EndSeek="6183"/>
+</Delta>
+<Delta Version="180" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:31:14000">
+<Copy StartSeek="0" EndSeek="3822"/>
+<Insert>                   (tup-&gt;protocol == IPPROTO_UDP ? "udp": (tup-&gt;protocol == IPPROTO_TCP ? "tcp" : "other"));
+
+</Insert>
+<Copy StartSeek="3953" EndSeek="6204"/>
+</Delta>
+<Delta Version="181" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:31:15000">
+<Copy StartSeek="0" EndSeek="3881"/>
+<Insert>                    (tup-&gt;protocol == IPPROTO_TCP ? "tcp" : "other"));
+</Insert>
+<Copy StartSeek="3953" EndSeek="6205"/>
+</Delta>
+<Delta Version="182" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:32:3000">
+<Copy StartSeek="0" EndSeek="670"/>
+<Insert>
+</Insert>
+<Copy StartSeek="693" EndSeek="6227"/>
+</Delta>
+<Delta Version="183" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:32:24000">
+<Copy StartSeek="0" EndSeek="2376"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2428" EndSeek="6278"/>
+</Delta>
+<Delta Version="184" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:39:18000">
+<Copy StartSeek="0" EndSeek="2376"/>
+<Insert>  printk(KERN_ERR "(%s:%d)\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="2379" EndSeek="6229"/>
+</Delta>
+<Delta Version="185" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:42:58000">
+<Copy StartSeek="0" EndSeek="2376"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="2377" EndSeek="6227"/>
+</Delta>
+<Delta Version="186" Comment="" NL="\10" Encoding="text" Date="2013/01/17" Time="13:43:22000">
+<Copy StartSeek="0" EndSeek="710"/>
+<Copy StartSeek="744" EndSeek="6261"/>
+</Delta>
+<Delta Version="187" Comment="" NL="\10" Encoding="text" Date="2013/01/20" Time="10:11:48000">
+<Copy StartSeek="0" EndSeek="2788"/>
+<Insert>static void dpa_cls_seq_stop(struct seq_file *m, void *v)
+{
+}
+
+</Insert>
+<Copy StartSeek="2788" EndSeek="4803"/>
+<Insert>        .stop = dpa_cls_seq_stop,
+</Insert>
+<Copy StartSeek="4803" EndSeek="6164"/>
+</Delta>
+<Delta Version="188" Comment="" NL="\10" Encoding="text" Date="2013/01/20" Time="10:12:14000">
+<Copy StartSeek="0" EndSeek="2788"/>
+<Copy StartSeek="2851" EndSeek="4866"/>
+<Copy StartSeek="4900" EndSeek="6261"/>
+</Delta>
+<Delta Version="189" Comment="" NL="\10" Encoding="text" Date="2013/01/20" Time="10:13:0000">
+<Copy StartSeek="0" EndSeek="2846"/>
+<Insert>{
+}
+
+</Insert>
+<Copy StartSeek="2850" EndSeek="6260"/>
+</Delta>
+<Delta Version="190" Comment="" NL="\10" Encoding="text" Date="2013/01/20" Time="10:13:7000">
+<Copy StartSeek="0" EndSeek="615"/>
+<Insert>#include &lt;linux/seq_file.h&gt;
+</Insert>
+<Copy StartSeek="615" EndSeek="642"/>
+<Insert>#include &lt;linux/in.h&gt;
+
+</Insert>
+<Copy StartSeek="643" EndSeek="660"/>
+<Insert>/* HAIM FIXME : move it away ! */
+#include "../../mod/dpa/dpa_cls.h"
+</Insert>
+<Copy StartSeek="661" EndSeek="2161"/>
+<Insert>static ssize_t dpa_proc_cls_write(struct file *file, const char __user *buffer,
+        size_t count, loff_t *dummy)
+</Insert>
+<Copy StartSeek="2278" EndSeek="2436"/>
+<Copy StartSeek="2488" EndSeek="2544"/>
+<Insert>static void *dpa_cls_seq_start(struct seq_file *m, loff_t *pos)
+{
+        void *ret = dpa_cls_get_first_valid((uint32_t *)pos);
+        (*pos)++;
+        
+        return ret;
+}
+
+static void dpa_cls_seq_stop(struct seq_file *m, void *v)
+{}
+
+static void *dpa_cls_seq_next(struct seq_file *m, void *v, loff_t *pos)
+{
+        void *ret = dpa_cls_get_first_valid((uint32_t *)pos);
+        (*pos)++;
+
+        return ret;
+}
+
+#define MAC_PFMT(mac) mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
+#define MAC_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+static int dpa_cls_seq_show(struct seq_file *m, void *v)
+{
+        struct dpa_entry *dpe = (struct dpa_entry *)v;
+        struct dpa_pri_key *tup = &amp;dpe-&gt;org.cls_tuple;
+        struct dpa_pri_key *mod_tup = &amp;dpe-&gt;mod.mod_tuple;
+        struct dpa_l2 *l2_org = &amp;dpe-&gt;org.l2;
+        struct dpa_l2 *l2_mod = &amp;dpe-&gt;mod.l2;
+
+        seq_printf(m, "org dmac= "MAC_FMT" smac= "MAC_FMT" eth_type:%#x vlan:%u\n",
+                   MAC_PFMT(l2_org-&gt;dmac), MAC_PFMT(l2_org-&gt;smac),
+                   ntohs(l2_org-&gt;eth_type), ntohs(l2_org-&gt;vlan_id));
+
+        seq_printf(m, "org ipv4:"NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d [%s]\n",
+                   NIPQUAD(tup-&gt;sip), ntohs(tup-&gt;sport),
+                   NIPQUAD(tup-&gt;dip), ntohs(tup-&gt;dport),
+                   (tup-&gt;protocol == IPPROTO_UDP ? "udp": 
+                    (tup-&gt;protocol == IPPROTO_TCP ? "tcp" : "other")));
+
+        seq_printf(m, "mod dmac= "MAC_FMT" smac= "MAC_FMT " eth_type:%#x vlan:%u\n",
+                   MAC_PFMT(l2_mod-&gt;dmac), MAC_PFMT(l2_mod-&gt;smac),
+                   ntohs(l2_mod-&gt;eth_type),
+                   ntohs(l2_mod-&gt;vlan_id));
+
+        seq_printf(m, "mod ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+                   mod_tup-&gt;protocol,
+                   NIPQUAD(mod_tup-&gt;sip), ntohs(mod_tup-&gt;sport),
+                   NIPQUAD(mod_tup-&gt;dip), ntohs(mod_tup-&gt;dport));
+
+        /* HAIM FIXME : replace state with string array */
+        seq_printf(m, "state:%d rx_pkts:%u fwd:%u mod_ops:%#x\n",
+                   dpe-&gt;state,
+                   dpe-&gt;counters.rx_hits, dpe-&gt;counters.fwd_hits,
+                   dpe-&gt;mod_ops);
+
+        return 0;
+}
+
+static const struct seq_operations cls_seq_ops = {
+        .start = dpa_cls_seq_start,
+        .stop = dpa_cls_seq_stop,
+        .next = dpa_cls_seq_next,
+        .show = dpa_cls_seq_show,
+};
+
+static int cls_open(struct inode *inode, struct file *file)
+{
+	return seq_open(file, &amp;cls_seq_ops);
+}
+
+static const struct file_operations cls_fops = {
+        .owner  = THIS_MODULE,
+        .open   = cls_open,
+        .write  = dpa_proc_cls_write,
+        .read   = seq_read,
+        .llseek = seq_lseek,
+        .release = seq_release,
+};
+
+</Insert>
+<Copy StartSeek="2545" EndSeek="2991"/>
+<Insert>  dpa_proc_cls = proc_create("cls", 0666, dpa_proc_dir, &amp;cls_fops);
+</Insert>
+<Copy StartSeek="3053" EndSeek="3127"/>
+<Copy StartSeek="3211" EndSeek="3570"/>
+</Delta>
+<Delta Version="191" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:18:23000">
+<Copy StartSeek="0" EndSeek="2450"/>
+<Insert>      dpa_table_flush();
+</Insert>
+<Copy StartSeek="2473" EndSeek="3568"/>
+</Delta>
+<Delta Version="192" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:18:31000">
+<Copy StartSeek="0" EndSeek="2486"/>
+<Copy StartSeek="2536" EndSeek="3618"/>
+</Delta>
+<Delta Version="193" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:26:23000">
+<Copy StartSeek="0" EndSeek="2486"/>
+<Insert>    case 's':
+</Insert>
+<Copy StartSeek="2500" EndSeek="3618"/>
+</Delta>
+<Delta Version="194" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:26:27000">
+<Copy StartSeek="0" EndSeek="2436"/>
+<Insert>    case 's':
+      dpa_fwd_mode(0);
+      break;
+    case 'd':
+      dpa_fwd_mode(0);
+      break;
+</Insert>
+<Copy StartSeek="2436" EndSeek="3518"/>
+</Delta>
+<Delta Version="195" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:27:50000">
+<Copy StartSeek="0" EndSeek="2436"/>
+<Copy StartSeek="2486" EndSeek="3568"/>
+</Delta>
+<Delta Version="196" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:33:12000">
+<Copy StartSeek="0" EndSeek="2485"/>
+<Copy StartSeek="2534" EndSeek="3617"/>
+</Delta>
+<Delta Version="197" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:33:30000">
+<Copy StartSeek="0" EndSeek="2450"/>
+<Insert>      dpa_fwd_mode();
+</Insert>
+<Copy StartSeek="2473" EndSeek="3618"/>
+</Delta>
+<Delta Version="198" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:34:20000">
+<Copy StartSeek="0" EndSeek="2500"/>
+<Insert>      dpa_fwd_mode();
+</Insert>
+<Copy StartSeek="2523" EndSeek="3619"/>
+</Delta>
+<Delta Version="199" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:34:52000">
+<Copy StartSeek="0" EndSeek="2500"/>
+<Insert>      dpa_fwd_mode(1);
+</Insert>
+<Copy StartSeek="2534" EndSeek="3630"/>
+</Delta>
+<Delta Version="200" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:36:4000">
+<Copy StartSeek="0" EndSeek="2450"/>
+<Insert>      dpa_fwd_mode(0);
+</Insert>
+<Copy StartSeek="2490" EndSeek="3647"/>
+</Delta>
+<Delta Version="201" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:36:30000">
+<Copy StartSeek="0" EndSeek="2450"/>
+<Insert>      dpa_fwd_mode(DPA_MODE_SLOW_PATH);
+</Insert>
+<Copy StartSeek="2491" EndSeek="2518"/>
+<Insert>      dpa_fwd_mode(DPA_MODE_DPA);
+</Insert>
+<Copy StartSeek="2557" EndSeek="3653"/>
+</Delta>
+<Delta Version="202" Comment="" NL="\10" Encoding="text" Date="2013/02/24" Time="15:41:28000">
+<Copy StartSeek="0" EndSeek="2160"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2485" EndSeek="3977"/>
+</Delta>
+</DeltaFile>

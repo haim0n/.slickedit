@@ -1,0 +1,19 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="2" Comment="" Date="2012/06/19" Time="10:10:54000" NL="\10" Encoding="text">
+<Insert>#ifndef KLNA_IP_H
+#define KLNA_IP_H
+
+#endif
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/06/19" Time="10:10:23000">
+<Insert>
+</Insert>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/06/19" Time="10:10:52000">
+<Copy StartSeek="0" EndSeek="36"/>
+<Copy StartSeek="37" EndSeek="45"/>
+</Delta>
+</DeltaFile>

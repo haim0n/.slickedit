@@ -1,0 +1,1778 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1" Comment="" Date="2012/01/03" Time="12:57:26000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2010, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* DESCRIPTION:
+*       
+* 
+*******************************************************************************/
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/module.h&gt;
+#include &lt;linux/version.h&gt;
+
+#ifndef MV_CPU_LE
+#define MV_CPU_LE
+#endif
+
+#include &lt;gbe/mvNeta.h&gt;
+#include &lt;gbe/mvNetaRegs.h&gt;
+#include &lt;gbe/mvEthRegs.h&gt;
+#include &lt;mv_neta/net_dev/mv_netdev.h&gt;
+
+#include "eth_if.h"
+#include &lt;log.h&gt;
+
+
+#if 0
+	#define ETH_IF_INFO(format, args...) printk("&lt;0&gt;"format, ##args)
+	#define ETH_IF_ERROR(format, args...) printk("&lt;0&gt;"format, ##args)
+	#define ETH_IF_DBG(format, args...) printk("&lt;0&gt;"format, ##args)
+#endif
+
+#define ETH_DEBUG
+
+#define ETH_IF_INFO(format, args...) MMP_LOG(0,format, ##args)
+#define ETH_IF_ERROR(format, args...) MMP_LOG(0,format, ##args)
+
+#ifdef ETH_DEBUG
+	#define ETH_IF_DBG(format, args...) MMP_LOG(0,format, ##args)
+#else
+	#define ETH_IF_DBG(format, args...) 
+#endif
+
+#define ETH_HLEN 14
+
+/* Maximum number of ethernet interfaces */
+#define ETH_IF_MAX 3
+
+/* Number of Tx descriptors */
+#define ETH_IF_TX_DESC_NUM   512
+
+/* Number of Rx descriptors */
+#define ETH_IF_RX_DESC_NUM   128
+
+/* Number of buffers in Rx pool */
+#define ETH_IF_RX_POOL_SIZE  ETH_IF_RX_DESC_NUM 
+
+/* Default MTU */
+#define ETH_IF_MTU 1500
+
+/* Rx buffer size: MTU + 2(Marvell Header) + 4(VLAN) + 14(MAC hdr) + 4(CRC) */
+#define ETH_IF_RX_PKT_SIZE(mtu) \
+    MV_ALIGN_UP((mtu) + 2 + 4 + ETH_HLEN + 4, CPU_D_CACHE_LINE_SIZE)
+
+/* Buffer headroom size */
+#define ETH_IF_PKT_PAD 64
+
+/* Size of Rx buffer */
+#define ETH_IF_RX_BUF_SIZE(pkt_size)  ((pkt_size) + ETH_IF_PKT_PAD)
+
+/* Packet buffer */
+typedef struct {
+	MV_ULONG phys_addr;
+	MV_U8*   buf;
+	MV_U16   buf_size;
+} eth_if_pkt_t;
+
+/* Packet buffer pool */
+typedef struct {
+	eth_if_pkt_t* pkt; /* Points to array of packets */
+	int           size; /* Pool size */
+} eth_if_pkt_pool_t;
+
+
+/* Eth interface state */
+typedef struct {
+	bool              init;	/* true if initialized */
+	eth_if_config_t   cfg; /* Configuration and status */
+	MV_NETA_TXQ_CTRL* txq_ctrl; /* Tx queue state */
+	MV_NETA_RXQ_CTRL* rxq_ctrl; /* Rx queue state */
+	eth_if_pkt_pool_t rx_pkt_pool; /* Rx buffers */
+	eth_if_stats_t    stats;
+} eth_if_t;
+
+/* Interface state. TODO Make array when needed */
+static eth_if_t eth_if_list[1];
+
+/******************************* TODO: Ask Dima to move to mvNeta.h ************************/
+
+MV_STATUS mvNetaRxqBufSizeSet(int port, int rxq, int bufSize)
+{
+	MV_U32 regVal;
+
+	regVal = MV_REG_READ(NETA_RXQ_SIZE_REG(port, rxq));
+
+	regVal &amp;= ~NETA_RXQ_BUF_SIZE_MASK;
+	regVal |= ((bufSize &gt;&gt; 3) &lt;&lt; NETA_RXQ_BUF_SIZE_OFFS);
+
+	MV_REG_WRITE(NETA_RXQ_SIZE_REG(port, rxq), regVal);
+
+	return MV_OK;
+}
+
+MV_STATUS mvNetaRxqBmDisable(int port, int rxq)
+{
+	MV_U32 regVal;
+
+	regVal = MV_REG_READ(NETA_RXQ_CONFIG_REG(port, rxq));
+
+	regVal &amp;= ~NETA_RXQ_HW_BUF_ALLOC_MASK;
+
+	MV_REG_WRITE(NETA_RXQ_CONFIG_REG(port, rxq), regVal);
+
+	return MV_OK;
+}
+
+MV_STATUS mvNetaRxqOffsetSet(int port, int rxq, int offset)
+{
+	MV_U32 regVal;
+
+	regVal = MV_REG_READ(NETA_RXQ_CONFIG_REG(port, rxq));
+	regVal &amp;= ~NETA_RXQ_PACKET_OFFSET_ALL_MASK;
+
+	/* Offset is in */
+	regVal |= NETA_RXQ_PACKET_OFFSET_MASK(offset &gt;&gt; 3);
+
+	MV_REG_WRITE(NETA_RXQ_CONFIG_REG(port, rxq), regVal);
+
+	return MV_OK;
+}
+
+static void mvNetaDescrMemoryFree(MV_NETA_PORT_CTRL *pPortCtrl, MV_BUF_INFO *pDescBuf)
+{
+	if ((pDescBuf == NULL) || (pDescBuf-&gt;bufVirtPtr == NULL))
+		return;
+
+#ifdef ETH_DESCR_UNCACHED
+	mvOsIoUncachedFree(pPortCtrl-&gt;osHandle, pDescBuf-&gt;bufSize, pDescBuf-&gt;bufPhysAddr,
+			   pDescBuf-&gt;bufVirtPtr, pDescBuf-&gt;memHandle);
+#else
+	mvOsIoCachedFree(pPortCtrl-&gt;osHandle, pDescBuf-&gt;bufSize, pDescBuf-&gt;bufPhysAddr,
+			 pDescBuf-&gt;bufVirtPtr, pDescBuf-&gt;memHandle);
+#endif /* ETH_DESCR_UNCACHED */
+}
+
+static MV_U8 *mvNetaDescrMemoryAlloc(MV_NETA_PORT_CTRL *pPortCtrl, int descSize,
+				     MV_ULONG *pPhysAddr, MV_U32 *memHandle)
+{
+	MV_U8 *pVirt;
+
+#ifdef ETH_DESCR_UNCACHED
+	pVirt = (MV_U8 *)mvOsIoUncachedMalloc(pPortCtrl-&gt;osHandle, descSize, pPhysAddr, memHandle);
+#else
+	pVirt = (MV_U8 *)mvOsIoCachedMalloc(pPortCtrl-&gt;osHandle, descSize, pPhysAddr, memHandle);
+#endif /* ETH_DESCR_UNCACHED */
+
+	if (pVirt)
+		memset(pVirt, 0, descSize);
+
+	return pVirt;
+}
+
+static void mvNetaDescRingReset(MV_NETA_QUEUE_CTRL *pQueueCtrl)
+{
+	int   descrNum = (pQueueCtrl-&gt;lastDesc + 1);
+	char  *pDesc = pQueueCtrl-&gt;pFirst;
+
+	if (pDesc == NULL)
+		return;
+
+	/* reset ring of descriptors */
+	memset(pDesc, 0, (descrNum * NETA_DESC_ALIGNED_SIZE));
+	mvOsCacheFlush(NULL, pDesc, (descrNum * NETA_DESC_ALIGNED_SIZE));
+	pQueueCtrl-&gt;nextToProc = 0;
+}
+/******************************* TODO: Ask Dima to move to mvNeta.h ************************/
+
+/*** Misc routines ***/
+
+/* Flush Tx descriptors from cache to ram */
+static void eth_if_tx_desc_flush(struct neta_tx_desc *tx_desc)
+{
+#if defined(MV_CPU_BE)
+	mvNetaTxqDescSwap(tx_desc);
+#endif /* MV_CPU_BE */
+
+	mvOsCacheLineFlush(NULL, tx_desc);
+}
+
+/* Destroy packet pool */
+static void eth_if_destroy_pkt_pool(eth_if_pkt_pool_t* pool) {
+	eth_if_pkt_t *pkt;
+	int i;
+
+	if (pool) {
+		for (i = 0; i &lt; pool-&gt;size; i++) {
+			pkt = &amp;pool-&gt;pkt[i];
+			if (pkt-&gt;buf) {
+				mvOsFree(pkt-&gt;buf);
+				pkt-&gt;buf = NULL;
+			}
+		}
+
+		mvOsFree(pool-&gt;pkt);
+		pool-&gt;pkt = NULL;
+		pool-&gt;size = 0;
+	}
+}
+
+/* Create packet pool */
+static int eth_if_create_pkt_pool(eth_if_pkt_pool_t* pool, int pool_size, int buf_size) {
+	eth_if_pkt_t *pkt;
+	int i;
+
+	if (pool == NULL) {
+		return -1;
+	}
+
+	pool-&gt;size = 0;
+
+	pool-&gt;pkt = (eth_if_pkt_t *) mvOsMalloc(pool_size * sizeof(eth_if_pkt_t));
+	if (pool-&gt;pkt == NULL) {
+		ETH_IF_ERROR("Can't alloc Rx pool, %d bytes", pool_size * sizeof(eth_if_pkt_t));
+
+		return -1;
+	}
+	pool-&gt;size = pool_size;
+	memset(pool-&gt;pkt, 0, sizeof(pool_size * sizeof(eth_if_pkt_t)));
+
+	for (i = 0; i &lt; pool_size; i++) {
+		pkt = &amp;pool-&gt;pkt[i];       
+		pkt-&gt;buf = mvOsMalloc(buf_size); /* TODO DO we need it aligned? */       
+		if (pkt-&gt;buf == NULL) {
+			ETH_IF_ERROR("Can't allocate packet buffer for pool, %d bytes.", buf_size);
+			eth_if_destroy_pkt_pool(pool);
+
+			return -1;
+		}
+		pkt-&gt;buf_size = buf_size;
+		pkt-&gt;phys_addr = mvOsCacheInvalidate(NULL, pkt-&gt;buf, buf_size);
+	}
+
+	return 0;
+}
+
+static void eth_if_reset_stats(eth_if_t *eth_if) {
+	if (eth_if) {
+		memset(&amp;eth_if-&gt;stats, 0, sizeof(eth_if_stats_t));
+	}
+}
+
+/*** Queue management routines ***/
+
+/* Allocate and init Tx Queue */
+static MV_NETA_TXQ_CTRL* eth_if_txq_init(int port, int queue, int descr_num)
+{
+	MV_NETA_TXQ_CTRL *txq;
+	MV_NETA_QUEUE_CTRL *q;
+	int desc_size;
+	MV_NETA_PORT_CTRL dummy; 
+
+	/* Allocate TxQ */
+	txq = mvOsMalloc(sizeof(MV_NETA_TXQ_CTRL));
+	if (txq == NULL) {
+		ETH_IF_ERROR("Failed to alloc %d bytes for Tx Queue!! ", sizeof(MV_NETA_TXQ_CTRL));
+		return NULL;
+	}
+	memset(txq, 0, sizeof(MV_NETA_TXQ_CTRL));
+	q = &amp;txq-&gt;queueCtrl;
+
+	/* Allocate memory for TX descriptors */
+	desc_size = ((descr_num * NETA_DESC_ALIGNED_SIZE) + CPU_D_CACHE_LINE_SIZE);
+	/* TODO Ask Dima to allow passing excplicitly osHandle as 1-st argument to mvNetaDescrMemoryAlloc
+	   instead of MV_NETA_PORT_CTRL */
+	q-&gt;descBuf.bufVirtPtr =
+	mvNetaDescrMemoryAlloc(&amp;dummy, desc_size, &amp;q-&gt;descBuf.bufPhysAddr, &amp;q-&gt;descBuf.memHandle);
+	q-&gt;descBuf.bufSize = desc_size;
+
+	if (q-&gt;descBuf.bufVirtPtr == NULL) {
+		ETH_IF_ERROR("txQ=%d: Can't allocate %d bytes for %d TX descr", queue, desc_size, descr_num);
+		mvOsFree(txq);
+		return NULL;
+	}
+
+	/* Make sure descriptor address is cache line size aligned  */
+	q-&gt;pFirst = (char *)MV_ALIGN_UP((MV_ULONG) q-&gt;descBuf.bufVirtPtr, CPU_D_CACHE_LINE_SIZE);
+	q-&gt;lastDesc = (descr_num - 1);
+
+	mvNetaDescRingReset(q);
+
+	/* Set maximum bandwidth for enabled TXQs */
+#ifdef MV_ETH_WRR_NEW
+	MV_REG_WRITE(NETA_TXQ_TOKEN_CNTR_REG(port, 0 /* txp */, queue), NETA_TXQ_TOKEN_CNTR_MAX);
+#else
+	MV_REG_WRITE(ETH_TXQ_TOKEN_CFG_REG(port, 0 /* txp */, queue), 0x03ffffff);
+	MV_REG_WRITE(ETH_TXQ_TOKEN_COUNT_REG(port, 0 /* txp */, queue), 0x3fffffff);
+#endif /* MV_ETH_WRR_NEW */
+
+	/* Set Tx descriptors queue starting address */
+	MV_REG_WRITE(NETA_TXQ_BASE_ADDR_REG(port, 0 /* txp */, queue), netaDescVirtToPhys(q, q-&gt;pFirst));
+	MV_REG_WRITE(NETA_TXQ_SIZE_REG(port, 0 /* txp */, queue), NETA_TXQ_DESC_NUM_MASK(descr_num));
+
+	return txq;
+}
+
+
+static int eth_if_txq_shutdown(MV_NETA_TXQ_CTRL *txq_ctrl, int port, int queue)
+{
+	MV_NETA_QUEUE_CTRL *q;
+	MV_NETA_PORT_CTRL  dummy;
+
+	if (txq_ctrl == NULL) {
+		return -1;
+	}
+
+	q = &amp;txq_ctrl-&gt;queueCtrl;
+
+	/**** maxk - Temp Experiment!!!! - reset of entire Tx port ***/
+	MV_REG_WRITE(NETA_PORT_TX_RESET_REG(port, 0), NETA_PORT_TX_DMA_RESET_MASK);
+	/**** maxk - Temp Experiment!!!! - reset of entire Tx port ***/
+
+	/* Reset descriptors */
+	mvNetaDescRingReset(q);
+
+	/**** maxk - Temp Experiment!!!! - reset of entire Tx port ***/
+	MV_REG_WRITE(NETA_PORT_TX_RESET_REG(port, 0), 0);
+	/**** maxk - Temp Experiment!!!! - reset of entire Tx port ***/
+
+	/* Release descriptors memory */
+	mvNetaDescrMemoryFree(&amp;dummy, &amp;q-&gt;descBuf);
+	memset(q, 0, sizeof(*q));
+
+	/* Set minimum bandwidth for disabled TXQs */
+#ifdef MV_ETH_WRR_NEW
+	MV_REG_WRITE(NETA_TXQ_TOKEN_CNTR_REG(port, 0 /* txp */, queue), 0);
+#else
+	MV_REG_WRITE(ETH_TXQ_TOKEN_CFG_REG(port, 0 /* txp */, queue), 0);
+	MV_REG_WRITE(ETH_TXQ_TOKEN_COUNT_REG(port, 0 /* txp */, queue), 0);
+#endif /* MV_ETH_WRR_NEW */
+
+	/* Reset Tx descriptors queue starting address and size */
+	MV_REG_WRITE(NETA_TXQ_BASE_ADDR_REG(port, 0 /* txp */, queue), 0);
+	MV_REG_WRITE(NETA_TXQ_SIZE_REG(port, 0 /* txp */, queue), 0);
+
+	/* Free TxQ memory */
+	mvOsFree(txq_ctrl);
+
+	return 0;
+}
+
+int eth_if_txq_reinit(void)
+{
+	eth_if_t *eth_if = &amp;eth_if_list[0];
+
+	/* Initialized? */
+	if (!eth_if-&gt;init) {
+		ETH_IF_DBG("Not init.");
+		return -1;
+	}
+
+	MV_REG_WRITE(NETA_PORT_TX_RESET_REG(eth_if-&gt;cfg.port, 0), NETA_PORT_TX_DMA_RESET_MASK);
+
+	/* Destroy descriptors for TXQ */
+	if (eth_if-&gt;txq_ctrl) {
+		eth_if_txq_shutdown(eth_if-&gt;txq_ctrl, eth_if-&gt;cfg.port, eth_if-&gt;cfg.txq);
+		eth_if-&gt;txq_ctrl = NULL;
+	}
+
+	MV_REG_WRITE(NETA_PORT_TX_RESET_REG(eth_if-&gt;cfg.port, 0), 0);
+
+	eth_if-&gt;txq_ctrl = eth_if_txq_init(eth_if-&gt;cfg.port, eth_if-&gt;cfg.txq, ETH_IF_TX_DESC_NUM);
+
+	return 0;
+}
+
+/* Alloc and init Rx Q */
+static MV_NETA_RXQ_CTRL* eth_if_rxq_init(int port, int queue, eth_if_pkt_pool_t* pkt_pool)
+{
+	MV_NETA_RXQ_CTRL *rxq_ctrl;
+	MV_NETA_QUEUE_CTRL *q;
+	int descr_size, descr_num, i;
+	MV_NETA_PORT_CTRL dummy; 
+	eth_if_pkt_t *pkt;  
+	struct neta_rx_desc *rx_desc;
+
+	if (pkt_pool == NULL) {
+		ETH_IF_ERROR("Packet pool NULL.");
+		return NULL;
+	}
+
+	descr_num = pkt_pool-&gt;size;
+
+	/* Allocate RxQ */
+	rxq_ctrl = mvOsMalloc(sizeof(MV_NETA_RXQ_CTRL));
+	if (rxq_ctrl == NULL) {
+		ETH_IF_ERROR("Can't alloc %d bytes for Rx queue control.", sizeof(MV_NETA_RXQ_CTRL));
+		return NULL;
+	}
+	memset(rxq_ctrl, 0, sizeof(MV_NETA_RXQ_CTRL));
+	q = &amp;rxq_ctrl-&gt;queueCtrl;
+
+	/* Allocate memory for RX descriptors */
+	descr_size = ((descr_num * NETA_DESC_ALIGNED_SIZE) + CPU_D_CACHE_LINE_SIZE);
+	q-&gt;descBuf.bufVirtPtr =
+	mvNetaDescrMemoryAlloc(&amp;dummy, descr_size, &amp;q-&gt;descBuf.bufPhysAddr, &amp;q-&gt;descBuf.memHandle);
+	q-&gt;descBuf.bufSize = descr_size;
+
+	if (q-&gt;descBuf.bufVirtPtr == NULL) {
+		ETH_IF_ERROR("Can't allocate %d bytes for %d TX descr for Rx Q %d", descr_size, descr_num, queue);
+		mvOsFree(rxq_ctrl);
+		return NULL;
+	}
+
+	/* Make sure descriptor address is cache line size aligned  */
+	q-&gt;pFirst = (char *)MV_ALIGN_UP((MV_ULONG) q-&gt;descBuf.bufVirtPtr, CPU_D_CACHE_LINE_SIZE);
+	q-&gt;lastDesc = (descr_num - 1);
+
+	mvNetaDescRingReset(q);
+
+	/* Set Rx descriptors queue starting address */
+	MV_REG_WRITE(NETA_RXQ_BASE_ADDR_REG(port, queue),
+		     netaDescVirtToPhys(q, q-&gt;pFirst));
+	MV_REG_WRITE(NETA_RXQ_SIZE_REG(port, queue), descr_num);
+
+	/* Set Offset */
+	mvNetaRxqOffsetSet(port, queue, 0 /* TODO change to some headroom? */);
+
+	/* Fill RXQ with buffers from RX pool */
+	mvNetaRxqBufSizeSet(port, queue, pkt_pool-&gt;pkt[0].buf_size);
+	mvNetaRxqBmDisable(port, queue);
+	for (i = 0; i &lt; descr_num; i++) {
+		rx_desc = (struct neta_rx_desc *)MV_NETA_QUEUE_DESC_PTR(q, i);
+		memset(rx_desc, 0, sizeof(*rx_desc));
+		pkt = &amp;pkt_pool-&gt;pkt[i];
+		mvNetaRxDescFill(rx_desc, pkt-&gt;phys_addr, (MV_U32)pkt);
+	}
+	mvNetaRxqNonOccupDescAdd(port, queue, descr_num);
+
+	return rxq_ctrl; 
+}
+
+/* SHutdown RX Q */
+static int eth_if_rxq_shutdown(MV_NETA_RXQ_CTRL *rxq_ctrl, int port, int queue)
+{
+	MV_NETA_QUEUE_CTRL *q;
+	MV_NETA_PORT_CTRL dummy;
+
+	if (rxq_ctrl == NULL) {
+		return -1;
+	}
+
+	q = &amp;rxq_ctrl-&gt;queueCtrl;
+
+	/* Reset descriptors */
+	mvNetaDescRingReset(q);
+
+	/* Release descriptors memory */
+	mvNetaDescrMemoryFree(&amp;dummy, &amp;q-&gt;descBuf);
+	memset(q, 0, sizeof(*q));
+
+	/* Clear Rx descriptors queue starting address and size */
+	MV_REG_WRITE(NETA_RXQ_BASE_ADDR_REG(port, queue), 0);
+	MV_REG_WRITE(NETA_RXQ_SIZE_REG(port, queue), 0);
+
+	/* Free TxQ memory */
+	mvOsFree(rxq_ctrl);
+
+	return 0;
+}
+
+/* Enable Tx queue */
+static int eth_if_enable_tx_queue(eth_if_t *eth_if)
+{
+	uint32_t qMap;
+
+	if (eth_if == NULL || eth_if-&gt;txq_ctrl == NULL) {
+		return -1;
+	}
+
+	/* Enable TX queue */
+	qMap = MV_REG_READ(ETH_TX_QUEUE_COMMAND_REG(eth_if-&gt;cfg.port, 0/* txp*/));
+	if (eth_if-&gt;txq_ctrl-&gt;queueCtrl.pFirst != NULL) {
+		qMap |= (1 &lt;&lt; eth_if-&gt;cfg.txq);
+	}
+	MV_REG_WRITE (ETH_TX_QUEUE_COMMAND_REG(eth_if-&gt;cfg.port, 0/* txp*/), qMap);
+
+	return 0;
+}
+
+/* Enable Rx queue */
+static int eth_if_enable_rx_queue(eth_if_t *eth_if)
+{
+	MV_U32 qMap;
+
+	if (eth_if == NULL || eth_if-&gt;rxq_ctrl == NULL) {
+		return -1;
+	}
+
+	/* Enable Rx queue */
+	qMap = MV_REG_READ(ETH_TX_QUEUE_COMMAND_REG(eth_if-&gt;cfg.port, 0/* txp*/));
+	if (eth_if-&gt;rxq_ctrl-&gt;queueCtrl.pFirst != NULL) {
+		qMap |= (1 &lt;&lt; eth_if-&gt;cfg.rxq);
+	}
+
+	MV_REG_WRITE(ETH_RX_QUEUE_COMMAND_REG(eth_if-&gt;cfg.port), qMap);
+
+	return 0;
+}
+
+/*** ETH IF state change routines ***/
+
+/* Terminate eth interface */
+int eth_if_shutdown(void)
+{
+	eth_if_t *eth_if = &amp;eth_if_list[0];
+
+	/* Initialized? */
+	if (!eth_if-&gt;init) {
+		ETH_IF_DBG("Not init.");
+		return -1;
+	}
+
+	/* Destroy descriptors for TXQ */
+	if (eth_if-&gt;txq_ctrl) {
+		eth_if_txq_shutdown(eth_if-&gt;txq_ctrl, eth_if-&gt;cfg.port, eth_if-&gt;cfg.txq);
+		eth_if-&gt;txq_ctrl = NULL;
+	}
+
+	/* Destroy descriptors for RXQ */
+	if (eth_if-&gt;rxq_ctrl) {
+		eth_if_rxq_shutdown(eth_if-&gt;rxq_ctrl, eth_if-&gt;cfg.port, eth_if-&gt;cfg.rxq);
+		eth_if-&gt;rxq_ctrl = NULL;
+	}
+
+	/* Free Rx packet pool */
+	eth_if_destroy_pkt_pool(&amp;eth_if-&gt;rx_pkt_pool);
+
+	//////// TEST ////////////
+	//MV_REG_WRITE(NETA_PORT_TX_RESET_REG(eth_if-&gt;cfg.port, 0), 0);
+	//MV_REG_WRITE(NETA_PORT_RX_RESET_REG(eth_if-&gt;cfg.port), 0);
+
+	ETH_IF_INFO("Eth port %d terminated.", eth_if-&gt;cfg.port);
+
+	eth_if-&gt;init = false;
+
+	return 0;
+}
+
+
+/* Initialize eth interface */
+int eth_if_init(eth_if_config_t* cfg) 
+{
+	eth_if_t *eth_if = &amp;eth_if_list[0];
+
+	/* Already initialized? */
+	if (eth_if-&gt;init) {
+		ETH_IF_DBG("Already init.");
+		return 0;
+	}
+
+	/* Validate parameters */
+	if (cfg == NULL) {
+		ETH_IF_ERROR("Network interface config: NULL argument passed.");
+		goto eth_if_init_fail;
+	}
+
+	if (cfg-&gt;state == ETH_IF_STATE_NONE) {
+		ETH_IF_ERROR("Network interface config: Status is none.");
+		goto eth_if_init_fail;
+	}
+
+	if (cfg-&gt;port &gt; ETH_IF_MAX /* TODO add const */) {
+		ETH_IF_ERROR("Network interface config: Port out of range (%d).", cfg-&gt;port);
+		goto eth_if_init_fail;
+	}
+
+	if (cfg-&gt;rxq &lt; CONFIG_MV_ETH_RXQ || cfg-&gt;rxq &gt; 8 /* TODO add const */) {
+		ETH_IF_ERROR("Network interface config: Rx queue out of range (%d), CONFIG_MV_ETH_RXQ %d.", cfg-&gt;rxq, CONFIG_MV_ETH_RXQ);
+		goto eth_if_init_fail;
+	}
+
+	if (cfg-&gt;txq &lt; CONFIG_MV_ETH_TXQ || cfg-&gt;txq &gt; 8 /* TODO add const */) {
+		ETH_IF_ERROR("Network interface config: Tx queue out of range (%d), CONFIG_MV_ETH_TXQ %d", cfg-&gt;txq, CONFIG_MV_ETH_TXQ);
+		goto eth_if_init_fail;
+	}
+
+	memcpy(&amp;eth_if-&gt;cfg, cfg, sizeof(*cfg));
+
+	/* Create descriptors for TXQ */
+	eth_if-&gt;txq_ctrl = eth_if_txq_init(cfg-&gt;port, cfg-&gt;txq, ETH_IF_TX_DESC_NUM);
+	if (eth_if-&gt;txq_ctrl == NULL) {
+		goto eth_if_init_fail;
+	}
+
+	/* Create Rx packet pool */
+	if (eth_if_create_pkt_pool(&amp;eth_if-&gt;rx_pkt_pool, ETH_IF_RX_DESC_NUM, 
+				   ETH_IF_RX_BUF_SIZE(ETH_IF_RX_PKT_SIZE(ETH_IF_MTU)))) {
+		goto eth_if_init_fail;
+	}
+
+	/* Create descriptors for RXQ */
+	eth_if-&gt;rxq_ctrl = eth_if_rxq_init(cfg-&gt;port, cfg-&gt;rxq, &amp;eth_if-&gt;rx_pkt_pool);
+	if (eth_if-&gt;rxq_ctrl == NULL) {
+		goto eth_if_init_fail;
+	}
+
+	/* Enable traffic on Rx and Tx queues */
+	if (cfg-&gt;state == ETH_IF_STATE_UP) {
+		eth_if_enable_rx_queue(eth_if);
+		eth_if_enable_tx_queue(eth_if);
+	}
+
+	eth_if_reset_stats(eth_if);
+
+	eth_if-&gt;init = true;
+
+	ETH_IF_INFO("Eth port %d initialized.", eth_if-&gt;cfg.port);
+
+	return 0;
+
+	eth_if_init_fail:
+	eth_if_shutdown();
+
+	return -1;
+}
+
+/* Interface up */
+int eth_if_up(int port) 
+{
+	eth_if_t *eth_if;
+
+	/* TODO replace by lookup when supporting multiple ports */
+	eth_if = &amp;eth_if_list[0];
+	if (port != eth_if-&gt;cfg.port) {
+		ETH_IF_ERROR("Can't bring up the port, port invalid %d.", port);
+		return -1;
+	}
+
+	if (eth_if-&gt;txq_ctrl == NULL || eth_if-&gt;rxq_ctrl == NULL) {
+		ETH_IF_ERROR("Can't bring up the port, state invalid.");
+		return -1;
+	}
+
+	if (eth_if-&gt;cfg.state == ETH_IF_STATE_UP) {
+		return 0;
+	}
+
+	/* Enable traffic */
+	eth_if_enable_rx_queue(eth_if);
+	eth_if_enable_tx_queue(eth_if);
+
+	eth_if-&gt;cfg.state = ETH_IF_STATE_UP;
+
+	ETH_IF_INFO("Eth port %d up.", eth_if-&gt;cfg.port);
+
+	return 0;
+}
+
+/* Interface down */
+int eth_if_down(int port) 
+{
+	eth_if_t      *eth_if;
+
+	/* TODO replace by lookup when supporting multiple ports */
+	eth_if = &amp;eth_if_list[0];
+	if (port != eth_if-&gt;cfg.port) {
+		ETH_IF_ERROR("Can't bring down the port, port invalid %d.", port);
+		return -1;
+	}
+
+	if (eth_if-&gt;txq_ctrl == NULL || eth_if-&gt;rxq_ctrl == NULL) {
+		ETH_IF_ERROR("Can't bring down the port, state invalid.");
+		return -1;
+	}
+
+	if (eth_if-&gt;cfg.state == ETH_IF_STATE_DOWN) {
+		return 0;
+	}
+
+	/* Reset descriptors */
+	mvNetaDescRingReset(&amp;eth_if-&gt;rxq_ctrl-&gt;queueCtrl);
+	mvNetaDescRingReset(&amp;eth_if-&gt;txq_ctrl-&gt;queueCtrl);
+
+	/* Reset stats */
+	eth_if_reset_stats(eth_if);
+
+	eth_if-&gt;cfg.state = ETH_IF_STATE_DOWN;
+
+	ETH_IF_INFO("Eth port %d down.", eth_if-&gt;cfg.port);
+
+	return 0;
+}
+
+/* Interface reset */
+int eth_if_reset(int port) 
+{
+	eth_if_t      *eth_if;
+
+	/* TODO replace by lookup when supporting multiple ports */
+	eth_if = &amp;eth_if_list[0];
+	if (port != eth_if-&gt;cfg.port) {
+		ETH_IF_ERROR("Can't reset port, port invalid %d.", port);
+		return -1;
+	}
+
+	if (eth_if-&gt;txq_ctrl == NULL || eth_if-&gt;rxq_ctrl == NULL) {
+		ETH_IF_ERROR("Can't reset the port, state invalid.");
+		return -1;
+	}
+
+	if (eth_if-&gt;cfg.state == ETH_IF_STATE_DOWN) {
+		return 0;
+	}
+
+	/* Reset descriptors */
+	mvNetaDescRingReset(&amp;eth_if-&gt;rxq_ctrl-&gt;queueCtrl);
+	mvNetaDescRingReset(&amp;eth_if-&gt;txq_ctrl-&gt;queueCtrl);
+
+	/* Reset stats */
+	eth_if_reset_stats(eth_if);
+
+	return 0;
+}
+
+/* Transmit packet */
+int eth_if_tx(int port, void* data, int size)
+{
+	NETA_TX_DESC* tx_desc = NULL;
+	u32           command;
+	eth_if_t      *eth_if;
+
+	/* TODO replace by lookup when supporting multiple ports */
+	eth_if = &amp;eth_if_list[0];
+	if (port != eth_if-&gt;cfg.port) {
+		ETH_IF_DBG("Can't transmit a packet, specified port invalid %d.", port);
+		return -1;
+	}
+
+	if (eth_if-&gt;txq_ctrl == NULL || 
+	    eth_if-&gt;cfg.state == ETH_IF_STATE_DOWN) {
+		return -1;
+	}
+
+	/* Descriptor to use */
+	tx_desc = mvNetaTxqNextDescGet(eth_if-&gt;txq_ctrl);
+	if (NULL == tx_desc) {
+		ETH_IF_DBG("Can't get descriptor for Tx");
+		eth_if-&gt;stats.tx_errors++;
+
+		return -1;
+	}
+
+	/* Calculate IPv4 checksum and L4 checksum */
+	/* TODO Specify correct flags */
+	command = 0; 
+	command |= NETA_TX_F_DESC_MASK | NETA_TX_L_DESC_MASK;
+	//command |= (ip4h-&gt;ihl &lt;&lt; NETA_TX_IP_HLEN_OFFS) | NETA_TX_L3_IP4;
+	//command |= (NETA_TX_L4_UDP | NETA_TX_L4_CSUM_FULL);
+
+	tx_desc-&gt;dataSize = size;
+	tx_desc-&gt;bufPhysAddr = mvOsCacheFlush(NULL, data, size);
+	tx_desc-&gt;command = command;
+	tx_desc-&gt;hw_cmd = 0;
+
+	/* Flush cache to RAM */
+	eth_if_tx_desc_flush(tx_desc);
+
+	/* Enable transmit */
+	mvNetaTxqPendDescAdd(eth_if-&gt;cfg.port, 0 /* txp */, eth_if-&gt;cfg.txq, 1 /* num of descriptors */);
+
+	eth_if-&gt;stats.tx_pkts++;
+	eth_if-&gt;stats.tx_bytes += size;
+
+	////////////// DEBUG ///////
+	if (((eth_if-&gt;stats.tx_pkts) % 100) == 0) {
+		ETH_IF_DBG(" eth_if pkts sent %d", eth_if-&gt;stats.tx_pkts);
+	}
+
+	return 0;
+}
+
+
+/* Recv packets up to a budget */
+int eth_if_rx(int port, int rx_todo)
+{
+	eth_if_t           *eth_if;
+	int                 rx_done, rx_filled, rx_bytes;
+	struct neta_rx_desc *rx_desc;
+	eth_if_pkt_t        *pkt;
+	char                *data;
+	uint32_t            rx_status;
+
+	/* TODO replace by lookup when supporting multiple ports */
+	eth_if = &amp;eth_if_list[0];
+	if (port != eth_if-&gt;cfg.port) {
+		ETH_IF_DBG("Can't recv, specified port invalid %d.", port);
+		return -1;
+	}
+
+	if (eth_if-&gt;txq_ctrl == NULL || 
+	    eth_if-&gt;cfg.state == ETH_IF_STATE_DOWN) {
+		return -1;
+	}
+
+	/* Get number of received packets */
+	rx_done = mvNetaRxqBusyDescNumGet(eth_if-&gt;cfg.port, eth_if-&gt;cfg.rxq);
+	if (rx_done == 0) {
+		return 0;
+	}
+
+	ETH_IF_DBG("&lt;&lt;&lt;&lt;============= mmp_eth_rx: %d pkts RX pending", rx_done);
+	mvOsCacheIoSync();
+
+	if (rx_todo &gt; rx_done)
+		rx_todo = rx_done;
+
+	rx_done = 0;
+	rx_filled = 0;
+
+	/* Fairness NAPI loop */
+	while (rx_done &lt; rx_todo) {
+
+		/* TODO consider more sophisticated prefetch: see mv_netdev.c, CONFIG_MV_ETH_RX_DESC_PREFETCH */
+		rx_desc = mvNetaRxqNextDescGet(eth_if-&gt;rxq_ctrl);
+		mvOsCacheLineInv(NULL, rx_desc);
+		prefetch(rx_desc);
+
+		rx_done++;
+		rx_filled++;
+		rx_status = rx_desc-&gt;status;
+		pkt = (eth_if_pkt_t *)rx_desc-&gt;bufCookie;
+
+		/* Speculative ICache prefetch WA: should be replaced with dma_unmap_single (invalidate l2) */
+		mvOsCacheMultiLineInv(NULL, pkt-&gt;buf, rx_desc-&gt;dataSize);
+		/* TODO consider prefetch: see mv_netdev.c, CONFIG_MV_ETH_RX_PKT_PREFETCH */
+
+		ETH_IF_DBG("Pkt %d [0x%x], status 0x%x, dataSize %d", rx_done, (u32) pkt, rx_status, rx_desc-&gt;dataSize);
+
+		if (((rx_status &amp; NETA_RX_FL_DESC_MASK) != NETA_RX_FL_DESC_MASK) ||
+		    (rx_status &amp; NETA_RX_ES_MASK)) {
+
+			ETH_IF_DBG("!!!!!!!!!!!!!!!!!!!!!!!!!!! RX ERROR");
+
+			eth_if-&gt;stats.rx_errors++;
+
+			mvNetaRxDescFill(rx_desc, pkt-&gt;phys_addr, (MV_U32)pkt);
+			continue;
+		}
+
+		rx_bytes = rx_desc-&gt;dataSize - (MV_ETH_CRC_SIZE + MV_ETH_MH_SIZE);
+		data = pkt-&gt;buf + MV_ETH_MH_SIZE;
+
+		eth_if-&gt;stats.rx_pkts++;
+		eth_if-&gt;stats.rx_bytes += rx_bytes;
+
+		/* Process recved data */
+		if (eth_if-&gt;cfg.rx_callback != NULL) {
+			eth_if-&gt;cfg.rx_callback(eth_if-&gt;cfg.port, data, rx_bytes);
+		}
+
+		/* Refill pkt */
+		mvNetaRxDescFill(rx_desc, pkt-&gt;phys_addr, (MV_U32)pkt);
+	}
+
+	/* Update RxQ management counters */
+	mvOsCacheIoSync();
+	mvNetaRxqDescNumUpdate(eth_if-&gt;cfg.port, eth_if-&gt;cfg.rxq, rx_done, rx_filled);
+
+	ETH_IF_DBG("============= mmp_eth_rx: rx_done %d, rx_filled %d =========================&gt;&gt;&gt;&gt;", rx_done, rx_filled);
+
+	return rx_done;
+}
+
+/* Get stats */
+int eth_if_get_stats(int port, eth_if_stats_t *stats)
+{
+	eth_if_t *eth_if;
+
+	/* TODO replace by lookup when supporting multiple ports */
+	eth_if = &amp;eth_if_list[0];
+	if (port != eth_if-&gt;cfg.port) {
+		ETH_IF_ERROR("Can't get stats, specified port invalid %d.", port);
+		return -1;
+	}
+
+	if (stats == NULL) {
+		ETH_IF_ERROR("Can't get stats, argumet is NULL.");
+		return -1;
+	}
+
+	memcpy(stats, &amp;eth_if-&gt;stats, sizeof(eth_if_stats_t));
+
+	return 0;
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/01/03" Time="12:39:36000">
+<Copy StartSeek="0" EndSeek="628"/>
+<Insert>  #define MV_CPU_LE
+</Insert>
+<Copy StartSeek="646" EndSeek="818"/>
+<Insert>#define ETH_IF_INFO(format, args...) printk("&lt;0&gt;"format, ##args)
+#define ETH_IF_ERROR(format, args...) printk("&lt;0&gt;"format, ##args)
+#define ETH_IF_DBG(format, args...) printk("&lt;0&gt;"format, ##args)
+</Insert>
+<Copy StartSeek="1016" EndSeek="1188"/>
+<Insert>  #define ETH_IF_DBG(format, args...) MMP_LOG(0,format, ##args)
+</Insert>
+<Copy StartSeek="1251" EndSeek="1257"/>
+<Insert>  #define ETH_IF_DBG(format, args...) 
+</Insert>
+<Copy StartSeek="1295" EndSeek="2015"/>
+<Insert>  MV_ULONG phys_addr;
+  MV_U8*   buf;
+  MV_U16   buf_size;
+</Insert>
+<Copy StartSeek="2071" EndSeek="2130"/>
+<Insert>  eth_if_pkt_t* pkt; /* Points to array of packets */
+  int           size; /* Pool size */
+</Insert>
+<Copy StartSeek="2220" EndSeek="2269"/>
+<Insert>typedef struct
+{
+  bool              init; /* true if initialized */
+  eth_if_config_t   cfg; /* Configuration and status */
+  MV_NETA_TXQ_CTRL* txq_ctrl; /* Tx queue state */
+  MV_NETA_RXQ_CTRL* rxq_ctrl; /* Rx queue state */
+  eth_if_pkt_pool_t rx_pkt_pool; /* Rx buffers */
+  eth_if_stats_t    stats;
+</Insert>
+<Copy StartSeek="2567" EndSeek="2823"/>
+<Insert>  MV_U32 regVal;
+</Insert>
+<Copy StartSeek="2839" EndSeek="2840"/>
+<Insert>  regVal = MV_REG_READ(NETA_RXQ_SIZE_REG(port, rxq));
+</Insert>
+<Copy StartSeek="2893" EndSeek="2894"/>
+<Insert>  regVal &amp;= ~NETA_RXQ_BUF_SIZE_MASK;
+  regVal |= ((bufSize &gt;&gt; 3) &lt;&lt; NETA_RXQ_BUF_SIZE_OFFS);
+</Insert>
+<Copy StartSeek="2985" EndSeek="2986"/>
+<Insert>  MV_REG_WRITE(NETA_RXQ_SIZE_REG(port, rxq), regVal);
+</Insert>
+<Copy StartSeek="3039" EndSeek="3040"/>
+<Insert>  return MV_OK;
+</Insert>
+<Copy StartSeek="3055" EndSeek="3108"/>
+<Insert>  MV_U32 regVal;
+</Insert>
+<Copy StartSeek="3124" EndSeek="3125"/>
+<Insert>  regVal = MV_REG_READ(NETA_RXQ_CONFIG_REG(port, rxq));
+</Insert>
+<Copy StartSeek="3180" EndSeek="3181"/>
+<Insert>  regVal &amp;= ~NETA_RXQ_HW_BUF_ALLOC_MASK;
+</Insert>
+<Copy StartSeek="3221" EndSeek="3222"/>
+<Insert>  MV_REG_WRITE(NETA_RXQ_CONFIG_REG(port, rxq), regVal);
+</Insert>
+<Copy StartSeek="3277" EndSeek="3278"/>
+<Insert>  return MV_OK;
+</Insert>
+<Copy StartSeek="3293" EndSeek="3358"/>
+<Insert>  MV_U32 regVal;
+</Insert>
+<Copy StartSeek="3374" EndSeek="3375"/>
+<Insert>  regVal = MV_REG_READ(NETA_RXQ_CONFIG_REG(port, rxq));
+  regVal &amp;= ~NETA_RXQ_PACKET_OFFSET_ALL_MASK;
+</Insert>
+<Copy StartSeek="3475" EndSeek="3476"/>
+<Insert>  /* Offset is in */
+  regVal |= NETA_RXQ_PACKET_OFFSET_MASK(offset &gt;&gt; 3);
+</Insert>
+<Copy StartSeek="3549" EndSeek="3550"/>
+<Insert>  MV_REG_WRITE(NETA_RXQ_CONFIG_REG(port, rxq), regVal);
+</Insert>
+<Copy StartSeek="3605" EndSeek="3606"/>
+<Insert>  return MV_OK;
+</Insert>
+<Copy StartSeek="3621" EndSeek="3713"/>
+<Insert>  if ((pDescBuf == NULL) || (pDescBuf-&gt;bufVirtPtr == NULL))
+    return;
+</Insert>
+<Copy StartSeek="3782" EndSeek="3809"/>
+<Insert>  mvOsIoUncachedFree(pPortCtrl-&gt;osHandle, pDescBuf-&gt;bufSize, pDescBuf-&gt;bufPhysAddr,
+         pDescBuf-&gt;bufVirtPtr, pDescBuf-&gt;memHandle);
+</Insert>
+<Copy StartSeek="3942" EndSeek="3948"/>
+<Insert>  mvOsIoCachedFree(pPortCtrl-&gt;osHandle, pDescBuf-&gt;bufSize, pDescBuf-&gt;bufPhysAddr,
+       pDescBuf-&gt;bufVirtPtr, pDescBuf-&gt;memHandle);
+</Insert>
+<Copy StartSeek="4077" EndSeek="4193"/>
+<Insert>           MV_ULONG *pPhysAddr, MV_U32 *memHandle)
+</Insert>
+<Copy StartSeek="4242" EndSeek="4244"/>
+<Insert>  MV_U8 *pVirt;
+</Insert>
+<Copy StartSeek="4259" EndSeek="4286"/>
+<Insert>  pVirt = (MV_U8 *)mvOsIoUncachedMalloc(pPortCtrl-&gt;osHandle, descSize, pPhysAddr, memHandle);
+</Insert>
+<Copy StartSeek="4379" EndSeek="4385"/>
+<Insert>  pVirt = (MV_U8 *)mvOsIoCachedMalloc(pPortCtrl-&gt;osHandle, descSize, pPhysAddr, memHandle);
+</Insert>
+<Copy StartSeek="4476" EndSeek="4509"/>
+<Insert>  if (pVirt)
+    memset(pVirt, 0, descSize);
+</Insert>
+<Copy StartSeek="4551" EndSeek="4552"/>
+<Insert>  return pVirt;
+</Insert>
+<Copy StartSeek="4567" EndSeek="4636"/>
+<Insert>  int   descrNum = (pQueueCtrl-&gt;lastDesc + 1);
+  char  *pDesc = pQueueCtrl-&gt;pFirst;
+</Insert>
+<Copy StartSeek="4718" EndSeek="4719"/>
+<Insert>  if (pDesc == NULL)
+    return;
+</Insert>
+<Copy StartSeek="4749" EndSeek="4750"/>
+<Insert>  /* reset ring of descriptors */
+  memset(pDesc, 0, (descrNum * NETA_DESC_ALIGNED_SIZE));
+  mvOsCacheFlush(NULL, pDesc, (descrNum * NETA_DESC_ALIGNED_SIZE));
+  pQueueCtrl-&gt;nextToProc = 0;
+</Insert>
+<Copy StartSeek="4935" EndSeek="5190"/>
+<Insert>  mvNetaTxqDescSwap(tx_desc);
+</Insert>
+<Copy StartSeek="5219" EndSeek="5243"/>
+<Insert>  mvOsCacheLineFlush(NULL, tx_desc);
+</Insert>
+<Copy StartSeek="5279" EndSeek="5371"/>
+<Insert>  eth_if_pkt_t *pkt;
+  int i;
+</Insert>
+<Copy StartSeek="5399" EndSeek="5400"/>
+<Insert>  if (pool) {
+      for (i = 0; i &lt; pool-&gt;size; i++) {
+          pkt = &amp;pool-&gt;pkt[i];
+          if (pkt-&gt;buf) {
+              mvOsFree(pkt-&gt;buf);
+              pkt-&gt;buf = NULL;
+          }
+      }
+    
+      mvOsFree(pool-&gt;pkt);
+      pool-&gt;pkt = NULL;
+      pool-&gt;size = 0;
+  }
+</Insert>
+<Copy StartSeek="5612" EndSeek="5730"/>
+<Insert>  eth_if_pkt_t *pkt;
+  int i;
+  
+  if (pool == NULL) {
+      return -1;
+  }
+    
+  pool-&gt;size = 0;
+  
+  pool-&gt;pkt = (eth_if_pkt_t *) mvOsMalloc(pool_size * sizeof(eth_if_pkt_t));
+  if (pool-&gt;pkt == NULL) {
+      ETH_IF_ERROR("Can't alloc Rx pool, %d bytes", pool_size * sizeof(eth_if_pkt_t));
+</Insert>
+<Copy StartSeek="6000" EndSeek="6001"/>
+<Insert>      return -1;
+  }
+  pool-&gt;size = pool_size;
+  memset(pool-&gt;pkt, 0, sizeof(pool_size * sizeof(eth_if_pkt_t)));
+  
+  for (i = 0; i &lt; pool_size; i++) {
+       pkt = &amp;pool-&gt;pkt[i];       
+       pkt-&gt;buf = mvOsMalloc(buf_size); /* TODO DO we need it aligned? */       
+       if (pkt-&gt;buf == NULL) {
+           ETH_IF_ERROR("Can't allocate packet buffer for pool, %d bytes.", buf_size);
+           eth_if_destroy_pkt_pool(pool);
+</Insert>
+<Copy StartSeek="6388" EndSeek="6389"/>
+<Insert>           return -1;
+       }
+       pkt-&gt;buf_size = buf_size;
+       pkt-&gt;phys_addr = mvOsCacheInvalidate(NULL, pkt-&gt;buf, buf_size);
+  }
+</Insert>
+<Copy StartSeek="6504" EndSeek="6505"/>
+<Insert>  return 0;
+</Insert>
+<Copy StartSeek="6516" EndSeek="6570"/>
+<Insert>  if (eth_if) {
+      memset(&amp;eth_if-&gt;stats, 0, sizeof(eth_if_stats_t));
+  }
+</Insert>
+<Copy StartSeek="6641" EndSeek="6793"/>
+<Insert>  MV_NETA_TXQ_CTRL *txq;
+  MV_NETA_QUEUE_CTRL *q;
+  int desc_size;
+  MV_NETA_PORT_CTRL dummy; 
+</Insert>
+<Copy StartSeek="6884" EndSeek="6885"/>
+<Insert>  /* Allocate TxQ */
+  txq = mvOsMalloc(sizeof(MV_NETA_TXQ_CTRL));
+  if (txq == NULL) {
+      ETH_IF_ERROR("Failed to alloc %d bytes for Tx Queue!! ", sizeof(MV_NETA_TXQ_CTRL));
+      return NULL;
+  }
+  memset(txq, 0, sizeof(MV_NETA_TXQ_CTRL));
+  q = &amp;txq-&gt;queueCtrl;
+</Insert>
+<Copy StartSeek="7139" EndSeek="7140"/>
+<Insert>  /* Allocate memory for TX descriptors */
+  desc_size = ((descr_num * NETA_DESC_ALIGNED_SIZE) + CPU_D_CACHE_LINE_SIZE);
+  /* TODO Ask Dima to allow passing excplicitly osHandle as 1-st argument to mvNetaDescrMemoryAlloc
+     instead of MV_NETA_PORT_CTRL */
+  q-&gt;descBuf.bufVirtPtr =
+      mvNetaDescrMemoryAlloc(&amp;dummy, desc_size, &amp;q-&gt;descBuf.bufPhysAddr, &amp;q-&gt;descBuf.memHandle);
+  q-&gt;descBuf.bufSize = desc_size;
+</Insert>
+<Copy StartSeek="7544" EndSeek="7545"/>
+<Insert>  if (q-&gt;descBuf.bufVirtPtr == NULL) {
+      ETH_IF_ERROR("txQ=%d: Can't allocate %d bytes for %d TX descr", queue, desc_size, descr_num);
+      mvOsFree(txq);
+      return NULL;
+  }
+</Insert>
+<Copy StartSeek="7714" EndSeek="7715"/>
+<Insert>  /* Make sure descriptor address is cache line size aligned  */
+  q-&gt;pFirst = (char *)MV_ALIGN_UP((MV_ULONG) q-&gt;descBuf.bufVirtPtr, CPU_D_CACHE_LINE_SIZE);
+  q-&gt;lastDesc = (descr_num - 1);
+</Insert>
+<Copy StartSeek="7902" EndSeek="7903"/>
+<Insert>  mvNetaDescRingReset(q);
+</Insert>
+<Copy StartSeek="7928" EndSeek="7929"/>
+<Insert>  /* Set maximum bandwidth for enabled TXQs */
+</Insert>
+<Copy StartSeek="7975" EndSeek="7997"/>
+<Insert>  MV_REG_WRITE(NETA_TXQ_TOKEN_CNTR_REG(port, 0 /* txp */, queue), NETA_TXQ_TOKEN_CNTR_MAX);
+</Insert>
+<Copy StartSeek="8088" EndSeek="8094"/>
+<Insert>  MV_REG_WRITE(ETH_TXQ_TOKEN_CFG_REG(port, 0 /* txp */, queue), 0x03ffffff);
+  MV_REG_WRITE(ETH_TXQ_TOKEN_COUNT_REG(port, 0 /* txp */, queue), 0x3fffffff);
+</Insert>
+<Copy StartSeek="8248" EndSeek="8277"/>
+<Insert>  /* Set Tx descriptors queue starting address */
+  MV_REG_WRITE(NETA_TXQ_BASE_ADDR_REG(port, 0 /* txp */, queue), netaDescVirtToPhys(q, q-&gt;pFirst));
+  MV_REG_WRITE(NETA_TXQ_SIZE_REG(port, 0 /* txp */, queue), NETA_TXQ_DESC_NUM_MASK(descr_num));
+</Insert>
+<Copy StartSeek="8520" EndSeek="8521"/>
+<Insert>  return txq;
+</Insert>
+<Copy StartSeek="8534" EndSeek="8620"/>
+<Insert>  MV_NETA_QUEUE_CTRL *q;
+  MV_NETA_PORT_CTRL  dummy;
+</Insert>
+<Copy StartSeek="8671" EndSeek="8672"/>
+<Insert>  if (txq_ctrl == NULL) {
+      return -1;
+  }
+</Insert>
+<Copy StartSeek="8713" EndSeek="8714"/>
+<Insert>  q = &amp;txq_ctrl-&gt;queueCtrl;
+  
+  /**** maxk - Temp Experiment!!!! - reset of entire Tx port ***/
+  MV_REG_WRITE(NETA_PORT_TX_RESET_REG(port, 0), NETA_PORT_TX_DMA_RESET_MASK);
+  /**** maxk - Temp Experiment!!!! - reset of entire Tx port ***/
+</Insert>
+<Copy StartSeek="8949" EndSeek="8950"/>
+<Insert>  /* Reset descriptors */
+  mvNetaDescRingReset(q);
+</Insert>
+<Copy StartSeek="9000" EndSeek="9001"/>
+<Insert> /**** maxk - Temp Experiment!!!! - reset of entire Tx port ***/
+ MV_REG_WRITE(NETA_PORT_TX_RESET_REG(port, 0), 0);
+ /**** maxk - Temp Experiment!!!! - reset of entire Tx port ***/
+</Insert>
+<Copy StartSeek="9182" EndSeek="9183"/>
+<Insert>  /* Release descriptors memory */
+  mvNetaDescrMemoryFree(&amp;dummy, &amp;q-&gt;descBuf);
+  memset(q, 0, sizeof(*q));
+</Insert>
+<Copy StartSeek="9289" EndSeek="9290"/>
+<Insert>  /* Set minimum bandwidth for disabled TXQs */
+</Insert>
+<Copy StartSeek="9337" EndSeek="9359"/>
+<Insert>  MV_REG_WRITE(NETA_TXQ_TOKEN_CNTR_REG(port, 0 /* txp */, queue), 0);
+</Insert>
+<Copy StartSeek="9428" EndSeek="9434"/>
+<Insert>  MV_REG_WRITE(ETH_TXQ_TOKEN_CFG_REG(port, 0 /* txp */, queue), 0);
+  MV_REG_WRITE(ETH_TXQ_TOKEN_COUNT_REG(port, 0 /* txp */, queue), 0);
+</Insert>
+<Copy StartSeek="9570" EndSeek="9599"/>
+<Insert>  /* Reset Tx descriptors queue starting address and size */
+  MV_REG_WRITE(NETA_TXQ_BASE_ADDR_REG(port, 0 /* txp */, queue), 0);
+  MV_REG_WRITE(NETA_TXQ_SIZE_REG(port, 0 /* txp */, queue), 0);
+</Insert>
+<Copy StartSeek="9790" EndSeek="9791"/>
+<Insert>  /* Free TxQ memory */
+  mvOsFree(txq_ctrl);
+</Insert>
+<Copy StartSeek="9835" EndSeek="9836"/>
+<Insert>  return 0;
+</Insert>
+<Copy StartSeek="9847" EndSeek="9880"/>
+<Insert>  eth_if_t *eth_if = &amp;eth_if_list[0];
+</Insert>
+<Copy StartSeek="9917" EndSeek="9918"/>
+<Insert>  /* Initialized? */
+  if (!eth_if-&gt;init) {
+     ETH_IF_DBG("Not init.");
+     return -1;
+  } 
+  
+  MV_REG_WRITE(NETA_PORT_TX_RESET_REG(eth_if-&gt;cfg.port, 0), NETA_PORT_TX_DMA_RESET_MASK);
+  
+  /* Destroy descriptors for TXQ */
+  if (eth_if-&gt;txq_ctrl) {
+      eth_if_txq_shutdown(eth_if-&gt;txq_ctrl, eth_if-&gt;cfg.port, eth_if-&gt;cfg.txq);
+      eth_if-&gt;txq_ctrl = NULL;
+  }
+  
+  MV_REG_WRITE(NETA_PORT_TX_RESET_REG(eth_if-&gt;cfg.port, 0), 0);
+  
+  eth_if-&gt;txq_ctrl = eth_if_txq_init(eth_if-&gt;cfg.port, eth_if-&gt;cfg.txq, ETH_IF_TX_DESC_NUM);
+  
+  return 0;
+</Insert>
+<Copy StartSeek="10429" EndSeek="10551"/>
+<Insert>  MV_NETA_RXQ_CTRL *rxq_ctrl;
+  MV_NETA_QUEUE_CTRL *q;
+  int descr_size, descr_num, i;
+  MV_NETA_PORT_CTRL dummy; 
+  eth_if_pkt_t *pkt;  
+  struct neta_rx_desc *rx_desc;
+</Insert>
+<Copy StartSeek="10715" EndSeek="10716"/>
+<Insert>  if (pkt_pool == NULL) {
+      ETH_IF_ERROR("Packet pool NULL.");
+      return NULL;
+  }
+  
+  descr_num = pkt_pool-&gt;size;
+</Insert>
+<Copy StartSeek="10826" EndSeek="10827"/>
+<Insert>  /* Allocate RxQ */
+  rxq_ctrl = mvOsMalloc(sizeof(MV_NETA_RXQ_CTRL));
+  if (rxq_ctrl == NULL) {
+      ETH_IF_ERROR("Can't alloc %d bytes for Rx queue control.", sizeof(MV_NETA_RXQ_CTRL));
+      return NULL;
+  }
+  memset(rxq_ctrl, 0, sizeof(MV_NETA_RXQ_CTRL));
+  q = &amp;rxq_ctrl-&gt;queueCtrl;
+</Insert>
+<Copy StartSeek="11103" EndSeek="11104"/>
+<Insert>  /* Allocate memory for RX descriptors */
+  descr_size = ((descr_num * NETA_DESC_ALIGNED_SIZE) + CPU_D_CACHE_LINE_SIZE);
+  q-&gt;descBuf.bufVirtPtr =
+      mvNetaDescrMemoryAlloc(&amp;dummy, descr_size, &amp;q-&gt;descBuf.bufPhysAddr, &amp;q-&gt;descBuf.memHandle);
+  q-&gt;descBuf.bufSize = descr_size;
+</Insert>
+<Copy StartSeek="11376" EndSeek="11377"/>
+<Insert>  if (q-&gt;descBuf.bufVirtPtr == NULL) {
+     ETH_IF_ERROR("Can't allocate %d bytes for %d TX descr for Rx Q %d", descr_size, descr_num, queue);
+     mvOsFree(rxq_ctrl);
+     return NULL;
+  }
+</Insert>
+<Copy StartSeek="11556" EndSeek="11557"/>
+<Insert>  /* Make sure descriptor address is cache line size aligned  */
+  q-&gt;pFirst = (char *)MV_ALIGN_UP((MV_ULONG) q-&gt;descBuf.bufVirtPtr, CPU_D_CACHE_LINE_SIZE);
+  q-&gt;lastDesc = (descr_num - 1);
+  
+  mvNetaDescRingReset(q);
+</Insert>
+<Copy StartSeek="11770" EndSeek="11771"/>
+<Insert>  /* Set Rx descriptors queue starting address */
+  MV_REG_WRITE(NETA_RXQ_BASE_ADDR_REG(port, queue),
+         netaDescVirtToPhys(q, q-&gt;pFirst));
+  MV_REG_WRITE(NETA_RXQ_SIZE_REG(port, queue), descr_num);
+</Insert>
+<Copy StartSeek="11971" EndSeek="11972"/>
+<Insert>  /* Set Offset */
+  mvNetaRxqOffsetSet(port, queue, 0 /* TODO change to some headroom? */);
+</Insert>
+<Copy StartSeek="12063" EndSeek="12064"/>
+<Insert>  /* Fill RXQ with buffers from RX pool */
+  mvNetaRxqBufSizeSet(port, queue, pkt_pool-&gt;pkt[0].buf_size);
+  mvNetaRxqBmDisable(port, queue);
+  for (i = 0; i &lt; descr_num; i++) {
+      rx_desc = (struct neta_rx_desc *)MV_NETA_QUEUE_DESC_PTR(q, i);
+      memset(rx_desc, 0, sizeof(*rx_desc));
+      pkt = &amp;pkt_pool-&gt;pkt[i];
+      mvNetaRxDescFill(rx_desc, pkt-&gt;phys_addr, (MV_U32)pkt);
+  }
+  mvNetaRxqNonOccupDescAdd(port, queue, descr_num);
+</Insert>
+<Copy StartSeek="12481" EndSeek="12482"/>
+<Insert>  return rxq_ctrl; 
+</Insert>
+<Copy StartSeek="12501" EndSeek="12606"/>
+<Insert>  MV_NETA_QUEUE_CTRL *q;
+  MV_NETA_PORT_CTRL dummy;
+</Insert>
+<Copy StartSeek="12656" EndSeek="12657"/>
+<Insert>  if (rxq_ctrl == NULL) {
+      return -1;
+  }
+</Insert>
+<Copy StartSeek="12698" EndSeek="12699"/>
+<Insert>  q = &amp;rxq_ctrl-&gt;queueCtrl;
+</Insert>
+<Copy StartSeek="12726" EndSeek="12727"/>
+<Insert>  /* Reset descriptors */
+  mvNetaDescRingReset(q);
+</Insert>
+<Copy StartSeek="12777" EndSeek="12778"/>
+<Insert>  /* Release descriptors memory */
+  mvNetaDescrMemoryFree(&amp;dummy, &amp;q-&gt;descBuf);
+  memset(q, 0, sizeof(*q));
+  
+  /* Clear Rx descriptors queue starting address and size */
+  MV_REG_WRITE(NETA_RXQ_BASE_ADDR_REG(port, queue), 0);
+  MV_REG_WRITE(NETA_RXQ_SIZE_REG(port, queue), 0);
+</Insert>
+<Copy StartSeek="13050" EndSeek="13051"/>
+<Insert>  /* Free TxQ memory */
+  mvOsFree(rxq_ctrl);
+</Insert>
+<Copy StartSeek="13095" EndSeek="13096"/>
+<Insert>  return 0;
+</Insert>
+<Copy StartSeek="13107" EndSeek="13186"/>
+<Insert>  uint32_t qMap;
+</Insert>
+<Copy StartSeek="13202" EndSeek="13203"/>
+<Insert>  if (eth_if == NULL || eth_if-&gt;txq_ctrl == NULL) {
+      return -1;
+  }
+</Insert>
+<Copy StartSeek="13270" EndSeek="13271"/>
+<Insert>  /* Enable TX queue */
+  qMap = MV_REG_READ(ETH_TX_QUEUE_COMMAND_REG(eth_if-&gt;cfg.port, 0/* txp*/));
+  if (eth_if-&gt;txq_ctrl-&gt;queueCtrl.pFirst != NULL) {
+      qMap |= (1 &lt;&lt; eth_if-&gt;cfg.txq);
+  }
+  MV_REG_WRITE (ETH_TX_QUEUE_COMMAND_REG(eth_if-&gt;cfg.port, 0/* txp*/), qMap);
+</Insert>
+<Copy StartSeek="13535" EndSeek="13536"/>
+<Insert>  return 0;
+</Insert>
+<Copy StartSeek="13547" EndSeek="13626"/>
+<Insert>  MV_U32 qMap;
+</Insert>
+<Copy StartSeek="13640" EndSeek="13641"/>
+<Insert>  if (eth_if == NULL || eth_if-&gt;rxq_ctrl == NULL) {
+      return -1;
+  }
+</Insert>
+<Copy StartSeek="13708" EndSeek="13709"/>
+<Insert>  /* Enable Rx queue */
+  qMap = MV_REG_READ(ETH_TX_QUEUE_COMMAND_REG(eth_if-&gt;cfg.port, 0/* txp*/));
+  if (eth_if-&gt;rxq_ctrl-&gt;queueCtrl.pFirst != NULL) {
+        qMap |= (1 &lt;&lt; eth_if-&gt;cfg.rxq);
+  }
+</Insert>
+<Copy StartSeek="13896" EndSeek="13897"/>
+<Insert> MV_REG_WRITE(ETH_RX_QUEUE_COMMAND_REG(eth_if-&gt;cfg.port), qMap);
+</Insert>
+<Copy StartSeek="13962" EndSeek="13963"/>
+<Insert> return 0;
+</Insert>
+<Copy StartSeek="13974" EndSeek="14047"/>
+<Insert>int eth_if_shutdown(void) {
+  eth_if_t *eth_if = &amp;eth_if_list[0];
+
+  /* Initialized? */
+  if (!eth_if-&gt;init) {
+     ETH_IF_DBG("Not init.");
+     return -1;
+  } 
+
+  /* Destroy descriptors for TXQ */
+  if (eth_if-&gt;txq_ctrl) {
+      eth_if_txq_shutdown(eth_if-&gt;txq_ctrl, eth_if-&gt;cfg.port, eth_if-&gt;cfg.txq);
+      eth_if-&gt;txq_ctrl = NULL;
+  }
+
+  /* Destroy descriptors for RXQ */
+  if (eth_if-&gt;rxq_ctrl) {
+      eth_if_rxq_shutdown(eth_if-&gt;rxq_ctrl, eth_if-&gt;cfg.port, eth_if-&gt;cfg.rxq);
+      eth_if-&gt;rxq_ctrl = NULL;
+  }
+
+  /* Free Rx packet pool */  
+  eth_if_destroy_pkt_pool(&amp;eth_if-&gt;rx_pkt_pool);
+
+  //////// TEST ////////////
+  //MV_REG_WRITE(NETA_PORT_TX_RESET_REG(eth_if-&gt;cfg.port, 0), 0);
+  //MV_REG_WRITE(NETA_PORT_RX_RESET_REG(eth_if-&gt;cfg.port), 0);
+
+  ETH_IF_INFO("Eth port %d terminated.", eth_if-&gt;cfg.port);
+
+  eth_if-&gt;init = false;
+
+  return 0;
+}
+
+</Insert>
+<Copy StartSeek="14862" EndSeek="14863"/>
+<Copy StartSeek="14864" EndSeek="14895"/>
+<Insert>int eth_if_init(eth_if_config_t* cfg) {
+   eth_if_t *eth_if = &amp;eth_if_list[0];
+
+  /* Already initialized? */
+  if (eth_if-&gt;init) {
+     ETH_IF_DBG("Already init.");
+     return 0;
+  } 
+
+  /* Validate parameters */
+  if (cfg == NULL) {
+      ETH_IF_ERROR("Network interface config: NULL argument passed.");
+      goto eth_if_init_fail;
+  }
+
+  if (cfg-&gt;state == ETH_IF_STATE_NONE) {
+      ETH_IF_ERROR("Network interface config: Status is none.");
+      goto eth_if_init_fail;
+  }
+
+  if (cfg-&gt;port &gt; ETH_IF_MAX /* TODO add const */) {
+      ETH_IF_ERROR("Network interface config: Port out of range (%d).", cfg-&gt;port);
+      goto eth_if_init_fail;
+  }
+
+  if (cfg-&gt;rxq &lt; CONFIG_MV_ETH_RXQ || cfg-&gt;rxq &gt; 8 /* TODO add const */) {
+      ETH_IF_ERROR("Network interface config: Rx queue out of range (%d), CONFIG_MV_ETH_RXQ %d.", cfg-&gt;rxq, CONFIG_MV_ETH_RXQ);
+      goto eth_if_init_fail;
+  }
+
+  if (cfg-&gt;txq &lt; CONFIG_MV_ETH_TXQ || cfg-&gt;txq &gt; 8 /* TODO add const */) {
+      ETH_IF_ERROR("Network interface config: Tx queue out of range (%d), CONFIG_MV_ETH_TXQ %d", cfg-&gt;txq, CONFIG_MV_ETH_TXQ);
+      goto eth_if_init_fail;
+  }
+
+  memcpy(&amp;eth_if-&gt;cfg, cfg, sizeof(*cfg));
+
+  /* Create descriptors for TXQ */
+  eth_if-&gt;txq_ctrl = eth_if_txq_init(cfg-&gt;port, cfg-&gt;txq, ETH_IF_TX_DESC_NUM);
+  if (eth_if-&gt;txq_ctrl == NULL) {
+      goto eth_if_init_fail;
+  }
+
+  /* Create Rx packet pool */  
+  if (eth_if_create_pkt_pool(&amp;eth_if-&gt;rx_pkt_pool, ETH_IF_RX_DESC_NUM, 
+                             ETH_IF_RX_BUF_SIZE(ETH_IF_RX_PKT_SIZE(ETH_IF_MTU)))) {
+      goto eth_if_init_fail;
+  }
+
+  /* Create descriptors for RXQ */
+  eth_if-&gt;rxq_ctrl = eth_if_rxq_init(cfg-&gt;port, cfg-&gt;rxq, &amp;eth_if-&gt;rx_pkt_pool);
+  if (eth_if-&gt;rxq_ctrl == NULL) {
+      goto eth_if_init_fail;
+  }
+
+  /* Enable traffic on Rx and Tx queues */
+  if (cfg-&gt;state == ETH_IF_STATE_UP) {
+      eth_if_enable_rx_queue(eth_if);
+      eth_if_enable_tx_queue(eth_if);
+  }
+
+  eth_if_reset_stats(eth_if);
+
+  eth_if-&gt;init = true;
+
+  ETH_IF_INFO("Eth port %d initialized.", eth_if-&gt;cfg.port);
+
+  return 0;
+
+eth_if_init_fail:
+  eth_if_shutdown();
+
+  return -1;
+}
+
+</Insert>
+<Copy StartSeek="16874" EndSeek="16893"/>
+<Insert>int eth_if_up(int port) {
+    eth_if_t *eth_if;
+
+   /* TODO replace by lookup when supporting multiple ports */
+   eth_if = &amp;eth_if_list[0];
+   if (port != eth_if-&gt;cfg.port) {
+       ETH_IF_ERROR("Can't bring up the port, port invalid %d.", port);
+       return -1;
+   }
+
+   if (eth_if-&gt;txq_ctrl == NULL || eth_if-&gt;rxq_ctrl == NULL) {
+       ETH_IF_ERROR("Can't bring up the port, state invalid.");
+       return -1;
+   }
+
+   if (eth_if-&gt;cfg.state == ETH_IF_STATE_UP) {
+       return 0;
+   }
+
+  /* Enable traffic */
+  eth_if_enable_rx_queue(eth_if);
+  eth_if_enable_tx_queue(eth_if);
+
+  eth_if-&gt;cfg.state = ETH_IF_STATE_UP;
+
+  ETH_IF_INFO("Eth port %d up.", eth_if-&gt;cfg.port);
+
+  return 0;
+}
+
+</Insert>
+<Copy StartSeek="17537" EndSeek="17558"/>
+<Insert>int eth_if_down(int port) {
+  eth_if_t      *eth_if;
+
+  /* TODO replace by lookup when supporting multiple ports */
+  eth_if = &amp;eth_if_list[0];
+  if (port != eth_if-&gt;cfg.port) {
+      ETH_IF_ERROR("Can't bring down the port, port invalid %d.", port);
+      return -1;
+  }
+
+  if (eth_if-&gt;txq_ctrl == NULL || eth_if-&gt;rxq_ctrl == NULL) {
+      ETH_IF_ERROR("Can't bring down the port, state invalid.");
+      return -1;
+  }
+
+  if (eth_if-&gt;cfg.state == ETH_IF_STATE_DOWN) {
+      return 0;
+  }
+
+  /* Reset descriptors */
+  mvNetaDescRingReset(&amp;eth_if-&gt;rxq_ctrl-&gt;queueCtrl);
+  mvNetaDescRingReset(&amp;eth_if-&gt;txq_ctrl-&gt;queueCtrl);
+
+  /* Reset stats */
+  eth_if_reset_stats(eth_if);
+
+  eth_if-&gt;cfg.state = ETH_IF_STATE_DOWN;
+
+  ETH_IF_INFO("Eth port %d down.", eth_if-&gt;cfg.port);
+
+  return 0;
+}
+ 
+</Insert>
+<Copy StartSeek="18309" EndSeek="18331"/>
+<Insert>int eth_if_reset(int port) {
+  eth_if_t      *eth_if;
+
+  /* TODO replace by lookup when supporting multiple ports */
+  eth_if = &amp;eth_if_list[0];
+  if (port != eth_if-&gt;cfg.port) {
+      ETH_IF_ERROR("Can't reset port, port invalid %d.", port);
+      return -1;
+  }
+
+  if (eth_if-&gt;txq_ctrl == NULL || eth_if-&gt;rxq_ctrl == NULL) {
+      ETH_IF_ERROR("Can't reset the port, state invalid.");
+      return -1;
+  }
+
+  if (eth_if-&gt;cfg.state == ETH_IF_STATE_DOWN) {
+      return 0;
+  }
+
+  /* Reset descriptors */
+  mvNetaDescRingReset(&amp;eth_if-&gt;rxq_ctrl-&gt;queueCtrl);
+  mvNetaDescRingReset(&amp;eth_if-&gt;txq_ctrl-&gt;queueCtrl);
+
+  /* Reset stats */
+  eth_if_reset_stats(eth_if);
+
+  return 0;
+}
+
+</Insert>
+<Copy StartSeek="18974" EndSeek="19044"/>
+<Insert>  NETA_TX_DESC* tx_desc = NULL;
+  u32           command;
+  eth_if_t      *eth_if;
+</Insert>
+<Copy StartSeek="19123" EndSeek="19124"/>
+<Insert>  /* TODO replace by lookup when supporting multiple ports */
+  eth_if = &amp;eth_if_list[0];
+  if (port != eth_if-&gt;cfg.port) {
+      ETH_IF_DBG("Can't transmit a packet, specified port invalid %d.", port);
+      return -1;
+  }
+</Insert>
+<Copy StartSeek="19336" EndSeek="19337"/>
+<Insert>  if (eth_if-&gt;txq_ctrl == NULL || 
+      eth_if-&gt;cfg.state == ETH_IF_STATE_DOWN) {
+      return -1;
+  }
+</Insert>
+<Copy StartSeek="19434" EndSeek="19435"/>
+<Insert>  /* Descriptor to use */
+  tx_desc = mvNetaTxqNextDescGet(eth_if-&gt;txq_ctrl);
+  if (NULL == tx_desc) {
+      ETH_IF_DBG("Can't get descriptor for Tx");
+      eth_if-&gt;stats.tx_errors++;
+</Insert>
+<Copy StartSeek="19609" EndSeek="19610"/>
+<Insert>      return -1;
+  }
+</Insert>
+<Copy StartSeek="19626" EndSeek="19627"/>
+<Insert>  /* Calculate IPv4 checksum and L4 checksum */
+  /* TODO Specify correct flags */
+  command = 0; 
+  command |= NETA_TX_F_DESC_MASK | NETA_TX_L_DESC_MASK;
+  //command |= (ip4h-&gt;ihl &lt;&lt; NETA_TX_IP_HLEN_OFFS) | NETA_TX_L3_IP4;
+  //command |= (NETA_TX_L4_UDP | NETA_TX_L4_CSUM_FULL);
+</Insert>
+<Copy StartSeek="19901" EndSeek="19902"/>
+<Insert>  tx_desc-&gt;dataSize = size;
+  tx_desc-&gt;bufPhysAddr = mvOsCacheFlush(NULL, data, size);
+  tx_desc-&gt;command = command;
+  tx_desc-&gt;hw_cmd = 0;
+</Insert>
+<Copy StartSeek="20038" EndSeek="20039"/>
+<Insert>  /* Flush cache to RAM */
+  eth_if_tx_desc_flush(tx_desc);
+</Insert>
+<Copy StartSeek="20097" EndSeek="20098"/>
+<Insert>  /* Enable transmit */
+  mvNetaTxqPendDescAdd(eth_if-&gt;cfg.port, 0 /* txp */, eth_if-&gt;cfg.txq, 1 /* num of descriptors */);
+</Insert>
+<Copy StartSeek="20220" EndSeek="20221"/>
+<Insert>  eth_if-&gt;stats.tx_pkts++;
+  eth_if-&gt;stats.tx_bytes += size;
+</Insert>
+<Copy StartSeek="20280" EndSeek="20281"/>
+<Insert>  ////////////// DEBUG ///////
+  if (((eth_if-&gt;stats.tx_pkts) % 100) == 0) {
+     ETH_IF_DBG(" eth_if pkts sent %d", eth_if-&gt;stats.tx_pkts);
+  }
+</Insert>
+<Copy StartSeek="20420" EndSeek="20421"/>
+<Insert>  return 0;
+</Insert>
+<Copy StartSeek="20432" EndSeek="20435"/>
+<Copy StartSeek="20436" EndSeek="20470"/>
+<Insert>int eth_if_rx(int port, int rx_todo) {  
+  eth_if_t           *eth_if;
+  int                 rx_done, rx_filled, rx_bytes;
+  struct neta_rx_desc *rx_desc;
+  eth_if_pkt_t        *pkt;
+  char                *data;
+  uint32_t            rx_status;
+
+  /* TODO replace by lookup when supporting multiple ports */
+  eth_if = &amp;eth_if_list[0];
+  if (port != eth_if-&gt;cfg.port) {
+      ETH_IF_DBG("Can't recv, specified port invalid %d.", port);
+      return -1;
+  }
+
+  if (eth_if-&gt;txq_ctrl == NULL || 
+      eth_if-&gt;cfg.state == ETH_IF_STATE_DOWN) {
+      return -1;
+  }
+
+  /* Get number of received packets */
+  rx_done = mvNetaRxqBusyDescNumGet(eth_if-&gt;cfg.port, eth_if-&gt;cfg.rxq);
+  if (rx_done == 0) {
+      return 0;
+  }
+
+  ETH_IF_DBG("&lt;&lt;&lt;&lt;============= mmp_eth_rx: %d pkts RX pending", rx_done);
+  mvOsCacheIoSync();
+
+  if (rx_todo &gt; rx_done)
+      rx_todo = rx_done;
+
+  rx_done = 0;
+  rx_filled = 0;
+
+  /* Fairness NAPI loop */
+  while (rx_done &lt; rx_todo) {
+
+    /* TODO consider more sophisticated prefetch: see mv_netdev.c, CONFIG_MV_ETH_RX_DESC_PREFETCH */
+    rx_desc = mvNetaRxqNextDescGet(eth_if-&gt;rxq_ctrl);
+    mvOsCacheLineInv(NULL, rx_desc);
+    prefetch(rx_desc);
+
+    rx_done++;
+    rx_filled++;
+    rx_status = rx_desc-&gt;status;
+    pkt = (eth_if_pkt_t *)rx_desc-&gt;bufCookie;
+      
+    /* Speculative ICache prefetch WA: should be replaced with dma_unmap_single (invalidate l2) */
+    mvOsCacheMultiLineInv(NULL, pkt-&gt;buf, rx_desc-&gt;dataSize);
+    /* TODO consider prefetch: see mv_netdev.c, CONFIG_MV_ETH_RX_PKT_PREFETCH */
+
+    ETH_IF_DBG("Pkt %d [0x%x], status 0x%x, dataSize %d", rx_done, (u32) pkt, rx_status, rx_desc-&gt;dataSize);
+
+    if (((rx_status &amp; NETA_RX_FL_DESC_MASK) != NETA_RX_FL_DESC_MASK) ||
+        (rx_status &amp; NETA_RX_ES_MASK)) {
+
+        ETH_IF_DBG("!!!!!!!!!!!!!!!!!!!!!!!!!!! RX ERROR");
+
+        eth_if-&gt;stats.rx_errors++;
+        
+        mvNetaRxDescFill(rx_desc, pkt-&gt;phys_addr, (MV_U32)pkt);
+        continue;
+    }
+
+    rx_bytes = rx_desc-&gt;dataSize - (MV_ETH_CRC_SIZE + MV_ETH_MH_SIZE);
+    data = pkt-&gt;buf + MV_ETH_MH_SIZE;
+
+    eth_if-&gt;stats.rx_pkts++;
+    eth_if-&gt;stats.rx_bytes += rx_bytes;
+
+    /* Process recved data */
+    if (eth_if-&gt;cfg.rx_callback != NULL) {
+        eth_if-&gt;cfg.rx_callback(eth_if-&gt;cfg.port, data, rx_bytes);
+    }
+
+    /* Refill pkt */
+    mvNetaRxDescFill(rx_desc, pkt-&gt;phys_addr, (MV_U32)pkt);
+  }
+
+  /* Update RxQ management counters */
+  mvOsCacheIoSync();
+  mvNetaRxqDescNumUpdate(eth_if-&gt;cfg.port, eth_if-&gt;cfg.rxq, rx_done, rx_filled);
+
+  ETH_IF_DBG("============= mmp_eth_rx: rx_done %d, rx_filled %d =========================&gt;&gt;&gt;&gt;", rx_done, rx_filled);
+
+  return rx_done;
+}
+
+</Insert>
+<Copy StartSeek="22977" EndSeek="22993"/>
+<Insert>int eth_if_get_stats(int port, eth_if_stats_t *stats) {
+  eth_if_t *eth_if;
+
+  /* TODO replace by lookup when supporting multiple ports */
+  eth_if = &amp;eth_if_list[0];
+  if (port != eth_if-&gt;cfg.port) {
+      ETH_IF_ERROR("Can't get stats, specified port invalid %d.", port);
+      return -1;
+  }
+
+  if (stats == NULL) {
+      ETH_IF_ERROR("Can't get stats, argumet is NULL.");
+      return -1;
+  }
+
+  memcpy(stats, &amp;eth_if-&gt;stats, sizeof(eth_if_stats_t));
+
+  return 0;
+}
+</Insert>
+</Delta>
+</DeltaFile>

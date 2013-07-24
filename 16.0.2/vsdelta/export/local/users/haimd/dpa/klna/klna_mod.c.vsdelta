@@ -1,0 +1,436 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="7" Comment="" Date="2012/04/16" Time="12:10:31000" NL="\10" Encoding="text">
+<Insert>/*
+ *	Marvell Kernel Learning Agent
+ * 
+ *      Authors:
+ *	Haim Daniel
+ *
+ *	This program is free software; you can redistribute it and/or
+ *	modify it under the terms of the GNU General Public License
+ *	as published by the Free Software Foundation; either version
+ *	2 of the License, or (at your option) any later version.
+ */
+
+#include &lt;linux/module.h&gt;
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/netdevice.h&gt;
+#include &lt;linux/notifier.h&gt;
+#include &lt;net/netevent.h&gt;
+#include &lt;net/neighbour.h&gt;
+#include &lt;vlan.h&gt;
+#include &lt;br_private.h&gt;
+#include &lt;linux/if_arp.h&gt;
+#include &lt;net/netfilter/nf_conntrack.h&gt;
+#include &lt;net/netfilter/nf_conntrack_ecache.h&gt;
+#include &lt;net/netfilter/nf_conntrack_l3proto.h&gt;
+#include &lt;net/netfilter/nf_conntrack_l4proto.h&gt;
+//#include &lt;linux/etherdevice.h&gt;
+
+#undef pr_fmt
+#define pr_fmt(fmt)	"klna: " fmt
+
+static char notify[256];
+module_param_string(notify, notify, sizeof(notify), 0644);
+MODULE_PARM_DESC(notify, "event type: arp, vlan, bridge, nf_ct");
+
+//static struct sock *dpanl = NULL;
+
+static enum NOTIFICATION_HOOK {
+	NOTIF_ARP	= 1,
+	NOTIF_VLAN 	= 2,
+	NOTIF_BRIDGE	= 4,
+	NOTIF_ETH	= 8,
+	NOTIF_NFCT	= 16,
+} notif_mask;
+
+#ifdef CONFIG_NF_CONNTRACK_EVENTS
+static void dpa_print_conntrack_tuple(struct nf_conn *ct)
+{
+	const struct nf_conntrack_l3proto *l3proto;
+	const struct nf_conntrack_l4proto *l4proto;
+
+	struct nf_conntrack_tuple *tuple = 
+		&amp;ct-&gt;tuplehash[IP_CT_DIR_ORIGINAL].tuple;
+
+	l3proto = __nf_ct_l3proto_find(nf_ct_l3num(ct));
+	NF_CT_ASSERT(l3proto);
+	l4proto = __nf_ct_l4proto_find(nf_ct_l3num(ct), nf_ct_protonum(ct));
+	NF_CT_ASSERT(l4proto);
+
+	pr_info("[%s] %pI4:%u -&gt; %pI4:%u\n",
+		l4proto-&gt;name,
+		&amp;tuple-&gt;src.u3.ip, ntohs(tuple-&gt;src.u.all),
+		&amp;tuple-&gt;dst.u3.ip, ntohs(tuple-&gt;dst.u.all));
+}
+
+static int klna_nf_ct_event(unsigned int events, struct nf_ct_event *item)
+{
+	struct nf_conn *ct = item-&gt;ct;
+
+	/* ignore our fake conntrack entry */
+	if (ct == &amp;nf_conntrack_untracked)
+		return 0;
+
+	if (events &amp; IPCT_DESTROY) {
+		pr_info("destroyed ct \n");
+		dpa_print_conntrack_tuple(ct);
+	} else  if (events &amp; IPCT_NEW) {
+		pr_info("new ct\n");
+		dpa_print_conntrack_tuple(ct);
+	} else if (events &amp; IPCT_RELATED) {
+		pr_info("related ct\n");
+		dpa_print_conntrack_tuple(ct);
+	}
+
+	return 0;
+}
+
+static struct nf_ct_event_notifier dpa_ct_notifier = {
+	.fcn = klna_nf_ct_event
+};
+#endif
+
+static int __klna_br_if_event(struct notifier_block *unused, unsigned long event, 
+			      void *ptr)
+{
+	struct net_device *dev = ptr;
+	struct net_bridge *br = dev-&gt;br_port-&gt;br;
+
+	switch (event) {
+
+	case NETDEV_REGISTER:
+		pr_info("if %s up at br [%s]\n", dev-&gt;name, br-&gt;dev-&gt;name);
+		break;
+
+	case NETDEV_UNREGISTER:
+		pr_info("if %s down at br [%s]\n", dev-&gt;name, br-&gt;dev-&gt;name);
+		break;
+	}
+	return NOTIFY_DONE;
+}
+
+static int __klna_br_dev_event(struct notifier_block *unused, unsigned long event, 
+			      void *ptr)
+{
+	struct net_device *dev = ptr;
+	struct net_bridge *br;
+
+	br = netdev_priv(dev);
+
+	switch (event) {
+
+	case NETDEV_REGISTER:
+		pr_info("br up [%s]\n", dev-&gt;name);
+		break;
+
+	case NETDEV_UNREGISTER:
+		pr_info("br unreg [%s]\n", dev-&gt;name);
+		break;
+	}
+
+	return NOTIFY_DONE;
+}
+
+static int 
+__klna_eth_dev_event(struct notifier_block *unused, unsigned long event,
+			     void *ptr)
+{
+	struct net_device *dev = ptr;
+
+	switch (event) {
+	case NETDEV_REGISTER:
+		pr_info("eth dev register %s\n", dev-&gt;name);
+		break;
+	case NETDEV_UNREGISTER:
+		pr_info("eth dev unregister %s\n", dev-&gt;name);
+		break;
+	case NETDEV_UP:
+		pr_info("eth dev %s up\n", dev-&gt;name);
+	case NETDEV_DOWN:
+		pr_info("eth dev %s down\n", dev-&gt;name);
+
+	}
+
+	return NOTIFY_DONE;
+}
+
+static int 
+__klna_vlan_dev_event(struct notifier_block *unused, unsigned long event,
+			     void *ptr)
+{
+	struct net_device *dev = ptr;
+	struct vlan_dev_info *dev_info = vlan_dev_info(dev);
+
+	switch (event) {
+	case NETDEV_REGISTER:
+		pr_info("vlan register %s vid %u\n", dev-&gt;name, dev_info-&gt;vlan_id);
+		break;
+	case NETDEV_UNREGISTER:
+		pr_info("vlan unreg %s vid %u\n", dev-&gt;name, dev_info-&gt;vlan_id);
+		break;
+	case NETDEV_UP:
+		pr_info("vlan %s up vid %u\n", dev-&gt;name, dev_info-&gt;vlan_id);
+	case NETDEV_DOWN:
+		pr_info("vlan %s down vid %u\n", dev-&gt;name, dev_info-&gt;vlan_id);
+
+	}
+
+	return NOTIFY_DONE;
+}
+
+/* main dispatcher for netdev events */
+static int klna_netdev_event(struct notifier_block *unused, unsigned long event,
+			   void *ptr)
+{
+	struct net_device *dev = ptr;
+	
+//      pr_info("dpa_netdev_dev %s event %lu, dev_type: %#x\n",dev-&gt;name, event,
+//      	dev-&gt;type);
+
+	if ((notif_mask &amp; NOTIF_VLAN) &amp;&amp; is_vlan_dev(dev)) {
+		return __klna_vlan_dev_event(unused, event, ptr);
+	} 
+	if (notif_mask &amp; NOTIF_BRIDGE) {
+		if (dev-&gt;priv_flags &amp; IFF_EBRIDGE) {
+			return __klna_br_dev_event(unused,event,ptr);
+		} else if (dev-&gt;br_port) {
+			return __klna_br_if_event(unused,event,ptr);
+		}
+	}
+	if (dev-&gt;type == ARPHRD_ETHER) {
+		return __klna_eth_dev_event(unused,event,ptr);
+	}
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block dpa_netdev_notifier __read_mostly = {
+	.notifier_call = klna_netdev_event,
+};
+
+static void klna_neigh_update(struct neighbour *neigh)
+{
+	
+	struct net_device *nd = neigh-&gt;dev;
+	u32 addr = *(u32 *) neigh-&gt;primary_key;
+	u8 *ha = neigh-&gt;ha;
+	
+	if (!ha) {
+		pr_err("null ha!\n");
+		return;
+	}
+
+	pr_info("[arp] %s:  %x:%x:%x:%x:%x:%x	  " NIPQUAD_FMT "\n", 
+		(nd ? nd-&gt;name : "NULL dev"),
+		ha[0],ha[1],ha[2],ha[3],ha[4],ha[5],
+		NIPQUAD(addr));
+	/* HAIM FIXME : implement __dpa_arp_find query,
+	   since there's not separate notification for arp del/add.
+	   consider search overhead ??? */
+//      if (!__dpa_arp_find(arp_entry_t arp)
+//      	dpa_arp_add(dpa_arp_entry_t *arp);
+//      else
+//      	dpa_arp_del(dpa_arp_entry_t *arp);
+	return;
+}
+
+static int klna_neigh_callback(struct notifier_block *self, unsigned long event,
+		       void *ctx)
+{
+	printk(KERN_ERR "(%s:%d) event %lu\n", __func__, __LINE__, event);
+
+	switch (event) {
+	case (NETEVENT_NEIGH_UPDATE): {
+		klna_neigh_update((struct neighbour *)ctx);
+		break;
+	}
+	default:
+		break;
+	}
+	return 0;
+}
+
+static struct notifier_block nb = {
+	.notifier_call = klna_neigh_callback
+};
+
+static int __init klna_init(void)
+{
+	int err = 0;
+
+	pr_info("init\n");
+
+	return err;
+}
+
+static void __exit klna_exit(void)
+{
+
+}
+
+module_init(klna_init)
+module_exit(klna_exit)
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Haim Daniel &lt;haimd@marvell.com&gt;");
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="12:06:11000">
+<Copy StartSeek="0" EndSeek="6217"/>
+<Insert> static int __init dpa_klna_init(void)
+</Insert>
+<Copy StartSeek="6252" EndSeek="7533"/>
+<Insert>static void __exit dpa_klna_exit(void)
+</Insert>
+<Copy StartSeek="7568" EndSeek="7988"/>
+<Insert>module_init(dpa_klna_init)
+module_exit(dpa_klna_exit)
+</Insert>
+<Copy StartSeek="8034" EndSeek="8107"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="12:07:23000">
+<Copy StartSeek="0" EndSeek="6217"/>
+<Insert> static int __init klna_init(void)
+</Insert>
+<Copy StartSeek="6251" EndSeek="8106"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="12:07:52000">
+<Copy StartSeek="0" EndSeek="7265"/>
+<Insert>//      dpanl = netlink_kernel_create(&amp;init_net, NETLINK_NETFILTER, NFNLGRP_MAX,
+//      		      nfnetlink_rcv, NULL, THIS_MODULE);
+//      if (!dpanl) {
+//      	printk(KERN_ERR "cannot initialize dpanetlink!\n");
+//      	return -ENOMEM;
+//      }
+
+</Insert>
+<Copy StartSeek="7265" EndSeek="7855"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="12:07:58000">
+<Copy StartSeek="0" EndSeek="1736"/>
+<Insert>static int dpa_klna_nf_ct_event(unsigned int events, struct nf_ct_event *item)
+</Insert>
+<Copy StartSeek="1811" EndSeek="2287"/>
+<Insert>	.fcn = dpa_klna_nf_ct_event
+</Insert>
+<Copy StartSeek="2312" EndSeek="2323"/>
+<Insert>static int __dpa_klna_br_if_event(struct notifier_block *unused, unsigned long event, 
+</Insert>
+<Copy StartSeek="2406" EndSeek="2742"/>
+<Insert>static int __dpa_klna_br_dev_event(struct notifier_block *unused, unsigned long event, 
+</Insert>
+<Copy StartSeek="2826" EndSeek="3134"/>
+<Insert>__dpa_klna_eth_dev_event(struct notifier_block *unused, unsigned long event,
+</Insert>
+<Copy StartSeek="3207" EndSeek="3601"/>
+<Insert>__dpa_klna_vlan_dev_event(struct notifier_block *unused, unsigned long event,
+</Insert>
+<Copy StartSeek="3675" EndSeek="4238"/>
+<Insert>static int dpa_klna_netdev_event(struct notifier_block *unused, unsigned long event,
+</Insert>
+<Copy StartSeek="4319" EndSeek="4528"/>
+<Insert>		return __dpa_klna_vlan_dev_event(unused, event, ptr);
+</Insert>
+<Copy StartSeek="4580" EndSeek="4657"/>
+<Insert>			return __dpa_klna_br_dev_event(unused,event,ptr);
+</Insert>
+<Copy StartSeek="4706" EndSeek="4735"/>
+<Insert>			return __dpa_klna_br_if_event(unused,event,ptr);
+</Insert>
+<Copy StartSeek="4783" EndSeek="4824"/>
+<Insert>		return __dpa_klna_eth_dev_event(unused,event,ptr);
+</Insert>
+<Copy StartSeek="4873" EndSeek="4968"/>
+<Insert>	.notifier_call = dpa_klna_netdev_event,
+</Insert>
+<Copy StartSeek="5005" EndSeek="5009"/>
+<Insert>static void dpa_klna_neigh_update(struct neighbour *neigh)
+</Insert>
+<Copy StartSeek="5064" EndSeek="5674"/>
+<Insert>static int dpa_klna_neigh_callback(struct notifier_block *self, unsigned long event,
+</Insert>
+<Copy StartSeek="5755" EndSeek="5897"/>
+<Insert>		dpa_klna_neigh_update((struct neighbour *)ctx);
+</Insert>
+<Copy StartSeek="5943" EndSeek="6027"/>
+<Insert>	.notifier_call = dpa_klna_neigh_callback
+</Insert>
+<Copy StartSeek="6065" EndSeek="7791"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="12:08:35000">
+<Copy StartSeek="0" EndSeek="6224"/>
+<Insert>	if (strstr(notify,"arp")) {
+		pr_info("reg arp\n");
+		err = register_netevent_notifier(&amp;nb);
+		if (err) {
+			unregister_netevent_notifier(&amp;nb);
+		} else 
+			notif_mask |= NOTIF_ARP;
+	}
+	if (strstr(notify,"vlan")) {
+		pr_info("reg vlan\n");
+		notif_mask |= NOTIF_VLAN;
+	}
+	if (strstr(notify,"bridge")) {
+      		pr_info("reg bridge\n");
+		notif_mask |= NOTIF_BRIDGE;
+	}
+	if (strstr(notify,"eth")) {
+		pr_info("reg eth\n");
+		notif_mask |= NOTIF_ETH;
+	}
+	if (notif_mask &amp; (NOTIF_VLAN | NOTIF_BRIDGE| NOTIF_ETH)) {
+		err = register_netdevice_notifier(&amp;dpa_netdev_notifier);
+		if (err) {
+			unregister_netdevice_notifier(&amp;dpa_netdev_notifier);
+		}
+	}
+#ifdef CONFIG_NF_CONNTRACK_EVENTS
+	if (strstr(notify,"nf_ct")) {
+		pr_info("reg nf_conntrack\n");
+		err = nf_conntrack_register_notifier(&amp;dpa_ct_notifier);
+		if (err) {
+			nf_conntrack_unregister_notifier(&amp;dpa_ct_notifier);
+		} else
+			notif_mask |= NOTIF_NFCT;
+	}
+#else
+	#warning "CONFIG_NF_CONNTRACK_EVENTS undefined!"
+#endif
+
+</Insert>
+<Copy StartSeek="6225" EndSeek="6278"/>
+<Insert>	pr_info("exit\n");
+	if (notif_mask &amp; NOTIF_ARP) {
+		pr_info("unreg arp\n");
+		unregister_netevent_notifier(&amp;nb);
+	}
+	if (notif_mask &amp; (NOTIF_VLAN | NOTIF_BRIDGE)) {
+		pr_info("unreg dpa_netdev\n");
+		unregister_netdevice_notifier(&amp;dpa_netdev_notifier);
+	}
+#ifdef CONFIG_NF_CONNTRACK_EVENTS
+	if (notif_mask &amp; NOTIF_NFCT) {
+		pr_info("unreg nf_ct\n");
+		nf_conntrack_unregister_notifier(&amp;dpa_ct_notifier);
+	}
+#endif
+}
+
+</Insert>
+<Copy StartSeek="6282" EndSeek="6401"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="12:10:24000">
+<Copy StartSeek="0" EndSeek="6070"/>
+<Insert>/* HAIM FIXME: need to unreg the notifiers according to the notif_mask bitfield */
+</Insert>
+<Copy StartSeek="6070" EndSeek="6318"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="12:10:30000">
+<Copy StartSeek="0" EndSeek="6069"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6069" EndSeek="6317"/>
+</Delta>
+</DeltaFile>

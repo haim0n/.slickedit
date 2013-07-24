@@ -1,0 +1,3103 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="268" Comment="" Date="2013/04/22" Time="12:20:49000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+*
+* spa.c
+*
+* Description:
+*     Slow Path Adapter implementation.
+*
+*******************************************************************************/
+
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/version.h&gt;
+#include &lt;linux/skbuff.h&gt;
+#include &lt;linux/interrupt.h&gt;
+#include &lt;linux/netdevice.h&gt;
+#include &lt;linux/pci.h&gt;
+
+#include &lt;dpa_os.h&gt;
+#include &lt;spa/spa.h&gt;
+#include &lt;dpa/dpa.h&gt;
+#include &lt;util/queue.h&gt;
+#include &lt;util/string.h&gt;
+#include &lt;log/log.h&gt;
+#include &lt;util/mem.h&gt;
+#include &lt;util/cache_ops.h&gt;
+#include &lt;util/timer.h&gt;
+
+//#define SPA_DEBUG
+
+#define SPA_ERROR(format, args...) DPA_ERROR(format, ##args)
+#define SPA_WARNING(format, args...) DPA_WARNING(format, ##args)
+#define SPA_INFO(format, args...) DPA_ERROR(format, ##args)
+
+#ifdef SPA_DEBUG
+  #define SPA_DBG(format, args...)  DPA_DBG(format, ##args)
+#else
+  #define SPA_DBG(format, args...)
+#endif
+
+/* HW recv timer number */
+#define SPA_TIMER_ID               (3)
+
+/* HW timer wake-up delay */
+#define SPA_TIMER_RX_DURATION_USEC (100)
+
+/* Slow path recv budget, pkts */
+#define SPA_RX_BUDGET              (100)
+
+
+/* Eth pkt buffer cache padding. TODO Rethink and possibly remove */ 
+#define DPA_PAD_STEP      (128)
+#define DPA_PAD_STEP_NUM  (33)
+#define DPA_PAD           (DPA_PAD_STEP * DPA_PAD_STEP_NUM)
+
+/* skb_buff marking */
+#define DPA_SKB_CB(__skb) ((__skb)-&gt;cb[47])
+#define DPA_SKB_MAGIC     (0x88)
+
+/* headroom for possible headers */
+#define DPA_HEADROOM      (32)
+/* use it for fragmentation */
+#define DPA_TAILROOM      (512)
+
+#if LINUX_VERSION_CODE == KERNEL_VERSION(2, 6, 21)
+static inline unsigned char *skb_mac_header(const struct sk_buff *skb)
+{
+  return skb-&gt;mac.raw;
+}
+
+static inline unsigned char *skb_network_header(const struct sk_buff *skb)
+{
+  return skb-&gt;nh.raw;
+}
+
+static inline unsigned char *skb_transport_header(const struct sk_buff *skb)
+{
+  return skb-&gt;h.raw;
+}
+#endif
+
+/*********************************************************************
+ * Common definitions with Marvell LSP. TODO Use common header
+ */
+
+
+/* DPA Rx/TX handling params */
+typedef struct {
+  int (*tx_handler)(int port, struct sk_buff *skb);
+  int (*rx_handler)(int port, struct sk_buff *skb, uint32_t rx_desc_status);
+} mv_eth_dpa_params_t;
+
+
+int mv_eth_dpa_install(int port, mv_eth_dpa_params_t *params);
+int mv_eth_dpa_uninstall(int port);
+
+/********************************************************************/
+
+
+/*********************************************************************
+ * SPA state
+ */
+
+typedef struct {
+  bool installed;
+  int (*rx_handler) (int port, struct sk_buff *skb, uint32_t rx_desc_status);
+} spa_port_t;
+
+static struct {
+  bool                  init; /* true if SPA fully initialized */
+  queue_t              *rxq[DPA_PKT_PRI_NUM]; /* Incoming queues */
+  queue_t              *txq_done; /* Completed transmission queue */
+  spa_port_t            ports[DPA_ETH_MAX_PORT_NUM]; /* Slow path ports */
+  struct tasklet_struct rx_task; /* OS side recv thread */
+  bool                  rx_task_running; /* true if recv thread is running */
+} spa_state;
+
+
+/*********************************************************************
+ * Utility routines
+ */
+
+void dump_data(uint8_t *data, int len) {
+  int i;
+  
+  printk("&lt;0&gt;******************* LEN %d\n", len);
+  for (i = 0; i &lt; len; i++) {
+    printk("%02x ", data[i]);
+  }
+  printk("&lt;0&gt;****************************\n");
+}
+
+/* Get next pending packet for reception by slow path */
+eth_pkt_t *spa_pkt_rx_get(uint32_t priority) {
+  return (eth_pkt_t *) queue_get(spa_state.rxq[priority]);
+}
+
+/* Get next packet for which xmit was completed */
+eth_pkt_t *spa_pkt_tx_done_get(void) {
+  return (eth_pkt_t *) queue_get(spa_state.txq_done);
+}
+
+/* Init all queues */
+int32_t spa_queues_init(void) {
+  uint32_t i;
+
+  dpa_memset(&amp;spa_state.rxq[0], 0, sizeof(spa_state.rxq));
+  spa_state.txq_done = NULL;
+
+  /* Rx queues */
+  for (i = 0; i &lt; DPA_PKT_PRI_NUM; i++) {
+       spa_state.rxq[i] = queue_create(SPA_RX_QUEUE_SIZE);
+       if (spa_state.rxq[i] == NULL) {
+           SPA_ERROR("Can't alloc Rx queue (%d) of size (%d)", i, SPA_RX_QUEUE_SIZE);
+           return DPA_OUT_OF_MEMORY;
+       }
+  }
+
+  /* Tx done queue */
+  spa_state.txq_done = queue_create(SPA_TX_QUEUE_SIZE);
+  if (spa_state.txq_done == NULL) {
+      SPA_ERROR("Can't alloc Tx done queue (%d) of size (%d)", i, SPA_TX_QUEUE_SIZE);
+           return DPA_OUT_OF_MEMORY;
+  }
+
+  return DPA_OK;
+}
+
+
+/* Destroy all queues. Any pending packets freed */
+void spa_queues_shutdown(void) {
+  uint32_t i;
+  eth_pkt_t *pkt;
+  
+  for (i = 0; i &lt; DPA_PKT_PRI_NUM; i++) {
+       if (spa_state.rxq[i] != NULL) {
+           while ((pkt = queue_get(spa_state.rxq[i])) != NULL) {
+             dpa_pkt_free(pkt);
+           }
+           queue_destroy(spa_state.rxq[i]);
+       }
+  }
+
+  /* Tx done queues */
+  while ((pkt = queue_get(spa_state.txq_done)) != NULL) {
+         dpa_pkt_free(pkt);
+  }
+  queue_destroy(spa_state.txq_done);
+}
+
+
+/* Reenable LSP ethernet driver on all ports  */
+void spa_uninstall_dpa(void) {
+  uint8_t i;
+  
+  for (i = 0; i &lt; DPA_ETH_MAX_PORT_NUM; i++) {
+      if (spa_state.ports[i].installed) {
+          spa_port_uninstall(i);
+      }
+  }
+}
+
+
+static inline int32_t spa_skb_add_mh(struct sk_buff *skb, uint16_t mh)
+{
+  if (skb_headroom(skb) &lt; ETH_MH_SIZE) {
+      SPA_DBG("skb (%p) doesn't have place for MH, head (%p), data (%p)",
+              skb, skb-&gt;head, skb-&gt;data);
+    return 1;
+  }
+
+  /* Prepare place for MH header */
+  skb_push(skb, ETH_MH_SIZE);
+  *((uint16_t *) skb-&gt;data) = mh;
+
+  return 0;
+}
+
+
+/* Detect if skb originated in DPA */
+/* TODO Find a more robust way, this one can falsely detect due to Linux reuse in skb slab */
+static eth_pkt_t *spa_skb_is_fast_path(struct sk_buff *skb) {
+  eth_pkt_t *pkt = NULL;
+  if (DPA_SKB_CB(skb) == DPA_SKB_MAGIC) {
+      pkt = (eth_pkt_t *) skb-&gt;head;
+      if (pkt-&gt;os_handle == (void*) skb) {
+          return pkt;
+      }
+  }
+
+  return NULL;
+}
+
+/******************************************************
+ *   Slow path interface
+ */
+
+static int spa_skb_tx(int port, struct sk_buff *skb) {
+  eth_pkt_t *pkt = NULL;
+
+  if (!spa_state.init) {
+      SPA_ERROR("SPA not initialized");
+      goto fail;
+  }
+
+  SPA_DBG("LINUX =====&gt; DPA[%d], %d b", port, skb-&gt;len);
+
+  /* TODO Handle fragments */
+  /* TODO Define correct priority depending on pkt type */
+  if (!dpa_tx_queue_ready(DPA_PKT_PRI_MIN)) {
+      SPA_DBG("Slow path xmit failed, DPA Tx queue not ready, port (%d)", port);
+      goto fail;
+  }
+
+  /* Wrap up skb with a packet buffer if not DPA-originated  */
+  pkt = spa_skb_is_fast_path(skb);
+  if (!pkt) {
+      SPA_DBG("*** SKB FOREIGN");
+
+      pkt = dpa_pkt_wrap(skb-&gt;data, skb_headlen(skb), skb);
+      if (pkt == NULL) {
+          SPA_ERROR("Failed to alloc packet meta data, packet dropped");
+          goto fail;
+      }
+  } else {
+     SPA_DBG("*** SKB NATIVE, pkt-&gt;dpa_handle = 0x%x", pkt-&gt;dpa_handle);
+  }
+
+  /* Marvell header. FIXME Have it part of port struct inherited from mv_netdev upon dpa_install */
+  if (ETH_PORT_HAS_MH(port)) {
+      if (spa_skb_add_mh(skb, 0)) {
+          SPA_DBG("Failed to add Marvell header, packet dropped");
+          goto fail;
+      }
+  }
+
+  pkt-&gt;port = port; 
+  pkt-&gt;size = skb_headlen(skb);
+  pkt-&gt;phy_hdr = (uint8_t*) skb-&gt;data;
+  pkt-&gt;phy_hdr_dma = dpa_os_virt_to_phys(pkt-&gt;phy_hdr, pkt-&gt;size); /* Also does cache clean */
+  pkt-&gt;eth_hdr = (dpa_eth_hdr_t*) skb_mac_header(skb);
+  pkt-&gt;ip_hdr = (dpa_ip_hdr_t*) skb_network_header(skb);
+  pkt-&gt;l4_hdr = (dpa_l4_hdr_t *)skb_transport_header(skb);
+
+  dpa_pkt_tx(pkt, DPA_PKT_PRI_MIN);
+
+  /* Native packets are scheduled per batch from spa_rx.
+     Linux-originated are scheduled instantly */
+  if (ETH_IS_PKT_SLOW_PATH(pkt)) {
+      dpa_tx_start();
+  }
+
+  return 0;
+
+fail:
+  /* skb will be freed by Linux; pkt will be freed upon DPA Tx done */
+
+  return -1;
+}
+
+
+/* Forward pending Rx packets to Linux network stack */
+bool spa_rx(uint32_t budget) {
+  eth_pkt_t *pkt;
+  struct sk_buff *skb;
+  int32_t pri, recved;
+  
+  if (!spa_state.init) {
+      SPA_ERROR("SPA not initialized");
+      return false;
+  }
+  
+  recved = 0;
+  
+  /* Handle highest priority packets first */
+  for (pri = DPA_PKT_PRI_MAX; pri &gt;= DPA_PKT_PRI_MIN; pri--) {
+        while ((recved &lt; budget) &amp;&amp; (pkt = spa_pkt_rx_get(pri)) != NULL) {
+            recved++;
+
+            /* Packet withdrawn by this time */
+            if (pkt-&gt;status != ETH_PKT_STATUS_LCL) {
+                DPA_ERROR("Pkt withdrawn port (%d), status %d", pkt-&gt;port, pkt-&gt;status);
+                continue;
+            }
+
+            /* Validate */
+            skb = (struct sk_buff *)pkt-&gt;os_handle;
+            if (pkt-&gt;port &gt;= DPA_ETH_MAX_PORT_NUM || 
+                !spa_state.ports[pkt-&gt;port].installed ||
+                skb == NULL) {
+                DPA_ERROR("Invalid skb (0x%x) or port (%d), pkt dropped", pkt-&gt;port, (uint32_t) skb);
+                dpa_pkt_reclaim(pkt);
+                dpa_pkt_free(pkt);
+                continue;
+            }
+
+            /* Construct skb */
+            skb-&gt;data += ETH_MH_SIZE;
+            skb-&gt;tail += (pkt-&gt;size + ETH_MH_SIZE);
+            skb-&gt;len = pkt-&gt;size;
+            skb-&gt;ip_summed = CHECKSUM_NONE;
+
+            /* Redeem packet buffer: A new packet buffer allocated, pkt _not_ touched */
+            dpa_pkt_reclaim(pkt);
+
+            /* Invalidate cache for packet body */
+            dcache_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+
+            /* Forward to Linux */
+            spa_state.ports[pkt-&gt;port].rx_handler(pkt-&gt;port, skb, pkt-&gt;rx_desc-&gt;status);
+        }
+  }
+
+  /* Forward back to DPA any pkts handled by Linux */
+  dpa_tx_start();
+
+  return (recved &gt;= budget); /* Assume have still pending if reached budget */
+}
+
+
+/* Slow path recv tasklet handler (NAPI-alternative) */
+static void spa_rx_task_handler(unsigned long arg) {
+  eth_pkt_t *pkt;
+
+  if (!spa_state.rx_task_running) {
+      return;
+  }
+  
+  /* Recv pkts up to budget */
+  if (spa_rx(SPA_RX_BUDGET)) {
+      tasklet_hi_schedule(&amp;spa_state.rx_task);
+  }
+  
+  /* Free transmitted packets if any */
+  /* TODO move to another dedicated place */
+  while ((pkt = spa_pkt_tx_done_get()) != NULL) {
+          dpa_pkt_free(pkt);
+  }
+}
+
+
+/* Init Rx task and HW recv timer */
+int32_t spa_rx_init(void) {
+
+  /* Rx task */
+  tasklet_init(&amp;spa_state.rx_task, spa_rx_task_handler, 0);
+  tasklet_disable(&amp;spa_state.rx_task);
+  tasklet_enable(&amp;spa_state.rx_task);
+  spa_state.rx_task_running = true;
+  SPA_DBG("Recv thread initialized");
+
+  return DPA_OK;
+}
+
+
+
+/* Init Rx task and HW recv timer */
+void spa_rx_shutdown(void) {
+  /* Rx task */
+  spa_state.rx_task_running = false;
+  SPA_DBG("Recv thread killed");
+  tasklet_kill(&amp;spa_state.rx_task);
+}
+
+
+
+/******************************************************
+ *   SPA API
+ */
+
+/* Initialize SPA */
+int32_t spa_init(void) {
+  int32_t err;
+
+  if (spa_state.init) {
+      SPA_WARNING("Already initialized");
+      return DPA_OK;
+  }
+
+  /* Rx/Tx queues */
+  if ((err = spa_queues_init())) {
+      goto fail;
+  }
+
+  /* OS side recv mechanism */
+  if ((err = spa_rx_init())) {
+      goto fail;
+  }
+
+  spa_state.init = true;
+
+  return DPA_OK;
+
+fail:
+  spa_shutdown();
+
+  return err;
+}
+
+/* Terminate SPA */
+int32_t spa_shutdown(void) {
+
+  /* Restore LSP ethernet driver */
+  spa_uninstall_dpa();
+
+  /* OS side recv mechanism */
+  spa_rx_shutdown();
+
+  /* Rx/Tx queues */
+  spa_queues_shutdown();
+
+  spa_state.init = false;
+
+  return DPA_OK;
+}
+
+
+
+/* Recv packet from DPA for slow path handling */
+int32_t spa_pkt_rx(eth_pkt_t* pkt, uint32_t priority) {
+  if (queue_put(spa_state.rxq[priority], (void*) pkt)) {
+      return DPA_OK;
+  }
+
+  return DPA_QUEUE_IS_FULL;
+}
+
+
+/* End of Rx batch, wake-up slow path thread */
+void spa_rx_done(uint8_t port) {
+  tasklet_hi_schedule(&amp;spa_state.rx_task);
+}
+
+
+/* Recv queue status */
+bool spa_rx_queue_is_full(uint32_t priority) {
+  return queue_is_full(spa_state.rxq[priority]);
+}
+
+bool spa_rx_queue_is_empty(uint32_t priority) {
+  return queue_is_empty(spa_state.rxq[priority]);
+}
+
+/* Slow path packet was transmitted by DPA */
+int32_t spa_pkt_tx_done(eth_pkt_t* pkt) {
+    return (queue_put(spa_state.txq_done, (void*) pkt)) ? 
+            DPA_OK : DPA_QUEUE_IS_FULL;
+}
+
+
+/* Enable DPA instead of LSP ethernet driver on port */
+int32_t spa_port_install(uint8_t port) {
+  mv_eth_dpa_params_t params;
+
+  if (spa_state.ports[port].installed) {
+      SPA_WARNING("Port (%d) already installed", port)
+      return DPA_OK;
+  }
+
+  dpa_memset(&amp;params, 0, sizeof(params));
+  params.tx_handler = &amp;spa_skb_tx;
+
+  /* Invoke LSP installer */
+  if (mv_eth_dpa_install(port, &amp;params) || params.rx_handler == NULL) {
+      SPA_ERROR("Failed to install DPA on slow path port (%d)", port);
+
+      return DPA_SLOW_PATH_ERROR;
+  }
+
+  spa_state.ports[port].rx_handler = params.rx_handler;
+  spa_state.ports[port].installed = true;
+
+  SPA_DBG("Installed DPA on port (%d)", port);
+
+  return DPA_OK;
+}
+
+
+/* Restore LSP ethernet driver on port */
+int32_t spa_port_uninstall(uint8_t port) {
+  if (!spa_state.ports[port].installed) {
+      SPA_WARNING("Port (%d) not installed", port)
+
+      return DPA_OK;
+  }
+
+  /* Invoke LSP uninstaller */
+  if (mv_eth_dpa_uninstall(port)) {
+      SPA_ERROR("Failed to uninstall DPA on slow path port (%d)", port);
+
+      return DPA_SLOW_PATH_ERROR;
+  }
+
+  spa_state.ports[port].installed = false;
+
+  SPA_INFO("Uninstalled DPA on slow path port (%d)", port);
+
+  return DPA_OK;
+}
+
+
+
+/******************************************************
+ *   DPA pkt allocation/deallocation
+ */
+ 
+eth_pkt_t *__dpa_pkt_alloc(uint32_t size) {
+  eth_pkt_t *pkt;
+  struct sk_buff *skb;
+  uint8_t *data;
+  uint32_t total_size;/* offset;
+  static uint32_t pad_count = 0; */
+
+  /* Alloc skb and label it as ours */
+  total_size = /* DPA_PAD + */ DPA_HEADROOM + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1);
+  total_size += DPA_TAILROOM;
+
+  skb = dev_alloc_skb(total_size);
+ // printk("requested:%u,total_allocated: %u, tota_size %u\n", size, skb-&gt;end - skb-&gt;head, total_size);
+  if (skb == NULL) {
+      DPA_ERROR("Failed to alloc skb, (%d) bytes.", total_size);
+      return NULL;
+  }
+  DPA_SKB_CB(skb) = DPA_SKB_MAGIC;
+
+  /* Put pkt meta data first */
+  skb_reserve(skb, sizeof(eth_pkt_t));
+  pkt = (eth_pkt_t *) skb-&gt;head;
+  dpa_memset(pkt, 0, sizeof(eth_pkt_t));
+
+  /* Put "Cache Christ" pad */
+  /* offset = pad_count * DPA_PAD_STEP;
+  if (++pad_count == DPA_PAD_STEP_NUM) {
+      pad_count = 0;
+  }
+  
+  skb_reserve(skb, offset);  */
+
+  /* reserve some room for future headers */
+  skb_reserve(skb, DPA_HEADROOM);
+
+  data = (uint8_t*) MEM_ALIGN_UP(skb-&gt;data, CPU_D_CACHE_LINE_SIZE);
+  skb_reserve(skb, (uint32_t) data - (uint32_t) skb-&gt;data);
+  
+  pkt-&gt;buff = pkt-&gt;phy_hdr = (uint8_t*) skb-&gt;data;
+  if (MEM_IS_NOT_ALIGN(pkt-&gt;buff, CPU_D_CACHE_LINE_SIZE)) {
+      DPA_ERROR("Memory buffer not aligned (0x%x), pkt size %d", (uint32_t)pkt-&gt;buff, sizeof(eth_pkt_t));
+  }
+
+  /* Provoke page fault while in Linux context */
+  pkt-&gt;buff[0] = pkt-&gt;buff[size-1] = 0x78;
+
+  /* Fill in pkt meta data */
+  pkt-&gt;os_handle = (void *) skb;
+  pkt-&gt;buff_dma = pkt-&gt;phy_hdr_dma = dpa_os_virt_to_phys(pkt-&gt;buff, size);
+  pkt-&gt;size = 0;
+  pkt-&gt;alloc_size = size;
+  pkt-&gt;pool_id = ETH_POOL_ID_UKNOWN;
+  pkt-&gt;dpa_handle = (void*) NULL;
+  pkt-&gt;status = ETH_PKT_STATUS_NONE;
+
+  return pkt;
+}
+
+
+eth_pkt_t *__dpa_pkt_wrap(void *data, uint32_t size, void *os_handle) {
+  eth_pkt_t *pkt;
+
+  pkt = DPA_MALLOC(sizeof(eth_pkt_t));
+  if (pkt != NULL) {
+      dpa_memset(pkt, 0, sizeof(eth_pkt_t));
+      pkt-&gt;os_handle = os_handle;
+      pkt-&gt;size = size;
+      pkt-&gt;alloc_size = size; /* TODO Check where used? */
+      pkt-&gt;pool_id = ETH_POOL_ID_FOREIGN; /* Foreign packet buffer indication */
+      pkt-&gt;dpa_handle = (void*) NULL;
+  }
+
+  return pkt;
+}
+
+
+void __dpa_pkt_free(eth_pkt_t* pkt) {
+  struct sk_buff *skb;
+
+  if (pkt) {
+      skb = (struct sk_buff *) pkt-&gt;os_handle;
+
+      if (ETH_IS_PKT_SLOW_PATH(pkt)) {
+          DPA_FREE(pkt);
+      }
+      dev_kfree_skb(skb);
+  }
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/09/02" Time="10:53:4000">
+<Copy StartSeek="0" EndSeek="5579"/>
+<Insert>  SPA_DBG("spa_skb_native: port %d, q %d, os_handle 0x%x, skb 0x%x, dpa_handle 0x%x, data_theor = 0x%x, data -2 = 0x%x",
+</Insert>
+<Copy StartSeek="5702" EndSeek="14402"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/09/02" Time="14:56:47000">
+<Copy StartSeek="0" EndSeek="6688"/>
+<Insert>      SPA_DBG("***************SKB FOREIGN");
+</Insert>
+<Copy StartSeek="6735" EndSeek="7202"/>
+<Insert>      SPA_DBG("+++++++++++++++ SKB NATIVE ++++++++++++++++++");
+</Insert>
+<Copy StartSeek="7268" EndSeek="14406"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/09/02" Time="14:57:17000">
+<Copy StartSeek="0" EndSeek="5579"/>
+<Insert>  DPA_ERROR("spa_skb_native: port %d, q %d, os_handle 0x%x, skb 0x%x, dpa_handle 0x%x, data_theor = 0x%x, data -2 = 0x%x",
+</Insert>
+<Copy StartSeek="5700" EndSeek="6686"/>
+<Insert>      DPA_ERROR("***************SKB FOREIGN");
+</Insert>
+<Copy StartSeek="6731" EndSeek="7198"/>
+<Insert>      DPA_ERROR("+++++++++++++++ SKB NATIVE ++++++++++++++++++");
+</Insert>
+<Copy StartSeek="7262" EndSeek="14400"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/09/03" Time="10:27:49000">
+<Copy StartSeek="0" EndSeek="2410"/>
+<Insert>  spa_port_t            ports[ETH_MAX_PORT_NUM]; /* Slow path ports */
+</Insert>
+<Copy StartSeek="2485" EndSeek="4673"/>
+<Insert>  for (i = 0; i &lt; ETH_MAX_PORT_NUM; i++) {
+</Insert>
+<Copy StartSeek="4720" EndSeek="5402"/>
+<Insert>  uint8_t *data;
+</Insert>
+<Copy StartSeek="5425" EndSeek="5426"/>
+<Insert>  pkt = (eth_pkt_t *) (skb-&gt;head + NET_SKB_PAD);
+
+  data = (uint8_t*) MEM_ALIGN_UP((uint32_t) (skb-&gt;head + NET_SKB_PAD + sizeof(eth_pkt_t)), CPU_D_CACHE_LINE_SIZE);
+ 
+  SPA_DBG("spa_skb_native: port %d, q %d, os_handle 0x%x, skb 0x%x, dpa_handle 0x%x, data_theor = 0x%x, data -2 = 0x%x",
+            pkt-&gt;port, pkt-&gt;queue, (uint32_t) pkt-&gt;os_handle, (uint32_t)skb, (uint32_t)pkt-&gt;dpa_handle,
+            data, skb-&gt;data - ETH_MH_SIZE);
+
+  return (pkt-&gt;port &lt; 3 &amp;&amp; 
+          pkt-&gt;queue &lt; 8 &amp;&amp;
+          (pkt-&gt;os_handle == (void*) skb) &amp;&amp;
+          (pkt-&gt;dpa_handle != NULL) &amp;&amp;
+          data == (skb-&gt;data - ETH_MH_SIZE));
+}
+
+</Insert>
+<Copy StartSeek="6133" EndSeek="7357"/>
+<Insert>      pkt = (eth_pkt_t*) (skb-&gt;head + NET_SKB_PAD);
+</Insert>
+<Copy StartSeek="7430" EndSeek="8617"/>
+<Insert>            if (pkt-&gt;port &gt;= ETH_MAX_PORT_NUM ||
+</Insert>
+<Copy StartSeek="8670" EndSeek="14520"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/09/03" Time="10:50:37000">
+<Copy StartSeek="0" EndSeek="5805"/>
+<Insert>
+      SPA_DBG("native %d, port %d, q %d, os_handle 0x%08x, skb 0x%08x, dpa_handle 0x%08x, pkt-&gt;buff = 0x%08x, skb-&gt;data 0x%08x",
+               native, pkt-&gt;port, pkt-&gt;queue, (uint32_t) pkt-&gt;os_handle, (uint32_t)skb, (uint32_t)pkt-&gt;dpa_handle,
+               (uint32_t)pkt-&gt;buff, (uint32_t)skb-&gt;data);
+  }
+
+</Insert>
+<Copy StartSeek="5810" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9520" EndSeek="14223"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/10/10" Time="15:39:53000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9514" EndSeek="14217"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/10/10" Time="15:40:1000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9516" EndSeek="14219"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="11:36:45000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            //dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9514" EndSeek="14217"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="11:45:18000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9503" EndSeek="14206"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="11:51:24000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9515" EndSeek="14218"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="11:52:10000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t)(skb-&gt;data + skb-&gt;len - 1));
+</Insert>
+<Copy StartSeek="9514" EndSeek="14217"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="11:54:58000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9514" EndSeek="14217"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="11:56:43000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>//          dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9514" EndSeek="14217"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="11:58:28000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9514" EndSeek="14217"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="12:00:50000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>//          dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9514" EndSeek="14217"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:07:37000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9519" EndSeek="14222"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:07:44000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data + 32, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9514" EndSeek="14217"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:08:16000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9526" EndSeek="14229"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:23:9000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Copy StartSeek="9492" EndSeek="14314"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:24:27000">
+<Copy StartSeek="0" EndSeek="9443"/>
+<Insert>                    DPA_ERROR("");
+</Insert>
+<Copy StartSeek="9498" EndSeek="14334"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:24:38000">
+<Copy StartSeek="0" EndSeek="9355"/>
+<Insert>
+            /* Invalidate cache for packet body */
+</Insert>
+<Copy StartSeek="9355" EndSeek="9460"/>
+<Copy StartSeek="9511" EndSeek="14333"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:24:54000">
+<Copy StartSeek="0" EndSeek="9355"/>
+<Insert>            if (skb-&gt;data &amp; 0x1f) {
+</Insert>
+<Copy StartSeek="9401" EndSeek="14343"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:25:43000">
+<Copy StartSeek="0" EndSeek="9401"/>
+<Insert>                    DPA_ERROR("unaligned skb-&gt;data!");
+</Insert>
+<Copy StartSeek="9470" EndSeek="14357"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:26:30000">
+<Copy StartSeek="0" EndSeek="9355"/>
+<Insert>            if ((uint32_t)skb-&gt;data &amp; 0x1f) {
+                    DPA_ERROR("unaligned skb-&gt;data! %p", skb-&gt;data);
+            }
+</Insert>
+<Copy StartSeek="9355" EndSeek="14228"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:28:6000">
+<Copy StartSeek="0" EndSeek="9406"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) (skb-&gt;data + skb-&gt;len - 1) &amp; ~(0x1f));
+</Insert>
+<Copy StartSeek="9535" EndSeek="14238"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:28:20000">
+<Copy StartSeek="0" EndSeek="9406"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data &amp; ~(0x1f), (uint32_t) (skb-&gt;data + skb-&gt;len - 1) &amp; ~(0x1f));
+</Insert>
+<Copy StartSeek="9537" EndSeek="14240"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:29:36000">
+<Copy StartSeek="0" EndSeek="9406"/>
+<Insert>            //dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data &amp; ~(0x1f), (uint32_t) (skb-&gt;data + skb-&gt;len - 1) &amp; ~(0x1f));
+</Insert>
+<Copy StartSeek="9535" EndSeek="14238"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:42:59000">
+<Copy StartSeek="0" EndSeek="9406"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data &amp; ~(0x1f), (uint32_t) (skb-&gt;data + skb-&gt;len - 1) &amp; ~(0x1f));
+</Insert>
+<Copy StartSeek="9530" EndSeek="14233"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:43:26000">
+<Copy StartSeek="0" EndSeek="9406"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data + 46, (uint32_t) (skb-&gt;data + skb-&gt;len - 1) &amp; ~(0x1f));
+</Insert>
+<Copy StartSeek="9530" EndSeek="14233"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:44:54000">
+<Copy StartSeek="0" EndSeek="9406"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data + 64, (uint32_t) (skb-&gt;data + skb-&gt;len - 1) &amp; ~(0x1f));
+</Insert>
+<Copy StartSeek="9530" EndSeek="14233"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:45:46000">
+<Copy StartSeek="0" EndSeek="9406"/>
+<Insert>//          dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data + 64, (uint32_t) (skb-&gt;data + skb-&gt;len - 1) &amp; ~(0x1f));
+</Insert>
+<Copy StartSeek="9530" EndSeek="14233"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:51:0000">
+<Copy StartSeek="0" EndSeek="9406"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data + 64, (uint32_t) (skb-&gt;data + skb-&gt;len - 1) &amp; ~(0x1f));
+</Insert>
+<Copy StartSeek="9530" EndSeek="14233"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:52:22000">
+<Copy StartSeek="0" EndSeek="9406"/>
+<Insert>//          dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data + 64, (uint32_t) (skb-&gt;data + skb-&gt;len - 1) &amp; ~(0x1f));
+</Insert>
+<Copy StartSeek="9536" EndSeek="14239"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:53:54000">
+<Copy StartSeek="0" EndSeek="9406"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line((uint32_t) skb-&gt;data + 64, (uint32_t) (skb-&gt;data + skb-&gt;len - 1) &amp; ~(0x1f));
+</Insert>
+<Copy StartSeek="9531" EndSeek="14234"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:54:9000">
+<Copy StartSeek="0" EndSeek="9406"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) (skb-&gt;data + skb-&gt;len - 1) &amp; ~(0x1f));
+</Insert>
+<Copy StartSeek="9535" EndSeek="14238"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:55:42000">
+<Copy StartSeek="0" EndSeek="9406"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line((uint32_t) skb-&gt;data +64, (uint32_t) (skb-&gt;data + skb-&gt;len - 1) &amp; ~(0x1f));
+
+</Insert>
+<Copy StartSeek="9648" EndSeek="14350"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:58:44000">
+<Copy StartSeek="0" EndSeek="9537"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) (skb-&gt;data + 64 - 1) );
+</Insert>
+<Copy StartSeek="9641" EndSeek="14344"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="13:59:31000">
+<Copy StartSeek="0" EndSeek="9537"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) (skb-&gt;data + 32 - 1) );
+</Insert>
+<Copy StartSeek="9641" EndSeek="14344"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="14:04:8000">
+<Copy StartSeek="0" EndSeek="9537"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) (skb-&gt;data + 64 - 1) );
+</Insert>
+<Copy StartSeek="9646" EndSeek="14349"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="14:06:59000">
+<Copy StartSeek="0" EndSeek="9355"/>
+<Copy StartSeek="9356" EndSeek="9407"/>
+<Insert>            //dcache_l1_l2_clean_invalidate_multi_line((uint32_t) skb-&gt;data +64, (uint32_t) (skb-&gt;data + skb-&gt;len - 1) &amp; ~(0x1f));
+            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data + 32, (uint32_t) (skb-&gt;data + 64 - 1) );
+
+</Insert>
+<Copy StartSeek="9515" EndSeek="14217"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="15:12:38000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9514" EndSeek="14217"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="15:13:37000">
+<Copy StartSeek="0" EndSeek="9514"/>
+<Insert>
+</Insert>
+<Copy StartSeek="9545" EndSeek="14247"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="15:16:25000">
+<Copy StartSeek="0" EndSeek="9514"/>
+<Insert>            skb-&gt;data[0] ^= 1;
+</Insert>
+<Copy StartSeek="9545" EndSeek="14247"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="15:18:42000">
+<Copy StartSeek="0" EndSeek="9514"/>
+<Insert>            skb-&gt;data[7] ^= 1;
+</Insert>
+<Copy StartSeek="9514" EndSeek="14216"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/10/11" Time="15:28:14000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>//          dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9515" EndSeek="14217"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="10:44:43000">
+<Copy StartSeek="0" EndSeek="5425"/>
+<Insert>
+</Insert>
+<Copy StartSeek="5460" EndSeek="14251"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="11:02:19000">
+<Copy StartSeek="0" EndSeek="5402"/>
+<Insert>  bool native = false;
+</Insert>
+<Copy StartSeek="5438" EndSeek="14264"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="11:03:16000">
+<Copy StartSeek="0" EndSeek="5852"/>
+<Insert>  }
+
+</Insert>
+<Copy StartSeek="5953" EndSeek="14360"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="11:05:36000">
+<Copy StartSeek="0" EndSeek="5853"/>
+<Insert>      if (eth-&gt;h_proto != ETH_P_IP) {
+</Insert>
+<Copy StartSeek="5905" EndSeek="14374"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="11:05:48000">
+<Copy StartSeek="0" EndSeek="5853"/>
+<Insert>      tmp = eth-&gt;h_proto != ETH_P_IP;
+</Insert>
+<Copy StartSeek="5891" EndSeek="14374"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="11:05:52000">
+<Copy StartSeek="0" EndSeek="5891"/>
+<Insert>      if () {
+</Insert>
+<Copy StartSeek="5908" EndSeek="14377"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="11:05:54000">
+<Copy StartSeek="0" EndSeek="5891"/>
+<Insert>      if (tmp) {
+</Insert>
+<Copy StartSeek="5909" EndSeek="14378"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="11:05:57000">
+<Copy StartSeek="0" EndSeek="5971"/>
+<Insert>  return native;
+</Insert>
+<Copy StartSeek="5995" EndSeek="14385"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="11:06:3000">
+<Copy StartSeek="0" EndSeek="5438"/>
+<Insert>  dpa_eth_hdr_t *eth = skb-&gt;data;
+</Insert>
+<Copy StartSeek="5489" EndSeek="14402"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="11:16:37000">
+<Copy StartSeek="0" EndSeek="5402"/>
+<Insert>  bool native = false, tmp = false;
+  dpa_eth_hdr_t *eth = (dpa_eth_hdr_t *)skb-&gt;data;
+
+</Insert>
+<Copy StartSeek="5426" EndSeek="5805"/>
+<Insert>
+      tmp = eth-&gt;h_proto == ETH_P_IP;
+      if (!tmp) {
+              SPA_ERROR("WROING DETECTION!!\n");
+      }
+  }
+
+  return native &amp;&amp; tmp;
+}
+
+</Insert>
+<Copy StartSeek="5830" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9520" EndSeek="14223"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:13:35000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9524" EndSeek="14227"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:26:7000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line_fiq((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9529" EndSeek="14232"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:30:24000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 32, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9534" EndSeek="14237"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:30:39000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 32, (uint32_t) skb-&gt;data + 32 + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9534" EndSeek="14237"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:31:21000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 56, (uint32_t) skb-&gt;data + 32 + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9534" EndSeek="14237"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:31:46000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 32, (uint32_t) skb-&gt;data + 32 + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9534" EndSeek="14237"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:32:20000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 40, (uint32_t) skb-&gt;data + 40 + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9529" EndSeek="14232"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:34:41000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 40, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9529" EndSeek="14232"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:35:55000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 44, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9529" EndSeek="14232"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:36:29000">
+<Copy StartSeek="0" EndSeek="9407"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 54, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9529" EndSeek="14232"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:36:43000">
+<Copy StartSeek="0" EndSeek="7587"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7611" EndSeek="14255"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:57:29000">
+<Copy StartSeek="0" EndSeek="9430"/>
+<Copy StartSeek="9552" EndSeek="14377"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="16:57:36000">
+<Copy StartSeek="0" EndSeek="9552"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 52, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9662" EndSeek="14365"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="17:00:38000">
+<Copy StartSeek="0" EndSeek="9552"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line_fiq((uint32_t)&amp;dummy, (uint32_t)&amp;dummy + sizeof(dummy));
+</Insert>
+<Copy StartSeek="9665" EndSeek="14368"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="17:02:58000">
+<Copy StartSeek="0" EndSeek="9552"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line_fiq((uint32_t)&amp;dummy, (uint32_t)&amp;dummy + sizeof(dummy) -1);
+</Insert>
+<Copy StartSeek="9661" EndSeek="14364"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="17:05:9000">
+<Copy StartSeek="0" EndSeek="9552"/>
+<Copy StartSeek="9581" EndSeek="14393"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="17:08:34000">
+<Copy StartSeek="0" EndSeek="9581"/>
+<Insert>            dcache_l1_l2_clean_invalidate_multi_line((uint32_t)&amp;dummy, (uint32_t)&amp;dummy + sizeof(dummy) -1);
+</Insert>
+<Copy StartSeek="9688" EndSeek="14391"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2012/10/14" Time="17:10:19000">
+<Copy StartSeek="0" EndSeek="1417"/>
+<Insert>#define SPA_RX_BUDGET              (50)
+</Insert>
+<Copy StartSeek="1458" EndSeek="5997"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6013" EndSeek="6464"/>
+<Insert>  if (!spa_skb_native(skb)) {
+</Insert>
+<Copy StartSeek="6513" EndSeek="7438"/>
+<Insert>  /* Forward to DPA, guaranteed to succeed */
+</Insert>
+<Copy StartSeek="7438" EndSeek="7475"/>
+<Copy StartSeek="7623" EndSeek="7642"/>
+<Insert>  /* skb will be freed by LSP, pkt will be freed upon tx done */
+</Insert>
+<Copy StartSeek="7707" EndSeek="7724"/>
+<Insert>static char dummy[64];
+
+</Insert>
+<Copy StartSeek="7725" EndSeek="7781"/>
+<Insert>static void spa_rx(void) {
+</Insert>
+<Copy StartSeek="7812" EndSeek="7944"/>
+<Insert>      return;
+</Insert>
+<Copy StartSeek="7964" EndSeek="8097"/>
+<Insert>        while ((recved &lt; SPA_RX_BUDGET) &amp;&amp; (pkt = spa_pkt_rx_get(pri)) != NULL) {
+
+</Insert>
+<Copy StartSeek="8172" EndSeek="8453"/>
+<Insert>            if (pkt-&gt;port &gt;= DPA_ETH_MAX_PORT_NUM ||
+                !spa_state.ports[pkt-&gt;port].installed) {
+                DPA_ERROR("No DPA installed on port (%d), pkt dropped", pkt-&gt;port);
+                dpa_pkt_rx_done(pkt);
+                dpa_pkt_free(pkt);
+                continue;
+            }
+
+            /* Construct skb */
+</Insert>
+<Copy StartSeek="8453" EndSeek="8505"/>
+<Insert>            if (skb == NULL) {
+                DPA_ERROR("Associated skb NULL, pkt dropped");
+                dpa_pkt_rx_done(pkt);
+</Insert>
+<Copy StartSeek="8787" EndSeek="8863"/>
+<Copy StartSeek="8895" EndSeek="9178"/>
+<Insert>            dpa_pkt_rx_done(pkt);
+</Insert>
+<Copy StartSeek="9212" EndSeek="9213"/>
+<Insert>            //SPA_INFO(" DPA[%d] =====&gt; LINUX,  %d b", pkt-&gt;port, skb-&gt;len);
+            //dump_data(skb-&gt;data, skb-&gt;len);
+
+</Insert>
+<Copy StartSeek="9213" EndSeek="9264"/>
+<Insert>//          dcache_l1_l2_clean_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 52, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+            dummy[0] = 0x66;
+            dcache_l1_l2_clean_invalidate_multi_line((uint32_t)dummy, (uint32_t)dummy + sizeof(dummy) -1);
+
+</Insert>
+<Copy StartSeek="9376" EndSeek="9510"/>
+<Insert>        
+        /* Recv up to budget */
+        if (recved &gt;= SPA_RX_BUDGET) {
+            /* Reschedule if still have pending pkts */
+            if (!spa_rx_queue_is_empty(pri)) {
+                tasklet_hi_schedule(&amp;spa_state.rx_task);
+            } else {
+                return;
+            }
+        }
+  }
+}
+
+
+</Insert>
+<Copy StartSeek="9671" EndSeek="9799"/>
+<Insert>  if (spa_state.rx_task_running) {
+      /* Forward pkts to Linux net stack */
+      spa_rx();
+
+      /* Free transmitted packets if any */
+      /* TODO move to another dedicated place */
+      while ((pkt = spa_pkt_tx_done_get()) != NULL) {
+</Insert>
+<Copy StartSeek="10107" EndSeek="10136"/>
+<Insert>      }
+  }
+}
+</Insert>
+<Copy StartSeek="10143" EndSeek="12191"/>
+<Insert>      /* Wake-up slow path recv handler */
+      timer_start(SPA_TIMER_ID, spa_state.rx_timer_val);
+</Insert>
+<Copy StartSeek="12191" EndSeek="12248"/>
+<Copy StartSeek="12387" EndSeek="14019"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="10:49:45000">
+<Copy StartSeek="0" EndSeek="9264"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line_fiq((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9378" EndSeek="14022"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="10:51:17000">
+<Copy StartSeek="0" EndSeek="9264"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line_fiq((uint32_t) skb-&gt;data+40, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9380" EndSeek="14024"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="10:51:20000">
+<Copy StartSeek="0" EndSeek="9264"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 40, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9380" EndSeek="14024"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="10:51:55000">
+<Copy StartSeek="0" EndSeek="9264"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 34, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9380" EndSeek="14024"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="10:52:6000">
+<Copy StartSeek="0" EndSeek="9264"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 14, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9380" EndSeek="14024"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="10:52:19000">
+<Copy StartSeek="0" EndSeek="9264"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line_fiq((uint32_t) skb-&gt;data + 32, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9371" EndSeek="14015"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="10:56:0000">
+<Copy StartSeek="0" EndSeek="9264"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9373" EndSeek="14017"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="text" Date="2012/10/15" Time="11:31:3000">
+<Copy StartSeek="0" EndSeek="6100"/>
+<Insert>  SPA_DBG("LINUX =====&gt; DPA[%d], %d b", port, skb-&gt;len);
+</Insert>
+<Copy StartSeek="6157" EndSeek="6513"/>
+<Insert>      SPA_DBG("***************SKB FOREIGN");
+</Insert>
+<Copy StartSeek="6560" EndSeek="7027"/>
+<Insert>      SPA_DBG("+++++++++++++++ SKB NATIVE ++++++++++++++++++");
+</Insert>
+<Copy StartSeek="7093" EndSeek="9268"/>
+<Insert>            //dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9375" EndSeek="14019"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="10:41:40000">
+<Copy StartSeek="0" EndSeek="5831"/>
+<Copy StartSeek="6087" EndSeek="7429"/>
+<Copy StartSeek="7453" EndSeek="14299"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="13:41:50000">
+<Copy StartSeek="0" EndSeek="7429"/>
+<Insert>  dpa_dump_pkt(pkt,40);
+</Insert>
+<Copy StartSeek="7460" EndSeek="14306"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="13:41:58000">
+<Copy StartSeek="0" EndSeek="5831"/>
+<Insert>static void dpa_dump_pkt(uint8_t *pkt, uint32_t bytes)
+</Insert>
+<Copy StartSeek="5893" EndSeek="14313"/>
+</Delta>
+<Delta Version="84" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="13:43:1000">
+<Copy StartSeek="0" EndSeek="5831"/>
+<Insert>static void dpa_dump_pkt(struct sk_buff *skb, uint32_t bytes)
+</Insert>
+<Copy StartSeek="5877" EndSeek="5879"/>
+<Insert>	uint32_t i = 0;
+
+	printk(KERN_ERR "%4x: ", i);
+	for (i = 1; i&lt;= bytes; i++) {
+		printk(KERN_ERR "%.2x ", (*pkt) &amp; 0xff);
+		if ((i &amp; 0xf) == 0) {
+			printk(KERN_ERR "\n%4x: ", i);
+		}
+		pkt++;
+	}
+}
+
+</Insert>
+<Copy StartSeek="5995" EndSeek="7337"/>
+<Insert>  dpa_dump_pkt(skb-&gt;data, 40);
+</Insert>
+<Copy StartSeek="7358" EndSeek="14204"/>
+</Delta>
+<Delta Version="85" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="13:44:20000">
+<Copy StartSeek="0" EndSeek="5879"/>
+<Copy StartSeek="5919" EndSeek="5973"/>
+<Insert>        dpa_eth_hdr_t *eth = skb-&gt;data;
+
+        skb-&gt;data
+}
+
+</Insert>
+<Copy StartSeek="5986" EndSeek="14195"/>
+</Delta>
+<Delta Version="86" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="13:44:30000">
+<Copy StartSeek="0" EndSeek="5974"/>
+<Insert>        
+</Insert>
+<Copy StartSeek="6027" EndSeek="14239"/>
+</Delta>
+<Delta Version="87" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="13:45:5000">
+<Copy StartSeek="0" EndSeek="5831"/>
+<Insert>static void spa_dump_pkt(struct sk_buff *skb)
+{
+        dpa_eth_hdr_t *eth = skb-&gt;data;
+        dpa_ip_hdr_t *iph;
+        dpa_tcp_hdr_t *th;
+
+        printk(KERN_ERR "eth_type %x", eth-&gt;h_proto)
+}
+
+</Insert>
+<Copy StartSeek="5831" EndSeek="14040"/>
+</Delta>
+<Delta Version="88" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="13:46:8000">
+<Copy StartSeek="0" EndSeek="7173"/>
+<Insert>  dpa_dump_pkt(skb);
+</Insert>
+<Copy StartSeek="7173" EndSeek="14019"/>
+</Delta>
+<Delta Version="89" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="13:46:13000">
+<Copy StartSeek="0" EndSeek="6293"/>
+<Insert>      //SPA_ERROR("Slow path xmit failed, DPA Tx queue not ready, port (%d)", port);
+</Insert>
+<Copy StartSeek="6376" EndSeek="14017"/>
+</Delta>
+<Delta Version="90" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="14:42:15000">
+<Copy StartSeek="0" EndSeek="9796"/>
+<Insert>
+</Insert>
+<Copy StartSeek="9820" EndSeek="9874"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="9908" EndSeek="10192"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="10226" EndSeek="10228"/>
+<Copy StartSeek="10229" EndSeek="14103"/>
+</Delta>
+<Delta Version="91" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="15:38:22000">
+<Copy StartSeek="0" EndSeek="6038"/>
+<Insert>      SPA_ERROR("SPA not initialized");
+</Insert>
+<Copy StartSeek="6081" EndSeek="6103"/>
+<Insert>  SPA_ERROR("LINUX =====&gt; DPA[%d], %d", port, skb-&gt;len);
+</Insert>
+<Copy StartSeek="6163" EndSeek="6299"/>
+<Insert>      SPA_ERROR("Slow path xmit failed, DPA Tx queue not ready, port (%d)", port);
+</Insert>
+<Copy StartSeek="6384" EndSeek="6519"/>
+<Insert>      SPA_ERROR("***************SKB FOREIGN");
+</Insert>
+<Copy StartSeek="6569" EndSeek="7036"/>
+<Insert>      SPA_ERROR("+++++++++++++++ SKB NATIVE ++++++++++++++++++");
+</Insert>
+<Copy StartSeek="7105" EndSeek="9888"/>
+<Insert>
+</Insert>
+<Copy StartSeek="9891" EndSeek="14119"/>
+</Delta>
+<Delta Version="92" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="15:57:50000">
+<Copy StartSeek="0" EndSeek="9810"/>
+<Insert>  unsigned long flags;
+</Insert>
+<Copy StartSeek="9833" EndSeek="9891"/>
+<Insert>  RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+</Insert>
+<Copy StartSeek="9924" EndSeek="10208"/>
+<Insert>  RAW_LOCAL_IRQ_RESTORE(flags);
+</Insert>
+<Copy StartSeek="10240" EndSeek="14119"/>
+</Delta>
+<Delta Version="93" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="16:03:2000">
+<Copy StartSeek="0" EndSeek="7892"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="7955" EndSeek="8270"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8307" EndSeek="14215"/>
+</Delta>
+<Delta Version="94" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="18:55:46000">
+<Copy StartSeek="0" EndSeek="7955"/>
+<Copy StartSeek="7956" EndSeek="14216"/>
+</Delta>
+<Delta Version="95" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="18:55:48000">
+<Copy StartSeek="0" EndSeek="7892"/>
+<Insert>  struct dpa_entry *dpe = (struct dpa_entry *)pkt-&gt;dpa_handle;
+
+</Insert>
+<Copy StartSeek="7895" EndSeek="8188"/>
+<Copy StartSeek="8265" EndSeek="8287"/>
+<Copy StartSeek="8300" EndSeek="14245"/>
+</Delta>
+<Delta Version="96" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="18:56:6000">
+<Copy StartSeek="0" EndSeek="8287"/>
+<Insert>            
+            dpe-&gt;counters.rx_spa_hit
+            /* Packet withdrawn by this time */
+</Insert>
+<Copy StartSeek="8418" EndSeek="14278"/>
+</Delta>
+<Delta Version="97" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="18:56:33000">
+<Copy StartSeek="0" EndSeek="8310"/>
+<Insert>                    dpe-&gt;counters.rx_spa_hit
+</Insert>
+<Copy StartSeek="8356" EndSeek="14279"/>
+</Delta>
+<Delta Version="98" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="18:56:34000">
+<Copy StartSeek="0" EndSeek="8310"/>
+<Insert>                    dpe-&gt;counters.rx_spa_hit;
+</Insert>
+<Copy StartSeek="8358" EndSeek="14281"/>
+</Delta>
+<Delta Version="99" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="18:56:39000">
+<Copy StartSeek="0" EndSeek="911"/>
+<Copy StartSeek="949" EndSeek="14319"/>
+</Delta>
+<Delta Version="100" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="19:00:26000">
+<Copy StartSeek="0" EndSeek="10010"/>
+<Insert>//unsigned long flags;
+</Insert>
+<Copy StartSeek="10033" EndSeek="14319"/>
+</Delta>
+<Delta Version="101" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="19:52:50000">
+<Copy StartSeek="0" EndSeek="10091"/>
+<Insert>//RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+</Insert>
+<Copy StartSeek="10124" EndSeek="14319"/>
+</Delta>
+<Delta Version="102" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="19:53:12000">
+<Copy StartSeek="0" EndSeek="10408"/>
+<Insert>//RAW_LOCAL_IRQ_RESTORE(flags);
+</Insert>
+<Copy StartSeek="10440" EndSeek="14319"/>
+</Delta>
+<Delta Version="103" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="19:53:20000">
+<Copy StartSeek="0" EndSeek="10237"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="10269" EndSeek="10437"/>
+<Insert>  RAW_LOCAL_IRQ_RESTORE(flags);
+</Insert>
+<Copy StartSeek="10440" EndSeek="14319"/>
+</Delta>
+<Delta Version="104" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="19:53:25000">
+<Copy StartSeek="0" EndSeek="10269"/>
+<Copy StartSeek="10270" EndSeek="14320"/>
+</Delta>
+<Delta Version="105" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="19:53:28000">
+<Copy StartSeek="0" EndSeek="8410"/>
+<Insert>             /* Packet withdrawn by this time */
+</Insert>
+<Copy StartSeek="8458" EndSeek="14319"/>
+</Delta>
+<Delta Version="106" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="20:03:16000">
+<Copy StartSeek="0" EndSeek="10009"/>
+<Insert>  unsigned long flags;
+
+</Insert>
+<Copy StartSeek="10010" EndSeek="10067"/>
+<Insert>  RAW_LOCAL_IRQ_FIQ_SAVE(flags);
+</Insert>
+<Copy StartSeek="10067" EndSeek="10180"/>
+<Insert>  RAW_LOCAL_IRQ_RESTORE(flags);
+
+</Insert>
+<Copy StartSeek="10181" EndSeek="14231"/>
+</Delta>
+<Delta Version="107" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="20:04:28000">
+<Copy StartSeek="0" EndSeek="12460"/>
+<Insert>
+</Insert>
+<Copy StartSeek="12495" EndSeek="14265"/>
+</Delta>
+<Delta Version="108" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="20:07:54000">
+<Copy StartSeek="0" EndSeek="12460"/>
+<Insert>static volatile bool is_timer = 0;
+</Insert>
+<Copy StartSeek="12503" EndSeek="12584"/>
+<Copy StartSeek="12614" EndSeek="14303"/>
+</Delta>
+<Delta Version="109" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="20:08:10000">
+<Copy StartSeek="0" EndSeek="12584"/>
+<Insert>        is_timer_started = 1;
+  timer_start(SPA_TIMER_ID, spa_state.rx_timer_val);
+}
+
+</Insert>
+<Copy StartSeek="12678" EndSeek="12679"/>
+<Copy StartSeek="12680" EndSeek="14312"/>
+</Delta>
+<Delta Version="110" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="20:08:37000">
+<Copy StartSeek="0" EndSeek="12611"/>
+<Copy StartSeek="12645" EndSeek="14346"/>
+</Delta>
+<Delta Version="111" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="20:08:52000">
+<Copy StartSeek="0" EndSeek="12611"/>
+<Insert>          is_timer_started = true
+</Insert>
+<Copy StartSeek="12646" EndSeek="14347"/>
+</Delta>
+<Delta Version="112" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="20:08:55000">
+<Copy StartSeek="0" EndSeek="12460"/>
+<Insert>static volatile bool is_timer_started = 0;
+</Insert>
+<Copy StartSeek="12507" EndSeek="14351"/>
+</Delta>
+<Delta Version="113" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="20:09:0000">
+<Copy StartSeek="0" EndSeek="10470"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="10500" EndSeek="10501"/>
+<Copy StartSeek="10502" EndSeek="14379"/>
+</Delta>
+<Delta Version="114" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="20:09:51000">
+<Copy StartSeek="0" EndSeek="1939"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1986" EndSeek="12534"/>
+<Insert>static volatile bool is_timer_started = false;
+</Insert>
+<Copy StartSeek="12535" EndSeek="14379"/>
+</Delta>
+<Delta Version="115" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="20:10:21000">
+<Copy StartSeek="0" EndSeek="12643"/>
+<Copy StartSeek="12697" EndSeek="12732"/>
+<Insert>          timer_start(SPA_TIMER_ID, spa_state.rx_timer_val);
+  }
+}
+</Insert>
+<Copy StartSeek="12739" EndSeek="12740"/>
+<Insert>
+</Insert>
+<Copy StartSeek="12740" EndSeek="14372"/>
+</Delta>
+<Delta Version="116" Comment="" NL="\10" Encoding="text" Date="2012/10/17" Time="20:10:46000">
+<Copy StartSeek="0" EndSeek="1939"/>
+<Insert>static volatile bool is_timer_started = false;
+</Insert>
+<Copy StartSeek="1940" EndSeek="6076"/>
+<Insert>      // SPA_ERROR("SPA not initialized");
+</Insert>
+<Copy StartSeek="6116" EndSeek="8223"/>
+<Insert>                struct dpa_entry *dpe = (struct dpa_entry *)pkt-&gt;dpa_handle;
+</Insert>
+<Copy StartSeek="8296" EndSeek="8318"/>
+<Copy StartSeek="8319" EndSeek="10174"/>
+<Insert>
+</Insert>
+<Copy StartSeek="10177" EndSeek="10345"/>
+<Insert>  
+}
+</Insert>
+<Copy StartSeek="10348" EndSeek="10350"/>
+<Insert>
+</Insert>
+<Copy StartSeek="10350" EndSeek="10463"/>
+<Insert>  is_timer_started = false;
+}
+</Insert>
+<Copy StartSeek="10466" EndSeek="10467"/>
+<Insert>
+</Insert>
+<Copy StartSeek="10467" EndSeek="12535"/>
+<Insert>  if (!is_timer_started) {
+	  timer_start(SPA_TIMER_ID, spa_state.rx_timer_val);
+          is_timer_started = true;
+  }
+}
+
+
+</Insert>
+<Copy StartSeek="12592" EndSeek="14224"/>
+</Delta>
+<Delta Version="117" Comment="" NL="\10" Encoding="text" Date="2012/10/18" Time="10:03:38000">
+<Copy StartSeek="0" EndSeek="6138"/>
+<Insert>  // SPA_ERROR("LINUX =====&gt; DPA[%d], %d", port, skb-&gt;len);
+</Insert>
+<Copy StartSeek="6195" EndSeek="6551"/>
+<Insert>      // SPA_ERROR("***************SKB FOREIGN");
+</Insert>
+<Copy StartSeek="6596" EndSeek="7063"/>
+<Insert>      // SPA_ERROR("+++++++++++++++ SKB NATIVE ++++++++++++++++++");
+</Insert>
+<Copy StartSeek="7127" EndSeek="14211"/>
+</Delta>
+<Delta Version="118" Comment="" NL="\10" Encoding="text" Date="2012/10/18" Time="13:37:20000">
+<Copy StartSeek="0" EndSeek="6331"/>
+<Insert>      //SPA_ERROR("Slow path xmit failed, DPA Tx queue not ready, port (%d)", port);
+</Insert>
+<Copy StartSeek="6414" EndSeek="14209"/>
+</Delta>
+<Delta Version="119" Comment="" NL="\10" Encoding="text" Date="2012/10/18" Time="15:05:40000">
+<Copy StartSeek="0" EndSeek="6050"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6170" EndSeek="14328"/>
+</Delta>
+<Delta Version="120" Comment="" NL="\10" Encoding="text" Date="2012/10/18" Time="15:07:1000">
+<Copy StartSeek="0" EndSeek="7317"/>
+<Insert>  }
+  
+</Insert>
+<Copy StartSeek="7373" EndSeek="14377"/>
+</Delta>
+<Delta Version="121" Comment="" NL="\10" Encoding="text" Date="2012/10/18" Time="15:12:40000">
+<Copy StartSeek="0" EndSeek="6050"/>
+<Insert>  struct dpa_entry *dpe = (struct dpa_entry *)pkt-&gt;dpa_handle;
+</Insert>
+<Copy StartSeek="6075" EndSeek="6076"/>
+<Insert>  if (dpe) {
+          dpe-&gt;counters.tx_spa_hit++;
+  }
+
+</Insert>
+<Copy StartSeek="6076" EndSeek="7276"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="7335" EndSeek="14339"/>
+</Delta>
+<Delta Version="122" Comment="" NL="\10" Encoding="text" Date="2012/10/18" Time="15:12:53000">
+<Copy StartSeek="0" EndSeek="7276"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7276" EndSeek="7331"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="7331" EndSeek="14335"/>
+</Delta>
+<Delta Version="123" Comment="" NL="\10" Encoding="text" Date="2012/10/18" Time="15:12:58000">
+<Copy StartSeek="0" EndSeek="6050"/>
+<Insert>  struct dpa_entry *dpe;
+</Insert>
+<Copy StartSeek="6082" EndSeek="14342"/>
+</Delta>
+<Delta Version="124" Comment="" NL="\10" Encoding="text" Date="2012/10/18" Time="15:17:0000">
+<Copy StartSeek="0" EndSeek="911"/>
+<Insert>#include "../../../mod/dpa/dpa_cls.h"
+</Insert>
+<Copy StartSeek="911" EndSeek="1459"/>
+<Copy StartSeek="1756" EndSeek="5682"/>
+<Insert>  eth_pkt_t *pkt;
+  bool native = false;
+
+  if ((skb-&gt;data - sizeof(eth_pkt_t)) &gt; skb-&gt;head + NET_SKB_PAD) {
+      pkt = (eth_pkt_t *) (skb-&gt;data - ETH_MH_SIZE - sizeof(eth_pkt_t));
+
+      native = (pkt-&gt;port &lt; DPA_ETH_MAX_PORT_NUM &amp;&amp; 
+                pkt-&gt;queue &lt; 8 &amp;&amp;
+               (pkt-&gt;os_handle == (void*) skb) &amp;&amp;
+               (pkt-&gt;dpa_handle != NULL) &amp;&amp;
+                (pkt-&gt;buff + pkt-&gt;offset) == skb-&gt;data);
+  }
+
+  return native;
+}
+
+</Insert>
+<Copy StartSeek="5903" EndSeek="6084"/>
+<Insert>  struct dpa_entry *dpe = NULL;
+
+</Insert>
+<Copy StartSeek="6085" EndSeek="6365"/>
+<Insert>      SPA_ERROR("Slow path xmit failed, DPA Tx queue not ready, port (%d)", port);
+</Insert>
+<Copy StartSeek="6450" EndSeek="6471"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6486" EndSeek="6582"/>
+<Copy StartSeek="6597" EndSeek="7263"/>
+<Insert>      dpe = (struct dpa_entry *)pkt-&gt;dpa_handle;
+  }
+  if (dpe) {
+          dpe-&gt;counters.tx_spa_hit++;
+  }
+</Insert>
+<Copy StartSeek="7270" EndSeek="8273"/>
+<Insert>            struct dpa_entry *dpe = (struct dpa_entry *)pkt-&gt;dpa_handle;
+</Insert>
+<Copy StartSeek="8273" EndSeek="8296"/>
+<Insert>            if (dpe) {
+                    dpe-&gt;counters.rx_spa_hit++;
+            }
+</Insert>
+<Copy StartSeek="8296" EndSeek="14116"/>
+</Delta>
+<Delta Version="125" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="10:42:58000">
+<Copy StartSeek="0" EndSeek="6900"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6919" EndSeek="16549"/>
+</Delta>
+<Delta Version="126" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="10:43:6000">
+<Copy StartSeek="0" EndSeek="7285"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="7300" EndSeek="16561"/>
+</Delta>
+<Delta Version="127" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="10:43:8000">
+<Copy StartSeek="0" EndSeek="7432"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7447" EndSeek="16575"/>
+</Delta>
+<Delta Version="128" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="10:43:12000">
+<Copy StartSeek="0" EndSeek="7582"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7597" EndSeek="16589"/>
+</Delta>
+<Delta Version="129" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="10:43:18000">
+<Copy StartSeek="0" EndSeek="7483"/>
+<Insert>  dcache_l1_l2_clean_multi_line((uint32_t) pkt-&gt;buff, (uint32_t) pkt-&gt;buff + pkt-&gt;alloc_size - 1);
+</Insert>
+<Copy StartSeek="7584" EndSeek="16591"/>
+</Delta>
+<Delta Version="130" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="10:45:4000">
+<Copy StartSeek="0" EndSeek="7432"/>
+<Insert>  DPA_DBG("");
+</Insert>
+<Copy StartSeek="7489" EndSeek="16633"/>
+</Delta>
+<Delta Version="131" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="10:50:18000">
+<Copy StartSeek="0" EndSeek="7525"/>
+<Insert>  //dcache_l1_l2_clean_multi_line((uint32_t) pkt-&gt;buff, (uint32_t) pkt-&gt;buff + pkt-&gt;alloc_size - 1);
+</Insert>
+<Copy StartSeek="7624" EndSeek="16631"/>
+</Delta>
+<Delta Version="132" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="10:51:28000">
+<Copy StartSeek="0" EndSeek="7432"/>
+<Insert>  DPA_DBG("pkt-&gt;alloc_size - 1 %u",pkt-&gt;alloc_size - 1);
+</Insert>
+<Copy StartSeek="7481" EndSeek="16623"/>
+</Delta>
+<Delta Version="133" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="11:09:5000">
+<Copy StartSeek="0" EndSeek="7432"/>
+<Insert>  DPA_DBG("pkt-&gt;alloc_size %u",pkt-&gt;alloc_size);
+</Insert>
+<Copy StartSeek="7482" EndSeek="16624"/>
+</Delta>
+<Delta Version="134" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="11:16:2000">
+<Copy StartSeek="0" EndSeek="7432"/>
+<Insert>  DPA_DBG("pkt-&gt;alloc_size %u", pkt-&gt;alloc_size);
+</Insert>
+<Copy StartSeek="7494" EndSeek="16636"/>
+</Delta>
+<Delta Version="135" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="11:16:33000">
+<Copy StartSeek="0" EndSeek="15806"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15868" EndSeek="16697"/>
+</Delta>
+<Delta Version="136" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="11:17:26000">
+<Copy StartSeek="0" EndSeek="6229"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6291" EndSeek="16758"/>
+</Delta>
+<Delta Version="137" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="11:18:15000">
+<Copy StartSeek="0" EndSeek="6229"/>
+<Insert>  DPA_DBG("pkt %p pkt-&gt;alloc_size %u", pkt, pkt-&gt;alloc_size);
+</Insert>
+<Copy StartSeek="6230" EndSeek="6900"/>
+<Insert>      DPA_DBG("");
+</Insert>
+<Copy StartSeek="6934" EndSeek="7300"/>
+<Insert>  DPA_DBG("");
+</Insert>
+<Copy StartSeek="7362" EndSeek="16759"/>
+</Delta>
+<Delta Version="138" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="11:23:24000">
+<Copy StartSeek="0" EndSeek="15868"/>
+<Insert>  DPA_DBG("pkt %p pkt-&gt;alloc_size %u", pkt, pkt-&gt;alloc_size);
+</Insert>
+<Copy StartSeek="15869" EndSeek="16698"/>
+</Delta>
+<Delta Version="139" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="13:00:25000">
+<Copy StartSeek="0" EndSeek="8462"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8534" EndSeek="16769"/>
+</Delta>
+<Delta Version="140" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="13:00:55000">
+<Copy StartSeek="0" EndSeek="8462"/>
+<Insert>            DPA_DBG("pkt %p pkt-&gt;alloc_size %u", pkt, pkt-&gt;alloc_size);
+</Insert>
+<Copy StartSeek="8584" EndSeek="16819"/>
+</Delta>
+<Delta Version="141" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="13:29:57000">
+<Copy StartSeek="0" EndSeek="8462"/>
+<Insert>            DPA_DBG("pkt %p pkt-&gt;alloc_size %u", pkt,
+</Insert>
+<Copy StartSeek="8529" EndSeek="16832"/>
+</Delta>
+<Delta Version="142" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="13:30:6000">
+<Copy StartSeek="0" EndSeek="8462"/>
+<Insert>            DPA_DBG("pkt %p eth_type %#x pkt-&gt;alloc_size %u", pkt,
+                    ntohs(pkt-&gt;eth_hdr-&gt;h_proto), pkt-&gt;alloc_size);
+</Insert>
+<Copy StartSeek="8616" EndSeek="16851"/>
+</Delta>
+<Delta Version="143" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="13:34:3000">
+<Copy StartSeek="0" EndSeek="8537"/>
+<Insert>                    ntohs(pkt-&gt;eth_hdr-&gt;h_proto), pkt-&gt;alloc_size, pkt-&gt;buff);
+</Insert>
+<Copy StartSeek="8621" EndSeek="16856"/>
+</Delta>
+<Delta Version="144" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="13:34:11000">
+<Copy StartSeek="0" EndSeek="8537"/>
+<Insert>                    ntohs(pkt-&gt;eth_hdr-&gt;h_proto), pkt-&gt;alloc_size, pkt-&gt;os_handle);
+</Insert>
+<Copy StartSeek="8616" EndSeek="16851"/>
+</Delta>
+<Delta Version="145" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="13:36:34000">
+<Copy StartSeek="0" EndSeek="7300"/>
+<Insert>  DPA_DBG("pkt %p pkt-&gt;alloc_size %u", pkt, pkt-&gt;alloc_size);
+</Insert>
+<Copy StartSeek="7383" EndSeek="16872"/>
+</Delta>
+<Delta Version="146" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="13:36:54000">
+<Copy StartSeek="0" EndSeek="7300"/>
+<Insert>  DPA_DBG("pkt %p pkt-&gt;alloc_size %u,pkt-&gt;buff", pkt, pkt-&gt;alloc_size, pkt-&gt;buff);
+</Insert>
+<Copy StartSeek="7382" EndSeek="16871"/>
+</Delta>
+<Delta Version="147" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="13:36:58000">
+<Copy StartSeek="0" EndSeek="7159"/>
+<Insert>      SPA_DBG("+++++++++++++++ SKB NATIVE ++++++++++++++++++");
+</Insert>
+<Copy StartSeek="7223" EndSeek="16871"/>
+</Delta>
+<Delta Version="148" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="14:29:18000">
+<Copy StartSeek="0" EndSeek="6614"/>
+<Insert>      SPA_DBG("***************SKB FOREIGN");
+</Insert>
+<Copy StartSeek="6659" EndSeek="6900"/>
+<Insert>      DPA_DBG("wrapping packet");
+</Insert>
+<Copy StartSeek="6900" EndSeek="16837"/>
+</Delta>
+<Delta Version="149" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="14:29:37000">
+<Copy StartSeek="0" EndSeek="8448"/>
+<Insert>            DPA_DBG("pkt %p eth_type %#x pkt-&gt;alloc_size %u buff %p", pkt,
+</Insert>
+<Copy StartSeek="8525" EndSeek="16839"/>
+</Delta>
+<Delta Version="150" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="14:37:19000">
+<Copy StartSeek="0" EndSeek="6172"/>
+<Insert>  SPA_DBG("LINUX =====&gt; DPA[%d], %d b", port, skb-&gt;len);
+</Insert>
+<Copy StartSeek="6229" EndSeek="16839"/>
+</Delta>
+<Delta Version="151" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="14:50:5000">
+<Copy StartSeek="0" EndSeek="6172"/>
+<Insert>  DPA_DBG("LINUX =====&gt; DPA[%d], %d b", port, skb-&gt;len);
+</Insert>
+<Copy StartSeek="6240" EndSeek="16850"/>
+</Delta>
+<Delta Version="152" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="14:50:37000">
+<Copy StartSeek="0" EndSeek="6172"/>
+<Insert>  DPA_DBG("LINUX =====&gt; DPA[%d], %d b", port, skb-&gt;len, skb-&gt;data);
+</Insert>
+<Copy StartSeek="6240" EndSeek="16850"/>
+</Delta>
+<Delta Version="153" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="14:50:54000">
+<Copy StartSeek="0" EndSeek="6172"/>
+<Insert>  DPA_DBG("LINUX =====&gt; DPA[%d], %u b", port, skb-&gt;len, skb-&gt;data);
+</Insert>
+<Copy StartSeek="6242" EndSeek="16852"/>
+</Delta>
+<Delta Version="154" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="14:51:13000">
+<Copy StartSeek="0" EndSeek="6172"/>
+<Insert>  DPA_DBG("LINUX =====&gt; DPA[%d], len:%u", port, skb-&gt;len, skb-&gt;data);
+</Insert>
+<Copy StartSeek="6244" EndSeek="16854"/>
+</Delta>
+<Delta Version="155" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="14:51:16000">
+<Copy StartSeek="0" EndSeek="6172"/>
+<Insert>  DPA_DBG("LINUX =====&gt; DPA[%d], %u bytes", port, skb-&gt;len, skb-&gt;data);
+</Insert>
+<Copy StartSeek="6254" EndSeek="16864"/>
+</Delta>
+<Delta Version="156" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="14:51:23000">
+<Copy StartSeek="0" EndSeek="6172"/>
+<Insert>  DPA_DBG("LINUX =====&gt; DPA[%d], %u bytes, type %#x", port, skb-&gt;len, skb-&gt;data);
+
+</Insert>
+<Copy StartSeek="6291" EndSeek="16900"/>
+</Delta>
+<Delta Version="157" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="14:52:6000">
+<Copy StartSeek="0" EndSeek="6243"/>
+<Insert>          ntohs(eth_hdr(skb-&gt;data)-&gt;h_proto));
+</Insert>
+<Copy StartSeek="6284" EndSeek="16894"/>
+</Delta>
+<Delta Version="158" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="14:58:30000">
+<Copy StartSeek="0" EndSeek="6243"/>
+<Insert>          ntohs(eth_hdr(skb)-&gt;h_proto));
+</Insert>
+<Copy StartSeek="6308" EndSeek="16918"/>
+</Delta>
+<Delta Version="159" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="15:00:14000">
+<Copy StartSeek="0" EndSeek="7268"/>
+<Insert>      pkt = (eth_pkt_t *) (skb-&gt;data - ETH_MH_SIZE - sizeof(eth_pkt_t));
+  }
+</Insert>
+<Copy StartSeek="7382" EndSeek="16955"/>
+</Delta>
+<Delta Version="160" Comment="" NL="\10" Encoding="text" Date="2012/12/11" Time="15:37:12000">
+<Copy StartSeek="0" EndSeek="6172"/>
+<Insert>  DPA_DBG("LINUX =====&gt; DPA[%d], %u bytes, type %#x", port, skb-&gt;len, 
+</Insert>
+<Copy StartSeek="6229" EndSeek="6536"/>
+<Insert>  DPA_DBG("");
+</Insert>
+<Copy StartSeek="6537" EndSeek="6633"/>
+<Insert>  DPA_DBG("");
+</Insert>
+<Copy StartSeek="6633" EndSeek="6650"/>
+<Insert>      DPA_DBG("***************SKB FOREIGN");
+</Insert>
+<Copy StartSeek="6695" EndSeek="6936"/>
+<Copy StartSeek="6937" EndSeek="7162"/>
+<Insert>      DPA_DBG("+++++++++++++++ SKB NATIVE ++++++++++++++++++");
+</Insert>
+<Copy StartSeek="7226" EndSeek="7340"/>
+<Insert>  DPA_DBG("pkt %p pkt-&gt;alloc_size %u, buff %p", pkt, pkt-&gt;alloc_size, pkt-&gt;buff);
+</Insert>
+<Copy StartSeek="7343" EndSeek="7475"/>
+<Insert>  DPA_DBG("pkt %p pkt-&gt;alloc_size %u", pkt, pkt-&gt;alloc_size);
+</Insert>
+<Copy StartSeek="7476" EndSeek="7611"/>
+<Insert>  DPA_DBG("");
+</Insert>
+<Copy StartSeek="7612" EndSeek="8368"/>
+<Insert>            DPA_DBG("\npkt %p eth_type %#x pkt-&gt;alloc_size %u buff %p", pkt,
+                    ntohs(pkt-&gt;eth_hdr-&gt;h_proto), pkt-&gt;alloc_size, pkt-&gt;buff);
+</Insert>
+<Copy StartSeek="8369" EndSeek="16604"/>
+</Delta>
+<Delta Version="161" Comment="" NL="\10" Encoding="text" Date="2012/12/12" Time="09:21:42000">
+<Copy StartSeek="0" EndSeek="6229"/>
+<Insert>          (skb-&gt;mac_header ? ntohs(eth_hdr(skb)-&gt;h_proto) : 0));
+
+</Insert>
+<Copy StartSeek="6230" EndSeek="16539"/>
+</Delta>
+<Delta Version="162" Comment="" NL="\10" Encoding="text" Date="2012/12/12" Time="09:22:4000">
+<Copy StartSeek="0" EndSeek="7161"/>
+<Insert>//    pkt = (eth_pkt_t *) (skb-&gt;data - ETH_MH_SIZE - sizeof(eth_pkt_t));
+</Insert>
+<Copy StartSeek="7161" EndSeek="16466"/>
+</Delta>
+<Delta Version="163" Comment="" NL="\10" Encoding="text" Date="2012/12/12" Time="09:31:14000">
+<Copy StartSeek="0" EndSeek="7161"/>
+<Insert>      pkt = (eth_pkt_t *) skb-&gt;head;
+</Insert>
+<Copy StartSeek="7197" EndSeek="16465"/>
+</Delta>
+<Delta Version="164" Comment="" NL="\10" Encoding="text" Date="2012/12/12" Time="09:31:17000">
+<Copy StartSeek="0" EndSeek="1653"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1684" EndSeek="16495"/>
+</Delta>
+<Delta Version="165" Comment="" NL="\10" Encoding="text" Date="2012/12/12" Time="16:22:41000">
+<Copy StartSeek="0" EndSeek="1653"/>
+<Insert>#define DPA_HEADROOM      (32)
+</Insert>
+<Copy StartSeek="1653" EndSeek="1754"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1822" EndSeek="16531"/>
+</Delta>
+<Delta Version="166" Comment="" NL="\10" Encoding="text" Date="2012/12/12" Time="16:23:0000">
+<Copy StartSeek="0" EndSeek="14424"/>
+<Insert>  total_size = DPA_PAD + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1);
+</Insert>
+<Copy StartSeek="14520" EndSeek="16546"/>
+</Delta>
+<Delta Version="167" Comment="" NL="\10" Encoding="text" Date="2012/12/12" Time="16:23:21000">
+<Copy StartSeek="0" EndSeek="14424"/>
+<Insert>  total_size = DPA_PAD + sizeof(eth_pkt_t) + DPA_HEADROOM + size + (CPU_D_CACHE_LINE_SIZE - 1);
+</Insert>
+<Copy StartSeek="14505" EndSeek="16531"/>
+</Delta>
+<Delta Version="168" Comment="" NL="\10" Encoding="text" Date="2012/12/12" Time="16:23:32000">
+<Copy StartSeek="0" EndSeek="14424"/>
+<Insert>  total_size = DPA_PAD + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1);
+</Insert>
+<Copy StartSeek="14520" EndSeek="16546"/>
+</Delta>
+<Delta Version="169" Comment="" NL="\10" Encoding="text" Date="2012/12/12" Time="16:23:57000">
+<Copy StartSeek="0" EndSeek="14981"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="15049" EndSeek="16611"/>
+</Delta>
+<Delta Version="170" Comment="" NL="\10" Encoding="text" Date="2012/12/12" Time="16:27:31000">
+<Copy StartSeek="0" EndSeek="14981"/>
+<Insert>  offset += DPA_HEADROOM; /* reserve some room fo future headers */
+</Insert>
+<Copy StartSeek="14984" EndSeek="15012"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15091" EndSeek="16624"/>
+</Delta>
+<Delta Version="171" Comment="" NL="\10" Encoding="text" Date="2012/12/12" Time="16:28:41000">
+<Copy StartSeek="0" EndSeek="1653"/>
+<Copy StartSeek="1654" EndSeek="16625"/>
+</Delta>
+<Delta Version="172" Comment="" NL="\10" Encoding="text" Date="2012/12/12" Time="16:29:1000">
+<Copy StartSeek="0" EndSeek="14806"/>
+<Insert>  dpa_memset(pkt, 0, sizeof(eth_pkt_t));
+</Insert>
+<Copy StartSeek="14849" EndSeek="16627"/>
+</Delta>
+<Delta Version="173" Comment="" NL="\10" Encoding="text" Date="2012/12/12" Time="16:32:12000">
+<Copy StartSeek="0" EndSeek="1755"/>
+<Insert>/* headroom for possible headers */
+#define DPA_HEADROOM      (32)
+
+</Insert>
+<Copy StartSeek="1756" EndSeek="5394"/>
+<Insert>  skb-&gt;len += ETH_MH_SIZE;
+  skb-&gt;data -= ETH_MH_SIZE;
+</Insert>
+<Copy StartSeek="5424" EndSeek="5607"/>
+<Insert>static bool spa_skb_native(struct sk_buff *skb) {
+</Insert>
+<Copy StartSeek="5694" EndSeek="5736"/>
+<Insert>      eth_pkt_t *pkt = (eth_pkt_t *) skb-&gt;head;
+</Insert>
+<Copy StartSeek="5773" EndSeek="5816"/>
+<Insert>          pkt-&gt;buff = skb-&gt;data;
+          return true;
+      }
+  }
+
+  return false;
+}
+
+</Insert>
+<Copy StartSeek="5869" EndSeek="6035"/>
+<Insert>  bool native;
+
+</Insert>
+<Copy StartSeek="6036" EndSeek="6423"/>
+<Copy StartSeek="6761" EndSeek="6825"/>
+<Insert>  native = spa_skb_native(skb);
+  if (!native) {
+</Insert>
+<Copy StartSeek="6874" EndSeek="6920"/>
+<Insert>      /* Marvell header */
+      if (spa_skb_add_mh(skb, 0 /* FIXME 1) Add only for MH-enabled interfaces 2) Use valid MH from mv_netdev */)) {
+          SPA_DBG("Failed to add marvell header, packet dropped");
+          goto fail;
+      }
+
+      pkt = dpa_pkt_wrap(skb-&gt;data, skb_headlen(skb) - ETH_MH_SIZE, ETH_MH_SIZE, skb);
+</Insert>
+<Copy StartSeek="6994" EndSeek="7132"/>
+<Insert>      SPA_DBG("+++++++++++++++ SKB NATIVE ++++++++++++++++++");
+      pkt = (eth_pkt_t *)skb-&gt;head;
+  }
+  
+</Insert>
+<Copy StartSeek="7202" EndSeek="7222"/>
+<Copy StartSeek="7351" EndSeek="7463"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7507" EndSeek="7543"/>
+<Insert>  dcache_l1_l2_clean_multi_line((uint32_t) pkt-&gt;buff, (uint32_t) pkt-&gt;buff + pkt-&gt;alloc_size - 1);
+
+</Insert>
+<Copy StartSeek="7719" EndSeek="7859"/>
+<Insert>  if (!native) {
+       dpa_tx_start();
+</Insert>
+<Copy StartSeek="7916" EndSeek="9193"/>
+<Insert>            skb-&gt;data += pkt-&gt;offset; /* Marvell Header, 2B */
+            skb-&gt;tail += (pkt-&gt;size + pkt-&gt;offset);
+</Insert>
+<Copy StartSeek="9308" EndSeek="14621"/>
+<Insert>  total_size = DPA_PAD + DPA_HEADROOM + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1);
+</Insert>
+<Copy StartSeek="14702" EndSeek="14987"/>
+<Insert>  //dpa_memset(pkt, 0, sizeof(eth_pkt_t));
+</Insert>
+<Copy StartSeek="15028" EndSeek="15194"/>
+<Insert>  /* reserve some room fo future headers */
+  skb_reserve(skb, DPA_HEADROOM);
+
+</Insert>
+<Copy StartSeek="15195" EndSeek="15326"/>
+<Insert>  pkt-&gt;buff = (uint8_t*) skb-&gt;data;
+</Insert>
+<Copy StartSeek="15377" EndSeek="15705"/>
+<Insert>  pkt-&gt;phys_addr = dpa_os_virt_to_phys(pkt-&gt;buff, size);
+</Insert>
+<Copy StartSeek="15780" EndSeek="15950"/>
+<Insert>eth_pkt_t *__dpa_pkt_wrap(void *data, uint32_t size, uint32_t offset, void *os_handle) {
+</Insert>
+<Copy StartSeek="16022" EndSeek="16146"/>
+<Insert>
+      pkt-&gt;buff = data;
+      pkt-&gt;offset = offset;
+</Insert>
+<Copy StartSeek="16146" EndSeek="16204"/>
+<Insert>      pkt-&gt;phys_addr = dpa_os_virt_to_phys(pkt-&gt;buff, pkt-&gt;size); /* Also cache clean */
+      pkt-&gt;alloc_size = size;
+</Insert>
+<Copy StartSeek="16263" EndSeek="16631"/>
+</Delta>
+<Delta Version="174" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="09:04:30000">
+<Copy StartSeek="0" EndSeek="1755"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1823" EndSeek="14688"/>
+<Insert>  total_size = DPA_PAD + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1);
+</Insert>
+<Copy StartSeek="14784" EndSeek="15276"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15355" EndSeek="16791"/>
+</Delta>
+<Delta Version="175" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="10:44:17000">
+<Copy StartSeek="0" EndSeek="1755"/>
+<Insert>/* headroom for possible headers */
+#define DPA_HEADROOM      (32)
+
+</Insert>
+<Copy StartSeek="1756" EndSeek="14621"/>
+<Insert>  total_size = DPA_PAD + DPA_HEADROOM + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1);
+</Insert>
+<Copy StartSeek="14702" EndSeek="15194"/>
+<Insert>  /* reserve some room fo future headers */
+  skb_reserve(skb, DPA_HEADROOM);
+
+</Insert>
+<Copy StartSeek="15195" EndSeek="16631"/>
+</Delta>
+<Delta Version="176" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="14:21:41000">
+<Copy StartSeek="0" EndSeek="5394"/>
+<Insert>  skb_push(skb, ETH_MH_SIZE);
+</Insert>
+<Copy StartSeek="5449" EndSeek="5632"/>
+<Insert>static eth_pkt_t *spa_skb_is_fast_path(struct sk_buff *skb) {
+  eth_pkt_t *pkt = NULL;
+</Insert>
+<Copy StartSeek="5682" EndSeek="5724"/>
+<Insert>      pkt = (eth_pkt_t *) skb-&gt;head;
+</Insert>
+<Copy StartSeek="5772" EndSeek="5815"/>
+<Insert>          return pkt;
+      }
+  }
+
+  return NULL;
+}
+
+</Insert>
+<Copy StartSeek="5903" EndSeek="6069"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6085" EndSeek="6472"/>
+<Insert>  /* Marvell header. Make sure it's there even if it's a forwarded packet
+  to cover the case when VLAN tag has been added or removed */
+  if (spa_skb_add_mh(skb, 0 /* FIXME 1) Add only for MH-enabled interfaces 2) Use valid MH from mv_netdev */)) {
+      SPA_DBG("Failed to add marvell header, packet dropped");
+      goto fail;
+  } 
+  
+</Insert>
+<Copy StartSeek="6472" EndSeek="6536"/>
+<Insert>  pkt = spa_skb_is_fast_path(skb);
+  if (!pkt) {
+</Insert>
+<Copy StartSeek="6585" EndSeek="6631"/>
+<Insert>      pkt = dpa_pkt_wrap(skb-&gt;data, skb_headlen(skb) - ETH_MH_SIZE, skb);
+</Insert>
+<Copy StartSeek="6959" EndSeek="7097"/>
+<Insert>     SPA_DBG("+++++++++++++++ SKB NATIVE ++++++++++++++++++");
+  }
+  
+</Insert>
+<Copy StartSeek="7204" EndSeek="7224"/>
+<Insert>  pkt-&gt;phy_hdr = (uint8_t*) skb-&gt;data;
+  pkt-&gt;phy_hdr_dma = dpa_os_virt_to_phys(pkt-&gt;phy_hdr, pkt-&gt;size); /* Also cache clean */
+</Insert>
+<Copy StartSeek="7224" EndSeek="7336"/>
+<Insert>  pkt-&gt;l4_hdr = skb_transport_header(skb);
+
+</Insert>
+<Copy StartSeek="7337" EndSeek="7373"/>
+<Insert>  /* FIXME Exclude pkt header as its clean done in Eth driver eth_pkt_tx */
+  dcache_l1_l2_clean_multi_line((uint32_t) pkt-&gt;phy_hdr, (uint32_t) pkt-&gt;phy_hdr + pkt-&gt;size - 1);
+
+</Insert>
+<Copy StartSeek="7473" EndSeek="7613"/>
+<Insert>  if (ETH_IS_PKT_SLOW_PATH(pkt)) {
+      dpa_tx_start();
+</Insert>
+<Copy StartSeek="7653" EndSeek="7759"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8085" EndSeek="9255"/>
+<Insert>            skb-&gt;data += ETH_MH_SIZE; /* Marvell Header, 2B */
+            skb-&gt;tail += (pkt-&gt;size + ETH_MH_SIZE);
+</Insert>
+<Copy StartSeek="9370" EndSeek="15388"/>
+<Insert>  pkt-&gt;buff = pkt-&gt;phy_hdr = (uint8_t*) skb-&gt;data;
+</Insert>
+<Copy StartSeek="15424" EndSeek="15752"/>
+<Insert>  pkt-&gt;buff_dma = pkt-&gt;phy_hdr_dma = dpa_os_virt_to_phys(pkt-&gt;buff, size);
+</Insert>
+<Copy StartSeek="15809" EndSeek="15979"/>
+<Insert>eth_pkt_t *__dpa_pkt_wrap(void *data, uint32_t size, void *os_handle) {
+</Insert>
+<Copy StartSeek="16068" EndSeek="16192"/>
+<Copy StartSeek="16245" EndSeek="16303"/>
+<Insert>      pkt-&gt;alloc_size = size; /* TODO Check where used? */
+</Insert>
+<Copy StartSeek="16422" EndSeek="16790"/>
+</Delta>
+<Delta Version="177" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="15:55:49000">
+<Copy StartSeek="0" EndSeek="7809"/>
+<Copy StartSeek="7855" EndSeek="8043"/>
+<Insert>                while (i &lt; len--) 
+                        buff[i] = 0xff;
+</Insert>
+<Copy StartSeek="8125" EndSeek="16843"/>
+</Delta>
+<Delta Version="178" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="15:57:8000">
+<Copy StartSeek="0" EndSeek="7855"/>
+<Copy StartSeek="7856" EndSeek="16844"/>
+</Delta>
+<Delta Version="179" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="15:57:9000">
+<Copy StartSeek="0" EndSeek="9785"/>
+<Insert>
+</Insert>
+<Copy StartSeek="9818" EndSeek="16876"/>
+</Delta>
+<Delta Version="180" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="15:57:26000">
+<Copy StartSeek="0" EndSeek="9785"/>
+<Insert>            find_bug(skb-&gt;data);
+</Insert>
+<Copy StartSeek="9828" EndSeek="16886"/>
+</Delta>
+<Delta Version="181" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="15:57:34000">
+<Copy StartSeek="0" EndSeek="9785"/>
+<Insert>            find_bug(skb-&gt;data, skb-&gt;len);
+</Insert>
+<Copy StartSeek="9838" EndSeek="16896"/>
+</Delta>
+<Delta Version="182" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="15:58:22000">
+<Copy StartSeek="0" EndSeek="9785"/>
+<Insert>            find_bug(skb-&gt;data + 40, skb-&gt;len - 40);
+</Insert>
+<Copy StartSeek="9840" EndSeek="16898"/>
+</Delta>
+<Delta Version="183" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="15:58:29000">
+<Copy StartSeek="0" EndSeek="8044"/>
+<Insert>                for (j = i; j &lt; len; j++)
+</Insert>
+<Copy StartSeek="8089" EndSeek="16901"/>
+</Delta>
+<Delta Version="184" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="16:03:31000">
+<Copy StartSeek="0" EndSeek="7856"/>
+<Insert>        for (i = 0; i &lt; len; i++) {
+</Insert>
+<Copy StartSeek="7895" EndSeek="16904"/>
+</Delta>
+<Delta Version="185" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="16:08:0000">
+<Copy StartSeek="0" EndSeek="7856"/>
+<Insert>        for (i = 0; i &lt; len-50; i++) {
+</Insert>
+<Copy StartSeek="7892" EndSeek="16901"/>
+</Delta>
+<Delta Version="186" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="16:08:5000">
+<Copy StartSeek="0" EndSeek="9788"/>
+<Insert>            find_bug(skb-&gt;data + 100, skb-&gt;len - 100);
+</Insert>
+<Copy StartSeek="9843" EndSeek="16901"/>
+</Delta>
+<Delta Version="187" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="16:08:18000">
+<Copy StartSeek="0" EndSeek="7759"/>
+<Insert>static inline find_bug(char *buff, int32_t len)
+</Insert>
+<Copy StartSeek="7812" EndSeek="16906"/>
+</Delta>
+<Delta Version="188" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="16:08:41000">
+<Copy StartSeek="0" EndSeek="7373"/>
+<Insert>  dcache_l1_l2_clean_multi_line((uint32_t) pkt-&gt;buff, (uint32_t) pkt-&gt;buff + pkt-&gt;alloc_size - 1);
+
+</Insert>
+<Copy StartSeek="7543" EndSeek="16976"/>
+</Delta>
+<Delta Version="189" Comment="" NL="\10" Encoding="text" Date="2012/12/25" Time="16:18:0000">
+<Copy StartSeek="0" EndSeek="1755"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1823" EndSeek="5461"/>
+<Insert>  skb-&gt;len += ETH_MH_SIZE;
+  skb-&gt;data -= ETH_MH_SIZE;
+</Insert>
+<Copy StartSeek="5491" EndSeek="5674"/>
+<Insert>static bool spa_skb_native(struct sk_buff *skb) {
+</Insert>
+<Copy StartSeek="5761" EndSeek="5803"/>
+<Insert>      eth_pkt_t *pkt = (eth_pkt_t *) skb-&gt;head;
+</Insert>
+<Copy StartSeek="5840" EndSeek="5883"/>
+<Insert>          pkt-&gt;buff = skb-&gt;data;
+          return true;
+      }
+  }
+
+  return false;
+}
+
+</Insert>
+<Copy StartSeek="5936" EndSeek="6102"/>
+<Insert>  bool native;
+
+</Insert>
+<Copy StartSeek="6103" EndSeek="6490"/>
+<Copy StartSeek="6828" EndSeek="6892"/>
+<Insert>  native = spa_skb_native(skb);
+  if (!native) {
+</Insert>
+<Copy StartSeek="6941" EndSeek="6987"/>
+<Insert>      /* Marvell header */
+      if (spa_skb_add_mh(skb, 0 /* FIXME 1) Add only for MH-enabled interfaces 2) Use valid MH from mv_netdev */)) {
+          SPA_DBG("Failed to add marvell header, packet dropped");
+          goto fail;
+      }
+
+      pkt = dpa_pkt_wrap(skb-&gt;data, skb_headlen(skb) - ETH_MH_SIZE, ETH_MH_SIZE, skb);
+</Insert>
+<Copy StartSeek="7061" EndSeek="7199"/>
+<Insert>      SPA_DBG("+++++++++++++++ SKB NATIVE ++++++++++++++++++");
+      pkt = (eth_pkt_t *)skb-&gt;head;
+  }
+  
+</Insert>
+<Copy StartSeek="7269" EndSeek="7289"/>
+<Copy StartSeek="7418" EndSeek="7530"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7591" EndSeek="7627"/>
+<Insert>//dcache_l1_l2_clean_multi_line((uint32_t) pkt-&gt;buff, (uint32_t) pkt-&gt;buff + pkt-&gt;alloc_size - 1);
+  pci_map_single(NULL, pkt-&gt;buff, pkt-&gt;alloc_size, PCI_DMA_TODEVICE);
+</Insert>
+<Copy StartSeek="7802" EndSeek="7943"/>
+<Insert>  if (!native) {
+       dpa_tx_start();
+</Insert>
+<Copy StartSeek="8000" EndSeek="8106"/>
+<Insert>static inline void find_bug(char *buff, int32_t len)
+{
+
+        int32_t i, j;
+        bool mark = 0;
+
+        for (i = 0; i &lt; len; i++) {
+                if (buff[i] == 0x78) {
+                        mark = 1;
+                        break;
+                }
+        }
+        if (mark) {
+                for (j = i; j &lt; i + 33; j++)
+                        buff[j] = 0xff;
+        }
+}
+
+</Insert>
+<Copy StartSeek="8107" EndSeek="9277"/>
+<Insert>            skb-&gt;data += pkt-&gt;offset; /* Marvell Header, 2B */
+            skb-&gt;tail += (pkt-&gt;size + pkt-&gt;offset);
+</Insert>
+<Copy StartSeek="9392" EndSeek="9753"/>
+<Insert>            find_bug(skb-&gt;data + 100, skb-&gt;len - 150);
+</Insert>
+<Copy StartSeek="9754" EndSeek="14705"/>
+<Insert>  total_size = DPA_PAD + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1);
+</Insert>
+<Copy StartSeek="14801" EndSeek="15293"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15372" EndSeek="15503"/>
+<Insert>  pkt-&gt;buff = (uint8_t*) skb-&gt;data;
+</Insert>
+<Copy StartSeek="15554" EndSeek="15882"/>
+<Insert>  pkt-&gt;phys_addr = dpa_os_virt_to_phys(pkt-&gt;buff, size);
+</Insert>
+<Copy StartSeek="15957" EndSeek="16127"/>
+<Insert>eth_pkt_t *__dpa_pkt_wrap(void *data, uint32_t size, uint32_t offset, void *os_handle) {
+</Insert>
+<Copy StartSeek="16199" EndSeek="16323"/>
+<Insert>
+      pkt-&gt;buff = data;
+      pkt-&gt;offset = offset;
+</Insert>
+<Copy StartSeek="16323" EndSeek="16381"/>
+<Insert>      pkt-&gt;phys_addr = dpa_os_virt_to_phys(pkt-&gt;buff, pkt-&gt;size); /* Also cache clean */
+      pkt-&gt;alloc_size = size;
+</Insert>
+<Copy StartSeek="16440" EndSeek="16808"/>
+</Delta>
+<Delta Version="190" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="10:25:59000">
+<Copy StartSeek="0" EndSeek="7590"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7593" EndSeek="16810"/>
+</Delta>
+<Delta Version="191" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="10:55:5000">
+<Copy StartSeek="0" EndSeek="7530"/>
+<Insert>  pkt-&gt;l4_hdr = (dpa_l4_hdr_t  *)skb_transport_header(skb);
+</Insert>
+<Copy StartSeek="7589" EndSeek="16810"/>
+</Delta>
+<Delta Version="192" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="13:47:27000">
+<Copy StartSeek="0" EndSeek="7592"/>
+<Copy StartSeek="7669" EndSeek="16887"/>
+</Delta>
+<Delta Version="193" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="13:49:52000">
+<Copy StartSeek="0" EndSeek="7592"/>
+<Copy StartSeek="7649" EndSeek="7683"/>
+<Insert>          ntohs(pkt-&gt;eth_hdr-&gt;h_proto), );
+</Insert>
+<Copy StartSeek="7734" EndSeek="16952"/>
+</Delta>
+<Delta Version="194" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="13:51:9000">
+<Copy StartSeek="0" EndSeek="7645"/>
+<Insert>  }
+  SPA_DBG("eth type %#x, len %u",
+          ntohs(pkt-&gt;eth_hdr-&gt;h_proto), pkt-&gt;eth);
+</Insert>
+<Copy StartSeek="7727" EndSeek="16945"/>
+</Delta>
+<Delta Version="195" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="13:51:24000">
+<Copy StartSeek="0" EndSeek="7645"/>
+<Insert>          DPA_DBG("eth type %#x, len %u",ntohs(pkt-&gt;eth_hdr-&gt;h_proto), pkt-&gt;eth);
+</Insert>
+<Copy StartSeek="7751" EndSeek="16969"/>
+</Delta>
+<Delta Version="196" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="13:51:37000">
+<Copy StartSeek="0" EndSeek="7722"/>
+<Insert>                  pkt-&gt;eth);
+</Insert>
+<Copy StartSeek="7752" EndSeek="16970"/>
+</Delta>
+<Delta Version="197" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="13:51:41000">
+<Copy StartSeek="0" EndSeek="7645"/>
+<Insert>          DPA_DBG("eth type %#x, pkt-&gt;size %u",ntohs(pkt-&gt;eth_hdr-&gt;h_proto),
+                  pkt-&gt;size);
+</Insert>
+<Copy StartSeek="7789" EndSeek="17007"/>
+</Delta>
+<Delta Version="198" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="13:57:41000">
+<Copy StartSeek="0" EndSeek="7645"/>
+<Insert>          DPA_DBG("eth type %#x, pkt-&gt;size %u, skb",ntohs(pkt-&gt;eth_hdr-&gt;h_proto),
+</Insert>
+<Copy StartSeek="7738" EndSeek="17018"/>
+</Delta>
+<Delta Version="199" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="13:57:49000">
+<Copy StartSeek="0" EndSeek="7800"/>
+<Copy StartSeek="7804" EndSeek="17022"/>
+</Delta>
+<Delta Version="200" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="14:02:25000">
+<Copy StartSeek="0" EndSeek="7592"/>
+<Insert>  if (pkt-&gt;eth_hdr-&gt;h_proto == ntohs(ETH_P_8021Q)) {
+          DPA_DBG("eth type %#x, pkt-&gt;size %u, skb_headlen %u",ntohs(pkt-&gt;eth_hdr-&gt;h_proto),
+                  pkt-&gt;size, skb_headlen(skb) - ETH_MH_SIZE);
+  }
+</Insert>
+<Copy StartSeek="7804" EndSeek="17022"/>
+</Delta>
+<Delta Version="201" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="14:03:6000">
+<Copy StartSeek="0" EndSeek="7592"/>
+<Insert>//if (pkt-&gt;eth_hdr-&gt;h_proto == ntohs(ETH_P_8021Q)) {
+//        DPA_DBG("eth type %#x, pkt-&gt;size %u, skb_headlen %u",ntohs(pkt-&gt;eth_hdr-&gt;h_proto),
+//                pkt-&gt;size, skb_headlen(skb) - ETH_MH_SIZE);
+//}
+</Insert>
+<Copy StartSeek="7592" EndSeek="16810"/>
+</Delta>
+<Delta Version="202" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="14:05:22000">
+<Copy StartSeek="0" EndSeek="7589"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="7638" EndSeek="16856"/>
+</Delta>
+<Delta Version="203" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="14:18:45000">
+<Copy StartSeek="0" EndSeek="6102"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6120" EndSeek="6944"/>
+<Copy StartSeek="6985" EndSeek="7045"/>
+<Insert>      pkt = dpa_pkt_wrap(skb-&gt;data, skb_headlen(skb) - ETH_MH_SIZE, skb);
+</Insert>
+<Copy StartSeek="7093" EndSeek="7621"/>
+<Insert>  pkt-&gt;size = skb_headlen(skb) - ETH_MH_SIZE;
+</Insert>
+<Copy StartSeek="7641" EndSeek="16862"/>
+</Delta>
+<Delta Version="204" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="14:22:9000">
+<Copy StartSeek="0" EndSeek="6102"/>
+<Insert>  uint32_t size;
+</Insert>
+<Copy StartSeek="6123" EndSeek="6948"/>
+<Insert>  size = skb_headlen(skb) - ETH_MH_SIZE;
+</Insert>
+<Copy StartSeek="6993" EndSeek="7053"/>
+<Insert>      pkt = dpa_pkt_wrap(skb-&gt;data, size, skb);
+</Insert>
+<Copy StartSeek="7105" EndSeek="7633"/>
+<Insert>  pkt-&gt;size = size;
+</Insert>
+<Copy StartSeek="7657" EndSeek="16878"/>
+</Delta>
+<Delta Version="205" Comment="" NL="\10" Encoding="text" Date="2012/12/26" Time="15:56:27000">
+<Copy StartSeek="0" EndSeek="7657"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="7658" EndSeek="16876"/>
+</Delta>
+<Delta Version="206" Comment="" NL="\10" Encoding="text" Date="2012/12/27" Time="16:06:9000">
+<Copy StartSeek="0" EndSeek="15153"/>
+<Copy StartSeek="15179" EndSeek="16902"/>
+</Delta>
+<Delta Version="207" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:30:51000">
+<Copy StartSeek="0" EndSeek="15049"/>
+<Copy StartSeek="15075" EndSeek="15179"/>
+<Insert>  DPA_DBG("pkt %p", pkt);
+</Insert>
+<Copy StartSeek="15179" EndSeek="16902"/>
+</Delta>
+<Delta Version="208" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:32:9000">
+<Copy StartSeek="0" EndSeek="15049"/>
+<Insert>  DPA_DBG("skb %p", skb);
+</Insert>
+<Copy StartSeek="15081" EndSeek="16908"/>
+</Delta>
+<Delta Version="209" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:32:13000">
+<Copy StartSeek="0" EndSeek="15049"/>
+<Insert>  DPA_DBG("alloc skb %p", skb);
+</Insert>
+<Copy StartSeek="15100" EndSeek="15171"/>
+<Copy StartSeek="15172" EndSeek="16928"/>
+</Delta>
+<Delta Version="210" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:32:30000">
+<Copy StartSeek="0" EndSeek="15205"/>
+<Copy StartSeek="15256" EndSeek="16979"/>
+</Delta>
+<Delta Version="211" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:32:33000">
+<Copy StartSeek="0" EndSeek="15205"/>
+<Insert>  DPA_DBG("alloc skb %p head %p", skb, skb-&gt;head);
+</Insert>
+<Copy StartSeek="15250" EndSeek="16973"/>
+</Delta>
+<Delta Version="212" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:32:36000">
+<Copy StartSeek="0" EndSeek="15171"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15171" EndSeek="16972"/>
+</Delta>
+<Delta Version="213" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:32:41000">
+<Copy StartSeek="0" EndSeek="15534"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15585" EndSeek="17022"/>
+</Delta>
+<Delta Version="214" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:32:52000">
+<Copy StartSeek="0" EndSeek="15713"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="15764" EndSeek="17070"/>
+</Delta>
+<Delta Version="215" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:32:59000">
+<Copy StartSeek="0" EndSeek="14904"/>
+<Copy StartSeek="14955" EndSeek="15100"/>
+<Insert>  DPA_DBG("alloc skb %p head %p", skb, skb-&gt;head);
+</Insert>
+<Copy StartSeek="15103" EndSeek="17073"/>
+</Delta>
+<Delta Version="216" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:48:57000">
+<Copy StartSeek="0" EndSeek="14904"/>
+<Insert>  DPA_DBG("alloc skb %p head %p", skb, skb-&gt;head);
+</Insert>
+<Copy StartSeek="14949" EndSeek="17067"/>
+</Delta>
+<Delta Version="217" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:48:58000">
+<Copy StartSeek="0" EndSeek="15093"/>
+<Insert>
+  
+</Insert>
+<Copy StartSeek="15138" EndSeek="17108"/>
+</Delta>
+<Delta Version="218" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:49:4000">
+<Copy StartSeek="0" EndSeek="14904"/>
+<Insert>  DPA_DBG("skb %p head %p", skb, skb-&gt;head);
+</Insert>
+<Copy StartSeek="14961" EndSeek="17120"/>
+</Delta>
+<Delta Version="219" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:49:25000">
+<Copy StartSeek="0" EndSeek="14904"/>
+<Insert>  DPA_DBG("skb %p head %p", skb, skb-&gt;head, total_size);
+</Insert>
+<Copy StartSeek="14969" EndSeek="17128"/>
+</Delta>
+<Delta Version="220" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:49:30000">
+<Copy StartSeek="0" EndSeek="14904"/>
+<Insert>  DPA_DBG("skb %p head %p size %u", skb, skb-&gt;head, total_size);
+</Insert>
+<Copy StartSeek="14904" EndSeek="15048"/>
+<Insert>  DPA_DBG("skb %p head %p", skb, skb-&gt;head);
+</Insert>
+<Copy StartSeek="15049" EndSeek="15153"/>
+<Insert>  DPA_DBG("skb %p head %p", skb, skb-&gt;head);
+</Insert>
+<Copy StartSeek="15153" EndSeek="15438"/>
+<Insert>  DPA_DBG("alloc skb %p head %p", skb, skb-&gt;head);
+</Insert>
+<Copy StartSeek="15439" EndSeek="15567"/>
+<Insert>  DPA_DBG("alloc skb %p head %p", skb, skb-&gt;head);
+</Insert>
+<Copy StartSeek="15570" EndSeek="16876"/>
+</Delta>
+<Delta Version="221" Comment="" NL="\10" Encoding="text" Date="2013/01/13" Time="11:54:39000">
+<Copy StartSeek="0" EndSeek="596"/>
+<Copy StartSeek="623" EndSeek="1850"/>
+<Copy StartSeek="2212" EndSeek="3376"/>
+<Insert>  uint32_t              rx_timer_val; /* HW recv timer wake-up delay */
+</Insert>
+<Copy StartSeek="3376" EndSeek="3620"/>
+<Insert>    printk("&lt;c&gt;%02x ", data[i]);
+</Insert>
+<Copy StartSeek="3650" EndSeek="6416"/>
+<Insert>  uint32_t skb_size;
+
+</Insert>
+<Copy StartSeek="6417" EndSeek="6697"/>
+<Insert>      //SPA_ERROR("Slow path xmit failed, DPA Tx queue not ready, port (%d)", port);
+      goto fail;
+  }
+
+  /* Marvell header. Make sure it's there even if it's a forwarded packet
+  to cover the case when VLAN tag has been added or removed */
+  if (spa_skb_add_mh(skb, 0 /* FIXME 1) Add only for MH-enabled interfaces 2) Use valid MH from mv_netdev */)) {
+      SPA_DBG("Failed to add marvell header, packet dropped");
+</Insert>
+<Copy StartSeek="6778" EndSeek="6795"/>
+<Insert>  } 
+  
+</Insert>
+<Copy StartSeek="6800" EndSeek="6899"/>
+<Insert>  skb_size = skb_headlen(skb) - ETH_MH_SIZE;
+</Insert>
+<Copy StartSeek="6899" EndSeek="6913"/>
+<Insert>      SPA_DBG("***************SKB FOREIGN");
+</Insert>
+<Copy StartSeek="6947" EndSeek="6948"/>
+<Insert>      pkt = dpa_pkt_wrap(skb-&gt;data, skb_size, skb);
+</Insert>
+<Copy StartSeek="7008" EndSeek="7146"/>
+<Insert>     SPA_DBG("+++++++++++++++ SKB NATIVE ++++++++++++++++++");
+</Insert>
+<Copy StartSeek="7219" EndSeek="7223"/>
+<Insert>  
+  pkt-&gt;port = port;
+</Insert>
+<Copy StartSeek="7649" EndSeek="7688"/>
+<Insert>  pkt-&gt;phy_hdr_dma = dpa_os_virt_to_phys(pkt-&gt;phy_hdr, pkt-&gt;size); /* Also cache clean */
+</Insert>
+<Copy StartSeek="7783" EndSeek="7954"/>
+<Insert>  pkt-&gt;size = skb_size;
+
+  /* Clean cache for packet body */
+  /* FIXME Exclude pkt header as its clean done in Eth driver eth_pkt_tx */
+  dcache_l1_l2_clean_multi_line((uint32_t) pkt-&gt;phy_hdr, (uint32_t) pkt-&gt;phy_hdr + pkt-&gt;size - 1);
+
+</Insert>
+<Copy StartSeek="7955" EndSeek="8049"/>
+<Insert>  Linux-originated are scheduled instantly */
+</Insert>
+<Copy StartSeek="8098" EndSeek="8179"/>
+<Insert>  /* skb will be freed by LSP; pkt will be freed upon tx done */
+</Insert>
+<Copy StartSeek="8250" EndSeek="9438"/>
+<Insert>            skb-&gt;data += ETH_MH_SIZE; /* Marvell Header, 2B */
+</Insert>
+<Copy StartSeek="9476" EndSeek="9782"/>
+<Insert>            dcache_l1_l2_invalidate_multi_line((uint32_t) skb-&gt;data, (uint32_t) skb-&gt;data + skb-&gt;len - 1);
+</Insert>
+<Copy StartSeek="9883" EndSeek="10652"/>
+<Insert>
+/* HW recv timer handler */
+void spa_rx_timer_handler(void* cookie) {
+  tasklet_hi_schedule(&amp;spa_state.rx_task);
+}
+
+
+</Insert>
+<Copy StartSeek="10652" EndSeek="10717"/>
+<Insert>  timer_params_t timer;
+
+</Insert>
+<Copy StartSeek="10718" EndSeek="10946"/>
+<Insert>  /* HW recv timer */
+  timer.id = SPA_TIMER_ID;
+  timer.mode = TIMER_MODE_IRQ;
+  timer.handler = spa_rx_timer_handler;
+  timer.cookie = NULL;
+  if (timer_create(&amp;timer)) {
+      SPA_ERROR("Can't init Rx timer");
+      return DPA_FAIL;
+  }
+  spa_state.rx_timer_val = SPA_TIMER_RX_DURATION_USEC * dpa_os_get_sys_clock() / 1000;
+  SPA_DBG("HW recv timer (%d) initialized", SPA_TIMER_ID);
+
+</Insert>
+<Copy StartSeek="10946" EndSeek="11034"/>
+<Insert>  /* HW recv timer */
+  timer_destroy(SPA_TIMER_ID);
+  SPA_DBG("HW recv timer (%d) destroyed", SPA_TIMER_ID);
+
+</Insert>
+<Copy StartSeek="11034" EndSeek="12198"/>
+<Insert>  timer_start(SPA_TIMER_ID, spa_state.rx_timer_val);
+</Insert>
+<Copy StartSeek="12241" EndSeek="14081"/>
+<Insert>  uint32_t total_size, offset;
+  static uint32_t pad_count = 0;
+</Insert>
+<Copy StartSeek="14150" EndSeek="14190"/>
+<Insert>  total_size = DPA_PAD + DPA_HEADROOM + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1);
+</Insert>
+<Copy StartSeek="14292" EndSeek="14650"/>
+<Insert>  offset = pad_count * DPA_PAD_STEP;
+</Insert>
+<Copy StartSeek="14690" EndSeek="14759"/>
+<Insert>  skb_reserve(skb, offset);
+  /* reserve some room fo future headers */
+</Insert>
+<Copy StartSeek="14837" EndSeek="16309"/>
+</Delta>
+<Delta Version="222" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="18:32:57000">
+<Copy StartSeek="0" EndSeek="7596"/>
+<Copy StartSeek="7597" EndSeek="16310"/>
+</Delta>
+<Delta Version="223" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="18:33:13000">
+<Copy StartSeek="0" EndSeek="7491"/>
+<Insert>  printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p\n", 
+</Insert>
+<Copy StartSeek="7556" EndSeek="16318"/>
+</Delta>
+<Delta Version="224" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="18:33:58000">
+<Copy StartSeek="0" EndSeek="7556"/>
+<Insert>         __func__, __LINE__,skb, skb-&gt;nh.raw);
+</Insert>
+<Copy StartSeek="7608" EndSeek="16323"/>
+</Delta>
+<Delta Version="225" Comment="" NL="\10" Encoding="text" Date="2013/04/11" Time="18:34:2000">
+<Copy StartSeek="0" EndSeek="7491"/>
+<Insert>  printk(KERN_ERR "(%s:%d) HAIM: skb %p, pkt %p, skb-&gt;nh %p\n", 
+         __func__, __LINE__,skb, pkt, skb-&gt;nh.raw);
+</Insert>
+<Copy StartSeek="7644" EndSeek="16359"/>
+</Delta>
+<Delta Version="226" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="09:41:31000">
+<Copy StartSeek="0" EndSeek="7570"/>
+<Insert>         __func__, __LINE__,skb, pkt, skb-&gt;nh.raw, ntohs(skb-&gt;protocol));
+</Insert>
+<Copy StartSeek="7648" EndSeek="16363"/>
+</Delta>
+<Delta Version="227" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="09:53:40000">
+<Copy StartSeek="0" EndSeek="7570"/>
+<Insert>         __func__, __LINE__,skb, pkt, skb-&gt;nh.raw, dpa_ntohs(skb-&gt;protocol));
+</Insert>
+<Copy StartSeek="7644" EndSeek="16359"/>
+</Delta>
+<Delta Version="228" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="09:53:49000">
+<Copy StartSeek="0" EndSeek="707"/>
+<Copy StartSeek="736" EndSeek="16388"/>
+</Delta>
+<Delta Version="229" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="09:54:3000">
+<Copy StartSeek="0" EndSeek="707"/>
+<Insert>#include &lt;linux/byteorder.h&gt;
+</Insert>
+<Copy StartSeek="734" EndSeek="16386"/>
+</Delta>
+<Delta Version="230" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="09:54:24000">
+<Copy StartSeek="0" EndSeek="707"/>
+<Insert>#include &lt;linux/netinet.h&gt;
+</Insert>
+<Copy StartSeek="728" EndSeek="16380"/>
+</Delta>
+<Delta Version="231" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="09:54:32000">
+<Copy StartSeek="0" EndSeek="707"/>
+<Insert>#include &lt;netinet.h&gt;
+</Insert>
+<Copy StartSeek="734" EndSeek="16386"/>
+</Delta>
+<Delta Version="232" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="09:54:37000">
+<Copy StartSeek="0" EndSeek="707"/>
+<Insert>#include &lt;linux/netinet.h&gt;
+</Insert>
+<Copy StartSeek="744" EndSeek="16396"/>
+</Delta>
+<Delta Version="233" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="09:54:48000">
+<Copy StartSeek="0" EndSeek="707"/>
+<Insert>#include &lt;linux/byteorder/generic.h&gt;
+</Insert>
+<Copy StartSeek="708" EndSeek="16360"/>
+</Delta>
+<Delta Version="234" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="09:55:8000">
+<Copy StartSeek="0" EndSeek="707"/>
+<Insert>
+</Insert>
+<Copy StartSeek="707" EndSeek="16359"/>
+</Delta>
+<Delta Version="235" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="09:55:9000">
+<Copy StartSeek="0" EndSeek="937"/>
+<Insert>
+</Insert>
+<Copy StartSeek="964" EndSeek="16385"/>
+</Delta>
+<Delta Version="236" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="09:56:51000">
+<Copy StartSeek="0" EndSeek="937"/>
+<Insert>#include &lt;dpa/byteorder.h&gt;
+</Insert>
+<Copy StartSeek="966" EndSeek="16387"/>
+</Delta>
+<Delta Version="237" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="09:57:1000">
+<Copy StartSeek="0" EndSeek="7598"/>
+<Insert>         __func__, __LINE__,skb, pkt, skb-&gt;nh.raw, ntohs(skb-&gt;protocol));
+</Insert>
+<Copy StartSeek="7676" EndSeek="16391"/>
+</Delta>
+<Delta Version="238" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:01:25000">
+<Copy StartSeek="0" EndSeek="7677"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7897" EndSeek="16610"/>
+</Delta>
+<Delta Version="239" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:34:43000">
+<Copy StartSeek="0" EndSeek="7786"/>
+<Insert>	       __func__, __LINE__,skb, skb-&gt;nh.raw,
+</Insert>
+<Copy StartSeek="7836" EndSeek="16615"/>
+</Delta>
+<Delta Version="240" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:34:58000">
+<Copy StartSeek="0" EndSeek="7786"/>
+<Insert>	       __func__, __LINE__,skb, pkt, skb-&gt;nh.raw,
+</Insert>
+<Copy StartSeek="7849" EndSeek="16628"/>
+</Delta>
+<Delta Version="241" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:35:7000">
+<Copy StartSeek="0" EndSeek="7677"/>
+<Insert>  printk(KERN_ERR "(%s:%d) HAIM: skb %p, pkt %p skb-&gt;nh %p ["NIPQUAD_FMT"-&gt;"NIPQUAD_FMT"], ip.proto #%x\n", 
+</Insert>
+<Copy StartSeek="7801" EndSeek="16643"/>
+</Delta>
+<Delta Version="242" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:35:17000">
+<Copy StartSeek="0" EndSeek="7677"/>
+<Insert>  printk(KERN_ERR "(%s:%d) HAIM: skb %p, pkt %p , pkt-&gt;iph %p, skb-&gt;nh %p ["NIPQUAD_FMT"-&gt;"NIPQUAD_FMT"], ip.proto #%x\n", 
+</Insert>
+<Copy StartSeek="7779" EndSeek="16621"/>
+</Delta>
+<Delta Version="243" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:35:31000">
+<Copy StartSeek="0" EndSeek="7677"/>
+<Insert>  printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p ["NIPQUAD_FMT"-&gt;"NIPQUAD_FMT"], ip.proto #%x\n", 
+	       __func__, __LINE__,skb, pkt, skb-&gt;nh.raw, pkt-&gt;ip_hdr,
+</Insert>
+<Copy StartSeek="7857" EndSeek="16636"/>
+</Delta>
+<Delta Version="244" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:36:2000">
+<Copy StartSeek="0" EndSeek="7677"/>
+<Insert>  printk(KERN_ERR "(%s:%d) HAIM: skb %p,skb-&gt;nh %p, pkt %p, pkt-&gt;iph %p ["NIPQUAD_FMT"-&gt;"NIPQUAD_FMT"], ip.proto #%x\n", 
+</Insert>
+<Copy StartSeek="7800" EndSeek="16637"/>
+</Delta>
+<Delta Version="245" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:36:34000">
+<Copy StartSeek="0" EndSeek="7800"/>
+<Insert>	       __func__, __LINE__,skb, skb-&gt;nh.raw, pkt-&gt;ip_hdr,
+</Insert>
+<Copy StartSeek="7859" EndSeek="16638"/>
+</Delta>
+<Delta Version="246" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:36:36000">
+<Copy StartSeek="0" EndSeek="7800"/>
+<Insert>	       __func__, __LINE__, skb, skb-&gt;nh.raw, pkt-&gt;ip_hdr,
+</Insert>
+<Copy StartSeek="7864" EndSeek="16643"/>
+</Delta>
+<Delta Version="247" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:36:44000">
+<Copy StartSeek="0" EndSeek="7677"/>
+<Insert>  printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p, pkt %p, pkt-&gt;iph %p ["NIPQUAD_FMT"-&gt;"NIPQUAD_FMT"], ip.proto #%x\n", 
+</Insert>
+<Copy StartSeek="7797" EndSeek="7926"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7959" EndSeek="16672"/>
+</Delta>
+<Delta Version="248" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="10:37:26000">
+<Copy StartSeek="0" EndSeek="7861"/>
+<Insert>	       NIPQUAD(skb-&gt;nh.iph-&gt;saddr),NIPQUAD(skb-&gt;nh.iph-&gt;daddr),
+         ntohs(skb-&gt;protocol));
+
+</Insert>
+<Copy StartSeek="7950" EndSeek="16663"/>
+</Delta>
+<Delta Version="249" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="11:03:27000">
+<Copy StartSeek="0" EndSeek="7861"/>
+<Insert>	       NIPQUAD(skb-&gt;nh.iph-&gt;saddr),NIPQUAD(skb-&gt;nh.iph-&gt;daddr), ntohs(skb-&gt;protocol));
+
+</Insert>
+<Copy StartSeek="7959" EndSeek="16672"/>
+</Delta>
+<Delta Version="250" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="11:03:30000">
+<Copy StartSeek="0" EndSeek="7797"/>
+<Insert>	       __func__, __LINE__, skb, skb-&gt;nh.raw, pkt, pkt-&gt;ip_hdr,
+</Insert>
+<Copy StartSeek="7862" EndSeek="16673"/>
+</Delta>
+<Delta Version="251" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="11:03:34000">
+<Copy StartSeek="0" EndSeek="7862"/>
+<Insert>	       NIPQUAD(skb-&gt;nh.iph-&gt;saddr),NIPQUAD(skb-&gt;nh.iph-&gt;daddr),
+</Insert>
+<Copy StartSeek="7928" EndSeek="16674"/>
+</Delta>
+<Delta Version="252" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="11:03:35000">
+<Copy StartSeek="0" EndSeek="7862"/>
+<Insert>         NIPQUAD(skb-&gt;nh.iph-&gt;saddr),NIPQUAD(skb-&gt;nh.iph-&gt;daddr),
+</Insert>
+<Copy StartSeek="7929" EndSeek="16675"/>
+</Delta>
+<Delta Version="253" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="11:04:19000">
+<Copy StartSeek="0" EndSeek="7862"/>
+<Insert>         NIPQUAD(skb-&gt;nh.iph-&gt;saddr), NIPQUAD(skb-&gt;nh.iph-&gt;daddr),
+</Insert>
+<Copy StartSeek="7931" EndSeek="16677"/>
+</Delta>
+<Delta Version="254" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="11:05:16000">
+<Copy StartSeek="0" EndSeek="7862"/>
+<Insert>         //NIPQUAD(skb-&gt;nh.iph-&gt;saddr), NIPQUAD(skb-&gt;nh.iph-&gt;daddr),
+</Insert>
+<Copy StartSeek="7929" EndSeek="16675"/>
+</Delta>
+<Delta Version="255" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="11:05:24000">
+<Copy StartSeek="0" EndSeek="730"/>
+<Insert>
+</Insert>
+<Copy StartSeek="753" EndSeek="16697"/>
+</Delta>
+<Delta Version="256" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="11:06:23000">
+<Copy StartSeek="0" EndSeek="7951"/>
+<Insert>         ntohs(skb-&gt;protocol));
+</Insert>
+<Copy StartSeek="7987" EndSeek="16701"/>
+</Delta>
+<Delta Version="257" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="11:06:42000">
+<Copy StartSeek="0" EndSeek="7541"/>
+<Insert>  printk(KERN_ERR "(%s:%d) HAIM: skb %p, pkt %p, skb-&gt;nh %p, protocol %#x\n", 
+         __func__, __LINE__,skb, pkt, skb-&gt;nh.raw, dpa_ntohs(skb-&gt;protocol));
+
+</Insert>
+<Copy StartSeek="7542" EndSeek="16544"/>
+</Delta>
+<Delta Version="258" Comment="" NL="\10" Encoding="text" Date="2013/04/14" Time="11:06:48000">
+<Copy StartSeek="0" EndSeek="730"/>
+<Insert>#include &lt;linux/ip.h&gt;
+
+</Insert>
+<Copy StartSeek="731" EndSeek="937"/>
+<Insert>#include &lt;util/byte_order.h&gt;
+</Insert>
+<Copy StartSeek="938" EndSeek="7492"/>
+<Insert>  printk(KERN_ERR "(%s:%d) HAIM: skb %p, skb-&gt;nh %p, pkt %p, pkt-&gt;iph %p ["NIPQUAD_FMT"-&gt;"NIPQUAD_FMT"], proto #%x\n", 
+         __func__, __LINE__, skb, skb-&gt;nh.raw, pkt, pkt-&gt;ip_hdr,
+         NIPQUAD(skb-&gt;nh.iph-&gt;saddr), NIPQUAD(skb-&gt;nh.iph-&gt;daddr),
+         dpa_ntohs(skb-&gt;protocol));
+
+</Insert>
+<Copy StartSeek="7492" EndSeek="14224"/>
+<Copy StartSeek="14281" EndSeek="16262"/>
+</Delta>
+<Delta Version="259" Comment="" NL="\10" Encoding="text" Date="2013/04/21" Time="16:52:34000">
+<Copy StartSeek="0" EndSeek="14224"/>
+<Insert>  printk("total_allocated: %u\n", skb-&gt;end - skb-&gt;head);
+</Insert>
+<Copy StartSeek="14307" EndSeek="16288"/>
+</Delta>
+<Delta Version="260" Comment="" NL="\10" Encoding="text" Date="2013/04/21" Time="17:00:33000">
+<Copy StartSeek="0" EndSeek="14224"/>
+<Insert>  printk("total_allocated: %u, tota_size %u\n", skb-&gt;end - skb-&gt;head, total_size);
+</Insert>
+<Copy StartSeek="14326" EndSeek="16307"/>
+</Delta>
+<Delta Version="261" Comment="" NL="\10" Encoding="text" Date="2013/04/21" Time="17:02:37000">
+<Copy StartSeek="0" EndSeek="1849"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1881" EndSeek="14255"/>
+<Insert>  printk("requested:%u,total_allocated: %u, tota_size %u\n", size, skb-&gt;end - skb-&gt;head, total_size);
+</Insert>
+<Copy StartSeek="14359" EndSeek="16340"/>
+</Delta>
+<Delta Version="262" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="12:09:0000">
+<Copy StartSeek="0" EndSeek="1849"/>
+<Insert>#define DPA_TAILROOM      (32)
+</Insert>
+<Copy StartSeek="1881" EndSeek="16341"/>
+</Delta>
+<Delta Version="263" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="12:09:2000">
+<Copy StartSeek="0" EndSeek="1849"/>
+<Copy StartSeek="1880" EndSeek="16372"/>
+</Delta>
+<Delta Version="264" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="12:09:28000">
+<Copy StartSeek="0" EndSeek="14149"/>
+<Insert>  total_size = /* DPA_PAD + */ DPA_HEADROOM + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1);
+</Insert>
+<Copy StartSeek="14266" EndSeek="16387"/>
+</Delta>
+<Delta Version="265" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="12:20:19000">
+<Copy StartSeek="0" EndSeek="14149"/>
+<Insert>  total_size = /* DPA_PAD + */ DPA_HEADROOM + sizeof(eth_pkt_t) + size + (CPU_D_CACHE_LINE_SIZE - 1) + DPA_TAILROOM;
+</Insert>
+<Copy StartSeek="14251" EndSeek="16372"/>
+</Delta>
+<Delta Version="266" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="12:20:29000">
+<Copy StartSeek="0" EndSeek="14251"/>
+<Insert>
+</Insert>
+<Copy StartSeek="14284" EndSeek="16404"/>
+</Delta>
+<Delta Version="267" Comment="" NL="\10" Encoding="text" Date="2013/04/22" Time="12:20:47000">
+<Copy StartSeek="0" EndSeek="14251"/>
+<Insert>  total_size += + DPA_TAILROOM;
+</Insert>
+<Copy StartSeek="14281" EndSeek="16402"/>
+</Delta>
+</DeltaFile>

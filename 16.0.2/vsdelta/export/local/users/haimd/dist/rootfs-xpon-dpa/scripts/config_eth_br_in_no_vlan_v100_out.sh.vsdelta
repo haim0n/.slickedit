@@ -1,0 +1,94 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="6" Comment="" Date="2013/06/17" Time="11:16:59000" NL="\10" Encoding="text">
+<Insert>#!/bin/sh -x
+# configures eth0 to no vlan , pon0 to v100 in same bridge
+
+ifconfig eth0 0.0.0.0
+ifconfig pon0 0.0.0.0
+
+brctl addbr br0
+vconfig add pon0 100
+brctl addif br0 eth0
+brctl addif br0 pon0.100
+ifconfig pon0 up
+ifconfig eth0 up
+ifconfig pon0.100 up
+ifconfig br0 up
+
+brctl show
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/06/09" Time="12:30:11000">
+<Copy StartSeek="0" EndSeek="13"/>
+<Insert># configures eth1 to no vlan , eth2 to v100 in same bridge
+</Insert>
+<Copy StartSeek="72" EndSeek="284"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/06/17" Time="11:15:2000">
+<Copy StartSeek="0" EndSeek="13"/>
+<Insert># configures eth1 to no vlan , pon0 to v100 in same bridge
+</Insert>
+<Copy StartSeek="72" EndSeek="95"/>
+<Insert>ifconfig eth1 0.0.0.0
+</Insert>
+<Copy StartSeek="117" EndSeek="155"/>
+<Insert>brctl addif br0 eth1
+</Insert>
+<Copy StartSeek="176" EndSeek="218"/>
+<Insert>ifconfig eth1 up
+</Insert>
+<Copy StartSeek="235" EndSeek="284"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/06/17" Time="11:16:13000">
+<Copy StartSeek="0" EndSeek="13"/>
+<Insert># configures pon0 to no vlan , pon0 to v100 in same bridge
+</Insert>
+<Copy StartSeek="72" EndSeek="73"/>
+<Insert>ifconfig eth0 0.0.0.0
+</Insert>
+<Copy StartSeek="73" EndSeek="95"/>
+<Insert>
+</Insert>
+<Copy StartSeek="118" EndSeek="134"/>
+<Insert>vconfig add eth0 100
+brctl addif br0 pon0
+brctl addif br0 eth0.100
+ifconfig eth0 up
+</Insert>
+<Copy StartSeek="201" EndSeek="218"/>
+<Insert>ifconfig eth0.100 up
+</Insert>
+<Copy StartSeek="256" EndSeek="284"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/06/17" Time="11:16:47000">
+<Copy StartSeek="0" EndSeek="13"/>
+<Insert># configures eth1 to no vlan , pon0 to v100 in same bridge
+</Insert>
+<Copy StartSeek="72" EndSeek="95"/>
+<Insert>ifconfig eth1 0.0.0.0
+</Insert>
+<Copy StartSeek="117" EndSeek="155"/>
+<Insert>brctl addif br0 eth1
+</Insert>
+<Copy StartSeek="176" EndSeek="218"/>
+<Insert>ifconfig eth1 up
+</Insert>
+<Copy StartSeek="235" EndSeek="284"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/06/17" Time="11:16:52000">
+<Copy StartSeek="0" EndSeek="73"/>
+<Insert>ifconfig pon0 0.0.0.0
+</Insert>
+<Copy StartSeek="73" EndSeek="95"/>
+<Insert>
+</Insert>
+<Copy StartSeek="119" EndSeek="285"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/06/17" Time="11:16:57000">
+<Copy StartSeek="0" EndSeek="118"/>
+<Insert>
+</Insert>
+<Copy StartSeek="118" EndSeek="284"/>
+</Delta>
+</DeltaFile>

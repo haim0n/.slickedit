@@ -1,0 +1,26 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="2" Comment="" Date="2012/05/16" Time="17:21:31000" NL="\10" Encoding="text">
+<Insert>#ifndef KLNA_BR_H
+#define KLNA_BR_H
+
+struct net_bridge;
+
+int klna_br_fdb_init(void);
+void klna_br_fdb_exit(void);
+int klna_br_reg(struct net_bridge *br);
+int klna_br_unreg(struct net_bridge *br);
+#endif /* KLNA_BR_H */
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:27:50000">
+<Copy StartSeek="0" EndSeek="85"/>
+<Copy StartSeek="113" EndSeek="218"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/05/16" Time="16:33:51000">
+<Copy StartSeek="0" EndSeek="85"/>
+<Insert>int klna_br_fdb_exit(void);
+</Insert>
+<Copy StartSeek="114" EndSeek="219"/>
+</Delta>
+</DeltaFile>

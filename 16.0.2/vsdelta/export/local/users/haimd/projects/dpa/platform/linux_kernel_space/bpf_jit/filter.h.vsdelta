@@ -1,0 +1,259 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="14" Comment="" Date="2012/11/06" Time="15:22:55000" NL="\10" Encoding="text">
+<Insert>/*
+ * Linux Socket Filter Data Structures
+ */
+#ifndef __DPA_LINUX_FILTER_H__
+#define __DPA_LINUX_FILTER_H__
+
+#include &lt;asm/atomic.h&gt;
+#include &lt;linux/compat.h&gt;
+#include "uapi_filter.h"
+
+/*
+ * A struct sock_filter is architecture independent.
+ */
+struct compat_sock_fprog {
+	u16		len;
+	u32		filter;		/* struct sock_filter * */
+};
+
+struct sk_buff;
+struct sock;
+
+struct sk_filter
+{
+	atomic_t		refcnt;
+	unsigned int         	len;	/* Number of filter blocks */
+	unsigned int		(*bpf_func)(const struct sk_buff *skb,
+					    const struct sock_filter *filter);
+	struct rcu_head		rcu;
+	struct sock_filter     	insns[0];
+};
+
+static inline unsigned int sk_filter_len(const struct sk_filter *fp)
+{
+	return fp-&gt;len * sizeof(struct sock_filter) + sizeof(*fp);
+}
+
+extern int sk_filter(struct sock *sk, struct sk_buff *skb);
+extern unsigned int sk_run_filter(const struct sk_buff *skb,
+				  const struct sock_filter *filter);
+extern int sk_unattached_filter_create(struct sk_filter **pfp,
+				       struct sock_fprog *fprog);
+extern void sk_unattached_filter_destroy(struct sk_filter *fp);
+extern int sk_attach_filter(struct sock_fprog *fprog, struct sock *sk);
+extern int sk_detach_filter(struct sock *sk);
+extern int sk_chk_filter(struct sock_filter *filter, unsigned int flen);
+
+
+extern void bpf_jit_compile(struct sk_filter *fp);
+extern void bpf_jit_free(struct sk_filter *fp);
+#define SK_RUN_FILTER(FILTER, SKB) (*FILTER-&gt;bpf_func)(SKB, FILTER-&gt;insns)
+
+enum {
+	BPF_S_RET_K = 1,
+	BPF_S_RET_A,
+	BPF_S_ALU_ADD_K,
+	BPF_S_ALU_ADD_X,
+	BPF_S_ALU_SUB_K,
+	BPF_S_ALU_SUB_X,
+	BPF_S_ALU_MUL_K,
+	BPF_S_ALU_MUL_X,
+	BPF_S_ALU_DIV_X,
+	BPF_S_ALU_MOD_K,
+	BPF_S_ALU_MOD_X,
+	BPF_S_ALU_AND_K,
+	BPF_S_ALU_AND_X,
+	BPF_S_ALU_OR_K,
+	BPF_S_ALU_OR_X,
+	BPF_S_ALU_XOR_K,
+	BPF_S_ALU_XOR_X,
+	BPF_S_ALU_LSH_K,
+	BPF_S_ALU_LSH_X,
+	BPF_S_ALU_RSH_K,
+	BPF_S_ALU_RSH_X,
+	BPF_S_ALU_NEG,
+	BPF_S_LD_W_ABS,
+	BPF_S_LD_H_ABS,
+	BPF_S_LD_B_ABS,
+	BPF_S_LD_W_LEN,
+	BPF_S_LD_W_IND,
+	BPF_S_LD_H_IND,
+	BPF_S_LD_B_IND,
+	BPF_S_LD_IMM,
+	BPF_S_LDX_W_LEN,
+	BPF_S_LDX_B_MSH,
+	BPF_S_LDX_IMM,
+	BPF_S_MISC_TAX,
+	BPF_S_MISC_TXA,
+	BPF_S_ALU_DIV_K,
+	BPF_S_LD_MEM,
+	BPF_S_LDX_MEM,
+	BPF_S_ST,
+	BPF_S_STX,
+	BPF_S_JMP_JA,
+	BPF_S_JMP_JEQ_K,
+	BPF_S_JMP_JEQ_X,
+	BPF_S_JMP_JGE_K,
+	BPF_S_JMP_JGE_X,
+	BPF_S_JMP_JGT_K,
+	BPF_S_JMP_JGT_X,
+	BPF_S_JMP_JSET_K,
+	BPF_S_JMP_JSET_X,
+	/* Ancillary data */
+	BPF_S_ANC_PROTOCOL,
+	BPF_S_ANC_PKTTYPE,
+	BPF_S_ANC_IFINDEX,
+	BPF_S_ANC_NLATTR,
+	BPF_S_ANC_NLATTR_NEST,
+	BPF_S_ANC_MARK,
+	BPF_S_ANC_QUEUE,
+	BPF_S_ANC_HATYPE,
+	BPF_S_ANC_RXHASH,
+	BPF_S_ANC_CPU,
+	BPF_S_ANC_ALU_XOR_X,
+	BPF_S_ANC_SECCOMP_LD_W,
+};
+
+#endif /* __DPA_LINUX_FILTER_H__ */
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="14:57:27000">
+<Copy StartSeek="0" EndSeek="46"/>
+<Insert>#ifndef __LINUX_FILTER_H__
+#define __LINUX_FILTER_H__
+</Insert>
+<Copy StartSeek="108" EndSeek="2825"/>
+<Insert>#endif /* __LINUX_FILTER_H__ */
+</Insert>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="14:59:59000">
+<Copy StartSeek="0" EndSeek="193"/>
+<Insert>#ifdef CONFIG_COMPAT
+</Insert>
+<Copy StartSeek="216" EndSeek="368"/>
+<Insert>#endif
+</Insert>
+<Copy StartSeek="377" EndSeek="2865"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="15:00:12000">
+<Copy StartSeek="0" EndSeek="1317"/>
+<Insert>#ifdef CONFIG_BPF_JIT
+</Insert>
+<Copy StartSeek="1317" EndSeek="1416"/>
+<Insert>#define SK_RUN_FILTER(FILTER, SKB) (*FILTER-&gt;bpf_func)(SKB, FILTER-&gt;insns)
+#else
+static inline void bpf_jit_compile(struct sk_filter *fp)
+{
+}
+static inline void bpf_jit_free(struct sk_filter *fp)
+{
+}
+#define SK_RUN_FILTER(FILTER, SKB) sk_run_filter(SKB, FILTER-&gt;insns)
+#endif
+
+</Insert>
+<Copy StartSeek="1417" EndSeek="2567"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="15:02:0000">
+<Copy StartSeek="0" EndSeek="46"/>
+<Insert>#ifndef __DPA_LINUX_FILTER_H__
+#define __DPA_LINUX_FILTER_H__
+</Insert>
+<Copy StartSeek="100" EndSeek="185"/>
+<Insert>//#ifdef CONFIG_COMPAT
+</Insert>
+<Copy StartSeek="206" EndSeek="358"/>
+<Insert>//#endif
+</Insert>
+<Copy StartSeek="365" EndSeek="1305"/>
+<Copy StartSeek="1327" EndSeek="1426"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1703" EndSeek="2817"/>
+<Insert>#endif /* __DPA_LINUX_FILTER_H__ */
+</Insert>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="15:02:14000">
+<Copy StartSeek="0" EndSeek="46"/>
+<Insert>#ifndef __LINUX_FILTER_H__
+#define __LINUX_FILTER_H__
+</Insert>
+<Copy StartSeek="108" EndSeek="2825"/>
+<Insert>#endif /* __LINUX_FILTER_H__ */
+</Insert>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="15:02:53000">
+<Copy StartSeek="0" EndSeek="193"/>
+<Insert>#ifdef CONFIG_COMPAT
+</Insert>
+<Copy StartSeek="193" EndSeek="345"/>
+<Insert>#endif
+
+</Insert>
+<Copy StartSeek="346" EndSeek="1285"/>
+<Insert>#ifdef CONFIG_BPF_JIT
+</Insert>
+<Copy StartSeek="1286" EndSeek="1460"/>
+<Insert>#else
+static inline void bpf_jit_compile(struct sk_filter *fp)
+{
+}
+static inline void bpf_jit_free(struct sk_filter *fp)
+{
+}
+#define SK_RUN_FILTER(FILTER, SKB) sk_run_filter(SKB, FILTER-&gt;insns)
+#endif
+
+</Insert>
+<Copy StartSeek="1461" EndSeek="2611"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="15:03:52000">
+<Copy StartSeek="0" EndSeek="109"/>
+<Insert>#include &lt;linux/atomic.h&gt;
+</Insert>
+<Copy StartSeek="139" EndSeek="2615"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="15:06:26000">
+<Copy StartSeek="0" EndSeek="109"/>
+<Insert>#include &lt;linux/asm/atomic.h&gt;
+</Insert>
+<Copy StartSeek="133" EndSeek="2609"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="15:11:17000">
+<Copy StartSeek="0" EndSeek="159"/>
+<Insert>#include &lt;uapi/linux/filter.h&gt;
+</Insert>
+<Copy StartSeek="192" EndSeek="2611"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="15:13:6000">
+<Copy StartSeek="0" EndSeek="159"/>
+<Insert>//#include &lt;uapi/linux/filter.h&gt;
+</Insert>
+<Copy StartSeek="184" EndSeek="2603"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="15:17:12000">
+<Copy StartSeek="0" EndSeek="159"/>
+<Copy StartSeek="160" EndSeek="2604"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="15:17:13000">
+<Copy StartSeek="0" EndSeek="159"/>
+<Insert>
+</Insert>
+<Copy StartSeek="159" EndSeek="2603"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="15:17:17000">
+<Copy StartSeek="0" EndSeek="283"/>
+<Insert>	compat_uptr_t	filter;		/* struct sock_filter * */
+</Insert>
+<Copy StartSeek="324" EndSeek="2593"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/11/06" Time="15:22:53000">
+<Copy StartSeek="0" EndSeek="283"/>
+<Insert>	u32	filter;		/* struct sock_filter * */
+</Insert>
+<Copy StartSeek="325" EndSeek="2594"/>
+</Delta>
+</DeltaFile>

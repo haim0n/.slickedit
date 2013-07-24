@@ -1,0 +1,102 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="4" Comment="" Date="2013/04/08" Time="21:03:10000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* byte_order.h
+*
+* DESCRIPTION:
+*   DPA OS byte order manipulations.
+*
+*******************************************************************************/
+#ifndef __DPA_BYTE_ORDER_H__
+#define __DPA_BYTE_ORDER_H__
+
+uint32_t dpa_ntohl(uint32_t val)
+{
+#ifdef _DPA_CPU_LE__
+  return (((val&amp;0x000000FF)&lt;&lt;24)+((val&amp;0x0000FF00)&lt;&lt;8)+ ((val&amp;0x00FF0000)&gt;&gt;8)+((val&amp;0xFF000000)&gt;&gt;24));    
+#else
+  return val;
+#endif
+
+}
+
+uint32_t dpa_htonl(uint32_t val)
+{
+#ifdef _DPA_CPU_LE__
+  return (((val&amp;0x000000FF)&lt;&lt;24)+((val&amp;0x0000FF00)&lt;&lt;8)+ ((val&amp;0x00FF0000)&gt;&gt;8)+((val&amp;0xFF000000)&gt;&gt;24));  
+#else
+  return val;
+#endif
+}
+
+uint16_t dpa_ntohs(uint16_t val)
+{
+#ifdef _DPA_CPU_LE__
+  return (uint16_t)(((uint16_t)(val &amp; 0xFF) &lt;&lt; 8) + ((uint16_t)(val &amp; 0xFF00) &gt;&gt; 8));
+#else
+  return val;
+#endif
+}
+
+uint16_t dpa_htons(uint16_t val)
+{
+#ifdef _DPA_CPU_LE__
+  return (uint16_t)(((uint16_t)(val &amp; 0xFF) &lt;&lt; 8) + ((uint16_t)(val &amp; 0xFF00) &gt;&gt; 8));  
+#else
+  return val;
+#endif
+}
+
+uint64_t dpa_ntohll(uint64_t val)
+{
+#ifdef _DPA_CPU_LE__
+  return (((uint64_t)dpa_ntohl(val))&lt;&lt;32) + (uint64_t)dpa_ntohl(val&gt;&gt;32);
+#else
+  return val;
+#endif
+}
+
+uint64_t dpa_htonll(uint64_t val)
+{
+#ifdef _DPA_CPU_LE__
+  return (((uint64_t)dpa_htonl(val)) &lt;&lt;32) + (uint64_t)dpa_htonl(val&gt;&gt;32);
+#else
+  return val;
+#endif
+}
+
+#endif /* __DPA_BYTE_ORDER_H__ */
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="20:56:13000">
+<Copy StartSeek="0" EndSeek="574"/>
+<Insert>
+</Insert>
+<Copy StartSeek="629" EndSeek="1682"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:00:4000">
+<Copy StartSeek="0" EndSeek="1682"/>
+<Copy StartSeek="1683" EndSeek="1715"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:00:8000">
+<Copy StartSeek="0" EndSeek="574"/>
+<Insert>#ifndef _DPA_BYTE_ORDER_H_
+#define _DPA_BYTE_ORDER_H_
+</Insert>
+<Copy StartSeek="632" EndSeek="1719"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/04/08" Time="21:03:3000">
+<Copy StartSeek="0" EndSeek="1687"/>
+<Insert>#endif /* _DPA_BYTE_ORDER_H_ */
+</Insert>
+</Delta>
+</DeltaFile>

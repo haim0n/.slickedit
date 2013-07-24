@@ -1,0 +1,237 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="6" Comment="" Date="2012/06/25" Time="14:14:3000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2010, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* DESCRIPTION:
+*       
+* 
+*******************************************************************************/
+#include &lt;linux/module.h&gt;
+#include &lt;linux/moduleparam.h&gt;
+#include &lt;linux/proc_fs.h&gt;
+#include &lt;asm/page.h&gt;
+
+#include &lt;eth/eth.h&gt;
+#include &lt;util/mem.h&gt;
+
+#ifdef MODULE_LICENSE
+MODULE_LICENSE("MARVELL");
+#endif
+
+typedef struct {
+  unsigned char   h_dest[6];       /* destination eth addr */
+  unsigned char   h_source[6];     /* source ether addr    */
+  u16             h_proto;        /* packet type ID field */
+  unsigned char   data[100];     
+} __attribute__((packed)) ethhdr;
+
+
+static struct proc_dir_entry *dpa_stats;
+
+
+static int eth_mod_stats_read(char *buffer, char **buffer_location, off_t offset,
+                            int buffer_length, int *zero, void *ptr)
+{
+  int n = sprintf(buffer, "Test\n");
+
+  return n;
+}
+
+
+static void eth_mod_create_proc(void) {
+  dpa_stats = proc_mkdir("dpa", NULL);
+  create_proc_read_entry("stats", 0, dpa_stats, eth_mod_stats_read, NULL);
+}
+
+static void eth_mod_remove_proc(void) {
+  remove_proc_entry("stats", dpa_stats);
+  remove_proc_entry("dpa", NULL);
+}  
+
+
+static void __exit eth_mod_exit(void)
+{
+  eth_mod_remove_proc();
+  eth_shutdown(0);
+  eth_shutdown(1);
+}
+module_exit(eth_mod_exit);
+
+
+eth_pkt_t *alloc_pkt(uint32_t size) {
+  eth_pkt_t *pkt;
+  size += sizeof(eth_pkt_t);
+
+  pkt = DPA_MALLOC(size);
+  
+  if (pkt) {
+      dpa_memset(pkt, 0, size);
+      pkt-&gt;alloc_size = size;
+      pkt-&gt;buff = ((uint8_t*)pkt) + sizeof(eth_pkt_t);
+      pkt-&gt;phys_addr = dpa_os_virt_to_phys(pkt-&gt;buff, size);
+      //printk("alloc_pkt, pkt = %p, pkt-&gt;phys_addr = 0x%x", pkt, pkt-&gt;phys_addr);
+  }
+ 
+  return pkt;
+}
+
+
+void free_pkt(eth_pkt_t* pkt) {
+  if (pkt) {
+      DPA_FREE(pkt); 
+  }
+}
+
+typedef struct {
+  uint8_t  da[6];
+  uint8_t  sa[6];
+  uint16_t type;   
+  uint8_t  payload[100];
+} __attribute__((packed)) eth_hdr_t;
+
+
+void recv_pkt(eth_pkt_t* pkt) {
+  eth_hdr_t  *eth_hdr;
+  uint16_t   ether_type, udp_port;
+  static uint32_t timestamp = 0;
+
+  
+  /* Assuming packet header is already invalidated */
+  eth_hdr = (eth_hdr_t*) (pkt-&gt;buff + pkt-&gt;offset);
+
+  /* Sample read from 2 cache lines */
+  ether_type = eth_hdr-&gt;type;
+#if 0 
+  udp_port = *(uint16_t*) (pkt-&gt;buff + pkt-&gt;offset + 0x22);
+
+  /****** Modify &amp; Transmit *******/
+  
+  /* Sample modify of 2 cache lines */
+  eth_hdr-&gt;da[3] = 0x78;
+  eth_hdr-&gt;da[4] = 0x51;
+  eth_hdr-&gt;da[5] = 0x93;
+
+  /* Sample modify of 2 cache lines */
+  *(uint32_t*) (pkt-&gt;buff + 2 /* ETH_MH_SIZE */ + 0x30) = timestamp;
+  
+#endif
+  pkt-&gt;port = 1;
+  pkt-&gt;queue = 7;
+  
+  eth_xmit_pkt(pkt);
+  
+  timestamp++;
+}
+
+void test_rx(void);
+
+void schedule(void);
+
+static int __init eth_mod_init(void)
+{
+  int32_t  err;
+  eth_config_t cfg = {
+          .rxq_num = 8,
+          .txq_num = 8,
+          .mtu = 1500,
+          .rx_desc_num = 128,
+          .tx_desc_num = 256,
+          .pkt_pool_size = 256,
+          .ops = {.alloc_pkt = alloc_pkt,
+                  .free_pkt = free_pkt,
+                  .recv_pkt = recv_pkt}};
+
+  cfg.port = 0;
+  err = eth_init(&amp;cfg);
+  if (err) {
+      goto fail;
+  }
+ 
+  
+  cfg.port = 1;
+  err = eth_init(&amp;cfg);
+  if (err) {
+      goto fail;
+  }
+
+  eth_mod_create_proc();
+  
+  //test_rx();
+  //eth_test_tx();
+  while (1) {
+      eth_poll(0);
+      schedule();
+  }
+
+  
+  return 0;
+  
+fail:
+  printk("&lt;0&gt; Eth init failed (%d).\n", err);
+  
+  return -1;
+}
+module_init(eth_mod_init);
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/06/11" Time="10:46:44000">
+<Copy StartSeek="0" EndSeek="2599"/>
+<Copy StartSeek="2606" EndSeek="2933"/>
+<Insert>  
+</Insert>
+<Copy StartSeek="2940" EndSeek="3816"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="11:09:26000">
+<Copy StartSeek="0" EndSeek="3429"/>
+<Insert>  cfg.port = 0;
+</Insert>
+<Copy StartSeek="3445" EndSeek="3508"/>
+<Insert>  cfg.port = 1;
+</Insert>
+<Copy StartSeek="3524" EndSeek="3816"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="11:27:5000">
+<Copy StartSeek="0" EndSeek="3429"/>
+<Insert>  cfg.port = 1;
+</Insert>
+<Copy StartSeek="3445" EndSeek="3508"/>
+<Insert>  cfg.port = 2;
+</Insert>
+<Copy StartSeek="3524" EndSeek="3816"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="11:35:38000">
+<Copy StartSeek="0" EndSeek="3429"/>
+<Insert>  cfg.port = 0;
+</Insert>
+<Copy StartSeek="3445" EndSeek="3508"/>
+<Insert>  cfg.port = 1;
+</Insert>
+<Copy StartSeek="3524" EndSeek="3659"/>
+<Insert>      eth_poll(0);
+</Insert>
+<Copy StartSeek="3678" EndSeek="3816"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="14:11:35000">
+<Copy StartSeek="0" EndSeek="3429"/>
+<Insert>  cfg.port = 1;
+</Insert>
+<Copy StartSeek="3445" EndSeek="3508"/>
+<Insert>  cfg.port = 0;
+</Insert>
+<Copy StartSeek="3524" EndSeek="3816"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/06/25" Time="14:12:44000">
+<Copy StartSeek="0" EndSeek="3659"/>
+<Insert>      eth_poll(1);
+</Insert>
+<Copy StartSeek="3678" EndSeek="3816"/>
+</Delta>
+</DeltaFile>

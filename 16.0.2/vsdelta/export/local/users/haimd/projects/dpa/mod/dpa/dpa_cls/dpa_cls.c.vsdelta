@@ -1,0 +1,3258 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1391" Comment="" Date="2012/08/23" Time="01:45:36000" NL="\10" Encoding="text">
+<Insert>#include &lt;linux/module.h&gt;
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/errno.h&gt;
+
+#include &lt;dpa_types.h&gt;
+#include &lt;linux/ip.h&gt;
+#include &lt;linux/ipv6.h&gt;
+
+#include "_mvNeta.h"
+#include "dpa_cls.h"
+#include "dpa_cls_mm.h"
+#include "xxhash/xxhash.h"
+
+#define DPA_CLS_TBL_SZ (1&lt;&lt;15)
+#define DPA_LRN_PKTS 10
+
+extern uint32_t (*dpa_rx_hook)(struct neta_rx_desc *rx_desc, uint8_t *pkt,
+				   void **dpa_cookie);
+
+extern uint32_t (*dpa_os_tx_hook)(uint8_t *pkt, void *dpa_cookie,
+				   struct iphdr *iph, void* tx_port);
+
+#define MAC_PFMT(mac) mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
+
+/* HAIM FIXME : rw protection is needed ! */
+static struct dpa_entry *dpa_entry_tbl[DPA_CLS_TBL_SZ];
+
+static void dpa_entry_dump(struct dpa_entry *dpe)
+{
+#ifdef DEBUG
+	struct dpa_pri_key *tup = &amp;dpe-&gt;org.cls_tuple;
+	struct dpa_pri_key *mod_tup = &amp;dpe-&gt;mod.mod_tuple;
+	struct dpa_l2 *l2_org = &amp;dpe-&gt;org.l2;
+	struct dpa_l2 *l2_mod = &amp;dpe-&gt;mod.l2;
+
+	pr_debug("org dmac= "MAC_FMT" smac= "MAC_FMT" eth_type %u",
+		 MAC_PFMT(l2_org-&gt;dmac), MAC_PFMT(l2_org-&gt;smac), 
+		 l2_org-&gt;eth_type);
+
+	pr_debug("org ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+		 tup-&gt;protocol,
+		 NIPQUAD(tup-&gt;sip), ntohs(tup-&gt;sport),
+		 NIPQUAD(tup-&gt;dip), ntohs(tup-&gt;dport));
+
+	pr_debug("mod dmac= "MAC_FMT" smac= "MAC_FMT " eth_type %u",
+	  MAC_PFMT(l2_mod-&gt;dmac), MAC_PFMT(l2_mod-&gt;smac), l2_mod-&gt;eth_type);
+
+	pr_debug("mod ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+	  mod_tup-&gt;protocol,
+	  NIPQUAD(mod_tup-&gt;sip), ntohs(mod_tup-&gt;sport),
+	  NIPQUAD(mod_tup-&gt;dip), ntohs(mod_tup-&gt;dport));
+
+	pr_debug("state:%s rx:%u fwd:%u stable:%u mod_ops:%#x\n", 
+		 dpa_entry_state_names[dpe-&gt;state],
+		 dpe-&gt;counters.rx_hits, dpe-&gt;counters.fwd_hits, 
+		 dpe-&gt;counters.stable, dpe-&gt;mod_ops);
+#endif
+}
+
+static void dpa_dump_rx_desc(struct neta_rx_desc *rx_desc)
+{
+#ifdef DEBUG
+	uint32_t rx_status = rx_desc-&gt;status;
+
+	pr_debug("(%s:%d) ipv4:%u tcp:%u, udp:%u uc:%lu l4_csum:%u l3_off:%u\n",
+		 __func__, __LINE__,
+	       NETA_RX_L3_IS_IP4(rx_status), 
+	       NETA_RX_L4_IS_TCP(rx_status),
+	       NETA_RX_L4_IS_UDP(rx_status),
+	      (rx_desc-&gt;pncInfo &amp; NETA_PNC_DA_UC),
+		 (rx_status &amp; NETA_RX_L4_CSUM_OK_MASK) != 0,
+		 NETA_RX_GET_IPHDR_OFFSET(rx_desc));
+#endif
+}
+
+static inline void eth_hdr_cp(uint32_t *d, uint32_t *s)
+{
+//      *(d++) = *(s++);
+//      *(d++) = *(s++);
+//      *(d++) = *(s++);
+//      *(uint16_t *)d = *(uint16_t *)s;
+	memcpy(d, s, 14);
+}
+
+static void dpa_entry_fill_eth_params(struct dpa_l2 *l2, struct ethhdr *eth)
+{
+	uint32_t *d, *s;
+	
+	s = (uint32_t *)eth-&gt;h_dest;
+	d = (uint32_t *)l2-&gt;dmac;
+
+	eth_hdr_cp(d, s);
+}
+
+/* pkt should point to ethhdr */
+static uint32_t is_dpa_entry_match_l2(struct dpa_l2 *a, 
+					  uint8_t *pkt)
+{
+//      uint32_t *eth32 = (uint32_t *)&amp;a-&gt;dmac;
+//      uint32_t *pkt32 = (uint32_t *)pkt;
+
+//      return (*(eth32++) == *(pkt32++) &amp;&amp;
+//      	*(eth32++) == *(pkt32++) &amp;&amp;
+//      	*(eth32++) == *(pkt32++) &amp;&amp;
+//      	*(uint16_t *)eth32 == *(uint16_t *)pkt32);
+	return !memcmp(a-&gt;dmac, pkt, 14);
+
+}
+
+static inline uint32_t
+is_pri_key_match(struct dpa_pri_key *a, struct dpa_pri_key *b)
+{
+	return (a-&gt;dip == b-&gt;dip) &amp;&amp;
+		(a-&gt;sip == b-&gt;sip) &amp;&amp;
+		(a-&gt;protocol == b-&gt;protocol) &amp;&amp;
+		(a-&gt;sport == b-&gt;sport) &amp;&amp;
+		(a-&gt;dport == b-&gt;dport);
+}
+
+static inline uint32_t is_dpa_entry_match_pkt(struct dpa_entry *dpe,
+					  struct dpa_pri_key *cls,
+					  uint8_t *pkt)
+{
+	return is_pri_key_match(&amp;dpe-&gt;org.cls_tuple, cls) &amp;&amp;
+		is_dpa_entry_match_l2(&amp;dpe-&gt;org.l2, pkt);
+}
+
+static inline struct dpa_entry *dpa_entry_alloc(void)
+{
+	struct dpa_entry *tmp;
+
+	tmp = dcm_alloc();
+	if (unlikely(!tmp)) {
+		pr_err("insufficient memory!\n");
+		return NULL;
+	}
+	tmp-&gt;state = DPE_NEW;
+	tmp-&gt;counters.rx_hits = 0;
+	tmp-&gt;counters.stable = 0;
+	tmp-&gt;counters.fwd_hits = 0;
+	tmp-&gt;mod_ops = 0;
+	tmp-&gt;mod.tx_port = NULL;
+	return tmp;
+}
+
+static struct dpa_entry *dpa_entry_find(struct dpa_pri_key *cls,
+					uint8_t *pkt)
+{
+	uint32_t idx = 0;
+	struct dpa_entry **dpe, *tmp, *prev;
+
+	idx = XXH_fast32(cls, sizeof(struct dpa_pri_key), 0 /* seed */);
+	pr_debug("looking for idx %u\n",idx &amp;(DPA_CLS_TBL_SZ - 1));
+	idx &amp;= (DPA_CLS_TBL_SZ - 1);
+	dpe = &amp;dpa_entry_tbl[idx]; /* head of the chain */
+
+	/* a new guy's in town */
+	if (*dpe == NULL) {
+		pr_debug("allocating new dpe\n");
+		*dpe = dpa_entry_alloc();
+		if (*dpe == NULL)
+			return NULL;
+		(*dpe)-&gt;next = NULL;
+		return *dpe;
+	}
+	tmp = *dpe;
+	do {
+		if (is_dpa_entry_match_pkt(tmp, cls, pkt)) {
+			pr_debug("match dpe found\n");
+			/* rebalance chain */
+			if (tmp != *dpe) {
+				prev-&gt;next = tmp-&gt;next;
+				tmp-&gt;next = *dpe;
+				(*dpe)-&gt;next = tmp;
+			}
+			return tmp;
+		}
+		prev = tmp;
+		tmp = tmp-&gt;next;
+	} while (tmp);
+
+	/* put him into chains ! */
+	pr_debug("dpe collision\n");
+	tmp = dpa_entry_alloc();
+	tmp-&gt;next = *dpe;
+	*dpe = tmp;
+
+	return tmp;
+}
+
+static inline void dpa_pri_key_init(struct iphdr *iph, struct tcphdr *th,
+		struct dpa_pri_key *tup)
+{
+	tup-&gt;sip = iph-&gt;saddr;
+	tup-&gt;dip = iph-&gt;daddr;
+	tup-&gt;protocol = iph-&gt;protocol;
+	tup-&gt;sport = th-&gt;source;
+	tup-&gt;dport = th-&gt;dest;
+}
+
+static void dpa_dump_pkt(uint8_t *pkt, uint32_t bytes)
+{
+#ifdef DEBUG_DUMP_PKT
+	uint32_t i = 0;
+
+	printk("%4x: ", i);
+	for (i = 1; i&lt;= bytes; i++) {
+		printk("%.2x ", (*pkt) &amp; 0xff);
+		if ((i &amp; 0xf) == 0) {
+			printk("\n%4x: ", i);
+		}
+		pkt++;
+	}
+#endif
+}
+
+static void dpa_modify_pkt(struct dpa_entry *dpe, struct ethhdr *pkt_eth,
+		       struct iphdr *pkt_iph,
+		       void *pkt_l4)
+{
+	uint32_t mod_ops = dpe-&gt;mod_ops;
+	struct dpa_pri_key *mt = &amp;dpe-&gt;mod.mod_tuple;
+
+	if (!mod_ops)
+		return;
+
+	if (mod_ops &amp; DPE_MOD_L2) {
+		eth_hdr_cp((uint32_t *)pkt_eth, (uint32_t *)&amp;dpe-&gt;mod.l2.dmac);
+		pkt_iph-&gt;ttl = 33;
+	}
+	if (mod_ops &amp; DPE_MOD_NAT) {
+		pkt_iph-&gt;daddr = mt-&gt;dip;
+		pkt_iph-&gt;saddr = mt-&gt;sip;
+		*(uint32_t *)pkt_l4 = *(uint32_t *)&amp;(mt-&gt;sport);
+	}
+}
+
+/* dpa entry point */
+static uint32_t dpa_classify(struct neta_rx_desc *rx_desc, uint8_t *pkt,
+		      void **dpa_cookie)
+{
+	struct iphdr *iph;
+	struct tcphdr *th;
+	struct dpa_pri_key tup;
+	struct dpa_entry *dpe;
+	struct ethhdr *eth = (struct ethhdr *)(pkt + MV_ETH_MH_SIZE);
+	uint32_t rx_status = rx_desc-&gt;status;
+
+
+	/* HAIM FIXME : reduce the bitops as possible  */
+	if (!NETA_RX_L3_IS_IP4(rx_status) ||
+	    !(NETA_RX_L4_IS_TCP(rx_status) || NETA_RX_L4_IS_UDP(rx_status)) ||
+	    NETA_RX_IP_IS_FRAG(rx_status) ||
+	    !(rx_status &amp; NETA_RX_L4_CSUM_OK_MASK) ||
+	    !(rx_desc-&gt;pncInfo &amp; NETA_PNC_DA_UC)) {
+		return -EINVAL;
+	}
+
+	dpa_dump_rx_desc(rx_desc);
+	dpa_dump_pkt((uint8_t *)eth, 40);
+
+	iph = (struct iphdr*)(pkt + NETA_RX_GET_IPHDR_OFFSET(rx_desc));
+	th = (struct tcphdr*)((uint8_t* )iph + (iph-&gt;ihl &lt;&lt; 2));
+
+	dpa_pri_key_init(iph, th, &amp;tup);
+	dpe = dpa_entry_find(&amp;tup, (uint8_t *)eth);
+	if (!dpe)
+		return -ENOMEM;
+	*dpa_cookie = (void *)dpe; /* mark the packet as ours */
+
+	switch (dpe-&gt;state) {
+	case DPE_FWD:
+		if (NETA_RX_L4_IS_TCP(rx_status) &amp;&amp; (th-&gt;fin || th-&gt;rst)) {
+			pr_debug("FIN or RST detected!");
+			SET_DPE_STATUS(dpe, DPE_LCL);
+			return dpe-&gt;state;
+		}
+		dpa_modify_pkt(dpe, eth, iph, th);
+		pr_debug(KERN_ERR "(%s:%d) after modify:\n", __func__, __LINE__);
+		dpa_dump_pkt((uint8_t *)eth, 40);
+		break;
+	case DPE_LRN:
+		break;
+	case DPE_LCL:
+		break;
+	case DPE_NEW:
+		dpa_entry_fill_eth_params(&amp;dpe-&gt;org.l2, eth);
+		dpa_entry_fill_eth_params(&amp;dpe-&gt;mod.l2, eth);
+		dpe-&gt;org.cls_tuple = tup;
+		dpe-&gt;mod.mod_tuple = tup;
+		
+		if (!NETA_RX_IS_VLAN(rx_desc)) {
+			dpe-&gt;org.l2.vlan_tag = 0;
+		}
+		if (!NETA_RX_IS_PPPOE(rx_desc)) {
+			dpe-&gt;org.l2.pppoe_sid = 0;
+		}
+		SET_DPE_STATUS(dpe, DPE_LRN);
+		break;
+	}
+	dpe-&gt;counters.rx_hits++;
+	dpa_entry_dump(dpe);
+
+	return dpe-&gt;state;
+//      if (NETA_RX_IS_VLAN(rx_desc)) {
+//      	vh = skb-&gt;data + ETH_HLEN;
+//      	dpa_cls_info.l2.vlan_tag = vh-&gt;h_vlan_TCI;
+//      	/* VLAN + IP */
+//      	dpa_cls_info.eth_type = vh-&gt;h_vlan_encapsulated_proto;
+//      }
+}
+
+static uint32_t
+dpa_entry_copy_modified_pri_key(struct dpa_entry *dpe, struct iphdr *pkt_iph)
+{
+	struct dpa_pri_key *tm = &amp;dpe-&gt;mod.mod_tuple;
+	struct tcphdr *th;
+	uint32_t ret = 0;
+
+	th = (struct tcphdr*)((uint8_t* )pkt_iph + (pkt_iph-&gt;ihl &lt;&lt; 2));
+
+	if (tm-&gt;sip != pkt_iph-&gt;saddr || 
+	    tm-&gt;dip != pkt_iph-&gt;daddr) {
+		tm-&gt;sip = pkt_iph-&gt;saddr;
+		tm-&gt;dip = pkt_iph-&gt;daddr;
+		ret = 1;
+	}
+	if (tm-&gt;sport != th-&gt;source || tm-&gt;dport != th-&gt;dest) {
+		tm-&gt;sport = th-&gt;source;
+		tm-&gt;dport = th-&gt;dest;
+		ret = 1;
+	}
+
+	if (ret)
+		dpe-&gt;mod_ops |= DPE_MOD_NAT;
+	return ret;
+}
+
+static uint32_t
+dpa_entry_copy_modified_l2(struct dpa_entry *dpe, struct ethhdr *eth)
+{
+	uint32_t *l2_mod = (uint32_t *)&amp;dpe-&gt;mod.l2;
+	uint32_t *eth32 = (uint32_t *)eth;
+	uint32_t ret = 0;
+
+	if (*l2_mod != *eth32) {
+		*l2_mod = *eth32;
+		ret = 1;
+	}
+	l2_mod++;
+	eth32++;
+	if (*l2_mod != *eth32) {
+		*l2_mod = *eth32;
+		ret = 1;
+	}
+	l2_mod++;
+	eth32++;
+	if (*l2_mod != *eth32) {
+		*l2_mod = *eth32;
+		ret = 1;
+	}
+	if (dpe-&gt;mod.l2.eth_type != eth-&gt;h_proto) {
+		dpe-&gt;mod.l2.eth_type = eth-&gt;h_proto;
+		ret = 1;
+	}
+	if (ret)
+		dpe-&gt;mod_ops |= DPE_MOD_L2;
+	return ret;
+}
+
+/* returns 1 if packet differs from dpe record */
+static uint32_t
+dpa_entry_copy_modified_pkt(struct dpa_entry *dpe, struct ethhdr *eth, 
+			    struct iphdr *iph, void *tx_port)
+{
+	uint32_t ret = 0;
+
+	if (dpe-&gt;mod.tx_port != tx_port) {
+		dpe-&gt;mod.tx_port = tx_port;
+		ret = 1;
+	}
+	ret |= dpa_entry_copy_modified_l2(dpe, eth);
+	ret |= dpa_entry_copy_modified_pri_key(dpe, iph);
+	
+	return ret;
+}
+
+/* OS independent implementation of dpa_tx. Assumes all xmit parsing
+   has been done by calling func */
+static uint32_t 
+dpa_tx(uint8_t *pkt, void *dpa_cookie, struct iphdr *iph, void *tx_port)
+{
+	struct dpa_entry *dpe = (struct dpa_entry *)dpa_cookie;
+
+	if (!dpe || dpe-&gt;state != DPE_LRN) {
+//      	pr_debug("dpe %p, state %x\n", dpe, (dpe ? dpe-&gt;state : ~0));
+		return 0;
+	}
+	if (!dpa_entry_copy_modified_pkt(dpe, (struct ethhdr *)pkt, iph, tx_port))
+		dpe-&gt;counters.stable++;
+	if (++dpe-&gt;counters.fwd_hits == DPA_LRN_PKTS) {
+		if (dpe-&gt;counters.stable &gt;= DPA_LRN_PKTS -1) {
+			pr_debug("%s: stable connection, moving to fwd",__func__);
+			dpe-&gt;state = DPE_FWD;
+			goto exit;
+		}
+		pr_debug("%s: UNstable connection, moving to lcl",__func__);
+		dpe-&gt;state = DPE_LCL;
+		goto exit;
+	}
+exit:
+	dpa_entry_dump(dpe);
+	return 0;
+}
+
+int __init dpa_classify_init(void)
+{
+	void *pool = dcm_init(DPA_CLS_TBL_SZ, 
+			      sizeof(struct dpa_entry));
+	if (!pool)
+		return -ENOMEM;
+		
+	dpa_rx_hook = dpa_classify;
+	dpa_os_tx_hook = dpa_tx;
+	return 0;
+}
+module_init(dpa_classify_init);
+
+void __exit dpa_classify_exit(void)
+{
+	unsigned int idx;
+	struct dpa_entry *e, *next;
+
+	dpa_rx_hook = NULL;
+	dpa_os_tx_hook = NULL;
+	for (idx = 0; idx &lt; DPA_CLS_TBL_SZ; idx++) {
+		e = dpa_entry_tbl[idx];
+		if (e) {
+			next = e-&gt;next;
+			e-&gt;next = NULL;
+			memset(e, 0, sizeof(struct dpa_entry));
+			dcm_free(e);
+			e = next;
+		}
+	}
+}
+module_exit(dpa_classify_exit);
+</Insert>
+</MostRecent>
+<Delta Version="992" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:28:28000">
+<Copy StartSeek="0" EndSeek="1802"/>
+<Copy StartSeek="2071" EndSeek="9506"/>
+</Delta>
+<Delta Version="993" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:28:51000">
+<Copy StartSeek="0" EndSeek="1534"/>
+<Copy StartSeek="1573" EndSeek="9545"/>
+</Delta>
+<Delta Version="994" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:29:7000">
+<Copy StartSeek="0" EndSeek="1495"/>
+<Copy StartSeek="1542" EndSeek="9592"/>
+</Delta>
+<Delta Version="995" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:29:21000">
+<Copy StartSeek="0" EndSeek="1620"/>
+<Copy StartSeek="1621" EndSeek="9593"/>
+</Delta>
+<Delta Version="996" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:29:24000">
+<Copy StartSeek="0" EndSeek="1495"/>
+<Insert>	struct dpa_pri_key *tm = &amp;dpe-&gt;mod.cls_tuple;
+</Insert>
+<Copy StartSeek="1547" EndSeek="9598"/>
+</Delta>
+<Delta Version="997" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:29:29000">
+<Copy StartSeek="0" EndSeek="1894"/>
+<Copy StartSeek="1895" EndSeek="1941"/>
+<Insert>	  MAC_PFMT(l2_org-&gt;dmac), MAC_PFMT(l2_org-&gt;smac));
+</Insert>
+<Copy StartSeek="1993" EndSeek="9599"/>
+</Delta>
+<Delta Version="998" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:29:45000">
+<Copy StartSeek="0" EndSeek="1994"/>
+<Insert>	pr_debug("org ipv4:proto %u "NIPQUAD_FMT":%d-&gt;"NIPQUAD_FMT":%d\n",
+</Insert>
+<Copy StartSeek="2062" EndSeek="9599"/>
+</Delta>
+<Delta Version="999" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:29:55000">
+<Copy StartSeek="0" EndSeek="2062"/>
+<Insert>	  tup-&gt;protocol,
+	  NIPQUAD(tup-&gt;sip), ntohs(tup-&gt;sport),
+	  NIPQUAD(tup-&gt;dip), ntohs(tup-&gt;dport));
+</Insert>
+<Copy StartSeek="2183" EndSeek="9619"/>
+</Delta>
+<Delta Version="1000" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:30:8000">
+<Copy StartSeek="0" EndSeek="1495"/>
+<Insert>	struct dpa_pri_key *mod_tup = &amp;dpe-&gt;mod.cls_tuple;
+</Insert>
+<Copy StartSeek="1547" EndSeek="9619"/>
+</Delta>
+<Delta Version="1001" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:30:24000">
+<Copy StartSeek="0" EndSeek="1895"/>
+<Insert>	pr_debug("mod dmac= "MAC_FMT"smac= "MAC_FMT,
+</Insert>
+<Copy StartSeek="1942" EndSeek="9620"/>
+</Delta>
+<Delta Version="1002" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:30:53000">
+<Copy StartSeek="0" EndSeek="1626"/>
+<Insert>	pr_debug("org dmac= "MAC_FMT"smac= "MAC_FMT,
+</Insert>
+<Copy StartSeek="1673" EndSeek="9621"/>
+</Delta>
+<Delta Version="1003" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:31:26000">
+<Copy StartSeek="0" EndSeek="6918"/>
+<Insert>		dpa_entry_fill_eth_params(&amp;dpe-&gt;mod.l2, eth);
+</Insert>
+<Copy StartSeek="6918" EndSeek="6946"/>
+<Insert>		dpe-&gt;mod.mod_tuple = tup;
+</Insert>
+<Copy StartSeek="6969" EndSeek="9568"/>
+</Delta>
+<Delta Version="1004" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:33:20000">
+<Copy StartSeek="0" EndSeek="6918"/>
+<Copy StartSeek="6966" EndSeek="6994"/>
+<Insert>		dpe-&gt;mod = dpe-&gt;org;
+</Insert>
+<Copy StartSeek="7022" EndSeek="9621"/>
+</Delta>
+<Delta Version="1005" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:33:45000">
+<Copy StartSeek="0" EndSeek="7737"/>
+<Copy StartSeek="7840" EndSeek="9724"/>
+</Delta>
+<Delta Version="1006" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:35:37000">
+<Copy StartSeek="0" EndSeek="7737"/>
+<Insert>		printk(KERN_ERR "(%s:%d) sip %x, saddr %x\n", __func__, __LINE__,
+		       tm-&gt;sip, pkt_iph-&gt;saddr);
+</Insert>
+<Copy StartSeek="7915" EndSeek="9799"/>
+</Delta>
+<Delta Version="1007" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:36:35000">
+<Copy StartSeek="0" EndSeek="7915"/>
+<Copy StartSeek="7916" EndSeek="9800"/>
+</Delta>
+<Delta Version="1008" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:36:35000">
+<Copy StartSeek="0" EndSeek="7737"/>
+<Insert>		printk(KERN_ERR "(%s:%d) tm_sip %x, pkt_saddr %x ,"
+				"tm_dip %x, pkt_daddr %x\n", 
+		       __func__, __LINE__, 
+		       tm-&gt;sip, pkt_iph-&gt;saddr, tm-&gt;dip ,pkt_iph-&gt;daddr);
+</Insert>
+<Copy StartSeek="7941" EndSeek="9826"/>
+</Delta>
+<Delta Version="1009" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:37:47000">
+<Copy StartSeek="0" EndSeek="7737"/>
+<Insert>//      	printk(KERN_ERR "(%s:%d) tm_sip %x, pkt_saddr %x ,"
+//      			"tm_dip %x, pkt_daddr %x\n",
+//      	       __func__, __LINE__,
+//      	       tm-&gt;sip, pkt_iph-&gt;saddr, tm-&gt;dip ,pkt_iph-&gt;daddr);
+</Insert>
+<Copy StartSeek="7913" EndSeek="9798"/>
+</Delta>
+<Delta Version="1010" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:39:3000">
+<Copy StartSeek="0" EndSeek="7737"/>
+<Insert>		printk(KERN_ERR "(%s:%d) tm_sip %x, pkt_saddr %x ,"
+</Insert>
+<Copy StartSeek="7793" EndSeek="9800"/>
+</Delta>
+<Delta Version="1011" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:41:57000">
+<Copy StartSeek="0" EndSeek="7737"/>
+<Insert>		pr_debug(KERN_ERR "(%s:%d) tm_sip %x, pkt_saddr %x ,"
+</Insert>
+<Copy StartSeek="7784" EndSeek="9791"/>
+</Delta>
+<Delta Version="1012" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:42:0000">
+<Copy StartSeek="0" EndSeek="8034"/>
+<Copy StartSeek="8197" EndSeek="9954"/>
+</Delta>
+<Delta Version="1013" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:42:34000">
+<Copy StartSeek="0" EndSeek="8034"/>
+<Insert>		pr_debug("(%s:%d) tm_sport %u, th-&gt;source %u ,"
+		  "tm_dip %x, pkt_daddr %x\n",
+</Insert>
+<Copy StartSeek="8118" EndSeek="9955"/>
+</Delta>
+<Delta Version="1014" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:42:50000">
+<Copy StartSeek="0" EndSeek="8142"/>
+<Insert>			 tm-&gt;sip, pkt_iph-&gt;saddr, tm-&gt;dip ,pkt_iph-&gt;daddr);
+
+</Insert>
+<Copy StartSeek="8223" EndSeek="9980"/>
+</Delta>
+<Delta Version="1015" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:43:57000">
+<Copy StartSeek="0" EndSeek="8142"/>
+<Insert>			 ntohs(tm_sport), ntohs(th-&gt;source), 
+</Insert>
+<Copy StartSeek="8184" EndSeek="9981"/>
+</Delta>
+<Delta Version="1016" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:44:16000">
+<Copy StartSeek="0" EndSeek="9372"/>
+<Insert>	if (dpa_entry_copy_modified_pri_key(dpe, iph, (struct tcphdr *)l4)) {
+</Insert>
+<Copy StartSeek="9443" EndSeek="9981"/>
+</Delta>
+<Delta Version="1017" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:46:30000">
+<Copy StartSeek="0" EndSeek="7576"/>
+<Insert>				struct tcphdr *th)
+</Insert>
+<Copy StartSeek="7600" EndSeek="9982"/>
+</Delta>
+<Delta Version="1018" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:46:48000">
+<Copy StartSeek="0" EndSeek="7576"/>
+<Insert>				struct udphdr * th)
+</Insert>
+<Copy StartSeek="7599" EndSeek="9981"/>
+</Delta>
+<Delta Version="1019" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:46:48000">
+<Copy StartSeek="0" EndSeek="8184"/>
+<Insert>			 ntohs(th-&gt;dest), ntohs(th-&gt;dest));
+</Insert>
+<Copy StartSeek="8223" EndSeek="9981"/>
+</Delta>
+<Delta Version="1020" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:47:25000">
+<Copy StartSeek="0" EndSeek="8184"/>
+<Insert>			 ntohs(tm-&gt;dest), ntohs(th-&gt;dest));
+</Insert>
+<Copy StartSeek="8224" EndSeek="9982"/>
+</Delta>
+<Delta Version="1021" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:49:18000">
+<Copy StartSeek="0" EndSeek="4061"/>
+<Copy StartSeek="4080" EndSeek="10001"/>
+</Delta>
+<Delta Version="1022" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:54:33000">
+<Copy StartSeek="0" EndSeek="4080"/>
+<Copy StartSeek="4099" EndSeek="10020"/>
+</Delta>
+<Delta Version="1023" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:54:48000">
+<Copy StartSeek="0" EndSeek="4080"/>
+<Insert>	tmp-&gt;next = NULL;
+</Insert>
+<Copy StartSeek="4080" EndSeek="10001"/>
+</Delta>
+<Delta Version="1024" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:55:5000">
+<Copy StartSeek="0" EndSeek="9262"/>
+<Insert>	pr_debug("xmit: dpa packet\n");
+</Insert>
+<Copy StartSeek="9326" EndSeek="10032"/>
+</Delta>
+<Delta Version="1025" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:56:0000">
+<Copy StartSeek="0" EndSeek="402"/>
+<Insert>				   struct iphdr *iph, uint8_t *l4);
+</Insert>
+<Copy StartSeek="429" EndSeek="10019"/>
+</Delta>
+<Delta Version="1026" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="16:57:21000">
+<Copy StartSeek="0" EndSeek="8953"/>
+<Insert>dpa_tx(uint8_t *pkt, void *dpa_cookie, struct iphdr *iph, uint8_t *l4)
+</Insert>
+<Copy StartSeek="9011" EndSeek="10006"/>
+</Delta>
+<Delta Version="1027" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:30:1000">
+<Copy StartSeek="0" EndSeek="9070"/>
+<Copy StartSeek="9090" EndSeek="10026"/>
+</Delta>
+<Delta Version="1028" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:30:39000">
+<Copy StartSeek="0" EndSeek="9256"/>
+<Copy StartSeek="9277" EndSeek="10047"/>
+</Delta>
+<Delta Version="1029" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:30:57000">
+<Copy StartSeek="0" EndSeek="9256"/>
+<Insert>	th = iph-&gt;ihl &lt;&lt; 2;
+</Insert>
+<Copy StartSeek="9294" EndSeek="10064"/>
+</Delta>
+<Delta Version="1030" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:31:13000">
+<Copy StartSeek="0" EndSeek="9256"/>
+<Insert>	th = (uint8_t *)iph + iph-&gt;ihl &lt;&lt; 2;
+</Insert>
+<Copy StartSeek="9313" EndSeek="10083"/>
+</Delta>
+<Delta Version="1031" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:31:34000">
+<Copy StartSeek="0" EndSeek="9256"/>
+<Insert>	th = (struct tcphdr*)((uint8_t* )iph + (iph-&gt;ihl &lt;&lt; 2))
+</Insert>
+<Copy StartSeek="9314" EndSeek="10084"/>
+</Delta>
+<Delta Version="1032" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:31:38000">
+<Copy StartSeek="0" EndSeek="9475"/>
+<Insert>	if (dpa_entry_copy_modified_pri_key(dpe, iph, (struct udphdr *)l4)) {
+</Insert>
+<Copy StartSeek="9546" EndSeek="10084"/>
+</Delta>
+<Delta Version="1033" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:31:58000">
+<Copy StartSeek="0" EndSeek="7582"/>
+<Insert>				struct udphdr *th)
+</Insert>
+<Copy StartSeek="7605" EndSeek="10084"/>
+</Delta>
+<Delta Version="1034" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:32:14000">
+<Copy StartSeek="0" EndSeek="9314"/>
+<Insert>	pr_debug("xmit: dpa packet, th-iph %x\n", l4 - (uint8_t*)iph);
+</Insert>
+<Copy StartSeek="9378" EndSeek="10084"/>
+</Delta>
+<Delta Version="1035" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:32:33000">
+<Copy StartSeek="0" EndSeek="9314"/>
+<Insert>	pr_debug("xmit: dpa packet, th-iph %x\n", th - (uint8_t*)iph);
+</Insert>
+<Copy StartSeek="9368" EndSeek="10074"/>
+</Delta>
+<Delta Version="1036" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:32:37000">
+<Copy StartSeek="0" EndSeek="9314"/>
+<Insert>	pr_debug("xmit: dpa packet, th-iph %x\n", th - iph);
+</Insert>
+<Copy StartSeek="9368" EndSeek="10074"/>
+</Delta>
+<Delta Version="1037" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:32:42000">
+<Copy StartSeek="0" EndSeek="9314"/>
+<Insert>	pr_debug("xmit: dpa packet, th-iph %p\n", th - iph);
+</Insert>
+<Copy StartSeek="9390" EndSeek="10096"/>
+</Delta>
+<Delta Version="1038" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:33:0000">
+<Copy StartSeek="0" EndSeek="9314"/>
+<Insert>	pr_debug("xmit: dpa packet, th-iph %p\n", (uint8_t *)th - (uint8_t *)iph);
+	
+</Insert>
+<Copy StartSeek="9406" EndSeek="10110"/>
+</Delta>
+<Delta Version="1039" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:33:27000">
+<Copy StartSeek="0" EndSeek="9501"/>
+<Insert>	if (dpa_entry_copy_modified_pri_key(dpe, iph, (struct tcphdr *)l4)) {
+</Insert>
+<Copy StartSeek="9572" EndSeek="10110"/>
+</Delta>
+<Delta Version="1040" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="17:33:39000">
+<Copy StartSeek="0" EndSeek="9314"/>
+<Insert>	pr_debug("xmit: dpa packet, th-iph %p\n", 
+		 (void *)((uint8_t *)th - (uint8_t *)iph));
+	
+</Insert>
+<Copy StartSeek="9349" EndSeek="10053"/>
+</Delta>
+<Delta Version="1041" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="18:37:3000">
+<Copy StartSeek="0" EndSeek="7743"/>
+<Insert>		pr_debug("(%s:%d) tm_sip %x, pkt_saddr %x ,"
+				"tm_dip %x, pkt_daddr %x\n",
+		       __func__, __LINE__,
+		       tm-&gt;sip, pkt_iph-&gt;saddr, tm-&gt;dip ,pkt_iph-&gt;daddr);
+
+</Insert>
+<Copy StartSeek="7743" EndSeek="7870"/>
+<Insert>		pr_debug("(%s:%d) tm_sport %u, th-&gt;source %u,"
+		  "tm_dport %u, pkt_dport %u\n",
+			 __func__, __LINE__,
+			 ntohs(tm-&gt;sport), ntohs(th-&gt;source), 
+			 ntohs(tm-&gt;dport), ntohs(th-&gt;dest));
+
+</Insert>
+<Copy StartSeek="7870" EndSeek="9692"/>
+</Delta>
+<Delta Version="1042" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="18:38:4000">
+<Copy StartSeek="0" EndSeek="7488"/>
+<Insert>static uint32_t
+</Insert>
+<Copy StartSeek="7513" EndSeek="9701"/>
+</Delta>
+<Delta Version="1043" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="18:44:37000">
+<Copy StartSeek="0" EndSeek="7488"/>
+<Insert>static volatile uint32_t
+</Insert>
+<Copy StartSeek="7506" EndSeek="9694"/>
+</Delta>
+<Delta Version="1044" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="18:45:0000">
+<Copy StartSeek="0" EndSeek="7488"/>
+<Insert>volatile uint32_t
+</Insert>
+<Copy StartSeek="7504" EndSeek="9692"/>
+</Delta>
+<Delta Version="1045" Comment="" NL="\10" Encoding="text" Date="2012/07/29" Time="18:46:9000">
+<Copy StartSeek="0" EndSeek="4437"/>
+<Insert>	/* a new guy is in town */
+</Insert>
+<Copy StartSeek="4464" EndSeek="9691"/>
+</Delta>
+<Delta Version="1046" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="10:56:23000">
+<Copy StartSeek="0" EndSeek="8476"/>
+<Copy StartSeek="8760" EndSeek="9975"/>
+</Delta>
+<Delta Version="1047" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:17:58000">
+<Copy StartSeek="0" EndSeek="8460"/>
+<Copy StartSeek="8501" EndSeek="10016"/>
+</Delta>
+<Delta Version="1048" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:19:51000">
+<Copy StartSeek="0" EndSeek="8460"/>
+<Insert>	if (ret) 
+		dpe-&gt;mod_ops |= DPE_MOD_L2;
+</Insert>
+<Copy StartSeek="8460" EndSeek="8670"/>
+<Copy StartSeek="8715" EndSeek="10020"/>
+</Delta>
+<Delta Version="1049" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:22:8000">
+<Copy StartSeek="0" EndSeek="8460"/>
+<Copy StartSeek="8505" EndSeek="8715"/>
+<Insert>	if (ret) {
+		dpe-&gt;mod_ops |= DPE_MOD_L2;
+	}
+</Insert>
+<Copy StartSeek="8715" EndSeek="10020"/>
+</Delta>
+<Delta Version="1050" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:24:28000">
+<Copy StartSeek="0" EndSeek="7934"/>
+<Copy StartSeek="7975" EndSeek="8501"/>
+<Insert>	if (ret) {
+</Insert>
+<Copy StartSeek="8511" EndSeek="8541"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="8541" EndSeek="9518"/>
+<Insert>		dpe-&gt;mod_ops |= DPE_MOD_NAT;
+</Insert>
+<Copy StartSeek="9521" EndSeek="10028"/>
+</Delta>
+<Delta Version="1051" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:25:5000">
+<Copy StartSeek="0" EndSeek="9352"/>
+<Insert>	if (dpa_entry_copy_modified_l2(dpe, (struct ethhdr *)pkt)) {
+</Insert>
+<Copy StartSeek="9420" EndSeek="10034"/>
+</Delta>
+<Delta Version="1052" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:26:6000">
+<Copy StartSeek="0" EndSeek="7653"/>
+<Copy StartSeek="7726" EndSeek="8824"/>
+<Insert>	ret |= dpa_entry_copy_modified_pri_key(dpe, iph, (struct tcphdr *)th);
+</Insert>
+<Copy StartSeek="8875" EndSeek="9311"/>
+<Insert>	th = (struct tcphdr*)((uint8_t* )iph + (iph-&gt;ihl &lt;&lt; 2));
+</Insert>
+<Copy StartSeek="9311" EndSeek="10028"/>
+</Delta>
+<Delta Version="1053" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:27:19000">
+<Copy StartSeek="0" EndSeek="7503"/>
+<Insert>dpa_entry_copy_modified_pri_key(struct dpa_entry *dpe, struct iphdr *pkt_iph,
+				struct tcphdr *th)
+{
+</Insert>
+<Copy StartSeek="7583" EndSeek="10005"/>
+</Delta>
+<Delta Version="1054" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:27:28000">
+<Copy StartSeek="0" EndSeek="9323"/>
+<Insert>	if (dpa_entry_copy_modified_pkt(dpe, (struct ethhdr *)pkt), iph) {
+		dpe-&gt;mod_ops |= DPE_MOD_L2;
+</Insert>
+<Copy StartSeek="9393" EndSeek="9396"/>
+<Insert>	if (dpa_entry_copy_modified_pri_key(dpe, iph, (struct tcphdr *)th)) {
+		
+	}
+</Insert>
+<Copy StartSeek="9396" EndSeek="9900"/>
+</Delta>
+<Delta Version="1055" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:28:55000">
+<Copy StartSeek="0" EndSeek="9390"/>
+<Insert>		
+</Insert>
+<Copy StartSeek="9391" EndSeek="9898"/>
+</Delta>
+<Delta Version="1056" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:28:56000">
+<Copy StartSeek="0" EndSeek="8607"/>
+<Copy StartSeek="8647" EndSeek="9431"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="9435" EndSeek="9939"/>
+</Delta>
+<Delta Version="1057" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:36:54000">
+<Copy StartSeek="0" EndSeek="1173"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1191" EndSeek="9956"/>
+</Delta>
+<Delta Version="1058" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:37:51000">
+<Copy StartSeek="0" EndSeek="3902"/>
+<Insert>	tmp = kmalloc(sizeof(struct dpa_entry), GFP_ATOMIC);
+</Insert>
+<Copy StartSeek="3956" EndSeek="9956"/>
+</Delta>
+<Delta Version="1059" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:38:2000">
+<Copy StartSeek="0" EndSeek="4046"/>
+<Insert>	tmp-&gt;rx_hits = 0;
+	tmp-&gt;mod_ops = 0;
+</Insert>
+<Copy StartSeek="4046" EndSeek="9918"/>
+</Delta>
+<Delta Version="1060" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:38:21000">
+<Copy StartSeek="0" EndSeek="3902"/>
+<Insert>	tmp = kzalloc(sizeof(struct dpa_entry), GFP_ATOMIC);
+</Insert>
+<Copy StartSeek="3956" EndSeek="4046"/>
+<Copy StartSeek="4084" EndSeek="9956"/>
+</Delta>
+<Delta Version="1061" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:38:41000">
+<Copy StartSeek="0" EndSeek="4065"/>
+<Copy StartSeek="4083" EndSeek="9974"/>
+</Delta>
+<Delta Version="1062" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:38:49000">
+<Copy StartSeek="0" EndSeek="1173"/>
+<Insert>	uint32_t stable;
+</Insert>
+<Copy StartSeek="1197" EndSeek="9980"/>
+</Delta>
+<Delta Version="1063" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:39:0000">
+<Copy StartSeek="0" EndSeek="4071"/>
+<Insert>	tmp-&gt;stable = 0;
+</Insert>
+<Copy StartSeek="4095" EndSeek="9986"/>
+</Delta>
+<Delta Version="1064" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:39:10000">
+<Copy StartSeek="0" EndSeek="9410"/>
+<Insert>	if (dpa_entry_copy_modified_pkt(dpe, (struct ethhdr *)pkt, iph) {
+</Insert>
+<Copy StartSeek="9478" EndSeek="9479"/>
+<Insert>
+	}
+</Insert>
+<Copy StartSeek="9482" EndSeek="9986"/>
+</Delta>
+<Delta Version="1065" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:39:24000">
+<Copy StartSeek="0" EndSeek="1023"/>
+<Copy StartSeek="1111" EndSeek="10074"/>
+</Delta>
+<Delta Version="1066" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:40:0000">
+<Copy StartSeek="0" EndSeek="1111"/>
+<Copy StartSeek="1112" EndSeek="10075"/>
+</Delta>
+<Delta Version="1067" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:40:5000">
+<Copy StartSeek="0" EndSeek="1243"/>
+<Insert>	uint32_t rx_hits;
+	uint32_t stable_count;
+</Insert>
+<Copy StartSeek="1331" EndSeek="10120"/>
+</Delta>
+<Delta Version="1068" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:40:40000">
+<Copy StartSeek="0" EndSeek="1243"/>
+<Insert>	struct dpa_counters counters;
+</Insert>
+<Copy StartSeek="1243" EndSeek="1370"/>
+<Copy StartSeek="1401" EndSeek="10120"/>
+</Delta>
+<Delta Version="1069" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:41:14000">
+<Copy StartSeek="0" EndSeek="1084"/>
+<Insert>	uint32_t stable_count;
+</Insert>
+<Copy StartSeek="1107" EndSeek="10119"/>
+</Delta>
+<Delta Version="1070" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:41:58000">
+<Copy StartSeek="0" EndSeek="1084"/>
+<Insert>	uint32_t stable_hits;
+</Insert>
+<Copy StartSeek="1102" EndSeek="10114"/>
+</Delta>
+<Delta Version="1071" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:42:22000">
+<Copy StartSeek="0" EndSeek="2324"/>
+<Insert>	pr_debug("state %u, rx_hits %u mod_ops %#x\n", dpe-&gt;state, dpe-&gt;rx_hits, 
+</Insert>
+<Copy StartSeek="2408" EndSeek="10123"/>
+</Delta>
+<Delta Version="1072" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:42:32000">
+<Copy StartSeek="0" EndSeek="4189"/>
+<Insert>	tmp-&gt;rx_hits = 0;
+	tmp-&gt;stable_count = 0;
+</Insert>
+<Copy StartSeek="4244" EndSeek="10135"/>
+</Delta>
+<Delta Version="1073" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:42:46000">
+<Copy StartSeek="0" EndSeek="6787"/>
+<Insert>		dpe-&gt;rx_hits++;
+</Insert>
+<Copy StartSeek="6814" EndSeek="10144"/>
+</Delta>
+<Delta Version="1074" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:42:55000">
+<Copy StartSeek="0" EndSeek="7038"/>
+<Insert>		dpe-&gt;rx_hits++;
+</Insert>
+<Copy StartSeek="7065" EndSeek="10153"/>
+</Delta>
+<Delta Version="1075" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:43:8000">
+<Copy StartSeek="0" EndSeek="8821"/>
+<Insert>/* returns 1 if any modification was */
+</Insert>
+<Copy StartSeek="8864" EndSeek="10156"/>
+</Delta>
+<Delta Version="1076" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:47:36000">
+<Copy StartSeek="0" EndSeek="8821"/>
+<Insert>/* returns 1 if any packet was modified */
+</Insert>
+<Copy StartSeek="8871" EndSeek="10163"/>
+</Delta>
+<Delta Version="1077" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:47:57000">
+<Copy StartSeek="0" EndSeek="8821"/>
+<Insert>/* returns 1 if packet differs from dpe record */
+</Insert>
+<Copy StartSeek="8874" EndSeek="10166"/>
+</Delta>
+<Delta Version="1078" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:48:2000">
+<Copy StartSeek="0" EndSeek="8821"/>
+<Insert>/* returns true if packet differs from dpe record */
+</Insert>
+<Copy StartSeek="8871" EndSeek="10163"/>
+</Delta>
+<Delta Version="1079" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:48:4000">
+<Copy StartSeek="0" EndSeek="9655"/>
+<Insert>
+</Insert>
+<Copy StartSeek="9681" EndSeek="10188"/>
+</Delta>
+<Delta Version="1080" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:48:15000">
+<Copy StartSeek="0" EndSeek="9684"/>
+<Copy StartSeek="9711" EndSeek="10215"/>
+</Delta>
+<Delta Version="1081" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:48:34000">
+<Copy StartSeek="0" EndSeek="228"/>
+<Copy StartSeek="252" EndSeek="9708"/>
+<Insert>	dpe-&gt;counters.fwd_hits++;
+</Insert>
+<Copy StartSeek="9758" EndSeek="10262"/>
+</Delta>
+<Delta Version="1082" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:51:7000">
+<Copy StartSeek="0" EndSeek="252"/>
+<Copy StartSeek="253" EndSeek="10263"/>
+</Delta>
+<Delta Version="1083" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:51:10000">
+<Copy StartSeek="0" EndSeek="9709"/>
+<Insert>	if (dpe-&gt;counters.fwd_hits++ == DPA_LRN_PKTS) ;
+
+</Insert>
+<Copy StartSeek="9806" EndSeek="10310"/>
+</Delta>
+<Delta Version="1084" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:51:47000">
+<Copy StartSeek="0" EndSeek="9577"/>
+<Insert>	pr_debug("xmit: dpa packet\n");
+</Insert>
+<Copy StartSeek="9617" EndSeek="9765"/>
+<Insert>	    dpe-&gt;counters.stable == DPA_LRN_PKTS - 1)
+
+</Insert>
+<Copy StartSeek="9878" EndSeek="10382"/>
+</Delta>
+<Delta Version="1085" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:52:27000">
+<Copy StartSeek="0" EndSeek="9716"/>
+<Insert>	if (dpe-&gt;counters.fwd_hits++ == DPA_LRN_PKTS &amp;&amp;
+	    dpe-&gt;counters.stable == DPA_LRN_PKTS - 1) {
+		pr_debug("%s: stable connection, moving to fwd",__func__)
+	}
+
+</Insert>
+<Copy StartSeek="9884" EndSeek="10388"/>
+</Delta>
+<Delta Version="1086" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:53:15000">
+<Copy StartSeek="0" EndSeek="9815"/>
+<Insert>			pr_debug("%s: stable connection, moving to fwd",__func__)
+		}
+	}
+
+</Insert>
+<Copy StartSeek="9962" EndSeek="10466"/>
+</Delta>
+<Delta Version="1087" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:53:59000">
+<Copy StartSeek="0" EndSeek="9877"/>
+<Insert>			return 0;
+</Insert>
+<Copy StartSeek="9891" EndSeek="9959"/>
+<Insert>	}
+
+</Insert>
+<Copy StartSeek="9982" EndSeek="10486"/>
+</Delta>
+<Delta Version="1088" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:54:19000">
+<Copy StartSeek="0" EndSeek="9975"/>
+<Insert>
+</Insert>
+<Copy StartSeek="9975" EndSeek="10485"/>
+</Delta>
+<Delta Version="1089" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:54:26000">
+<Copy StartSeek="0" EndSeek="2349"/>
+<Insert>	pr_debug("state %u, rx_hits %u mod_ops %#x\n", dpe-&gt;state, dpe-&gt;counters.rx_hits, 
+</Insert>
+<Copy StartSeek="2481" EndSeek="10533"/>
+</Delta>
+<Delta Version="1090" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:55:22000">
+<Copy StartSeek="0" EndSeek="2349"/>
+<Insert>	pr_debug("state %u, rx_hits %u mod_ops %#x\n", dpe-&gt;state, 
+</Insert>
+<Copy StartSeek="2425" EndSeek="2471"/>
+<Insert>		 dpe-&gt;counters.stable,
+		 dpe-&gt;mod_ops);
+</Insert>
+<Copy StartSeek="2511" EndSeek="10545"/>
+</Delta>
+<Delta Version="1091" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:55:41000">
+<Copy StartSeek="0" EndSeek="2425"/>
+<Insert>		 dpe-&gt;counters.rx_hits, dpe-&gt;counters.fwd, 
+</Insert>
+<Copy StartSeek="2476" EndSeek="10550"/>
+</Delta>
+<Delta Version="1092" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:56:1000">
+<Copy StartSeek="0" EndSeek="7934"/>
+<Insert>	struct tcphdr *th = (struct tcphdr*)((uint8_t* )iph + (iph-&gt;ihl &lt;&lt; 2));
+</Insert>
+<Copy StartSeek="8015" EndSeek="10558"/>
+</Delta>
+<Delta Version="1093" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:56:26000">
+<Copy StartSeek="0" EndSeek="7934"/>
+<Insert>	struct tcphdr *th = (struct tcphdr*)((uint8_t* )pkt_iph + (pkt_iph-&gt;ihl &lt;&lt; 2));
+</Insert>
+<Copy StartSeek="8026" EndSeek="10569"/>
+</Delta>
+<Delta Version="1094" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:56:34000">
+<Copy StartSeek="0" EndSeek="7934"/>
+<Insert>	struct tcphdr *th = (struct tcphdr*)((uint8_t* )pkt_iph + 
+					     (pkt_iph-&gt;ihl &lt;&lt; 2));
+</Insert>
+<Copy StartSeek="8015" EndSeek="10558"/>
+</Delta>
+<Delta Version="1095" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:56:36000">
+<Copy StartSeek="0" EndSeek="7934"/>
+<Insert>	struct tcphdr *th = (struct tcphdr*)((uint8_t* )pkt_iph + (pkt_iph-&gt;ihl &lt;&lt; 2));
+</Insert>
+<Copy StartSeek="7954" EndSeek="7974"/>
+<Copy StartSeek="8040" EndSeek="10563"/>
+</Delta>
+<Delta Version="1096" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:56:55000">
+<Copy StartSeek="0" EndSeek="8040"/>
+<Copy StartSeek="8041" EndSeek="10564"/>
+</Delta>
+<Delta Version="1097" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:56:56000">
+<Copy StartSeek="0" EndSeek="9107"/>
+<Insert>	ret = dpa_entry_copy_modified_l2(dpe, (struct ethhdr *)pkt);
+</Insert>
+<Copy StartSeek="9169" EndSeek="10564"/>
+</Delta>
+<Delta Version="1098" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:57:21000">
+<Copy StartSeek="0" EndSeek="9107"/>
+<Insert>	ret = dpa_entry_copy_modified_l2(dpe, (struct ethhdr *)eth);
+</Insert>
+<Copy StartSeek="9152" EndSeek="10547"/>
+</Delta>
+<Delta Version="1099" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:57:27000">
+<Copy StartSeek="0" EndSeek="9681"/>
+<Insert>	if (!dpa_entry_copy_modified_pkt(dpe, (struct ethhdr *)pkt, iph) {
+</Insert>
+<Copy StartSeek="9750" EndSeek="10548"/>
+</Delta>
+<Delta Version="1100" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:57:43000">
+<Copy StartSeek="0" EndSeek="9453"/>
+<Insert>	struct tcphdr *th;
+</Insert>
+<Copy StartSeek="9453" EndSeek="10528"/>
+</Delta>
+<Delta Version="1101" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:57:50000">
+<Copy StartSeek="0" EndSeek="9453"/>
+<Insert>//      uint32_t mod_org = dpe-&gt;mod_ops;
+
+</Insert>
+<Copy StartSeek="9454" EndSeek="10487"/>
+</Delta>
+<Delta Version="1102" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="11:57:53000">
+<Copy StartSeek="0" EndSeek="7164"/>
+<Copy StartSeek="7244" EndSeek="10567"/>
+</Delta>
+<Delta Version="1103" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:03:20000">
+<Copy StartSeek="0" EndSeek="7179"/>
+<Insert>		pr_debug("learn entry\n");
+</Insert>
+<Copy StartSeek="7208" EndSeek="10567"/>
+</Delta>
+<Delta Version="1104" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:03:28000">
+<Copy StartSeek="0" EndSeek="9406"/>
+<Insert>uint32_t 
+</Insert>
+<Copy StartSeek="9423" EndSeek="10574"/>
+</Delta>
+<Delta Version="1105" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:05:14000">
+<Copy StartSeek="0" EndSeek="9707"/>
+<Insert>	if (!dpa_entry_copy_modified_pkt(dpe, (struct ethhdr *)pkt, iph)) {
+</Insert>
+<Copy StartSeek="9774" EndSeek="9800"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="9800" EndSeek="10569"/>
+</Delta>
+<Delta Version="1106" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:06:47000">
+<Copy StartSeek="0" EndSeek="9849"/>
+<Insert>		if (dpe-&gt;counters.stable == DPA_LRN_PKTS - 1) {
+</Insert>
+<Copy StartSeek="9898" EndSeek="10568"/>
+</Delta>
+<Delta Version="1107" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:08:43000">
+<Copy StartSeek="0" EndSeek="9800"/>
+<Insert>	if (dpe-&gt;counters.fwd_hits++ == DPA_LRN_PKTS) {
+</Insert>
+<Copy StartSeek="9849" EndSeek="10568"/>
+</Delta>
+<Delta Version="1108" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:10:49000">
+<Copy StartSeek="0" EndSeek="9800"/>
+<Insert>	if (++dpe-&gt;counters.fwd_hits == DPA_LRN_PKTS) {
+</Insert>
+<Copy StartSeek="9851" EndSeek="10570"/>
+</Delta>
+<Delta Version="1109" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:11:2000">
+<Copy StartSeek="0" EndSeek="9800"/>
+<Insert>	if (++(dpe-&gt;counters.fwd_hits) == DPA_LRN_PKTS) {
+</Insert>
+<Copy StartSeek="9849" EndSeek="10568"/>
+</Delta>
+<Delta Version="1110" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:11:21000">
+<Copy StartSeek="0" EndSeek="760"/>
+<Insert>	DPE_NEW = 0,
+	DPE_LRN,
+	DPE_FWD,
+	DPE_LCL,
+</Insert>
+<Copy StartSeek="816" EndSeek="10580"/>
+</Delta>
+<Delta Version="1111" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:13:39000">
+<Copy StartSeek="0" EndSeek="9553"/>
+<Insert>	if (!dpe || dpe-&gt;state == DPE_LCL) {
+</Insert>
+<Copy StartSeek="9602" EndSeek="10591"/>
+</Delta>
+<Delta Version="1112" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:14:21000">
+<Copy StartSeek="0" EndSeek="9553"/>
+<Insert>	if (!dpe || dpe-&gt;state &amp; (DPE_LCL | DPE_NEW)) {
+</Insert>
+<Copy StartSeek="9590" EndSeek="10579"/>
+</Delta>
+<Delta Version="1113" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:14:41000">
+<Copy StartSeek="0" EndSeek="877"/>
+<Insert>
+</Insert>
+<Copy StartSeek="915" EndSeek="10616"/>
+</Delta>
+<Delta Version="1114" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:15:50000">
+<Copy StartSeek="0" EndSeek="877"/>
+<Insert>#define IS_DPE_STATUS_##(dpe, stat) 
+</Insert>
+<Copy StartSeek="913" EndSeek="10615"/>
+</Delta>
+<Delta Version="1115" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:17:46000">
+<Copy StartSeek="0" EndSeek="877"/>
+<Insert>#define IS_DPE_STATUS_##(dpe, stat)
+
+</Insert>
+<Copy StartSeek="912" EndSeek="10613"/>
+</Delta>
+<Delta Version="1116" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:18:58000">
+<Copy StartSeek="0" EndSeek="878"/>
+<Insert>#define IS_DPE_STATUS(dpe, stat)
+</Insert>
+<Copy StartSeek="936" EndSeek="10638"/>
+</Delta>
+<Delta Version="1117" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:19:41000">
+<Copy StartSeek="0" EndSeek="878"/>
+<Insert>#define IS_DPE_STATUS(dpe, stat) ((dpe-&gt;state &amp; (state)))
+
+</Insert>
+<Copy StartSeek="878" EndSeek="10579"/>
+</Delta>
+<Delta Version="1118" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:21:38000">
+<Copy StartSeek="0" EndSeek="9553"/>
+<Insert>	if (!dpe || dpe-&gt;state &amp; DPE_LCL) {
+</Insert>
+<Copy StartSeek="9591" EndSeek="10580"/>
+</Delta>
+<Delta Version="1119" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:21:48000">
+<Copy StartSeek="0" EndSeek="9553"/>
+<Insert>	if (!dpe || dpe-&gt;state == DPE_LCL) {
+</Insert>
+<Copy StartSeek="9591" EndSeek="10580"/>
+</Delta>
+<Delta Version="1120" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:23:32000">
+<Copy StartSeek="0" EndSeek="9972"/>
+<Copy StartSeek="9997" EndSeek="10079"/>
+<Copy StartSeek="10103" EndSeek="10629"/>
+</Delta>
+<Delta Version="1121" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:24:44000">
+<Copy StartSeek="0" EndSeek="760"/>
+<Insert>	DPE_NEW = 1,
+	DPE_LRN = 2,
+	DPE_FWD = 4,
+	DPE_LCL = 8,
+</Insert>
+<Copy StartSeek="804" EndSeek="1262"/>
+<Insert>//      uint32_t rx_hits;
+</Insert>
+<Copy StartSeek="1262" EndSeek="10591"/>
+</Delta>
+<Delta Version="1122" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:25:10000">
+<Copy StartSeek="0" EndSeek="1262"/>
+<Insert>//      uint32_t stable_count;
+</Insert>
+<Copy StartSeek="1262" EndSeek="10560"/>
+</Delta>
+<Delta Version="1123" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:25:32000">
+<Copy StartSeek="0" EndSeek="7071"/>
+<Insert>		dpe-&gt;counters.rx_hits++;
+</Insert>
+<Copy StartSeek="7071" EndSeek="7124"/>
+<Insert>		dpe-&gt;counters.rx_hits++;
+</Insert>
+<Copy StartSeek="7124" EndSeek="7509"/>
+<Insert>
+</Insert>
+<Copy StartSeek="7535" EndSeek="10531"/>
+</Delta>
+<Delta Version="1124" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:32:8000">
+<Copy StartSeek="0" EndSeek="7473"/>
+<Insert>		dpa_entry_dump(dpe);
+
+</Insert>
+<Copy StartSeek="7473" EndSeek="7511"/>
+<Copy StartSeek="7533" EndSeek="10529"/>
+</Delta>
+<Delta Version="1125" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:37:19000">
+<Copy StartSeek="0" EndSeek="807"/>
+<Copy StartSeek="915" EndSeek="10637"/>
+</Delta>
+<Delta Version="1126" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:39:12000">
+<Copy StartSeek="0" EndSeek="807"/>
+<Copy StartSeek="833" EndSeek="10663"/>
+</Delta>
+<Delta Version="1127" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:39:46000">
+<Copy StartSeek="0" EndSeek="807"/>
+<Insert>#define DPE_STATE(state) 
+dpa_entry_states [] {
+</Insert>
+<Copy StartSeek="969" EndSeek="10777"/>
+</Delta>
+<Delta Version="1128" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:41:30000">
+<Copy StartSeek="0" EndSeek="860"/>
+<Insert>#define DPE_STATE(state) (struct dpa_entry_state = {.name = ##state, state})
+}
+
+struct dpa_entry_states [] {
+	DPE_STATE(DPE_NEW),
+	DPE_STATE(DPE_LRN),
+	DPE_STATE(DPE_FWD),
+	DPE_STATE(DPE_LCL),
+}
+</Insert>
+<Copy StartSeek="860" EndSeek="10582"/>
+</Delta>
+<Delta Version="1129" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:43:17000">
+<Copy StartSeek="0" EndSeek="736"/>
+<Insert>enum dpa_entry_status {
+</Insert>
+<Copy StartSeek="759" EndSeek="10581"/>
+</Delta>
+<Delta Version="1130" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:44:10000">
+<Copy StartSeek="0" EndSeek="736"/>
+<Insert>enum dpa_entry_state {
+</Insert>
+<Copy StartSeek="760" EndSeek="10582"/>
+</Delta>
+<Delta Version="1131" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:44:16000">
+<Copy StartSeek="0" EndSeek="808"/>
+<Insert>struct dpa_entry_state {char *name, uint32_t val};
+
+</Insert>
+<Copy StartSeek="808" EndSeek="10530"/>
+</Delta>
+<Delta Version="1132" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:44:30000">
+<Copy StartSeek="0" EndSeek="807"/>
+<Insert>
+</Insert>
+<Copy StartSeek="807" EndSeek="10529"/>
+</Delta>
+<Delta Version="1133" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:44:32000">
+<Copy StartSeek="0" EndSeek="6820"/>
+<Insert>		dpe-&gt;counters.rx_hits++;
+</Insert>
+<Copy StartSeek="6820" EndSeek="10502"/>
+</Delta>
+<Delta Version="1134" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:46:3000">
+<Copy StartSeek="0" EndSeek="6882"/>
+<Copy StartSeek="6915" EndSeek="10535"/>
+</Delta>
+<Delta Version="1135" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:46:29000">
+<Copy StartSeek="0" EndSeek="6882"/>
+<Insert>			pr_debug("FIN||RST detected")
+</Insert>
+<Copy StartSeek="6916" EndSeek="10536"/>
+</Delta>
+<Delta Version="1136" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:46:29000">
+<Copy StartSeek="0" EndSeek="6882"/>
+<Insert>			pr_debug("FIN||RST detected");
+</Insert>
+<Copy StartSeek="6917" EndSeek="10537"/>
+</Delta>
+<Delta Version="1137" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="12:46:32000">
+<Copy StartSeek="0" EndSeek="6882"/>
+<Insert>			pr_debug("FIN||RST detected!");
+</Insert>
+<Copy StartSeek="6919" EndSeek="10539"/>
+</Delta>
+<Delta Version="1138" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:30:0000">
+<Copy StartSeek="0" EndSeek="2935"/>
+<Copy StartSeek="3045" EndSeek="10649"/>
+</Delta>
+<Delta Version="1139" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:32:48000">
+<Copy StartSeek="0" EndSeek="2935"/>
+<Insert>static inline void fast_copy_eth(uint32_t *d, uint32_t *s)
+</Insert>
+<Copy StartSeek="2999" EndSeek="10654"/>
+</Delta>
+<Delta Version="1140" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:32:58000">
+<Copy StartSeek="0" EndSeek="2935"/>
+<Insert>static inline void fast_copy_eth_addr(uint32_t *d, uint32_t *s)
+</Insert>
+<Copy StartSeek="2997" EndSeek="10652"/>
+</Delta>
+<Delta Version="1141" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:34:27000">
+<Copy StartSeek="0" EndSeek="2935"/>
+<Insert>static inline void eth_addr_fast_cp(uint32_t *d, uint32_t *s)
+</Insert>
+<Copy StartSeek="2994" EndSeek="10649"/>
+</Delta>
+<Delta Version="1142" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:34:36000">
+<Copy StartSeek="0" EndSeek="2935"/>
+<Insert>static inline void eth_addr_copy(uint32_t *d, uint32_t *s)
+</Insert>
+<Copy StartSeek="2992" EndSeek="10647"/>
+</Delta>
+<Delta Version="1143" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:34:41000">
+<Copy StartSeek="0" EndSeek="983"/>
+<Insert>	uint16_t vlan_tag;
+</Insert>
+<Copy StartSeek="983" EndSeek="1003"/>
+<Copy StartSeek="1023" EndSeek="10647"/>
+</Delta>
+<Delta Version="1144" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:35:13000">
+<Copy StartSeek="0" EndSeek="2994"/>
+<Insert>	*(d++) = *(s++);
+	*(d++) = *(s++);
+	*d = *s;
+}
+
+</Insert>
+<Copy StartSeek="3087" EndSeek="10691"/>
+</Delta>
+<Delta Version="1145" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:38:13000">
+<Copy StartSeek="0" EndSeek="3061"/>
+<Insert>	*(s++);
+</Insert>
+<Copy StartSeek="3159" EndSeek="10780"/>
+</Delta>
+<Delta Version="1146" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:39:3000">
+<Copy StartSeek="0" EndSeek="3155"/>
+<Insert>		;
+	*(s++);
+	*s;
+}
+
+</Insert>
+<Copy StartSeek="3158" EndSeek="10762"/>
+</Delta>
+<Delta Version="1147" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:39:8000">
+<Copy StartSeek="0" EndSeek="7251"/>
+<Copy StartSeek="7276" EndSeek="10787"/>
+</Delta>
+<Delta Version="1148" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:39:42000">
+<Copy StartSeek="0" EndSeek="7251"/>
+<Insert>		eth_addr_cp(eth, eth);
+</Insert>
+<Copy StartSeek="7276" EndSeek="10787"/>
+</Delta>
+<Delta Version="1149" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:40:1000">
+<Copy StartSeek="0" EndSeek="7251"/>
+<Insert>		eth_addr_cp(pkt, eth);
+</Insert>
+<Copy StartSeek="7296" EndSeek="10807"/>
+</Delta>
+<Delta Version="1150" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:40:25000">
+<Copy StartSeek="0" EndSeek="3128"/>
+<Insert>	       *(s++),*(s++),*s);
+</Insert>
+<Copy StartSeek="3169" EndSeek="10821"/>
+</Delta>
+<Delta Version="1151" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:41:55000">
+<Copy StartSeek="0" EndSeek="3061"/>
+<Insert>	printk(KERN_ERR "(%s:%d) %x, %x, %x, [%x]\n", __func__, __LINE__,
+</Insert>
+<Copy StartSeek="3123" EndSeek="10816"/>
+</Delta>
+<Delta Version="1152" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:42:6000">
+<Copy StartSeek="0" EndSeek="3061"/>
+<Insert>	printk(KERN_ERR "(%s:%d) %x, %x , %x\n", __func__, __LINE__,
+</Insert>
+<Copy StartSeek="3120" EndSeek="10813"/>
+</Delta>
+<Delta Version="1153" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:42:13000">
+<Copy StartSeek="0" EndSeek="3120"/>
+<Insert>	       *(s++),*(s++),*(uint16_t *)s, );
+</Insert>
+<Copy StartSeek="3159" EndSeek="10811"/>
+</Delta>
+<Delta Version="1154" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:42:16000">
+<Copy StartSeek="0" EndSeek="7255"/>
+<Insert>		eth_addr_cp((uint32_t *)pkt, dpe-&gt;mod.l2);
+</Insert>
+<Copy StartSeek="7313" EndSeek="10824"/>
+</Delta>
+<Delta Version="1155" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:42:58000">
+<Copy StartSeek="0" EndSeek="3120"/>
+<Insert>	       *(s++),*(s++),*(uint16_t *)s);
+</Insert>
+<Copy StartSeek="3147" EndSeek="10812"/>
+</Delta>
+<Delta Version="1156" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:43:13000">
+<Copy StartSeek="0" EndSeek="3061"/>
+<Insert>	printk(KERN_ERR "(%s:%d) %x %x %x\n", __func__, __LINE__,
+	       *(s++),*(s++),*s);
+}
+
+</Insert>
+<Copy StartSeek="3310" EndSeek="10972"/>
+</Delta>
+<Delta Version="1157" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:44:27000">
+<Copy StartSeek="0" EndSeek="2935"/>
+<Copy StartSeek="2973" EndSeek="3099"/>
+<Insert>	printk(KERN_ERR "(%s:%d) %x\n", __func__, __LINE__,*s);
+</Insert>
+<Copy StartSeek="3233" EndSeek="11087"/>
+</Delta>
+<Delta Version="1158" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:49:6000">
+<Copy StartSeek="0" EndSeek="2935"/>
+<Insert>#define UCHAR_CAST(a) (uint8_t *)(&amp;a)
+</Insert>
+<Copy StartSeek="2976" EndSeek="11090"/>
+</Delta>
+<Delta Version="1159" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:49:19000">
+<Copy StartSeek="0" EndSeek="3102"/>
+<Insert>	printk(KERN_ERR "(%s:%d) %x\n", __func__, __LINE__,*s, UCHAR_CAST(s[0])
+	       ,UCHAR_CAST(s[1]),UCHAR_CAST(s[2]),UCHAR_CAST(s[3]);
+</Insert>
+<Copy StartSeek="3251" EndSeek="11105"/>
+</Delta>
+<Delta Version="1160" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:49:50000">
+<Copy StartSeek="0" EndSeek="3257"/>
+<Insert>	printk(KERN_ERR "(%s:%d) %x\n", __func__, __LINE__,*s);
+</Insert>
+<Copy StartSeek="3407" EndSeek="3413"/>
+<Insert>	printk(KERN_ERR "(%s:%d) %x\n", __func__, __LINE__,*s);
+</Insert>
+<Copy StartSeek="3563" EndSeek="3569"/>
+<Insert>	printk(KERN_ERR "(%s:%d) %x\n", __func__, __LINE__,*s);
+}
+</Insert>
+<Copy StartSeek="3718" EndSeek="3719"/>
+<Copy StartSeek="3722" EndSeek="11384"/>
+</Delta>
+<Delta Version="1161" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="14:53:19000">
+<Copy StartSeek="0" EndSeek="5064"/>
+<Copy StartSeek="5093" EndSeek="11413"/>
+</Delta>
+<Delta Version="1162" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:10:23000">
+<Copy StartSeek="0" EndSeek="5009"/>
+<Insert>	tmp-&gt;counters.rx_hits = 0;
+	tmp-&gt;counters.stable = 0;
+	tmp-&gt;counters.fwd_hits = 0;
+</Insert>
+<Copy StartSeek="5136" EndSeek="11456"/>
+</Delta>
+<Delta Version="1163" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:10:48000">
+<Copy StartSeek="0" EndSeek="5009"/>
+<Insert>	tmp-&gt;counters = {0};
+</Insert>
+<Copy StartSeek="5037" EndSeek="11462"/>
+</Delta>
+<Delta Version="1164" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:11:6000">
+<Copy StartSeek="0" EndSeek="5009"/>
+<Insert>	tmp-&gt;counters = {0, 0, 0};
+//      tmp-&gt;counters.rx_hits = 0;
+//      tmp-&gt;counters.stable = 0;
+//      tmp-&gt;counters.fwd_hits = 0;
+</Insert>
+<Copy StartSeek="5093" EndSeek="11413"/>
+</Delta>
+<Delta Version="1165" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:11:14000">
+<Copy StartSeek="0" EndSeek="5009"/>
+<Copy StartSeek="5064" EndSeek="11468"/>
+</Delta>
+<Delta Version="1166" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:13:6000">
+<Copy StartSeek="0" EndSeek="5009"/>
+<Insert>	memset(&amp;tmp-&gt;counters 0, sizeof(struct dpa_counters))
+</Insert>
+<Copy StartSeek="5065" EndSeek="11469"/>
+</Delta>
+<Delta Version="1167" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:13:8000">
+<Copy StartSeek="0" EndSeek="5009"/>
+<Insert>	memset(&amp;tmp-&gt;counters 0, sizeof(struct dpa_counters));
+</Insert>
+<Copy StartSeek="5009" EndSeek="11413"/>
+</Delta>
+<Delta Version="1168" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:13:16000">
+<Copy StartSeek="0" EndSeek="2935"/>
+<Insert>#define UCHAR_CAST(a) (*(uint8_t *)(&amp;a))
+</Insert>
+<Copy StartSeek="2983" EndSeek="11420"/>
+</Delta>
+<Delta Version="1169" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:23:43000">
+<Copy StartSeek="0" EndSeek="3109"/>
+<Copy StartSeek="3139" EndSeek="11450"/>
+</Delta>
+<Delta Version="1170" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:27:21000">
+<Copy StartSeek="0" EndSeek="3139"/>
+<Insert>	printk(KERN_ERR "(%s:%d) %x (%x,%x,%x,%x)\n", __func__, __LINE__,*s, UCHAR_CAST(s[0])
+	       ,UCHAR_CAST(s[1]),UCHAR_CAST(s[2]),UCHAR_CAST(s[3]));
+</Insert>
+<Copy StartSeek="3241" EndSeek="11403"/>
+</Delta>
+<Delta Version="1171" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:27:52000">
+<Copy StartSeek="0" EndSeek="3109"/>
+<Insert>	uint8_t *p8 = (uint8_t *)s;
+</Insert>
+<Copy StartSeek="3137" EndSeek="11402"/>
+</Delta>
+<Delta Version="1172" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:28:6000">
+<Copy StartSeek="0" EndSeek="3246"/>
+<Insert>	printk(KERN_ERR "(%s:%d) %x (%x,%x,%x,%x)\n", __func__, __LINE__,*s, UCHAR_CAST(s[0])
+	       ,UCHAR_CAST(s[1]),UCHAR_CAST(s[2]),UCHAR_CAST(s[3]));
+
+</Insert>
+<Copy StartSeek="3367" EndSeek="3373"/>
+<Insert>	printk(KERN_ERR "(%s:%d) %x (%x,%x,%x,%x)\n", __func__, __LINE__,*s, UCHAR_CAST(s[0])
+	       ,UCHAR_CAST(s[1]),UCHAR_CAST(s[2]),UCHAR_CAST(s[3]));
+
+</Insert>
+<Copy StartSeek="3494" EndSeek="3500"/>
+<Insert>	printk(KERN_ERR "(%s:%d) %x (%x,%x,%x,%x)\n", __func__, __LINE__,*s, UCHAR_CAST(s[0])
+	       ,UCHAR_CAST(s[1]),UCHAR_CAST(s[2]),UCHAR_CAST(s[3]));
+
+</Insert>
+<Copy StartSeek="3621" EndSeek="11315"/>
+</Delta>
+<Delta Version="1173" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:29:12000">
+<Copy StartSeek="0" EndSeek="3817"/>
+<Copy StartSeek="3835" EndSeek="11333"/>
+</Delta>
+<Delta Version="1174" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:34:8000">
+<Copy StartSeek="0" EndSeek="3846"/>
+<Insert>	l2-&gt;eth_type = eth-&gt;h_proto;
+</Insert>
+<Copy StartSeek="3883" EndSeek="11340"/>
+</Delta>
+<Delta Version="1175" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:34:42000">
+<Copy StartSeek="0" EndSeek="3835"/>
+<Insert>	*d = *s;
+</Insert>
+<Copy StartSeek="3857" EndSeek="11352"/>
+</Delta>
+<Delta Version="1176" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:35:29000">
+<Copy StartSeek="0" EndSeek="1732"/>
+<Insert>	pr_debug("org dmac= "MAC_FMT" smac= "MAC_FMT,
+		 MAC_PFMT(l2_org-&gt;dmac), MAC_PFMT(l2_org-&gt;smac));
+
+</Insert>
+<Copy StartSeek="1868" EndSeek="11388"/>
+</Delta>
+<Delta Version="1177" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:37:3000">
+<Copy StartSeek="0" EndSeek="2038"/>
+<Insert>	pr_debug("mod dmac= "MAC_FMT" smac= "MAC_FMT,
+	  MAC_PFMT(l2_mod-&gt;dmac), MAC_PFMT(l2_mod-&gt;smac));
+</Insert>
+<Copy StartSeek="2169" EndSeek="11420"/>
+</Delta>
+<Delta Version="1178" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:37:31000">
+<Copy StartSeek="0" EndSeek="2038"/>
+<Insert>	pr_debug("mod dmac= "MAC_FMT" smac= "MAC_FMT "eth_type %u",
+</Insert>
+<Copy StartSeek="2100" EndSeek="11421"/>
+</Delta>
+<Delta Version="1179" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:37:55000">
+<Copy StartSeek="0" EndSeek="3004"/>
+<Insert>#define UCHAR_CAST(a) (*(uint8_t *)(&amp;a) &amp; 0xff)
+static inline void eth_addr_cp(uint32_t *d, uint32_t *s)
+{
+//      *(d++) = *(s++);
+//      *(d++) = *(s++);
+//      *d = *s;
+	uint8_t *p = (uint8_t *)s;
+
+	printk(KERN_ERR "(%s:%d) %x (%x,%x,%x,%x)\n", __func__, __LINE__,*s, p[0],
+	       p[1], p[2],p[3]);
+	s++;
+	p = (uint8_t *)s;
+	printk(KERN_ERR "(%s:%d) %x (%x,%x,%x,%x)\n", __func__, __LINE__,*s, p[0],
+	       p[1], p[2],p[3]);
+	s++;
+	p = (uint8_t *)s;
+	printk(KERN_ERR "(%s:%d) %x (%x,%x,%x,%x)\n", __func__, __LINE__,*s, p[0],
+	       p[1], p[2],p[3]);
+	s++;
+	p = (uint8_t *)s;
+	printk(KERN_ERR "(%s:%d) %x (%x,%x,%x,%x)\n", __func__, __LINE__,*s, p[0],
+	       p[1], p[2],p[3]);
+}
+
+</Insert>
+<Copy StartSeek="3004" EndSeek="10732"/>
+</Delta>
+<Delta Version="1180" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:38:9000">
+<Copy StartSeek="0" EndSeek="3237"/>
+<Copy StartSeek="3241" EndSeek="3242"/>
+<Insert>//      l2-&gt;eth_type = eth-&gt;h_proto;
+}
+
+
+
+</Insert>
+<Copy StartSeek="3242" EndSeek="10694"/>
+</Delta>
+<Delta Version="1181" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:38:13000">
+<Copy StartSeek="0" EndSeek="3215"/>
+<Insert>	*d = *(uint16_t *)s;
+</Insert>
+<Copy StartSeek="3252" EndSeek="10709"/>
+</Delta>
+<Delta Version="1182" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:38:17000">
+<Copy StartSeek="0" EndSeek="3004"/>
+<Copy StartSeek="3644" EndSeek="3855"/>
+<Insert>	*d = *(uint16_t *)s; /* eth_type */
+</Insert>
+<Copy StartSeek="3877" EndSeek="11334"/>
+</Delta>
+<Delta Version="1183" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:39:1000">
+<Copy StartSeek="0" EndSeek="3062"/>
+<Insert>//      *(d++) = *(s++);
+//      *(d++) = *(s++);
+//      *d = *s;
+	uint8_t *p = (uint8_t *)s;
+
+	printk(KERN_ERR "(%s:%d) %x (%x,%x,%x,%x)\n", __func__, __LINE__,*s, p[0],
+	       p[1], p[2],p[3]);
+	s++;
+	p = (uint8_t *)s;
+	printk(KERN_ERR "(%s:%d) %x (%x,%x,%x,%x)\n", __func__, __LINE__,*s, p[0],
+	       p[1], p[2],p[3]);
+	s++;
+	p = (uint8_t *)s;
+	printk(KERN_ERR "(%s:%d) %x (%x,%x,%x,%x)\n", __func__, __LINE__,*s, p[0],
+	       p[1], p[2],p[3]);
+	s++;
+	p = (uint8_t *)s;
+	printk(KERN_ERR "(%s:%d) %x (%x,%x,%x,%x)\n", __func__, __LINE__,*s, p[0],
+	       p[1], p[2],p[3]);
+}
+
+</Insert>
+<Copy StartSeek="3141" EndSeek="10831"/>
+</Delta>
+<Delta Version="1184" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:39:17000">
+<Copy StartSeek="0" EndSeek="3298"/>
+<Copy StartSeek="3318" EndSeek="10851"/>
+</Delta>
+<Delta Version="1185" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:39:50000">
+<Copy StartSeek="0" EndSeek="3318"/>
+<Insert>	*(d++) = *(s++);
+	*(d++) = *(s++);
+	*(d++) = *(s++);
+	*d = *(uint16_t *)s;
+}
+
+
+
+</Insert>
+<Copy StartSeek="3323" EndSeek="10775"/>
+</Delta>
+<Delta Version="1186" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:39:53000">
+<Copy StartSeek="0" EndSeek="3317"/>
+<Copy StartSeek="3320" EndSeek="3321"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="3321" EndSeek="3322"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3322" EndSeek="10774"/>
+</Delta>
+<Delta Version="1187" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:39:56000">
+<Copy StartSeek="0" EndSeek="5927"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6040" EndSeek="10886"/>
+</Delta>
+<Delta Version="1188" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:41:30000">
+<Copy StartSeek="0" EndSeek="5927"/>
+<Insert>static void dpa_modify(struct dpa_entry *dpe, ethhdr *eth, struct iphdr *iph, 
+		       struct tcphdr *th)
+{
+
+}
+
+</Insert>
+<Copy StartSeek="6078" EndSeek="10924"/>
+</Delta>
+<Delta Version="1189" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:42:2000">
+<Copy StartSeek="0" EndSeek="6057"/>
+<Insert>	eth_hdr_cp(eth,)
+</Insert>
+<Copy StartSeek="6084" EndSeek="10933"/>
+</Delta>
+<Delta Version="1190" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:42:12000">
+<Copy StartSeek="0" EndSeek="6057"/>
+<Insert>	eth_hdr_cp(eth, pkt_eth);
+}
+
+</Insert>
+<Copy StartSeek="6174" EndSeek="11020"/>
+</Delta>
+<Delta Version="1191" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:43:5000">
+<Copy StartSeek="0" EndSeek="6023"/>
+<Insert>		       struct tcphdr *pkt_th)
+</Insert>
+<Copy StartSeek="6046" EndSeek="11011"/>
+</Delta>
+<Delta Version="1192" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:44:45000">
+<Copy StartSeek="0" EndSeek="6023"/>
+<Insert>		       void *pkt_l5)
+</Insert>
+<Copy StartSeek="6046" EndSeek="11011"/>
+</Delta>
+<Delta Version="1193" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="15:44:46000">
+<Copy StartSeek="0" EndSeek="6101"/>
+<Insert>		eth_hdr_cp(eth, pkt_eth);
+		mod_ops &amp; = ~(mod_ops - 1);
+	}
+}
+
+</Insert>
+<Copy StartSeek="6203" EndSeek="11049"/>
+</Delta>
+<Delta Version="1194" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:21:0000">
+<Copy StartSeek="0" EndSeek="6101"/>
+<Insert>		if (mod_ops &amp;= DPE_MOD_L2) {
+
+		}
+</Insert>
+<Copy StartSeek="6131" EndSeek="6160"/>
+<Copy StartSeek="6168" EndSeek="11051"/>
+</Delta>
+<Delta Version="1195" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:23:47000">
+<Copy StartSeek="0" EndSeek="6164"/>
+<Insert>			
+			mod_ops &amp; = ~(mod_ops - 1);
+	}
+}
+
+</Insert>
+<Copy StartSeek="6200" EndSeek="11046"/>
+</Delta>
+<Delta Version="1196" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:23:56000">
+<Copy StartSeek="0" EndSeek="6082"/>
+<Insert>	while (mod_ops) {
+</Insert>
+<Copy StartSeek="6108" EndSeek="6201"/>
+<Insert>	}
+}
+
+</Insert>
+<Copy StartSeek="6204" EndSeek="11050"/>
+</Delta>
+<Delta Version="1197" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:24:28000">
+<Copy StartSeek="0" EndSeek="6108"/>
+<Insert>		if (mod_ops &amp; DPE_MOD_L2) {
+			eth_hdr_cp(eth, pkt_eth);
+		}
+		mod_ops &amp; = ~(mod_ops - 1);
+</Insert>
+<Copy StartSeek="6197" EndSeek="11046"/>
+</Delta>
+<Delta Version="1198" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:24:35000">
+<Copy StartSeek="0" EndSeek="6168"/>
+<Insert>	mod_ops &amp; = ~(mod_ops - 1);
+}
+
+</Insert>
+<Copy StartSeek="6204" EndSeek="11050"/>
+</Delta>
+<Delta Version="1199" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:25:20000">
+<Copy StartSeek="0" EndSeek="6198"/>
+<Insert>	}
+}
+
+</Insert>
+<Copy StartSeek="6205" EndSeek="11051"/>
+</Delta>
+<Delta Version="1200" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:25:34000">
+<Copy StartSeek="0" EndSeek="5475"/>
+<Insert>static inline void fill_cls_tup_params(struct iphdr *iph, struct tcphdr *th,
+</Insert>
+<Copy StartSeek="5552" EndSeek="5927"/>
+<Insert>static void dpa_modify(struct dpa_entry *dpe, ethhdr *pkt_eth,
+</Insert>
+<Copy StartSeek="5994" EndSeek="6995"/>
+<Insert>	fill_cls_tup_params(iph, th, &amp;tup);
+</Insert>
+<Copy StartSeek="7032" EndSeek="11055"/>
+</Delta>
+<Delta Version="1201" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:33:21000">
+<Copy StartSeek="0" EndSeek="5475"/>
+<Insert>static inline void fill_pri_key_params(struct iphdr *iph, struct tcphdr *th,
+</Insert>
+<Copy StartSeek="5549" EndSeek="6992"/>
+<Insert>	fill_pri_key_params(iph, th, &amp;tup);
+</Insert>
+<Copy StartSeek="7026" EndSeek="11049"/>
+</Delta>
+<Delta Version="1202" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:35:19000">
+<Copy StartSeek="0" EndSeek="7430"/>
+<Copy StartSeek="7467" EndSeek="11086"/>
+</Delta>
+<Delta Version="1203" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:36:6000">
+<Copy StartSeek="0" EndSeek="7430"/>
+<Insert>		dpa_modify_pkt(dpe, eth, iph, th);
+		/* HAIM FIXME :  add modification logic here */
+		eth_addr_cp((uint32_t *)pkt, (uint32_t *)&amp;dpe-&gt;mod.l2);
+</Insert>
+<Copy StartSeek="7488" EndSeek="10999"/>
+</Delta>
+<Delta Version="1204" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:36:23000">
+<Copy StartSeek="0" EndSeek="7430"/>
+<Insert>		if (dpe-&gt;mod_ops)
+			dpa_modify_pkt(dpe, eth, iph, th);
+</Insert>
+<Copy StartSeek="7467" EndSeek="10978"/>
+</Delta>
+<Delta Version="1205" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:36:39000">
+<Copy StartSeek="0" EndSeek="3706"/>
+<Insert>is_cls_tuple_match(struct dpa_pri_key *a, struct dpa_pri_key *b)
+</Insert>
+<Copy StartSeek="3769" EndSeek="4040"/>
+<Insert>	return is_cls_tuple_match(&amp;dpe-&gt;org.cls_tuple, cls) &amp;&amp;
+</Insert>
+<Copy StartSeek="4094" EndSeek="10974"/>
+</Delta>
+<Delta Version="1206" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:37:40000">
+<Copy StartSeek="0" EndSeek="3321"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3455" EndSeek="11107"/>
+</Delta>
+<Delta Version="1207" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:40:47000">
+<Copy StartSeek="0" EndSeek="3430"/>
+<Insert>	*d = *(uint16_t *)s;
+</Insert>
+<Copy StartSeek="3448" EndSeek="11103"/>
+</Delta>
+<Delta Version="1208" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:41:39000">
+<Copy StartSeek="0" EndSeek="3430"/>
+<Insert>	*(d++) = *(s++);
+</Insert>
+<Copy StartSeek="3440" EndSeek="11095"/>
+</Delta>
+<Delta Version="1209" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:42:0000">
+<Copy StartSeek="0" EndSeek="3321"/>
+<Insert>static void dpa_pri_key_cp(uint32_t *d, uint32_t *s)
+</Insert>
+<Copy StartSeek="3394" EndSeek="3396"/>
+<Copy StartSeek="3461" EndSeek="11180"/>
+</Delta>
+<Delta Version="1210" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:43:32000">
+<Copy StartSeek="0" EndSeek="3428"/>
+<Insert>	uint32_t *s32 =	(uint32_t *)*s;
+</Insert>
+<Copy StartSeek="3460" EndSeek="11179"/>
+</Delta>
+<Delta Version="1211" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:43:33000">
+<Copy StartSeek="0" EndSeek="3460"/>
+<Insert>	*(d++) = *(s++);
+	*(d++) = *(s++);
+	*(d++) = *(s++);
+	*d = *s;
+</Insert>
+<Copy StartSeek="3540" EndSeek="11195"/>
+</Delta>
+<Delta Version="1212" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:43:43000">
+<Copy StartSeek="0" EndSeek="3321"/>
+<Insert>static void dpa_pri_key_cp(struct dpa_pri_key *d, struct dpa_pri_key *s)
+</Insert>
+<Copy StartSeek="3401" EndSeek="11202"/>
+</Delta>
+<Delta Version="1213" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:43:51000">
+<Copy StartSeek="0" EndSeek="3320"/>
+<Insert>
+</Insert>
+<Copy StartSeek="3320" EndSeek="11201"/>
+</Delta>
+<Delta Version="1214" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:44:2000">
+<Copy StartSeek="0" EndSeek="3320"/>
+<Insert>static inline void dpa_pri_key_cp(struct dpa_pri_key *d, struct dpa_pri_key *s)
+{
+	uint32_t *d32 = (uint32_t *)d;
+	uint32_t *s32 =	(uint32_t *)s;
+	*(d32++) = *(s32++);
+	*(d32++) = *(s32++);
+	*(d32++) = *(s32++);
+	*d32 = *s32;
+}
+</Insert>
+<Copy StartSeek="3608" EndSeek="6482"/>
+<Insert>
+</Insert>
+<Copy StartSeek="6501" EndSeek="11279"/>
+</Delta>
+<Delta Version="1215" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:46:15000">
+<Copy StartSeek="0" EndSeek="3320"/>
+<Insert>//static inline void dpa_pri_key_cp(struct dpa_pri_key *d, struct dpa_pri_key *s)
+//{
+//        uint32_t *d32 = (uint32_t *)d;
+//        uint32_t *s32 = (uint32_t *)s;
+//        *(d32++) = *(s32++);
+//        *(d32++) = *(s32++);
+//        *(d32++) = *(s32++);
+//        *d32 = *s32;
+//}
+
+</Insert>
+<Copy StartSeek="3320" EndSeek="6077"/>
+<Copy StartSeek="6125" EndSeek="6241"/>
+<Insert>		dpa_pri_key_cp()
+	}
+}
+
+</Insert>
+<Copy StartSeek="6315" EndSeek="11087"/>
+</Delta>
+<Delta Version="1216" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:50:12000">
+<Copy StartSeek="0" EndSeek="6297"/>
+<Insert>		pkt_l4 = 
+</Insert>
+<Copy StartSeek="6321" EndSeek="11099"/>
+</Delta>
+<Delta Version="1217" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:50:41000">
+<Copy StartSeek="0" EndSeek="6297"/>
+<Insert>		(uint32_t *)pkt_l4 = 
+</Insert>
+<Copy StartSeek="6322" EndSeek="11100"/>
+</Delta>
+<Delta Version="1218" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:50:50000">
+<Copy StartSeek="0" EndSeek="6297"/>
+<Insert>		*(uint32_t *)pkt_l4 = 
+</Insert>
+<Copy StartSeek="6332" EndSeek="11110"/>
+</Delta>
+<Delta Version="1219" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:51:3000">
+<Copy StartSeek="0" EndSeek="6297"/>
+<Insert>		*(uint32_t *)pkt_l4 = mt-&gt;sport;
+</Insert>
+<Copy StartSeek="6348" EndSeek="11126"/>
+</Delta>
+<Delta Version="1220" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:52:57000">
+<Copy StartSeek="0" EndSeek="5918"/>
+<Insert>static void dpa_modify_pkt(struct dpa_entry *dpe, ethhdr *pkt_eth,
+</Insert>
+<Copy StartSeek="5992" EndSeek="11133"/>
+</Delta>
+<Delta Version="1221" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:54:49000">
+<Copy StartSeek="0" EndSeek="6187"/>
+<Insert>		eth_hdr_cp(eth, pkt_eth);
+</Insert>
+<Copy StartSeek="6239" EndSeek="11157"/>
+</Delta>
+<Delta Version="1222" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:55:18000">
+<Copy StartSeek="0" EndSeek="6187"/>
+<Insert>		eth_hdr_cp((uint32_t *)eth, (uint32_t *)pkt_eth);
+</Insert>
+<Copy StartSeek="6247" EndSeek="11165"/>
+</Delta>
+<Delta Version="1223" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:55:53000">
+<Copy StartSeek="0" EndSeek="6187"/>
+<Insert>		eth_hdr_cp((uint32_t *)pkt_eth, (uint32_t *)dpe-&gt;mod.l2);
+</Insert>
+<Copy StartSeek="6248" EndSeek="11166"/>
+</Delta>
+<Delta Version="1224" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:56:51000">
+<Copy StartSeek="0" EndSeek="7655"/>
+<Copy StartSeek="7691" EndSeek="11202"/>
+</Delta>
+<Delta Version="1225" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:58:49000">
+<Copy StartSeek="0" EndSeek="7655"/>
+<Copy StartSeek="7714" EndSeek="11261"/>
+</Delta>
+<Delta Version="1226" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:58:56000">
+<Copy StartSeek="0" EndSeek="7655"/>
+<Insert>		printk(KERN_ERR "(%s:%d) ======\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="7721" EndSeek="11268"/>
+</Delta>
+<Delta Version="1227" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:59:3000">
+<Copy StartSeek="0" EndSeek="5831"/>
+<Insert>		if (bytes &amp; 0xf == 0) {
+</Insert>
+<Copy StartSeek="5859" EndSeek="11270"/>
+</Delta>
+<Delta Version="1228" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:59:34000">
+<Copy StartSeek="0" EndSeek="5784"/>
+<Insert>	int i;
+
+</Insert>
+<Copy StartSeek="5784" EndSeek="11261"/>
+</Delta>
+<Delta Version="1229" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="16:59:43000">
+<Copy StartSeek="0" EndSeek="7023"/>
+<Insert>	dpa_dump_pkt(pkt, 40);
+	
+</Insert>
+<Copy StartSeek="7025" EndSeek="7429"/>
+<Copy StartSeek="7454" EndSeek="11262"/>
+</Delta>
+<Delta Version="1230" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:00:5000">
+<Copy StartSeek="0" EndSeek="6330"/>
+<Copy StartSeek="6348" EndSeek="11280"/>
+</Delta>
+<Delta Version="1231" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:15:36000">
+<Copy StartSeek="0" EndSeek="6244"/>
+<Copy StartSeek="6277" EndSeek="11313"/>
+</Delta>
+<Delta Version="1232" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:16:55000">
+<Copy StartSeek="0" EndSeek="6244"/>
+<Insert>	if (mod_ops &amp; DPE_MOD_FWD) {
+</Insert>
+<Copy StartSeek="6273" EndSeek="11312"/>
+</Delta>
+<Delta Version="1233" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:16:58000">
+<Copy StartSeek="0" EndSeek="909"/>
+<Insert>	DPE_MOD_NAT = 2,
+</Insert>
+<Copy StartSeek="944" EndSeek="11329"/>
+</Delta>
+<Delta Version="1234" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:17:15000">
+<Copy StartSeek="0" EndSeek="6290"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="6311" EndSeek="6397"/>
+<Insert>		--pkt_iph-&gt;ttl;
+</Insert>
+<Copy StartSeek="6400" EndSeek="11332"/>
+</Delta>
+<Delta Version="1235" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:17:21000">
+<Copy StartSeek="0" EndSeek="6397"/>
+<Insert>		
+</Insert>
+<Copy StartSeek="6397" EndSeek="11329"/>
+</Delta>
+<Delta Version="1236" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:17:23000">
+<Copy StartSeek="0" EndSeek="5839"/>
+<Insert>		if ((bytes &amp; 0xf) == 0) {
+</Insert>
+<Copy StartSeek="5868" EndSeek="11330"/>
+</Delta>
+<Delta Version="1237" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:21:3000">
+<Copy StartSeek="0" EndSeek="5839"/>
+<Insert>		if ((bytes &amp; 0x10) == 0) {
+</Insert>
+<Copy StartSeek="5868" EndSeek="11330"/>
+</Delta>
+<Delta Version="1238" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:21:41000">
+<Copy StartSeek="0" EndSeek="7680"/>
+<Insert>		dpa_modify_pkt(dpe, eth, iph, th);
+</Insert>
+<Copy StartSeek="7724" EndSeek="11337"/>
+</Delta>
+<Delta Version="1239" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:27:13000">
+<Copy StartSeek="0" EndSeek="5929"/>
+<Insert>static void dpa_modify_pkt(struct dpa_entry *dpe, struct ethhdr *pkt_eth,
+		       struct iphdr *pkt_iph, 
+		       void *pkt_l4)
+{
+	uint32_t mod_ops = dpe-&gt;mod_ops;
+	struct dpa_pri_key *mt = &amp;dpe-&gt;mod.mod_tuple;
+
+	if (!mod_ops)
+		return;
+
+	if (mod_ops &amp; DPE_MOD_L2) {
+		eth_hdr_cp((uint32_t *)pkt_eth, (uint32_t *)&amp;dpe-&gt;mod.l2);
+	}
+	if (mod_ops &amp; DPE_MOD_RT) {
+		--pkt_iph-&gt;ttl;
+	}
+	if (mod_ops &amp; DPE_MOD_NAT) {
+		pkt_iph-&gt;daddr = mt-&gt;dip;
+		pkt_iph-&gt;saddr = mt-&gt;sip;
+		*(uint32_t *)pkt_l4 = *(uint32_t *)&amp;(mt-&gt;sport);
+	}
+}
+</Insert>
+<Copy StartSeek="6672" EndSeek="11555"/>
+</Delta>
+<Delta Version="1240" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:27:31000">
+<Copy StartSeek="0" EndSeek="5807"/>
+<Insert>		printk("%x ", (*pkt) &amp; 0xff);
+</Insert>
+<Copy StartSeek="5840" EndSeek="11556"/>
+</Delta>
+<Delta Version="1241" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:29:27000">
+<Copy StartSeek="0" EndSeek="5807"/>
+<Insert>		printk("%2x ", (*pkt) &amp; 0xff);
+</Insert>
+<Copy StartSeek="5841" EndSeek="11557"/>
+</Delta>
+<Delta Version="1242" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:30:26000">
+<Copy StartSeek="0" EndSeek="7900"/>
+<Insert>//      	dpa_modify_pkt(dpe, eth, iph, th);
+</Insert>
+<Copy StartSeek="7937" EndSeek="11550"/>
+</Delta>
+<Delta Version="1243" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:32:7000">
+<Copy StartSeek="0" EndSeek="5931"/>
+<Insert>//static void dpa_modify_pkt(struct dpa_entry *dpe, struct ethhdr *pkt_eth,
+//                       struct iphdr *pkt_iph,
+//                       void *pkt_l4)
+//{
+//        uint32_t mod_ops = dpe-&gt;mod_ops;
+//        struct dpa_pri_key *mt = &amp;dpe-&gt;mod.mod_tuple;
+//
+//        if (!mod_ops)
+//                return;
+//
+//        if (mod_ops &amp; DPE_MOD_L2) {
+//                eth_hdr_cp((uint32_t *)pkt_eth, (uint32_t *)&amp;dpe-&gt;mod.l2);
+//        }
+//        if (mod_ops &amp; DPE_MOD_RT) {
+//                --pkt_iph-&gt;ttl;
+//        }
+//        if (mod_ops &amp; DPE_MOD_NAT) {
+//                pkt_iph-&gt;daddr = mt-&gt;dip;
+//                pkt_iph-&gt;saddr = mt-&gt;sip;
+//                *(uint32_t *)pkt_l4 = *(uint32_t *)&amp;(mt-&gt;sport);
+//        }
+//}
+</Insert>
+<Copy StartSeek="6455" EndSeek="11331"/>
+</Delta>
+<Delta Version="1244" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="17:32:18000">
+<Copy StartSeek="0" EndSeek="6199"/>
+<Insert>		eth_hdr_cp((uint32_t *)pkt_eth, (uint32_t *)&amp;dpe-&gt;mod.l2);
+</Insert>
+<Copy StartSeek="6265" EndSeek="11336"/>
+</Delta>
+<Delta Version="1245" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:28:29000">
+<Copy StartSeek="0" EndSeek="6199"/>
+<Insert>		eth_hdr_cp((uint32_t *)pkt_eth, (uint32_t *)&amp;dpe-&gt;mod.l2.dmac);
+</Insert>
+<Copy StartSeek="6264" EndSeek="11335"/>
+</Delta>
+<Delta Version="1246" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:28:35000">
+<Copy StartSeek="0" EndSeek="6199"/>
+<Insert>		eth_hdr_cp((uint32_t *)pkt_eth, (uint32_t *)dpe-&gt;mod.l2.dmac);
+</Insert>
+<Copy StartSeek="6265" EndSeek="11336"/>
+</Delta>
+<Delta Version="1247" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:29:12000">
+<Copy StartSeek="0" EndSeek="3133"/>
+<Insert>	*d = *(uint16_t *)s;
+</Insert>
+<Copy StartSeek="3162" EndSeek="11343"/>
+</Delta>
+<Delta Version="1248" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:31:45000">
+<Copy StartSeek="0" EndSeek="3133"/>
+<Insert>//      *d = *(uint16_t *)s;
+</Insert>
+<Copy StartSeek="3155" EndSeek="11336"/>
+</Delta>
+<Delta Version="1249" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:31:47000">
+<Copy StartSeek="0" EndSeek="3133"/>
+<Insert>	*d = *(uint16_t *)s;
+</Insert>
+<Copy StartSeek="3162" EndSeek="11343"/>
+</Delta>
+<Delta Version="1250" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:32:5000">
+<Copy StartSeek="0" EndSeek="3133"/>
+<Insert>//      *d = *(uint16_t *)s;
+</Insert>
+<Copy StartSeek="3167" EndSeek="11348"/>
+</Delta>
+<Delta Version="1251" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:35:12000">
+<Copy StartSeek="0" EndSeek="5813"/>
+<Insert>	do {
+</Insert>
+<Copy StartSeek="5856" EndSeek="5949"/>
+<Insert>	} while (bytes--); 
+</Insert>
+<Copy StartSeek="5952" EndSeek="11367"/>
+</Delta>
+<Delta Version="1252" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:37:11000">
+<Copy StartSeek="0" EndSeek="5890"/>
+<Insert>		if ((bytes &amp; 0x1f) == 0) {
+</Insert>
+<Copy StartSeek="5918" EndSeek="11366"/>
+</Delta>
+<Delta Version="1253" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:37:32000">
+<Copy StartSeek="0" EndSeek="5890"/>
+<Insert>		if ((bytes &amp; 0x3) == 0) {
+</Insert>
+<Copy StartSeek="5918" EndSeek="11366"/>
+</Delta>
+<Delta Version="1254" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:37:42000">
+<Copy StartSeek="0" EndSeek="5890"/>
+<Insert>		if ((bytes &amp; 0xf) == 0) {
+</Insert>
+<Copy StartSeek="5914" EndSeek="11362"/>
+</Delta>
+<Delta Version="1255" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:38:19000">
+<Copy StartSeek="0" EndSeek="5890"/>
+<Insert>		if ((i &amp; 0xf) == 0) {
+</Insert>
+<Copy StartSeek="5918" EndSeek="11366"/>
+</Delta>
+<Delta Version="1256" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:38:39000">
+<Copy StartSeek="0" EndSeek="5890"/>
+<Insert>		if ((i &amp;&amp; i&amp; 0xf) == 0) {
+</Insert>
+<Copy StartSeek="5919" EndSeek="11367"/>
+</Delta>
+<Delta Version="1257" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:38:40000">
+<Copy StartSeek="0" EndSeek="5890"/>
+<Insert>		if ((i &amp;&amp; i &amp; 0xf) == 0) {
+</Insert>
+<Copy StartSeek="5921" EndSeek="11369"/>
+</Delta>
+<Delta Version="1258" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:38:45000">
+<Copy StartSeek="0" EndSeek="5826"/>
+<Insert>	for (i = 0; i&lt; bytes; i++) {
+</Insert>
+<Copy StartSeek="5857" EndSeek="5891"/>
+<Insert>		if ((i &amp;&amp; (i &amp; 0xf)) == 0) {
+</Insert>
+<Copy StartSeek="5914" EndSeek="11362"/>
+</Delta>
+<Delta Version="1259" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:39:15000">
+<Copy StartSeek="0" EndSeek="5891"/>
+<Insert>		if (i &amp; 0xf) == 0) {
+</Insert>
+<Copy StartSeek="5915" EndSeek="11363"/>
+</Delta>
+<Delta Version="1260" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:39:18000">
+<Copy StartSeek="0" EndSeek="5826"/>
+<Insert>	for (i = 1; i&lt;= bytes; i++) {
+</Insert>
+<Copy StartSeek="5856" EndSeek="11362"/>
+</Delta>
+<Delta Version="1261" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:40:35000">
+<Copy StartSeek="0" EndSeek="5890"/>
+<Insert>		if ((i &amp; 0xf) == 0) {
+</Insert>
+<Copy StartSeek="5919" EndSeek="11367"/>
+</Delta>
+<Delta Version="1262" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:40:39000">
+<Copy StartSeek="0" EndSeek="5826"/>
+<Insert>	for (i = 1; i&lt; bytes; i++) {
+</Insert>
+<Copy StartSeek="5858" EndSeek="11369"/>
+</Delta>
+<Delta Version="1263" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:42:23000">
+<Copy StartSeek="0" EndSeek="5826"/>
+<Insert>	for (i = 1; i&lt; bytes-1; i++) {
+</Insert>
+<Copy StartSeek="5857" EndSeek="5891"/>
+<Insert>		if (i &amp;&amp; (i &amp; 0xf) == 0) {
+</Insert>
+<Copy StartSeek="5915" EndSeek="11363"/>
+</Delta>
+<Delta Version="1264" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:42:31000">
+<Copy StartSeek="0" EndSeek="5826"/>
+<Copy StartSeek="5843" EndSeek="5932"/>
+<Insert>			printk("\n");
+</Insert>
+<Copy StartSeek="5956" EndSeek="11387"/>
+</Delta>
+<Delta Version="1265" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:43:25000">
+<Copy StartSeek="0" EndSeek="5932"/>
+<Insert>			printk("\n%.2x", i);
+</Insert>
+<Copy StartSeek="5957" EndSeek="11388"/>
+</Delta>
+<Delta Version="1266" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:43:36000">
+<Copy StartSeek="0" EndSeek="5932"/>
+<Insert>			printk("\n%#.2x", i);
+</Insert>
+<Copy StartSeek="5958" EndSeek="11389"/>
+</Delta>
+<Delta Version="1267" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:43:39000">
+<Copy StartSeek="0" EndSeek="5932"/>
+<Insert>			printk("\n%#.2x:", i);
+</Insert>
+<Copy StartSeek="5956" EndSeek="11387"/>
+</Delta>
+<Delta Version="1268" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:44:22000">
+<Copy StartSeek="0" EndSeek="5932"/>
+<Insert>			printk("\n%2x:", i);
+</Insert>
+<Copy StartSeek="5956" EndSeek="11387"/>
+</Delta>
+<Delta Version="1269" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:44:26000">
+<Copy StartSeek="0" EndSeek="5826"/>
+<Insert>	printk("00: ");
+</Insert>
+<Copy StartSeek="5845" EndSeek="11389"/>
+</Delta>
+<Delta Version="1270" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:44:29000">
+<Copy StartSeek="0" EndSeek="5934"/>
+<Insert>			printk("\n%4x:", i);
+</Insert>
+<Copy StartSeek="5959" EndSeek="11390"/>
+</Delta>
+<Delta Version="1271" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:44:35000">
+<Copy StartSeek="0" EndSeek="5813"/>
+<Insert>	uint32_t i;
+</Insert>
+<Copy StartSeek="5830" EndSeek="11394"/>
+</Delta>
+<Delta Version="1272" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:45:9000">
+<Copy StartSeek="0" EndSeek="5830"/>
+<Insert>	printk("0000: ");
+</Insert>
+<Copy StartSeek="5851" EndSeek="11396"/>
+</Delta>
+<Delta Version="1273" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:45:18000">
+<Copy StartSeek="0" EndSeek="5830"/>
+<Copy StartSeek="5831" EndSeek="11397"/>
+</Delta>
+<Delta Version="1274" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:45:20000">
+<Copy StartSeek="0" EndSeek="7564"/>
+<Insert>		dpa_dump_pkt(pkt, 40);
+</Insert>
+<Copy StartSeek="7589" EndSeek="11397"/>
+</Delta>
+<Delta Version="1275" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:46:52000">
+<Copy StartSeek="0" EndSeek="7564"/>
+<Insert>		dpa_dump_pkt(eth, 40);
+</Insert>
+<Copy StartSeek="7600" EndSeek="11408"/>
+</Delta>
+<Delta Version="1276" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="18:47:0000">
+<Copy StartSeek="0" EndSeek="3579"/>
+<Insert>	return (*(eth32)++ == *(pkt32)++ &amp;&amp; 
+		*(eth32)++ == *(pkt32)++ &amp;&amp;
+</Insert>
+<Copy StartSeek="3647" EndSeek="11408"/>
+</Delta>
+<Delta Version="1277" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:00:35000">
+<Copy StartSeek="0" EndSeek="3647"/>
+<Insert>		*(eth32) == *(pkt32) &amp;&amp; 
+</Insert>
+<Copy StartSeek="3678" EndSeek="11412"/>
+</Delta>
+<Delta Version="1278" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:00:40000">
+<Copy StartSeek="0" EndSeek="3678"/>
+<Insert>		eth-&gt;h_proto == a-&gt;eth_type);
+</Insert>
+<Copy StartSeek="3723" EndSeek="11425"/>
+</Delta>
+<Delta Version="1279" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:01:6000">
+<Copy StartSeek="0" EndSeek="3462"/>
+<Insert>	struct ethhdr *eth = (struct ethhdr *)pkt;
+</Insert>
+<Copy StartSeek="3508" EndSeek="11427"/>
+</Delta>
+<Delta Version="1280" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:09:39000">
+<Copy StartSeek="0" EndSeek="3462"/>
+<Insert>	struct ethhdr *eaath = (struct ethhdr *)pkt;
+</Insert>
+<Copy StartSeek="3506" EndSeek="11425"/>
+</Delta>
+<Delta Version="1281" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:09:51000">
+<Copy StartSeek="0" EndSeek="3462"/>
+<Insert>	struct ethhdr *eth = (struct ethhdr *)pkt;
+	uint32_t *eth32 = (uint32_t *)eth;
+</Insert>
+<Copy StartSeek="3503" EndSeek="11386"/>
+</Delta>
+<Delta Version="1282" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:11:36000">
+<Copy StartSeek="0" EndSeek="6573"/>
+<Insert>		      void **dpa_cookie)
+</Insert>
+<Copy StartSeek="6615" EndSeek="11401"/>
+</Delta>
+<Delta Version="1283" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:55:36000">
+<Copy StartSeek="0" EndSeek="6573"/>
+<Insert>		      void **dpa_cookie, uint32_t port)
+</Insert>
+<Copy StartSeek="6618" EndSeek="11404"/>
+</Delta>
+<Delta Version="1284" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:56:13000">
+<Copy StartSeek="0" EndSeek="6573"/>
+<Insert>		      void **dpa_cookie, uint32_t rx_port)
+</Insert>
+<Copy StartSeek="6600" EndSeek="11386"/>
+</Delta>
+<Delta Version="1285" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:57:40000">
+<Copy StartSeek="0" EndSeek="1229"/>
+<Copy StartSeek="1249" EndSeek="11406"/>
+</Delta>
+<Delta Version="1286" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="19:59:35000">
+<Copy StartSeek="0" EndSeek="1229"/>
+<Insert>		uint32_t tx_port;
+</Insert>
+<Copy StartSeek="1232" EndSeek="1344"/>
+<Copy StartSeek="1364" EndSeek="11409"/>
+</Delta>
+<Delta Version="1287" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="20:03:49000">
+<Copy StartSeek="0" EndSeek="1229"/>
+<Insert>		
+</Insert>
+<Copy StartSeek="1229" EndSeek="11406"/>
+</Delta>
+<Delta Version="1288" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="20:03:51000">
+<Copy StartSeek="0" EndSeek="9932"/>
+<Insert>			    struct iphdr *iph)
+</Insert>
+<Copy StartSeek="9976" EndSeek="9994"/>
+<Copy StartSeek="10063" EndSeek="11493"/>
+</Delta>
+<Delta Version="1289" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="20:06:43000">
+<Copy StartSeek="0" EndSeek="10060"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="10074" EndSeek="11504"/>
+</Delta>
+<Delta Version="1290" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="20:06:48000">
+<Copy StartSeek="0" EndSeek="10310"/>
+<Insert>dpa_tx(uint8_t *pkt, void *dpa_cookie, struct iphdr *iph)
+</Insert>
+<Copy StartSeek="10386" EndSeek="11522"/>
+</Delta>
+<Delta Version="1291" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="20:08:33000">
+<Copy StartSeek="0" EndSeek="10612"/>
+<Insert>	if (!dpa_entry_copy_modified_pkt(dpe, (struct ethhdr *)pkt, iph))
+</Insert>
+<Copy StartSeek="10687" EndSeek="11530"/>
+</Delta>
+<Delta Version="1292" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="20:08:50000">
+<Copy StartSeek="0" EndSeek="6520"/>
+<Copy StartSeek="6542" EndSeek="11552"/>
+</Delta>
+<Delta Version="1293" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="20:31:9000">
+<Copy StartSeek="0" EndSeek="8432"/>
+<Copy StartSeek="8433" EndSeek="11553"/>
+</Delta>
+<Delta Version="1294" Comment="" NL="\10" Encoding="text" Date="2012/07/30" Time="20:33:47000">
+<Copy StartSeek="0" EndSeek="6356"/>
+<Insert>		--pkt_iph-&gt;ttl;
+</Insert>
+<Copy StartSeek="6374" EndSeek="11553"/>
+</Delta>
+<Delta Version="1295" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:24:43000">
+<Copy StartSeek="0" EndSeek="6327"/>
+<Insert>	if (mod_ops &amp; DPE_MOD_RT) {
+		pkt_iph-&gt;ttl--;
+	}
+</Insert>
+<Copy StartSeek="6344" EndSeek="11520"/>
+</Delta>
+<Delta Version="1296" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:25:44000">
+<Copy StartSeek="0" EndSeek="909"/>
+<Insert>	DPE_MOD_RT = 2,
+	DPE_MOD_NAT = 4,
+</Insert>
+<Copy StartSeek="927" EndSeek="11503"/>
+</Delta>
+<Delta Version="1297" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:25:51000">
+<Copy StartSeek="0" EndSeek="6307"/>
+<Insert>	}
+	pkt_iph-&gt;ttl--;
+</Insert>
+<Copy StartSeek="6334" EndSeek="11510"/>
+</Delta>
+<Delta Version="1298" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:26:28000">
+<Copy StartSeek="0" EndSeek="6307"/>
+<Insert>	} else 
+</Insert>
+<Copy StartSeek="6317" EndSeek="6335"/>
+<Copy StartSeek="6338" EndSeek="11514"/>
+</Delta>
+<Delta Version="1299" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:26:37000">
+<Copy StartSeek="0" EndSeek="927"/>
+<Copy StartSeek="971" EndSeek="11558"/>
+</Delta>
+<Delta Version="1300" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:30:30000">
+<Copy StartSeek="0" EndSeek="949"/>
+<Insert>	DPE_MOD_L4_CSUM = 4,
+</Insert>
+<Copy StartSeek="971" EndSeek="11558"/>
+</Delta>
+<Delta Version="1301" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:30:33000">
+<Copy StartSeek="0" EndSeek="949"/>
+<Insert>	DPE_MOD_L4_CSUM = 8,
+</Insert>
+<Copy StartSeek="949" EndSeek="11536"/>
+</Delta>
+<Delta Version="1302" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:30:44000">
+<Copy StartSeek="0" EndSeek="927"/>
+<Insert>	DPE_MOD_L3_CSUM = 4,
+</Insert>
+<Copy StartSeek="927" EndSeek="11514"/>
+</Delta>
+<Delta Version="1303" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:31:4000">
+<Copy StartSeek="0" EndSeek="10294"/>
+<Insert>dpa_tx(uint8_t *pkt, void *dpa_cookie, struct iphdr *iph, uint32_t tx_port)
+</Insert>
+<Copy StartSeek="10367" EndSeek="11511"/>
+</Delta>
+<Delta Version="1304" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:40:59000">
+<Copy StartSeek="0" EndSeek="1324"/>
+<Insert>		uint32_t tx_port;
+</Insert>
+<Copy StartSeek="1341" EndSeek="11508"/>
+</Delta>
+<Delta Version="1305" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:41:13000">
+<Copy StartSeek="0" EndSeek="9913"/>
+<Insert>			    struct iphdr *iph, uint32_t tx_port)
+</Insert>
+<Copy StartSeek="9954" EndSeek="11505"/>
+</Delta>
+<Delta Version="1306" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:41:19000">
+<Copy StartSeek="0" EndSeek="10052"/>
+<Insert>	ret = dpa_entry_copy_modified_l2(dpe, eth);
+</Insert>
+<Copy StartSeek="10098" EndSeek="11506"/>
+</Delta>
+<Delta Version="1307" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:41:32000">
+<Copy StartSeek="0" EndSeek="427"/>
+<Insert>				   struct iphdr *iph);
+</Insert>
+<Copy StartSeek="469" EndSeek="11521"/>
+</Delta>
+<Delta Version="1308" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:47:26000">
+<Copy StartSeek="0" EndSeek="11123"/>
+<Insert>	dpa_tx_callback = dpa_tx;
+</Insert>
+<Copy StartSeek="11153" EndSeek="11524"/>
+</Delta>
+<Delta Version="1309" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:49:34000">
+<Copy StartSeek="0" EndSeek="360"/>
+<Insert>extern uint32_t (*dpa_tx_callback)(uint8_t *pkt, void *dpa_cookie,
+</Insert>
+<Copy StartSeek="430" EndSeek="11527"/>
+</Delta>
+<Delta Version="1310" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:49:40000">
+<Copy StartSeek="0" EndSeek="360"/>
+<Insert>extern uint32_t (*dpa_os_tx_callback)(uint8_t *pkt, void *dpa_cookie,
+</Insert>
+<Copy StartSeek="426" EndSeek="11122"/>
+<Insert>	dpa_os_tx_callback = dpa_tx;
+</Insert>
+<Copy StartSeek="11148" EndSeek="11519"/>
+</Delta>
+<Delta Version="1311" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:50:2000">
+<Copy StartSeek="0" EndSeek="253"/>
+<Insert>extern uint32_t (*dpa_rx_callback)(struct neta_rx_desc *rx_desc, uint8_t *pkt,
+</Insert>
+<Copy StartSeek="328" EndSeek="11085"/>
+<Insert>	dpa_rx_callback = dpa_classify;
+</Insert>
+<Copy StartSeek="11114" EndSeek="11273"/>
+<Insert>	dpa_rx_callback = NULL;
+</Insert>
+<Copy StartSeek="11294" EndSeek="11507"/>
+</Delta>
+<Delta Version="1312" Comment="" NL="\10" Encoding="text" Date="2012/07/31" Time="09:50:11000">
+<Copy StartSeek="0" EndSeek="11294"/>
+<Insert>	dpa_tx_callback = NULL;
+</Insert>
+<Copy StartSeek="11318" EndSeek="11506"/>
+</Delta>
+<Delta Version="1313" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="10:18:3000">
+<Copy StartSeek="0" EndSeek="10598"/>
+<Insert>	if (!dpa_entry_copy_modified_pkt(dpe, (struct ethhdr *)pkt, iph, tx_port)
+</Insert>
+<Copy StartSeek="10674" EndSeek="11507"/>
+</Delta>
+<Delta Version="1314" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="14:06:44000">
+<Copy StartSeek="0" EndSeek="10018"/>
+<Copy StartSeek="10139" EndSeek="11628"/>
+</Delta>
+<Delta Version="1315" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="14:11:19000">
+<Copy StartSeek="0" EndSeek="10018"/>
+<Insert>		printk(KERN_ERR "(%s:%d) dpe-&gt;mod.tx_port %p, tx_port %p\n", 
+		       __func__, __LINE__, dpe-&gt;mod.tx_port, tx_port);
+</Insert>
+<Copy StartSeek="10018" EndSeek="11507"/>
+</Delta>
+<Delta Version="1316" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="14:12:31000">
+<Copy StartSeek="0" EndSeek="4484"/>
+<Copy StartSeek="4510" EndSeek="11533"/>
+</Delta>
+<Delta Version="1317" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="14:13:0000">
+<Copy StartSeek="0" EndSeek="10088"/>
+<Copy StartSeek="10160" EndSeek="10206"/>
+<Copy StartSeek="10273" EndSeek="11672"/>
+</Delta>
+<Delta Version="1318" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="14:13:37000">
+<Copy StartSeek="0" EndSeek="10324"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="10391" EndSeek="11737"/>
+</Delta>
+<Delta Version="1319" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="14:13:46000">
+<Copy StartSeek="0" EndSeek="9992"/>
+<Insert>	uint32_t ret;
+</Insert>
+<Copy StartSeek="10011" EndSeek="11741"/>
+</Delta>
+<Delta Version="1320" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="14:14:33000">
+<Copy StartSeek="0" EndSeek="10983"/>
+<Insert>		if (dpe-&gt;counters.stable == DPA_LRN_PKTS -1) {
+</Insert>
+<Copy StartSeek="11032" EndSeek="11741"/>
+</Delta>
+<Delta Version="1321" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="14:38:2000">
+<Copy StartSeek="0" EndSeek="11674"/>
+<Copy StartSeek="11717" EndSeek="11784"/>
+</Delta>
+<Delta Version="1322" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="14:43:3000">
+<Copy StartSeek="0" EndSeek="10164"/>
+<Insert>	ret |= dpa_entry_copy_modified_l2(dpe, eth);
+</Insert>
+<Copy StartSeek="10209" EndSeek="10276"/>
+<Insert>	ret |= dpa_entry_copy_modified_pri_key(dpe, iph);
+</Insert>
+<Copy StartSeek="10326" EndSeek="11782"/>
+</Delta>
+<Delta Version="1323" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="14:46:35000">
+<Copy StartSeek="0" EndSeek="817"/>
+<Copy StartSeek="886" EndSeek="11851"/>
+</Delta>
+<Delta Version="1324" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="15:56:27000">
+<Copy StartSeek="0" EndSeek="2457"/>
+<Insert>	pr_debug("state %u, rx %u, fwd %u, stable %u, mod_ops %#x\n", dpe-&gt;state, 
+</Insert>
+<Copy StartSeek="2559" EndSeek="11877"/>
+</Delta>
+<Delta Version="1325" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="15:56:57000">
+<Copy StartSeek="0" EndSeek="818"/>
+<Insert>char *dpa_entry_state_names[] {
+</Insert>
+<Copy StartSeek="853" EndSeek="11880"/>
+</Delta>
+<Delta Version="1326" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="15:57:18000">
+<Copy StartSeek="0" EndSeek="8033"/>
+<Insert>		pr_debug("learn entry\n");
+</Insert>
+<Copy StartSeek="8033" EndSeek="8057"/>
+<Insert>		pr_debug("local entry\n");
+</Insert>
+<Copy StartSeek="8057" EndSeek="11822"/>
+</Delta>
+<Delta Version="1327" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="15:57:47000">
+<Copy StartSeek="0" EndSeek="2460"/>
+<Insert>	pr_debug("state %s, rx %u, fwd %u, stable %u, mod_ops %#x\n", 
+</Insert>
+<Copy StartSeek="2520" EndSeek="11818"/>
+</Delta>
+<Delta Version="1328" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="16:00:12000">
+<Copy StartSeek="0" EndSeek="6434"/>
+<Insert>	} else {
+</Insert>
+<Copy StartSeek="6434" EndSeek="6452"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="6468" EndSeek="11821"/>
+</Delta>
+<Delta Version="1329" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="17:29:35000">
+<Copy StartSeek="0" EndSeek="6452"/>
+<Insert>	} else {
+		
+	}
+</Insert>
+<Copy StartSeek="6455" EndSeek="11808"/>
+</Delta>
+<Delta Version="1330" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="17:29:41000">
+<Copy StartSeek="0" EndSeek="6434"/>
+<Insert>		pkt_iph-&gt;ttl--;
+</Insert>
+<Copy StartSeek="6458" EndSeek="11814"/>
+</Delta>
+<Delta Version="1331" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="17:46:15000">
+<Copy StartSeek="0" EndSeek="6434"/>
+<Insert>		pkt_iph-&gt;ttl = 0x111;
+</Insert>
+<Copy StartSeek="6457" EndSeek="11813"/>
+</Delta>
+<Delta Version="1332" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="17:46:17000">
+<Copy StartSeek="0" EndSeek="6434"/>
+<Insert>		pkt_iph-&gt;ttl = 0x11;
+</Insert>
+<Copy StartSeek="6457" EndSeek="11813"/>
+</Delta>
+<Delta Version="1333" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="17:46:22000">
+<Copy StartSeek="0" EndSeek="6434"/>
+<Insert>		pkt_iph-&gt;ttl = 0x42;
+</Insert>
+<Copy StartSeek="6452" EndSeek="11808"/>
+</Delta>
+<Delta Version="1334" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="17:48:57000">
+<Copy StartSeek="0" EndSeek="6434"/>
+<Insert>		pkt_iph-&gt;ttl--;
+</Insert>
+<Copy StartSeek="6457" EndSeek="11813"/>
+</Delta>
+<Delta Version="1335" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="17:49:11000">
+<Copy StartSeek="0" EndSeek="6434"/>
+<Insert>		pkt_iph-&gt;ttl = 0x22;
+</Insert>
+<Copy StartSeek="6457" EndSeek="11813"/>
+</Delta>
+<Delta Version="1336" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="17:49:25000">
+<Copy StartSeek="0" EndSeek="6457"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="6478" EndSeek="11831"/>
+</Delta>
+<Delta Version="1337" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="17:49:43000">
+<Copy StartSeek="0" EndSeek="6457"/>
+<Insert>		pkt_iph-&gt;ttl--;
+</Insert>
+<Copy StartSeek="6482" EndSeek="11838"/>
+</Delta>
+<Delta Version="1338" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="17:54:57000">
+<Copy StartSeek="0" EndSeek="6434"/>
+<Insert>		pkt_iph-&gt;ttl = 0xBB;
+//      	pkt_iph-&gt;ttl--;
+	}
+</Insert>
+<Copy StartSeek="6455" EndSeek="11808"/>
+</Delta>
+<Delta Version="1339" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="18:05:51000">
+<Copy StartSeek="0" EndSeek="10118"/>
+<Insert>	printk(KERN_ERR "(%s:%d) tx_port_diff %u\n", __func__, __LINE__, ret);
+	ret = dpa_entry_copy_modified_l2(dpe, eth);
+	printk(KERN_ERR "(%s:%d) l2_diff %u\n", __func__, __LINE__, ret);
+	ret = dpa_entry_copy_modified_pri_key(dpe, iph);
+	printk(KERN_ERR "(%s:%d) pri_key %u\n", __func__, __LINE__, ret);
+</Insert>
+<Copy StartSeek="10217" EndSeek="10612"/>
+<Insert>	pr_debug("%s: dpa packet\n",__func__);
+	
+</Insert>
+<Copy StartSeek="10612" EndSeek="11564"/>
+</Delta>
+<Delta Version="1340" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="19:39:45000">
+<Copy StartSeek="0" EndSeek="7635"/>
+<Insert>		pr_debug("fwd entry\n");
+</Insert>
+<Copy StartSeek="7635" EndSeek="11537"/>
+</Delta>
+<Delta Version="1341" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="19:40:31000">
+<Copy StartSeek="0" EndSeek="7519"/>
+<Insert>	pr_debug("dpe addr = %p\n",dpe);
+</Insert>
+<Copy StartSeek="7554" EndSeek="11538"/>
+</Delta>
+<Delta Version="1342" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="19:40:52000">
+<Copy StartSeek="0" EndSeek="10891"/>
+<Insert>		pr_debug("%s: UN stable connection, moving to lcl",__func__);
+</Insert>
+<Copy StartSeek="10954" EndSeek="11537"/>
+</Delta>
+<Delta Version="1343" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="19:41:15000">
+<Copy StartSeek="0" EndSeek="7519"/>
+<Insert>	pr_debug("dpe addr = %p\n", dpe);
+
+</Insert>
+<Copy StartSeek="7520" EndSeek="11502"/>
+</Delta>
+<Delta Version="1344" Comment="" NL="\10" Encoding="text" Date="2012/08/01" Time="19:41:50000">
+<Copy StartSeek="0" EndSeek="169"/>
+<Copy StartSeek="190" EndSeek="556"/>
+<Insert>/* HAIM FIXME : move it to header file */
+struct dpa_pri_key {
+	uint32_t sip;
+	uint32_t dip;
+	/* HAIM FIXME : add IPV6 */
+	uint16_t sport;
+	uint16_t dport;
+	uint32_t protocol; /* NOTE: u32 is for padding */
+};
+
+enum dpa_entry_states {
+	DPE_NEW = 0,
+	DPE_LRN,
+	DPE_FWD,
+	DPE_LCL,
+};
+
+char *dpa_entry_state_names[]  = {
+	"NEW",
+	"LRN",
+	"FWD",
+	"LCL",
+};
+
+#define SET_DPE_STATUS(dpe, stat) ((dpe)-&gt;state = (stat))
+
+enum dpa_mod_operations {
+	DPE_MOD_L2 = 1,
+	DPE_MOD_NAT = 2,
+};
+
+struct dpa_l2 {
+	uint8_t dmac[6];
+	uint8_t smac[6];
+	uint16_t eth_type;
+	uint16_t vlan_tag;
+	uint16_t pppoe_sid;
+};
+
+struct dpa_counters {
+	uint32_t rx_hits;
+	uint32_t fwd_hits;
+	uint32_t stable;
+};
+
+struct dpa_entry {
+	struct {
+		struct dpa_pri_key cls_tuple;
+		struct dpa_l2 l2;
+	} org;
+	struct dpa_entry *next;
+	uint32_t state;
+	struct {
+		struct dpa_pri_key mod_tuple;
+		struct dpa_l2 l2;
+		void *tx_port;
+	} mod;
+	struct dpa_counters counters;
+	uint32_t mod_ops;
+};
+
+</Insert>
+<Copy StartSeek="556" EndSeek="10573"/>
+</Delta>
+<Delta Version="1345" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="10:24:40000">
+<Copy StartSeek="0" EndSeek="10072"/>
+<Copy StartSeek="10134" EndSeek="10635"/>
+</Delta>
+<Delta Version="1346" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:17:41000">
+<Copy StartSeek="0" EndSeek="10134"/>
+<Copy StartSeek="10135" EndSeek="10636"/>
+</Delta>
+<Delta Version="1347" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:17:43000">
+<Copy StartSeek="0" EndSeek="10072"/>
+<Insert>volatile uint32_t foo()
+</Insert>
+<Copy StartSeek="10100" EndSeek="10640"/>
+</Delta>
+<Delta Version="1348" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:18:1000">
+<Copy StartSeek="0" EndSeek="10072"/>
+<Insert>volatile uint32_t foo(void)
+{
+	return sizeof(struct dpa_entry);
+}
+
+</Insert>
+<Copy StartSeek="10072" EndSeek="10573"/>
+</Delta>
+<Delta Version="1349" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="12:18:50000">
+<Copy StartSeek="0" EndSeek="190"/>
+<Copy StartSeek="214" EndSeek="10133"/>
+<Copy StartSeek="10145" EndSeek="10609"/>
+</Delta>
+<Delta Version="1350" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:17:8000">
+<Copy StartSeek="0" EndSeek="10133"/>
+<Insert>	dcm_init()
+</Insert>
+<Copy StartSeek="10186" EndSeek="10650"/>
+</Delta>
+<Delta Version="1351" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:18:8000">
+<Copy StartSeek="0" EndSeek="10186"/>
+<Copy StartSeek="10187" EndSeek="10651"/>
+</Delta>
+<Delta Version="1352" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:18:12000">
+<Copy StartSeek="0" EndSeek="10186"/>
+<Insert>
+</Insert>
+<Copy StartSeek="10186" EndSeek="10650"/>
+</Delta>
+<Delta Version="1353" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:18:17000">
+<Copy StartSeek="0" EndSeek="10133"/>
+<Insert>	dcm_init(DPA_CLS_TBL_SZ, sizeof(struct dpa_entry));
+</Insert>
+<Copy StartSeek="10190" EndSeek="10654"/>
+</Delta>
+<Delta Version="1354" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:18:35000">
+<Copy StartSeek="0" EndSeek="10133"/>
+<Insert>	dcm_init(2 * DPA_CLS_TBL_SZ, sizeof(struct dpa_entry));
+</Insert>
+<Copy StartSeek="10186" EndSeek="10650"/>
+</Delta>
+<Delta Version="1355" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:18:40000">
+<Copy StartSeek="0" EndSeek="10133"/>
+<Insert>	dcm_init(DPA_CLS_TBL_SZ, sizeof(struct dpa_entry));
+</Insert>
+<Copy StartSeek="10190" EndSeek="10654"/>
+</Delta>
+<Delta Version="1356" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:18:43000">
+<Copy StartSeek="0" EndSeek="10133"/>
+<Insert>	dcm_init(2 * DPA_CLS_TBL_SZ, sizeof(struct dpa_entry));
+</Insert>
+<Copy StartSeek="10186" EndSeek="10650"/>
+</Delta>
+<Delta Version="1357" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:18:50000">
+<Copy StartSeek="0" EndSeek="273"/>
+<Copy StartSeek="303" EndSeek="10680"/>
+</Delta>
+<Delta Version="1358" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:19:1000">
+<Copy StartSeek="0" EndSeek="273"/>
+<Insert>#define DPA_CLS_COL_DEPTH (3)
+</Insert>
+<Copy StartSeek="307" EndSeek="10684"/>
+</Delta>
+<Delta Version="1359" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:19:20000">
+<Copy StartSeek="0" EndSeek="273"/>
+<Insert>#define DPA_CLS_COL_DEPTH_AVG (3)
+</Insert>
+<Copy StartSeek="305" EndSeek="10682"/>
+</Delta>
+<Delta Version="1360" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:19:33000">
+<Copy StartSeek="0" EndSeek="10165"/>
+<Insert>	dcm_init(DPA_CLS_TBL_SZ, sizeof(struct dpa_entry));
+</Insert>
+<Copy StartSeek="10242" EndSeek="10706"/>
+</Delta>
+<Delta Version="1361" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:19:44000">
+<Copy StartSeek="0" EndSeek="10639"/>
+<Insert>			kfree(e);
+</Insert>
+<Copy StartSeek="10655" EndSeek="10709"/>
+</Delta>
+<Delta Version="1362" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:20:48000">
+<Copy StartSeek="0" EndSeek="3458"/>
+<Insert>	tmp = kmalloc(sizeof(struct dpa_entry), GFP_ATOMIC);
+</Insert>
+<Copy StartSeek="3478" EndSeek="10675"/>
+</Delta>
+<Delta Version="1363" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:22:7000">
+<Copy StartSeek="0" EndSeek="4179"/>
+<Insert>//      	if (*dpe == NULL)
+//      		return NULL;
+</Insert>
+<Copy StartSeek="4215" EndSeek="10661"/>
+</Delta>
+<Delta Version="1364" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:24:4000">
+<Copy StartSeek="0" EndSeek="6540"/>
+<Copy StartSeek="6574" EndSeek="10695"/>
+</Delta>
+<Delta Version="1365" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:24:43000">
+<Copy StartSeek="0" EndSeek="6553"/>
+<Insert>		return -EINVAL;
+</Insert>
+<Copy StartSeek="6571" EndSeek="10695"/>
+</Delta>
+<Delta Version="1366" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:24:47000">
+<Copy StartSeek="0" EndSeek="6540"/>
+<Insert>	if (!dpe) {
+</Insert>
+<Copy StartSeek="6551" EndSeek="6569"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="6569" EndSeek="10690"/>
+</Delta>
+<Delta Version="1367" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:24:52000">
+<Copy StartSeek="0" EndSeek="10146"/>
+<Copy StartSeek="10161" EndSeek="10238"/>
+<Copy StartSeek="10271" EndSeek="10738"/>
+</Delta>
+<Delta Version="1368" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:37:5000">
+<Copy StartSeek="0" EndSeek="273"/>
+<Insert>#define DPA_CLS_AVG_COL_DEPTH 3
+</Insert>
+<Copy StartSeek="305" EndSeek="10738"/>
+</Delta>
+<Delta Version="1369" Comment="" NL="\10" Encoding="text" Date="2012/08/02" Time="16:37:59000">
+<Copy StartSeek="0" EndSeek="6940"/>
+<Insert>		printk(KERN_ERR "(%s:%d) after modify:\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="7008" EndSeek="10740"/>
+</Delta>
+<Delta Version="1370" Comment="" NL="\10" Encoding="text" Date="2012/08/05" Time="12:05:48000">
+<Copy StartSeek="0" EndSeek="3478"/>
+<Insert>	if (!tmp) {
+</Insert>
+<Copy StartSeek="3501" EndSeek="10750"/>
+</Delta>
+<Delta Version="1371" Comment="" NL="\10" Encoding="text" Date="2012/08/05" Time="12:40:6000">
+<Copy StartSeek="0" EndSeek="6638"/>
+<Insert>//      if (!dpe)
+//      	return -ENOMEM;
+</Insert>
+<Copy StartSeek="6638" EndSeek="10707"/>
+</Delta>
+<Delta Version="1372" Comment="" NL="\10" Encoding="text" Date="2012/08/05" Time="12:42:48000">
+<Copy StartSeek="0" EndSeek="10115"/>
+<Insert>	void *pool = 
+	dcm_init(DPA_CLS_AVG_COL_DEPTH * DPA_CLS_TBL_SZ, sizeof(struct dpa_entry));
+</Insert>
+<Copy StartSeek="10215" EndSeek="10715"/>
+</Delta>
+<Delta Version="1373" Comment="" NL="\10" Encoding="text" Date="2012/08/05" Time="12:43:20000">
+<Copy StartSeek="0" EndSeek="242"/>
+<Insert>#define DPA_CLS_TBL_SZ (1&lt;&lt;14)
+#define DPA_CLS_AVG_COL_DEPTH 2
+</Insert>
+<Copy StartSeek="273" EndSeek="10083"/>
+<Insert>	void *pool = dcm_init(DPA_CLS_AVG_COL_DEPTH * DPA_CLS_TBL_SZ, 
+</Insert>
+<Copy StartSeek="10123" EndSeek="10659"/>
+</Delta>
+<Delta Version="1374" Comment="" NL="\10" Encoding="text" Date="2012/08/05" Time="18:00:56000">
+<Copy StartSeek="0" EndSeek="10159"/>
+<Copy StartSeek="10274" EndSeek="10774"/>
+</Delta>
+<Delta Version="1375" Comment="" NL="\10" Encoding="text" Date="2012/08/05" Time="18:03:30000">
+<Copy StartSeek="0" EndSeek="10159"/>
+<Insert>	printk(KERN_ERR "(%s:%d) mm total %u\n", __func__, __LINE__, 
+	       DPA_CLS_TBL_SZ * sizeof(struct dpa_entry));
+</Insert>
+<Copy StartSeek="10159" EndSeek="10659"/>
+</Delta>
+<Delta Version="1376" Comment="" NL="\10" Encoding="text" Date="2012/08/05" Time="18:03:54000">
+<Copy StartSeek="0" EndSeek="10046"/>
+<Insert>int __init dpa_classify_init(void)
+</Insert>
+<Copy StartSeek="10087" EndSeek="10266"/>
+<Insert>module_init(dpa_classify_init);
+</Insert>
+<Copy StartSeek="10300" EndSeek="10301"/>
+<Insert>void __exit dpa_classify_exit(void)
+</Insert>
+<Copy StartSeek="10342" EndSeek="10640"/>
+<Insert>module_exit(dpa_classify_exit);
+</Insert>
+</Delta>
+<Delta Version="1377" Comment="" NL="\10" Encoding="text" Date="2012/08/06" Time="12:22:31000">
+<Copy StartSeek="0" EndSeek="2278"/>
+<Insert>	*(d++) = *(s++);
+	*(d++) = *(s++);
+	*(d++) = *(s++);
+	*(uint16_t *)d = *(uint16_t *)s;
+}
+
+</Insert>
+<Copy StartSeek="2416" EndSeek="10093"/>
+<Insert>int /* __init */ dpa_classify_init(void)
+</Insert>
+<Copy StartSeek="10128" EndSeek="10307"/>
+<Insert>//module_init(dpa_classify_init);
+</Insert>
+<Copy StartSeek="10339" EndSeek="10340"/>
+<Insert>void /*__exit */ dpa_classify_exit(void)
+</Insert>
+<Copy StartSeek="10376" EndSeek="10674"/>
+<Insert>//module_exit(dpa_classify_exit);
+</Insert>
+</Delta>
+<Delta Version="1378" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="23:12:57000">
+<Copy StartSeek="0" EndSeek="2786"/>
+<Insert>	return (*(eth32++) == *(pkt32++) &amp;&amp; 
+		*(eth32++) == *(pkt32++) &amp;&amp;
+		*(eth32++) == *(pkt32++) &amp;&amp; 
+		*(uint16_t *)eth32 == *(uint16_t *)pkt32);
+
+}
+
+</Insert>
+<Copy StartSeek="2988" EndSeek="10760"/>
+</Delta>
+<Delta Version="1379" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="23:13:43000">
+<Copy StartSeek="0" EndSeek="2956"/>
+<Insert>	return !memcmp(a,pkt, 14);
+</Insert>
+<Copy StartSeek="2989" EndSeek="10765"/>
+</Delta>
+<Delta Version="1380" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="23:14:25000">
+<Copy StartSeek="0" EndSeek="2749"/>
+<Insert>	uint32_t *pkt32 = (uint32_t *)pkt;
+</Insert>
+<Copy StartSeek="2792" EndSeek="10772"/>
+</Delta>
+<Delta Version="1381" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="23:14:33000">
+<Copy StartSeek="0" EndSeek="2963"/>
+<Insert>	return !memcmp(eth32, pkt, 14);
+</Insert>
+<Copy StartSeek="2998" EndSeek="10774"/>
+</Delta>
+<Delta Version="1382" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="23:14:48000">
+<Copy StartSeek="0" EndSeek="2708"/>
+<Insert>	uint32_t *eth32 = (uint32_t *)&amp;a-&gt;dmac;
+</Insert>
+<Copy StartSeek="2756" EndSeek="10781"/>
+</Delta>
+<Delta Version="1383" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="23:14:49000">
+<Copy StartSeek="0" EndSeek="6437"/>
+<Insert>	iph = (struct iphdr*)(pkt + NETA_RX_GET_IPHDR_OFFSET(rx_desc));
+</Insert>
+<Copy StartSeek="6519" EndSeek="10798"/>
+</Delta>
+<Delta Version="1384" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="23:18:16000">
+<Copy StartSeek="0" EndSeek="6437"/>
+<Insert>	iph = (struct iphdr*)(pkt + NETA_RX_GET_IPHDR_OFFSET(rx_desc) - MV_ETH_MH_SIZE);
+</Insert>
+<Copy StartSeek="6502" EndSeek="10781"/>
+</Delta>
+<Delta Version="1385" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="23:18:42000">
+<Copy StartSeek="0" EndSeek="5078"/>
+<Insert>#ifdef DEBUG_DUMP_PKT
+</Insert>
+<Copy StartSeek="5102" EndSeek="5271"/>
+<Insert>#endif
+</Insert>
+<Copy StartSeek="5280" EndSeek="10785"/>
+</Delta>
+<Delta Version="1386" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="23:23:53000">
+<Copy StartSeek="0" EndSeek="6439"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="6475" EndSeek="6804"/>
+<Insert>		dpa_dump_pkt((uint8_t *)eth, 40);
+</Insert>
+<Copy StartSeek="6804" EndSeek="10783"/>
+</Delta>
+<Delta Version="1387" Comment="" NL="\10" Encoding="text" Date="2012/08/22" Time="23:27:31000">
+<Copy StartSeek="0" EndSeek="5617"/>
+<Insert>		pkt_iph-&gt;ttl--;
+</Insert>
+<Copy StartSeek="5638" EndSeek="10786"/>
+</Delta>
+<Delta Version="1388" Comment="" NL="\10" Encoding="text" Date="2012/08/23" Time="00:52:51000">
+<Copy StartSeek="0" EndSeek="5617"/>
+<Insert>		pkt_iph-&gt;ttl = 55;
+</Insert>
+<Copy StartSeek="5635" EndSeek="10783"/>
+</Delta>
+<Delta Version="1389" Comment="" NL="\10" Encoding="text" Date="2012/08/23" Time="00:54:14000">
+<Copy StartSeek="0" EndSeek="5078"/>
+<Insert>//#ifdef DEBUG_DUMP_PKT
+</Insert>
+<Copy StartSeek="5100" EndSeek="5269"/>
+<Insert>//#endif
+</Insert>
+<Copy StartSeek="5276" EndSeek="10779"/>
+</Delta>
+<Delta Version="1390" Comment="" NL="\10" Encoding="text" Date="2012/08/23" Time="01:38:17000">
+<Copy StartSeek="0" EndSeek="5613"/>
+<Insert>		pkt_iph-&gt;ttl--;
+</Insert>
+<Copy StartSeek="5634" EndSeek="10782"/>
+</Delta>
+</DeltaFile>

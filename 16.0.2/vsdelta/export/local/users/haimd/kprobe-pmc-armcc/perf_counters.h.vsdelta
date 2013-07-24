@@ -1,0 +1,62 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="1" Comment="" Date="2012/01/18" Time="16:07:43000" NL="\10" Encoding="text">
+<Insert>#ifndef PERF_COUNTER_H
+#define PERF_COUNTER_H
+
+#include "mvCpuCntrs.h"
+
+#ifndef ARMCC
+#include &lt;linux/kprobes.h&gt;
+#ifndef CONFIG_KPROBES
+#error "Kprobes are disabled. Please enable CONFIG_KALLSYMS and CONFIG_KPROBES in your kernel configuration."
+#endif
+#endif /* ARMCC */
+#ifdef HISTOGRAM_SUPPORT
+
+#define DEFAULT_RES_SHIFT	8	
+#define HISTARR_SIZE		30	
+
+struct keyval {
+	s64		key;
+	unsigned int 	val;
+};
+
+struct histo {
+	unsigned int	res_shift;
+	struct keyval	value[HISTARR_SIZE];
+	unsigned int	next_free_slot;
+	unsigned int 	lost;
+};
+#endif
+
+struct perf_values {
+	char *symbol_name;		/* Name of the symbol */
+	struct kprobe kp;		/* Registered kprobe */
+	struct kretprobe kretp;		/* Registered kretprobe */
+	struct counters cumulative;	/* Cumulative counter values */
+	struct counters temp;
+	atomic_t nrexec;		/* Number of times function executed */
+#ifdef HISTOGRAM_SUPPORT
+	struct histo hist[4];
+#endif
+};
+
+typedef struct perf_values perf_values_t;
+
+#define PROC_NAME "perf_counters"
+#define MAX_SYMS  20
+#endif
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="16:06:31000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>#include &lt;linux/kprobes.h&gt;
+</Insert>
+<Copy StartSeek="47" EndSeek="72"/>
+<Copy StartSeek="113" EndSeek="253"/>
+<Insert>
+</Insert>
+<Copy StartSeek="272" EndSeek="1014"/>
+</Delta>
+</DeltaFile>

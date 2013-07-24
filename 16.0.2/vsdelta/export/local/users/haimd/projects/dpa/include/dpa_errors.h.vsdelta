@@ -1,0 +1,76 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="2" Comment="" Date="2013/06/24" Time="15:48:23000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2013, Marvell Technology Group Ltd.
+* All Rights Reserved.
+* 
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+* 
+* dpa_errors.h
+*
+* Description:
+*       DPA error codes.
+*
+*******************************************************************************/
+
+#ifndef _DPA_ERROR_H_
+#define _DPA_ERROR_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Errors */
+#define DPA_OK               ((int32_t)  0)
+#define DPA_FAIL             ((int32_t) -1)
+#define DPA_NOT_INIT         ((int32_t) -2)
+#define DPA_NOT_IMPL         ((int32_t) -3)
+#define DPA_CONFIG_ERROR     ((int32_t) -4)
+#define DPA_OUT_OF_MEMORY    ((int32_t) -5)
+#define DPA_QUEUE_IS_FULL    ((int32_t) -6)
+#define DPA_QUEUE_IS_EMPTY   ((int32_t) -7)
+#define DPA_API_EXEC_ERROR   ((int32_t) -8)
+#define DPA_INTERNAL_ERROR   ((int32_t) -9)
+#define DPA_INVALID_PARAM    ((int32_t) -10)
+#define DPA_INVALID_PARAM1   ((int32_t) -11)
+#define DPA_INVALID_PARAM2   ((int32_t) -12)
+#define DPA_INVALID_PARAM3   ((int32_t) -13)
+#define DPA_INVALID_PARAM4   ((int32_t) -14)
+#define DPA_INVALID_PARAM5   ((int32_t) -15)
+#define DPA_IOCTL_ERROR      ((int32_t) -16)
+#define DPA_PORT_INACTIVE    ((int32_t) -17)
+#define DPA_PORT_ACTIVE      ((int32_t) -18)
+#define DPA_OUT_OF_TXQ_DESC  ((int32_t) -19)
+#define DPA_SLOW_PATH_ERROR  ((int32_t) -20)
+#define DPA_IRQ_ALLOC_FAIL   ((int32_t) -21)
+#define DPA_FLOW_EXISTS      ((int32_t) -22)
+#define DPA_FLOW_UNKNOWN     ((int32_t) -23)
+#define DPA_OUT_OF_RESOURCE  ((int32_t) -24)
+
+
+#ifdef __cplusplus
+}
+#endif
+
+
+#endif 
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/06/23" Time="14:19:13000">
+<Copy StartSeek="0" EndSeek="1731"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1777" EndSeek="1778"/>
+<Copy StartSeek="1779" EndSeek="1817"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:48:20000">
+<Copy StartSeek="0" EndSeek="1731"/>
+<Insert>#define DPA_OUT_OF_RESOURCE  ((int32_t) -234)
+</Insert>
+<Copy StartSeek="1776" EndSeek="1816"/>
+</Delta>
+</DeltaFile>

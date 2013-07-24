@@ -1,0 +1,12 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="0" Comment="" Date="2012/04/16" Time="12:20:46000" NL="\10" Encoding="text">
+<Insert>#ifndef KLNA_NC_H
+#define KLNA_NC_H
+
+int klna_nc_init(void);
+void klna_nc_exit(void);
+#endif
+</Insert>
+</MostRecent>
+</DeltaFile>

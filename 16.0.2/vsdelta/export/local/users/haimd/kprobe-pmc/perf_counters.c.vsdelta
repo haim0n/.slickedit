@@ -1,0 +1,409 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="15" Comment="" Date="2012/01/11" Time="10:50:59000" NL="\10" Encoding="text">
+<Insert>#include &lt;linux/kernel.h&gt;
+#include &lt;linux/module.h&gt;
+#include &lt;linux/proc_fs.h&gt;
+#include &lt;linux/kprobes.h&gt;
+
+#include "perf_counters.h"
+
+static char *symbols[MAX_SYMS];
+static int nrsyms;
+
+module_param_array(symbols, charp, &amp;nrsyms, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(symbols, "Function names for which counters are to be enabled");
+
+static int c0;
+module_param(c0, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(c0, "Value for c0 (please refer README)");
+
+static int c1;
+module_param(c1, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(c1, "Value for c1 (please refer README)");
+
+static int c2;
+module_param(c2, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(c2, "Value for c2 (please refer README)");
+
+static int c3;
+module_param(c3, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(c3, "Value for c3 (please refer README)");
+
+#ifdef HISTOGRAM_SUPPORT
+static int res_c0 = DEFAULT_RES_SHIFT;
+module_param(res_c0, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(res_c0, "Resolution shift (nr bits) for counter c0 for plotting histogram");
+
+static int res_c1 = DEFAULT_RES_SHIFT;
+module_param(res_c1, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(res_c1, "Resolution shift (nr bits) for counter c1 for plotting histogram");
+
+static int res_c2 = DEFAULT_RES_SHIFT;
+module_param(res_c2, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(res_c2, "Resolution shift (nr bits) for counter c2 for plotting histogram");
+
+static int res_c3 = DEFAULT_RES_SHIFT;
+module_param(res_c3, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+MODULE_PARM_DESC(res_c3, "Resolution shift (nr bits) for counter c3 for plotting histogram");
+#endif /* HISTOGRAM_SUPPORT */
+
+static perf_values_t 		*pvalues;
+static struct proc_dir_entry *	proc_dir;
+
+void init_counters(void)
+{
+	reset_all_counters();
+	
+	program_counter(0, c0);
+	program_counter(1, c1);
+	program_counter(2, c2);
+	program_counter(3, c3);
+
+}
+
+int handler_pre(struct kprobe *p, struct pt_regs *regs)
+{
+	
+ 	perf_values_t *pval = container_of(p, perf_values_t, kp);
+
+	preempt_disable();
+
+        pval-&gt;temp.c0 = get_counter_val(0); 
+        pval-&gt;temp.c1 = get_counter_val(1); 
+        pval-&gt;temp.c2 = get_counter_val(2); 
+        pval-&gt;temp.c3 = get_counter_val(3); 
+
+	preempt_enable();
+	return 0;
+}
+
+static int handler_post(struct kretprobe_instance *ri, struct pt_regs *regs)
+{
+	perf_values_t * pval; 
+	s64 c[4];
+
+#ifdef HISTOGRAM_SUPPORT	
+	int nrcounters = 4;
+	int i, j, nfs,flag;
+	s64 kval;
+#endif
+
+	preempt_disable();
+	c[0] = get_counter_val(0); 
+	c[1] = get_counter_val(1); 
+	c[2] = get_counter_val(2); 
+	c[3] = get_counter_val(3); 
+	
+	preempt_enable();
+
+	pval = container_of(ri-&gt;rp, perf_values_t, kretp);
+
+	c[0] -= pval-&gt;temp.c0;
+	c[1] -= pval-&gt;temp.c1;
+	c[2] -= pval-&gt;temp.c2;
+	c[3] -= pval-&gt;temp.c3;
+
+#ifdef HISTOGRAM_SUPPORT	
+	for(i = 0; i &lt; nrcounters; i++) {
+		flag = 0;
+		kval = c[i] &gt;&gt; pval-&gt;hist[i].res_shift;
+		for(j = 0; j &lt; pval-&gt;hist[i].next_free_slot; j++) {
+			if(kval == pval-&gt;hist[i].value[j].key) {
+				pval-&gt;hist[i].value[j].val++;
+				flag = 1;
+				break;
+			}
+		}
+
+		if(flag)
+			continue;
+
+		if(pval-&gt;hist[i].next_free_slot == HISTARR_SIZE) {
+			pval-&gt;hist[i].lost++;
+		} else {
+			nfs = pval-&gt;hist[i].next_free_slot++;
+			pval-&gt;hist[i].value[nfs].key = c[i] &gt;&gt; pval-&gt;hist[i].res_shift;	
+			pval-&gt;hist[i].value[nfs].val = 1;	
+		}
+	}
+#endif
+
+        pval-&gt;cumulative.c0 += c[0];
+        pval-&gt;cumulative.c1 += c[1];
+        pval-&gt;cumulative.c2 += c[2];
+        pval-&gt;cumulative.c3 += c[3];
+
+	atomic_inc(&amp;pval-&gt;nrexec);
+	
+        return 0;
+}
+
+int
+procfile_read(char *buffer,
+	      char **buffer_location,
+	      off_t offset, int buffer_length, int *eof, void *data)
+{
+	int 	len = 0;
+#ifdef HISTOGRAM_SUPPORT	
+	int 	i, j, nrcounters = 4;
+	s64	low, high;
+#endif
+
+	perf_values_t *pval = (perf_values_t *) data;
+
+	if(!pval) 
+		return 0;
+	
+	len += snprintf(buffer+len, buffer_length-len, "Symbol: %20s\n", pval-&gt;symbol_name);
+	len += snprintf(buffer+len, buffer_length-len, "NrExec: %20u\n", atomic_read(&amp;pval-&gt;nrexec));
+	len += snprintf(buffer+len, buffer_length-len, "Cumulative c0: %13Ld\n", pval-&gt;cumulative.c0);
+	len += snprintf(buffer+len, buffer_length-len, "Cumulative c1: %13Ld\n", pval-&gt;cumulative.c1);
+	len += snprintf(buffer+len, buffer_length-len, "Cumulative c2: %13Ld\n", pval-&gt;cumulative.c2);
+	len += snprintf(buffer+len, buffer_length-len, "Cumulative c3: %13Ld\n", pval-&gt;cumulative.c3);
+
+#ifdef HISTOGRAM_SUPPORT	
+	for(i = 0; i &lt; nrcounters; i++) {
+		len += snprintf(buffer+len, buffer_length-len,"\nHistogram - C%d:\n", i);
+		for(j = 0; j &lt; pval-&gt;hist[i].next_free_slot; j++) {
+			low = pval-&gt;hist[i].value[j].key &lt;&lt;  pval-&gt;hist[i].res_shift;
+                        high = (pval-&gt;hist[i].value[j].key &lt;&lt;  pval-&gt;hist[i].res_shift) | ((1 &lt;&lt; (pval-&gt;hist[i].res_shift)) - 1);
+			len += snprintf(buffer+len, buffer_length-len,"%-6Ld - %-6Ld %6d\n",
+					low, high, pval-&gt;hist[i].value[j].val);
+		}
+		len += snprintf(buffer+len, buffer_length-len,"lost %8d\n", pval-&gt;hist[i].lost);
+	}
+
+	if(len &lt; buffer_length)
+		*eof = 1;
+#endif
+
+	return len;
+}
+
+static int __init perf_counter_init(void)
+{
+	int ret;
+	int i;
+	struct proc_dir_entry *	proc_entry;
+
+	proc_dir = proc_mkdir(PROC_NAME, NULL);
+	if(!proc_dir) {
+		remove_proc_entry(PROC_NAME, NULL);
+                printk(KERN_ERR "Error: Could not initialize /proc/%s\n",
+                       PROC_NAME);
+                return -ENOMEM;
+	}
+
+	if(nrsyms &gt; MAX_SYMS) {
+		printk(KERN_ERR "Error: Too many function to be probed\n");
+		return -EINVAL;
+	}
+	
+	if(nrsyms &lt; 1) {
+		printk(KERN_ERR "Error: Please specify atleast one function to be probed\n");
+		return -EINVAL;
+	}
+
+	pvalues = (perf_values_t *) kmalloc(sizeof(perf_values_t) * nrsyms, GFP_KERNEL);
+	if(!pvalues) {
+		printk(KERN_ERR "Error: Insufficient memory\n");
+		return -ENOMEM;
+	}	
+
+	memset((void *) pvalues, 0, sizeof(perf_values_t) * nrsyms); 
+		
+	for(i = 0; i &lt;nrsyms; i++) {
+		pvalues[i].symbol_name = symbols[i];
+	
+#ifdef HISTOGRAM_SUPPORT	
+		pvalues[i].hist[0].res_shift = res_c0;
+		pvalues[i].hist[1].res_shift = res_c1;
+		pvalues[i].hist[2].res_shift = res_c2;
+		pvalues[i].hist[3].res_shift = res_c3;
+#endif
+
+		/* Initialize and register kprobe */
+		pvalues[i].kp.pre_handler = handler_pre;
+		pvalues[i].kp.symbol_name = symbols[i];
+		ret = register_kprobe(&amp;pvalues[i].kp);
+		if (ret &lt; 0) {
+			printk(KERN_ERR "register_kprobe failed for %s, returned %d\n", symbols[i], ret);
+			continue;
+		}
+
+		/* Initialize and register kretprobe */
+		pvalues[i].kretp.handler = handler_post;
+		pvalues[i].kretp.kp.symbol_name = symbols[i];
+		if ((ret = register_kretprobe(&amp;pvalues[i].kretp)) &lt; 0) {
+			printk(KERN_ERR "register_kretprobe failed for %s, returned %d\n", symbols[i], ret);
+			continue;
+		}
+		/* Create proc file entry */
+		proc_entry = create_proc_entry(symbols[i], S_IFREG | S_IRUGO, proc_dir);
+		if(!proc_entry) {
+			remove_proc_entry(PROC_NAME, NULL);
+			printk(KERN_ERR "Error: Could not initialize /proc/%s\n",
+			       PROC_NAME);
+			return -ENOMEM;
+		}
+
+		proc_entry-&gt;read_proc    = procfile_read;
+		//		proc_entry-&gt;owner 	 = THIS_MODULE;
+		proc_entry-&gt;mode 	 = S_IFREG | S_IRUGO;
+		proc_entry-&gt;uid 	 = 0;
+		proc_entry-&gt;gid 	 = 0;
+
+		proc_entry-&gt;data	 = (void *) &amp;pvalues[i];
+
+	}
+
+	init_counters();
+
+	return 0;
+}
+
+static void __exit perf_counter_exit(void)
+{
+	int i;
+
+	reset_all_counters();	
+
+	for(i = 0; i &lt; nrsyms; i++) {	
+		unregister_kprobe(&amp;pvalues[i].kp);
+        	unregister_kretprobe(&amp;pvalues[i].kretp);
+		remove_proc_entry(pvalues[i].symbol_name, proc_dir);	
+	}
+
+	remove_proc_entry(PROC_NAME, NULL);
+	
+	kfree(pvalues);
+}
+
+module_init(perf_counter_init);
+module_exit(perf_counter_exit);
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Amey Inamdar &lt;amey@marvell.com&gt;");
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2011/09/07" Time="18:41:56000">
+<Copy StartSeek="0" EndSeek="5706"/>
+<Insert>	pvalues = (perf_values_t *) kmalloc(sizeof(perf_values_t) * nrsyms, GFP_KERNEL);
+</Insert>
+<Copy StartSeek="5788" EndSeek="7767"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/01/10" Time="16:22:54000">
+<Copy StartSeek="0" EndSeek="5880"/>
+<Insert>	memset((void *) pvalues, 0, sizeof(perf_values_t) * nrsyms); 
+</Insert>
+<Copy StartSeek="5949" EndSeek="7773"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/01/10" Time="16:23:12000">
+<Copy StartSeek="0" EndSeek="5706"/>
+<Insert>	pvalues = (perf_values_t *) kzalloc(sizeof(perf_values_t) * nrsyms, GFP_KERNEL);
+</Insert>
+<Copy StartSeek="5788" EndSeek="5880"/>
+<Insert>//      memset((void *) pvalues, 0, sizeof(perf_values_t) * nrsyms);
+</Insert>
+<Copy StartSeek="5943" EndSeek="7767"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/01/10" Time="16:23:34000">
+<Copy StartSeek="0" EndSeek="2049"/>
+<Insert> 	perf_values_t * pval = container_of(p, perf_values_t, kp);
+</Insert>
+<Copy StartSeek="2109" EndSeek="7766"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/01/10" Time="16:28:18000">
+<Copy StartSeek="0" EndSeek="5324"/>
+<Insert>                printk(KERN_ALERT "Error: Could not initialize /proc/%s\n",
+</Insert>
+<Copy StartSeek="5398" EndSeek="5494"/>
+<Insert>		printk(KERN_ALERT "Error: Too many function to be probed\n");
+</Insert>
+<Copy StartSeek="5556" EndSeek="5597"/>
+<Insert>		printk(KERN_ALERT "Error: Please specify atleast one function to be probed\n");
+</Insert>
+<Copy StartSeek="5677" EndSeek="5797"/>
+<Insert>		printk(KERN_ALERT "Error: Insufficient memory\n");
+</Insert>
+<Copy StartSeek="5848" EndSeek="6935"/>
+<Insert>			printk(KERN_ALERT "Error: Could not initialize /proc/%s\n",
+</Insert>
+<Copy StartSeek="6996" EndSeek="7756"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/01/11" Time="10:22:6000">
+<Copy StartSeek="0" EndSeek="1837"/>
+<Insert>void init_counters()
+</Insert>
+<Copy StartSeek="1862" EndSeek="7760"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/01/11" Time="10:22:43000">
+<Copy StartSeek="0" EndSeek="5328"/>
+<Insert>                printk(KERN_ERR "Error: Could not initialize /proc/%s\n",
+</Insert>
+<Copy StartSeek="5393" EndSeek="5489"/>
+<Insert>		printk(KERN_ERR "Error: Too many function to be probed\n");
+</Insert>
+<Copy StartSeek="5542" EndSeek="5583"/>
+<Insert>		printk(KERN_ERR "Error: Please specify atleast one function to be probed\n");
+</Insert>
+<Copy StartSeek="5654" EndSeek="5774"/>
+<Insert>		printk(KERN_ERR "Error: Insufficient memory\n");
+</Insert>
+<Copy StartSeek="5816" EndSeek="7724"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/01/11" Time="10:25:4000">
+<Copy StartSeek="0" EndSeek="5328"/>
+<Copy StartSeek="5385" EndSeek="7781"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/01/11" Time="10:25:55000">
+<Copy StartSeek="0" EndSeek="5328"/>
+<Insert>		printk(KERN_ERR "(%s:%d) HAIM\n", __func__, __LINE__);
+</Insert>
+<Copy StartSeek="5388" EndSeek="7784"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/01/11" Time="10:26:53000">
+<Copy StartSeek="0" EndSeek="5328"/>
+<Insert>		printk(KERN_ERR "(%s:%d) HAIM!!!\n", __func__, __LINE__);
+                printk("Error: Could not initialize /proc/%s\n",
+</Insert>
+<Copy StartSeek="5379" EndSeek="7710"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/01/11" Time="10:27:50000">
+<Copy StartSeek="0" EndSeek="5328"/>
+<Insert>		printk("Error: Could not initialize /proc/%s\n",
+</Insert>
+<Copy StartSeek="5402" EndSeek="5498"/>
+<Insert>		printk("Error: Too many function to be probed\n");
+</Insert>
+<Copy StartSeek="5560" EndSeek="5601"/>
+<Insert>		printk("Error: Please specify atleast one function to be probed\n");
+</Insert>
+<Copy StartSeek="5681" EndSeek="5801"/>
+<Insert>		printk("Error: Insufficient memory\n");
+</Insert>
+<Copy StartSeek="5852" EndSeek="7760"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/01/11" Time="10:28:30000">
+<Copy StartSeek="0" EndSeek="6392"/>
+<Insert>			printk("register_kprobe failed for %s, returned %d\n", symbols[i], ret);
+</Insert>
+<Copy StartSeek="6477" EndSeek="7769"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/01/11" Time="10:28:41000">
+<Copy StartSeek="0" EndSeek="6687"/>
+<Insert>			printk("register_kretprobe failed for %s, returned %d\n", symbols[i], ret);
+</Insert>
+<Copy StartSeek="6775" EndSeek="7778"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/01/11" Time="10:28:49000">
+<Copy StartSeek="0" EndSeek="2490"/>
+<Copy StartSeek="2522" EndSeek="7810"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/01/11" Time="10:49:8000">
+<Copy StartSeek="0" EndSeek="2490"/>
+<Insert>#error "histogram supported !!"
+</Insert>
+<Copy StartSeek="2490" EndSeek="7778"/>
+</Delta>
+</DeltaFile>

@@ -1,0 +1,242 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="22" Comment="" Date="2013/06/30" Time="11:23:58000" NL="\10" Encoding="text">
+<Insert>#ifndef _DPA_FRWD_H_
+#define _DPA_FRWD_H_
+
+#include &lt;dpa_types.h&gt;
+#include &lt;eth/eth.h&gt;
+
+#include "zte/zte_api_fast.h"
+
+struct dpa_pri_key {
+	uint32_t sip;
+	uint32_t dip;
+	/* HAIM FIXME : add IPV6 */
+	uint16_t sport;
+	uint16_t dport;
+	uint32_t protocol; /* NOTE: u32 is for padding */
+};
+
+typedef enum {
+	DPF_NEW = 0UL,
+	DPF_LRN,
+	DPF_FWD,
+	DPF_LCL,
+	DPF_DROP
+} dpa_flow_states;
+
+#define SET_DPF_STATUS(dpf, stat) ((dpf)-&gt;state = (stat))
+
+struct dpa_frwd_l2 {
+	uint8_t dmac[6];
+	uint8_t smac[6];
+	uint16_t eth_type;
+	uint16_t vlan_id;
+	uint16_t pppoe_sid;
+};
+
+
+struct dpa_flow {
+	void *attr;
+	struct dpa_pri_key key;
+	struct dpa_flow *next; /* Used by fast &amp; slow contexts */
+	uint32_t state;
+	dpa_flow_stats_t stats;
+	struct {
+		struct dpa_pri_key mod_tuple;
+		struct dpa_frwd_l2 l2;
+		uint32_t ops;
+		uint16_t tx_queue;   /* FIXME make 8 bit */
+		uint16_t tx_port;    /* FIXME make 8 bit */
+		uint16_t tx_channel; /* GPON: GEM port, EPON: LLID */
+		uint16_t txp; 	     /* gpon tcont */
+	} mod;
+	
+	bool is_alive;
+	uint16_t group_id;
+};
+
+#if 0
+struct dpa_flow_mc_t {
+  void *attr;
+  struct dpa_pri_key key;
+  uint8_t dmac[6];
+  uint16_t vlan_id;
+  struct dpa_flow_mc_t *next; /* Used by fast &amp; slow contexts */
+  uint32_t state;
+  struct {
+    struct dpa_pri_key tuple;
+    struct dpa_frwd_l2 l2[ETH_LAN_PORT_NUM];
+    uint32_t tx_port[ETH_LAN_PORT_NUM]; /* FIXME make 8 bit */
+    uint32_t ops[ETH_LAN_PORT_NUM];
+  } mod;
+  dpa_flow_stats_t stats;
+  bool is_alive;
+};
+
+#endif
+
+int32_t dpa_frwd_init(void);
+void dpa_frwd_exit(void);
+struct dpa_flow *dpa_frwd_flow_alloc(void);
+void dpa_frwd_flow_free(struct dpa_flow *dpf);
+struct dpa_flow *dpa_frwd_flow_find(struct dpa_pri_key *key);
+void dpa_frwd_flow_add(struct dpa_flow *dpf);
+int32_t dpa_frwd_flow_remove(struct dpa_pri_key *key);
+bool dpa_frwd_flow_is_alive(struct dpa_pri_key *key);
+int32_t dpa_frwd_flow_get_stats(struct dpa_pri_key *key, dpa_flow_stats_t *stats);
+void dpa_frwd_clean_all(void);
+dpa_flow_states dpa_frwd_rx(eth_pkt_t *pkt);
+
+
+typedef void (*dpa_frwd_traverse_cb) (void *);
+void dpa_frwd_traverse(dpa_frwd_traverse_cb cb);
+void dpa_frwd_mc_traverse(dpa_frwd_traverse_cb cb);
+
+
+#endif /* _DPA_FRWD_H_ */
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="09:20:34000">
+<Copy StartSeek="0" EndSeek="349"/>
+<Insert>  DPF_DROP
+</Insert>
+<Copy StartSeek="359" EndSeek="1578"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:06:49000">
+<Copy StartSeek="0" EndSeek="911"/>
+<Copy StartSeek="936" EndSeek="1603"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="19:02:10000">
+<Copy StartSeek="0" EndSeek="911"/>
+<Insert>	uint16_t flow_group_id;
+</Insert>
+<Copy StartSeek="934" EndSeek="1601"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="19:02:14000">
+<Copy StartSeek="0" EndSeek="911"/>
+<Insert>	uint16_t flow_grp_id;
+</Insert>
+<Copy StartSeek="933" EndSeek="1600"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="19:02:17000">
+<Copy StartSeek="0" EndSeek="911"/>
+<Insert>	uint16_t flw_grp_id;
+</Insert>
+<Copy StartSeek="934" EndSeek="1601"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="19:02:25000">
+<Copy StartSeek="0" EndSeek="911"/>
+<Insert>	uint16_t flow_grp_id;
+</Insert>
+<Copy StartSeek="933" EndSeek="1600"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="19:02:27000">
+<Copy StartSeek="0" EndSeek="911"/>
+<Insert>	uint16_t flw_grp_id;
+</Insert>
+<Copy StartSeek="931" EndSeek="1598"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="19:02:33000">
+<Copy StartSeek="0" EndSeek="931"/>
+<Copy StartSeek="1382" EndSeek="1386"/>
+<Copy StartSeek="1394" EndSeek="1916"/>
+<Insert>int dpa_frwd_snapshot(ZTE_L3_HARDFAST_SESSION **tbl);
+int dpa_frwd_mc_snapshot(ZTE_L3_HARDFAST_MC_SESSION **tbl);
+
+</Insert>
+<Copy StartSeek="2068" EndSeek="2094"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2013/06/29" Time="22:10:2000">
+<Copy StartSeek="0" EndSeek="692"/>
+<Copy StartSeek="717" EndSeek="895"/>
+<Insert>	dpa_flow_stats_t stats;
+</Insert>
+<Copy StartSeek="897" EndSeek="933"/>
+<Insert>	uint16_t channel;
+</Insert>
+<Copy StartSeek="933" EndSeek="2077"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2013/06/29" Time="22:10:48000">
+<Copy StartSeek="0" EndSeek="887"/>
+<Copy StartSeek="907" EndSeek="2097"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2013/06/29" Time="22:11:0000">
+<Copy StartSeek="0" EndSeek="784"/>
+<Insert>		uint32_t tx_port; /* FIXME make 8 bit */
+</Insert>
+<Copy StartSeek="784" EndSeek="844"/>
+<Copy StartSeek="887" EndSeek="2097"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2013/06/29" Time="22:36:2000">
+<Copy StartSeek="0" EndSeek="887"/>
+<Insert>		uint16_t channel;
+</Insert>
+<Copy StartSeek="910" EndSeek="2100"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2013/06/29" Time="22:36:17000">
+<Copy StartSeek="0" EndSeek="784"/>
+<Insert>		uint32_t tx_queue; /* FIXME make 8 bit */
+</Insert>
+<Copy StartSeek="784" EndSeek="800"/>
+<Copy StartSeek="844" EndSeek="2100"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2013/06/29" Time="22:36:51000">
+<Copy StartSeek="0" EndSeek="784"/>
+<Copy StartSeek="828" EndSeek="844"/>
+<Insert>		uint16_t tx_queue; /* FIXME make 8 bit */
+</Insert>
+<Copy StartSeek="844" EndSeek="2100"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2013/06/29" Time="22:37:20000">
+<Copy StartSeek="0" EndSeek="887"/>
+<Insert>		uint16_t tx_channel;
+</Insert>
+<Copy StartSeek="930" EndSeek="2120"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="11:20:42000">
+<Copy StartSeek="0" EndSeek="784"/>
+<Insert>		uint32_t tx_queue; /* FIXME make 8 bit */
+</Insert>
+<Copy StartSeek="784" EndSeek="800"/>
+<Copy StartSeek="844" EndSeek="930"/>
+<Copy StartSeek="966" EndSeek="2156"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="11:22:6000">
+<Copy StartSeek="0" EndSeek="930"/>
+<Insert>		uint16_t txp; /* for epon/gpon */
+</Insert>
+<Copy StartSeek="972" EndSeek="2162"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="11:22:10000">
+<Copy StartSeek="0" EndSeek="844"/>
+<Insert>		uint16_t tx_port; /* FIXME make 8 bit */
+</Insert>
+<Copy StartSeek="890" EndSeek="2165"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="11:22:15000">
+<Copy StartSeek="0" EndSeek="800"/>
+<Insert>		uint16_t tx_queue; /* FIXME make 8 bit */
+</Insert>
+<Copy StartSeek="846" EndSeek="2167"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="11:22:17000">
+<Copy StartSeek="0" EndSeek="935"/>
+<Insert>		uint16_t txp; 	     /* for epon/gpon */
+</Insert>
+<Copy StartSeek="972" EndSeek="2162"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="11:22:47000">
+<Copy StartSeek="0" EndSeek="935"/>
+<Insert>		uint16_t txp; 	     /* for gpon */
+</Insert>
+<Copy StartSeek="974" EndSeek="2164"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2013/06/30" Time="11:22:58000">
+<Copy StartSeek="0" EndSeek="892"/>
+<Insert>		uint16_t tx_channel; /* for epon/gpon */
+</Insert>
+<Copy StartSeek="948" EndSeek="2177"/>
+</Delta>
+</DeltaFile>

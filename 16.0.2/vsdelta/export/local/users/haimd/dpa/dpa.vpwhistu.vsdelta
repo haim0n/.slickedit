@@ -1,0 +1,2354 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="62" Comment="" Date="2012/04/19" Time="16:37:54000" NL="\10" Encoding="text">
+<Insert>[Global]
+CurrentProject=dpa.vpj
+[ProjectDates]
+dpa.vpj=20120416120953000
+[ActiveConfig]
+dpa.vpj=Debug
+[State]
+SCREEN: 1680 1050 0 27 1678 966 0 0 N 0 0 0 0 1628 809 0
+CWD: ../dpa
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netdevice.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.30050 CL=1 LE=0 CX=0 CY=24 WI=5 BI=47 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netns/generic.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.883 CL=1 LE=0 CX=0 CY=16 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/net_namespace.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9791 CL=48 LE=0 CX=47 CY=17 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/sock.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.33191 CL=1 LE=0 CX=0 CY=33 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/sock.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.48842 CL=24 LE=0 CX=23 CY=24 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/rtnetlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12163 CL=2 LE=0 CX=1 CY=22 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/decnet/dn_neigh.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.3072 CL=17 LE=0 CX=16 CY=7 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna_main.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.475 CL=1 LE=0 CX=0 CY=13 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/inetdevice.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.983 CL=34 LE=0 CX=33 CY=23 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/devinet.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4248 CL=48 LE=0 CX=47 CY=23 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netlink/af_netlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.42424 CL=1 LE=0 CX=0 CY=13 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4262 CL=49 LE=0 CX=48 CY=23 WI=5 BI=41 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/socket.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.58690 CL=1 LE=0 CX=0 CY=25 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12837 CL=19 LE=0 CX=18 CY=37 WI=5 BI=39 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11610 CL=10 LE=0 CX=9 CY=26 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/neighbour.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.34610 CL=36 LE=0 CX=35 CY=31 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4679 CL=55 LE=0 CX=54 CY=26 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna_nc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5719 CL=10 LE=0 CX=9 CY=43 WI=5 BI=49 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/kernel/kallsyms.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=736 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4852 CL=58 LE=0 CX=57 CY=17 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/net/pppoe.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.10305 CL=29 LE=0 CX=28 CY=32 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=14 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netdevice.h"
+VIEW: LN=.30050 CL=1 LE=0 CX=7 CY=24 WI=323 BI=47 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=18 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netns/generic.h"
+VIEW: LN=.883 CL=1 LE=0 CX=7 CY=16 WI=267 BI=20 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=19 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/net_namespace.c"
+VIEW: LN=.9791 CL=48 LE=0 CX=54 CY=17 WI=284 BI=29 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=17 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/sock.h"
+VIEW: LN=.33191 CL=1 LE=0 CX=7 CY=33 WI=297 BI=15 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=15 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/sock.c"
+VIEW: LN=.48842 CL=24 LE=0 CX=30 CY=24 WI=287 BI=13 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=12 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/rtnetlink.h"
+VIEW: LN=.12163 CL=2 LE=0 CX=8 CY=22 WI=269 BI=19 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=11 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/decnet/dn_neigh.c"
+VIEW: LN=.3072 CL=17 LE=0 CX=23 CY=7 WI=302 BI=21 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=3 ",,,"
+BUFFER: BN="klna/klna_main.c"
+VIEW: LN=.475 CL=1 LE=0 CX=7 CY=13 WI=146 BI=11 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=13 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/inetdevice.h"
+VIEW: LN=.983 CL=34 LE=0 CX=40 CY=23 WI=285 BI=12 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=16 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/devinet.c"
+VIEW: LN=.4248 CL=48 LE=0 CX=54 CY=23 WI=91 BI=14 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=10 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netlink/af_netlink.c"
+VIEW: LN=.42424 CL=1 LE=0 CX=7 CY=13 WI=188 BI=18 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=6 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan.h"
+VIEW: LN=.4262 CL=49 LE=0 CX=55 CY=23 WI=151 BI=41 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=7 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/socket.c"
+VIEW: LN=.58690 CL=1 LE=0 CX=7 CY=25 WI=189 BI=17 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+VIEW: LN=.12837 CL=19 LE=0 CX=25 CY=37 WI=178 BI=39 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=4 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c"
+VIEW: LN=.11610 CL=10 LE=0 CX=16 CY=26 WI=119 BI=27 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/neighbour.c"
+VIEW: LN=.34610 CL=36 LE=0 CX=42 CY=31 WI=209 BI=10 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="klna/klna_nl.c"
+VIEW: LN=.4679 CL=55 LE=0 CX=63 CY=26 WI=275 BI=34 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="klna/klna_nc.c"
+VIEW: LN=.5719 CL=10 LE=0 CX=16 CY=43 WI=202 BI=49 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=20 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/kernel/kallsyms.c"
+VIEW: LN=.4852 CL=58 LE=0 CX=64 CY=17 WI=276 BI=36 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=21 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/net/pppoe.c"
+VIEW: LN=.8463 CL=1 LE=0 CX=9 CY=2 WI=117 BI=25 HT=0 HN=0 HF=0 HC=4
+FILEHIST: 9
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/kernel/setup.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netdevice.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/net/ppp_generic.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/plat-feroceon/mv_drivers_lsp/mv_neta/nfp_mgr/mv_nfp_hooks.c
+../kw2/linux-2.6.21.5-lsp-1.1.0/include/linux/kallsyms.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/kernel/kprobes.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/kernel.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/kernel/kallsyms.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/net/pppoe.c
+DEBUG: 0 0 0 0 3 0 gdb
+printf
+strcpy
+std::*
+DEBUG2: 0
+TBCLASS: 0 0
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="utf8" Date="2012/03/26" Time="12:42:58000">
+<Insert>[ActiveConfig]
+dpa.vpj=,Debug
+</Insert>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="12:42:58000">
+<Copy StartSeek="0" EndSeek="56"/>
+<Insert>dpa.vpj=,Debug
+</Insert>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="12:42:58000">
+<Copy StartSeek="32" EndSeek="102"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="12:42:58000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>dpa.vpj=20120326104258000
+</Insert>
+<Copy StartSeek="73" EndSeek="102"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="12:43:39000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>dpa.vpj=20120326104339000
+</Insert>
+<Copy StartSeek="73" EndSeek="102"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="12:44:12000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>dpa.vpj=20120326104412000
+</Insert>
+<Copy StartSeek="73" EndSeek="102"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="12:45:23000">
+<Copy StartSeek="0" EndSeek="102"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="15:06:36000">
+<Copy StartSeek="0" EndSeek="383"/>
+<Insert>VIEW: LN=.0 CL=1 LE=0 CX=0 CY=0 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="446" EndSeek="521"/>
+<Insert>VIEW: LN=.686 CL=43 LE=0 CX=49 CY=28 WI=99 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="589" EndSeek="1223"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="15:32:8000">
+<Copy StartSeek="0" EndSeek="210"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.0 CL=1 LE=0 CX=0 CY=0 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="452" EndSeek="527"/>
+<Insert>VIEW: LN=.3608 CL=1 LE=0 CX=7 CY=37 WI=51 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="597" EndSeek="609"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/rtc/class.c
+</Insert>
+<Copy StartSeek="609" EndSeek="1080"/>
+<Copy StartSeek="1121" EndSeek="1206"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:45:35000">
+<Copy StartSeek="0" EndSeek="167"/>
+<Insert>CWD: ../dpa
+</Insert>
+<Copy StartSeek="218" EndSeek="422"/>
+<Insert>VIEW: LN=.1199 CL=33 LE=0 CX=32 CY=29 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="491" EndSeek="566"/>
+<Insert>VIEW: LN=.1361 CL=52 LE=0 CX=60 CY=15 WI=73 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="636" EndSeek="648"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/kernel/timer.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/jiffies.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/hrtimer.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/kernel/time/timekeeping.c
+</Insert>
+<Copy StartSeek="648" EndSeek="905"/>
+<Copy StartSeek="1054" EndSeek="1121"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="16:51:3000">
+<Copy StartSeek="0" EndSeek="73"/>
+<Copy StartSeek="145" EndSeek="1193"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="17:02:40000">
+<Copy StartSeek="0" EndSeek="174"/>
+<Copy StartSeek="234" EndSeek="1253"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="17:02:40000">
+<Copy StartSeek="0" EndSeek="9"/>
+<Insert>CurrentProject=dpa.vpj
+</Insert>
+<Copy StartSeek="78" EndSeek="1299"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/03/26" Time="17:05:46000">
+<Copy StartSeek="0" EndSeek="396"/>
+<Copy StartSeek="735" EndSeek="939"/>
+<Insert>VIEW: LN=.1312 CL=25 LE=0 CX=24 CY=27 WI=5 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1214" EndSeek="1289"/>
+<Insert>VIEW: LN=.1312 CL=25 LE=0 CX=31 CY=27 WI=71 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1360" EndSeek="1372"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/plat-feroceon/mv_hal/neta/nfp/mvNfpCt.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/plat-feroceon/mv_hal/neta/nfp/mvNfp.h
+dpa_api.h
+</Insert>
+<Copy StartSeek="1372" EndSeek="1413"/>
+<Insert>include/dpa_api.h
+</Insert>
+<Copy StartSeek="1413" EndSeek="1562"/>
+<Copy StartSeek="1810" EndSeek="1877"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:18:54000">
+<Copy StartSeek="0" EndSeek="493"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5822 CL=31 LE=0 CX=30 CY=23 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="733" EndSeek="937"/>
+<Insert>VIEW: LN=.0 CL=1 LE=0 CX=0 CY=0 WI=5 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1004" EndSeek="1145"/>
+<Insert>VIEW: LN=.5822 CL=31 LE=0 CX=37 CY=23 WI=267 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1216" EndSeek="1291"/>
+<Insert>VIEW: LN=.4089 CL=24 LE=0 CX=32 CY=28 WI=251 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1361" EndSeek="1647"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netdevice.h
+</Insert>
+<Copy StartSeek="1647" EndSeek="1721"/>
+<Copy StartSeek="1793" EndSeek="1878"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:47:24000">
+<Copy StartSeek="0" EndSeek="9"/>
+<Insert>CurrentProject=../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/kw2.vpj
+</Insert>
+<Copy StartSeek="32" EndSeek="1832"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:48:25000">
+<Copy StartSeek="0" EndSeek="350"/>
+<Insert>BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/uwb/i1480/i1480u-wlp/netdev.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5822 CL=31 LE=0 CX=30 CY=23 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="350" EndSeek="381"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.686 CL=30 LE=0 CX=29 CY=3 WI=5 BI=32 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/uwb/i1480/i1480u-wlp/netdev.c"
+VIEW: LN=.5822 CL=31 LE=0 CX=37 CY=23 WI=214 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="623" EndSeek="698"/>
+<Insert>VIEW: LN=.2378 CL=25 LE=0 CX=33 CY=19 WI=78 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="768" EndSeek="1285"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:49:53000">
+<Copy StartSeek="0" EndSeek="9"/>
+<Insert>CurrentProject=dpa.vpj
+</Insert>
+<Copy StartSeek="78" EndSeek="1331"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:52:30000">
+<Copy StartSeek="0" EndSeek="427"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2378 CL=12 LE=0 CX=11 CY=19 WI=5 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="669" EndSeek="744"/>
+<Insert>VIEW: LN=.2051 CL=52 LE=0 CX=58 CY=7 WI=206 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="813" EndSeek="1330"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:55:25000">
+<Insert>[Global]
+CurrentProject=../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/kw2.vpj
+[ProjectDates]
+dpa.vpj=20120326104523000
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/kw2.vpj=20120315131413000
+[ActiveConfig]
+dpa.vpj=Debug
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/kw2.vpj=Debug
+[State]
+SCREEN: 1680 1050 0 27 1678 966 0 0 N 0 0 0 0 1628 809 0
+CWD: ../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg
+BUFFER: BN="include/dpa_api.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=4720 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2378 CL=12 LE=0 CX=11 CY=19 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=2 ",,,"
+BUFFER: BN="include/dpa_api.h"
+VIEW: LN=.2378 CL=28 LE=0 CX=34 CY=19 WI=67 BI=9 HT=0 HN=0 HF=0 HC=4
+FILEHIST: 9
+/home/haimd/.slickedit/16.0.2/vusrmacs.e
+../mmp2.0-svn/trunk/incl/mmp_types.h
+../mmp2.0-svn/trunk/incl/mmp_basic_types.h
+../mmp2.0-svn/trunk/incl/mmp_os.h
+../mmp2.0-svn/trunk/incl/mmp_tal.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/uwb/i1480/i1480u-wlp/netdev.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/net/e1000e/netdev.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netdevice.h
+include/dpa_api.h
+DEBUG: 0 0 0 0 3 0 gdb
+printf
+strcpy
+std::*
+DEBUG2: 0
+TBCLASS: 0 0
+</Insert>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:56:14000">
+<Copy StartSeek="41" EndSeek="71"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:56:14000">
+<Copy StartSeek="0" EndSeek="56"/>
+<Insert>dpa.vpj=,Debug
+</Insert>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:56:14000">
+<Copy StartSeek="32" EndSeek="102"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:56:14000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>dpa.vpj=20120327065614000
+</Insert>
+<Copy StartSeek="73" EndSeek="102"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="08:56:20000">
+<Copy StartSeek="0" EndSeek="102"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/03/27" Time="09:00:58000">
+<Copy StartSeek="0" EndSeek="167"/>
+<Insert>CWD: ../../haimd
+</Insert>
+<Copy StartSeek="179" EndSeek="696"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/03/28" Time="10:40:55000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>dpa.vpj=20120327065620000
+</Insert>
+<Copy StartSeek="73" EndSeek="696"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/03/28" Time="10:49:33000">
+<Copy StartSeek="0" EndSeek="167"/>
+<Insert>CWD: ../dpa
+</Insert>
+<Copy StartSeek="634" EndSeek="1151"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/03/28" Time="10:50:38000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>dpa.vpj=20120328084933000
+</Insert>
+<Copy StartSeek="73" EndSeek="1151"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/03/28" Time="10:54:40000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>dpa.vpj=20120328085313000
+</Insert>
+<Copy StartSeek="73" EndSeek="1151"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/03/29" Time="09:31:4000">
+<Copy StartSeek="0" EndSeek="218"/>
+<Copy StartSeek="1821" EndSeek="1852"/>
+<Copy StartSeek="2176" EndSeek="2349"/>
+<Insert>VIEW: LN=.2350 CL=12 LE=0 CX=11 CY=19 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=2 ",,,"
+</Insert>
+<Copy StartSeek="4989" EndSeek="5020"/>
+<Insert>VIEW: LN=.2714 CL=20 LE=0 CX=26 CY=27 WI=67 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6208" EndSeek="6220"/>
+<Insert>/home/haimd/.slickedit/16.0.2/vusrmacs.e
+../mmp2.0-svn/trunk/incl/mmp_types.h
+../mmp2.0-svn/trunk/incl/mmp_basic_types.h
+../mmp2.0-svn/trunk/incl/mmp_os.h
+../mmp2.0-svn/trunk/incl/mmp_tal.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/uwb/i1480/i1480u-wlp/netdev.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/net/e1000e/netdev.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netdevice.h
+</Insert>
+<Copy StartSeek="6220" EndSeek="6238"/>
+<Copy StartSeek="6731" EndSeek="6798"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/03/29" Time="18:47:6000">
+<Copy StartSeek="0" EndSeek="167"/>
+<Insert>CWD: ../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netfilter/nfnetlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=744 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4418 CL=1 LE=0 CX=0 CY=20 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/notifier.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7050 CL=9 LE=0 CX=8 CY=23 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netevent.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.377 CL=9 LE=0 CX=8 CY=22 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="177" EndSeek="255"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="426" EndSeek="495"/>
+<Insert>BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/dev.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.28517 CL=6 LE=0 CX=5 CY=23 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/dpa_api.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2962 CL=29 LE=0 CX=28 CY=22 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.919 CL=9 LE=0 CX=8 CY=22 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="495" EndSeek="567"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="738" EndSeek="890"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="1061" EndSeek="1210"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1911 CL=39 LE=0 CX=38 CY=20 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1450" EndSeek="1535"/>
+<Copy StartSeek="2181" EndSeek="2354"/>
+<Insert>VIEW: LN=.865 CL=9 LE=0 CX=8 CY=23 WI=5 BI=32 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/dpa_klna.c"
+</Insert>
+<Copy StartSeek="2504" EndSeek="2677"/>
+<Insert>VIEW: LN=.4391 CL=17 LE=0 CX=16 CY=21 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netfilter/nfnetlink.c"
+VIEW: LN=.4418 CL=1 LE=0 CX=7 CY=20 WI=144 BI=16 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=7 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/notifier.h"
+VIEW: LN=.7050 CL=9 LE=0 CX=15 CY=23 WI=160 BI=17 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+</Insert>
+<Copy StartSeek="2743" EndSeek="2825"/>
+<Insert>VIEW: LN=.377 CL=9 LE=0 CX=15 CY=22 WI=176 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3916" EndSeek="4038"/>
+<Insert>VIEW: LN=.9341 CL=30 LE=0 CX=36 CY=26 WI=135 BI=18 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=10 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/dev.c"
+VIEW: LN=.28517 CL=6 LE=0 CX=12 CY=23 WI=147 BI=14 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="include/dpa_api.h"
+VIEW: LN=.2962 CL=29 LE=0 CX=35 CY=22 WI=67 BI=9 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=3 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netlink.h"
+VIEW: LN=.919 CL=9 LE=0 CX=17 CY=22 WI=190 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4109" EndSeek="4226"/>
+<Insert>VIEW: LN=.31126 CL=25 LE=0 CX=33 CY=25 WI=185 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4298" EndSeek="4425"/>
+<Insert>VIEW: LN=.947 CL=1 LE=0 CX=7 CY=12 WI=177 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4493" EndSeek="4620"/>
+<Insert>VIEW: LN=.1911 CL=39 LE=0 CX=45 CY=20 WI=127 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4690" EndSeek="4819"/>
+<Insert>VIEW: LN=.865 CL=9 LE=0 CX=17 CY=23 WI=188 BI=32 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=1 ",,,"
+</Insert>
+<Copy StartSeek="5719" EndSeek="5748"/>
+<Insert>VIEW: LN=.4804 CL=51 LE=0 CX=59 CY=34 WI=12 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6154" EndSeek="6166"/>
+<Insert>include/dpa_api.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netevent.h
+</Insert>
+<Copy StartSeek="6166" EndSeek="6590"/>
+<Copy StartSeek="6628" EndSeek="6695"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/03/29" Time="18:57:49000">
+<Copy StartSeek="0" EndSeek="426"/>
+<Insert>VIEW: LN=.9341 CL=30 LE=0 CX=29 CY=26 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="494" EndSeek="737"/>
+<Insert>VIEW: LN=.31126 CL=25 LE=0 CX=24 CY=25 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="807" EndSeek="1060"/>
+<Insert>VIEW: LN=.947 CL=1 LE=0 CX=0 CY=12 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1126" EndSeek="1380"/>
+<Insert>VIEW: LN=.1911 CL=39 LE=0 CX=38 CY=20 WI=5 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1449" EndSeek="1534"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.865 CL=9 LE=0 CX=8 CY=23 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1771" EndSeek="2026"/>
+<Insert>VIEW: LN=.7050 CL=10 LE=0 CX=9 CY=23 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2094" EndSeek="2179"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4418 CL=1 LE=0 CX=0 CY=20 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2417" EndSeek="2500"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.919 CL=9 LE=0 CX=8 CY=22 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2737" EndSeek="2990"/>
+<Insert>VIEW: LN=.377 CL=9 LE=0 CX=8 CY=22 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3056" EndSeek="3256"/>
+<Insert>VIEW: LN=.4804 CL=51 LE=0 CX=50 CY=34 WI=5 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3325" EndSeek="3527"/>
+<Insert>VIEW: LN=.2962 CL=29 LE=0 CX=28 CY=22 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3596" EndSeek="3843"/>
+<Insert>VIEW: LN=.28517 CL=6 LE=0 CX=5 CY=23 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3911" EndSeek="4033"/>
+<Insert>VIEW: LN=.9341 CL=30 LE=0 CX=36 CY=26 WI=197 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4102" EndSeek="4219"/>
+<Insert>VIEW: LN=.31126 CL=25 LE=0 CX=31 CY=25 WI=118 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4290" EndSeek="4417"/>
+<Insert>VIEW: LN=.947 CL=1 LE=0 CX=7 CY=12 WI=129 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4484" EndSeek="4611"/>
+<Insert>VIEW: LN=.1911 CL=39 LE=0 CX=45 CY=20 WI=68 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4681" EndSeek="4810"/>
+<Insert>VIEW: LN=.865 CL=9 LE=0 CX=15 CY=23 WI=69 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4878" EndSeek="5006"/>
+<Insert>VIEW: LN=.7050 CL=10 LE=0 CX=16 CY=23 WI=230 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5076" EndSeek="5205"/>
+<Insert>VIEW: LN=.4418 CL=1 LE=0 CX=7 CY=20 WI=180 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5273" EndSeek="5400"/>
+<Insert>VIEW: LN=.919 CL=9 LE=0 CX=15 CY=22 WI=145 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5468" EndSeek="5594"/>
+<Insert>VIEW: LN=.377 CL=9 LE=0 CX=15 CY=22 WI=178 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5662" EndSeek="5735"/>
+<Insert>VIEW: LN=.4804 CL=51 LE=0 CX=57 CY=34 WI=208 BI=26 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5805" EndSeek="5880"/>
+<Insert>VIEW: LN=.2962 CL=29 LE=0 CX=35 CY=22 WI=158 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5950" EndSeek="6069"/>
+<Insert>VIEW: LN=.28517 CL=6 LE=0 CX=12 CY=23 WI=115 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6139" EndSeek="6680"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/03/29" Time="18:59:34000">
+<Copy StartSeek="0" EndSeek="3670"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="3842" EndSeek="6679"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/03/29" Time="18:59:59000">
+<Copy StartSeek="0" EndSeek="3670"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="3843" EndSeek="6069"/>
+<Insert>VIEW: LN=.28517 CL=6 LE=0 CX=12 CY=23 WI=96 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6140" EndSeek="6681"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/03/29" Time="19:00:37000">
+<Insert>[Global]
+CurrentProject=dpa.vpj
+[ProjectDates]
+dpa.vpj=20120329073104000
+[ActiveConfig]
+dpa.vpj=Debug
+[State]
+SCREEN: 1680 1050 0 27 1678 966 0 0 N 0 0 0 0 1628 809 0
+CWD: klna
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_if.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9341 CL=30 LE=0 CX=29 CY=26 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/socket.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.31126 CL=25 LE=0 CX=24 CY=25 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_notify.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.947 CL=1 LE=0 CX=0 CY=12 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_netlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1911 CL=39 LE=0 CX=38 CY=20 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.865 CL=9 LE=0 CX=8 CY=23 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/notifier.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7050 CL=10 LE=0 CX=9 CY=23 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netfilter/nfnetlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4418 CL=1 LE=0 CX=0 CY=20 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.919 CL=9 LE=0 CX=8 CY=22 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netevent.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.377 CL=9 LE=0 CX=8 CY=22 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/dpa_klna.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4804 CL=51 LE=0 CX=50 CY=34 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/dpa_api.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2962 CL=29 LE=0 CX=28 CY=22 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/dev.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.28517 CL=6 LE=0 CX=5 CY=23 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=4 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_if.c"
+VIEW: LN=.9341 CL=30 LE=0 CX=36 CY=26 WI=74 BI=9 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=11 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/socket.c"
+VIEW: LN=.31126 CL=25 LE=0 CX=31 CY=25 WI=76 BI=10 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=12 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_notify.c"
+VIEW: LN=.947 CL=1 LE=0 CX=7 CY=12 WI=78 BI=11 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=6 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_netlink.c"
+VIEW: LN=.1911 CL=39 LE=0 CX=45 CY=20 WI=80 BI=12 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+VIEW: LN=.865 CL=9 LE=0 CX=15 CY=23 WI=82 BI=13 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=7 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/notifier.h"
+VIEW: LN=.7050 CL=10 LE=0 CX=16 CY=23 WI=84 BI=14 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netfilter/nfnetlink.c"
+VIEW: LN=.4418 CL=1 LE=0 CX=7 CY=20 WI=86 BI=15 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=3 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netlink.h"
+VIEW: LN=.919 CL=9 LE=0 CX=15 CY=22 WI=88 BI=16 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netevent.h"
+VIEW: LN=.377 CL=9 LE=0 CX=15 CY=22 WI=90 BI=17 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="klna/dpa_klna.c"
+VIEW: LN=.4804 CL=51 LE=0 CX=57 CY=34 WI=92 BI=18 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="include/dpa_api.h"
+VIEW: LN=.2962 CL=29 LE=0 CX=35 CY=22 WI=94 BI=19 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=10 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/dev.c"
+VIEW: LN=.28596 CL=34 LE=0 CX=40 CY=26 WI=96 BI=20 HT=0 HN=0 HF=0 HC=4
+FILEHIST: 9
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/neighbour.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netlink.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netlink/genetlink.c
+klna/dpa_klna.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/socket.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/if_link.h
+klna/klna_evnt_mgr
+klna/klna_events.c
+DEBUG: 0 0 0 0 3 0 gdb
+printf
+strcpy
+std::*
+DEBUG2: 0
+TBCLASS: 0 0
+</Insert>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="utf8" Date="2012/03/29" Time="19:01:1000">
+<Insert>[ActiveConfig]
+dpa.vpj=,Debug
+</Insert>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/03/29" Time="19:01:2000">
+<Copy StartSeek="0" EndSeek="56"/>
+<Insert>dpa.vpj=,Debug
+</Insert>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/03/29" Time="19:01:2000">
+<Copy StartSeek="32" EndSeek="102"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/03/29" Time="19:01:2000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>dpa.vpj=20120329170102000
+</Insert>
+<Copy StartSeek="73" EndSeek="102"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/03/29" Time="19:01:8000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>dpa.vpj=20120329170108000
+</Insert>
+<Copy StartSeek="73" EndSeek="102"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/03/29" Time="19:09:57000">
+<Copy StartSeek="0" EndSeek="102"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="11:51:15000">
+<Copy StartSeek="0" EndSeek="167"/>
+<Insert>CWD: ../dpa
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6783 CL=1 LE=0 CX=0 CY=5 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="177" EndSeek="208"/>
+<Copy StartSeek="807" EndSeek="980"/>
+<Insert>VIEW: LN=.2304 CL=1 LE=0 CX=0 CY=16 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/fib_semantics.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=872 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.22682 CL=30 LE=0 CX=29 CY=24 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1050" EndSeek="1256"/>
+<Insert>VIEW: LN=.2766 CL=20 LE=0 CX=19 CY=25 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1325" EndSeek="1408"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2203 CL=9 LE=0 CX=8 CY=23 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+VIEW: LN=.6753 CL=16 LE=0 CX=24 CY=16 WI=179 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1650" EndSeek="1777"/>
+<Insert>VIEW: LN=.2203 CL=9 LE=0 CX=17 CY=23 WI=188 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1847" EndSeek="1922"/>
+<Insert>VIEW: LN=.2304 CL=1 LE=0 CX=7 CY=16 WI=155 BI=24 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/fib_semantics.c"
+VIEW: LN=.22682 CL=30 LE=0 CX=38 CY=24 WI=102 BI=16 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=1 ",,,"
+</Insert>
+<Copy StartSeek="2386" EndSeek="2420"/>
+<Insert>VIEW: LN=.710 CL=1 LE=0 CX=9 CY=36 WI=83 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2491" EndSeek="2503"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netlink.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/if_link.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/rtnetlink.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/if_link.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/ip_fib.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/kernel.h
+include/dpa_api.h
+klna/klna_events.c
+</Insert>
+<Copy StartSeek="2917" EndSeek="3005"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/04/01" Time="19:01:44000">
+<Copy StartSeek="0" EndSeek="177"/>
+<Copy StartSeek="493" EndSeek="761"/>
+<Copy StartSeek="1101" EndSeek="1143"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=1 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2184 CL=94 LE=0 CX=93 CY=30 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c"
+</Insert>
+<Copy StartSeek="2115" EndSeek="2288"/>
+<Insert>VIEW: LN=.15741 CL=14 LE=0 CX=13 CY=14 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3001" EndSeek="3035"/>
+<Copy StartSeek="4008" EndSeek="4180"/>
+<Insert>VIEW: LN=.3961 CL=36 LE=0 CX=35 CY=21 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4883" EndSeek="4966"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2203 CL=17 LE=0 CX=16 CY=21 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5790" EndSeek="5917"/>
+<Insert>VIEW: LN=.2203 CL=17 LE=0 CX=25 CY=21 WI=73 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6177" EndSeek="6252"/>
+<Insert>VIEW: LN=.4300 CL=1 LE=0 CX=7 CY=32 WI=71 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6533" EndSeek="6619"/>
+<Insert>VIEW: LN=.2184 CL=94 LE=0 CX=100 CY=30 WI=75 BI=11 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c"
+VIEW: LN=.15741 CL=14 LE=0 CX=22 CY=14 WI=184 BI=19 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=5 ",,,"
+</Insert>
+<Copy StartSeek="7916" EndSeek="7950"/>
+<Insert>VIEW: LN=.3961 CL=36 LE=0 CX=44 CY=21 WI=179 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8213" EndSeek="8225"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_if.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/dev.c
+</Insert>
+<Copy StartSeek="8295" EndSeek="8362"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/types.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/neighbour.c
+/home/haimd/src_backup/klna_evnt_mgr.c
+klna/dpa_klna.c.keep
+klna/klna_evnt_mgr.c.keep
+</Insert>
+<Copy StartSeek="8769" EndSeek="8857"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/04/02" Time="15:39:29000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>dpa.vpj=20120329170957000
+</Insert>
+<Copy StartSeek="73" EndSeek="8857"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:00:2000">
+<Copy StartSeek="0" EndSeek="177"/>
+<Insert>BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/dev.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.137413 CL=30 LE=0 CX=29 CY=7 WI=5 BI=31 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/dpa_api.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4300 CL=1 LE=0 CX=0 CY=32 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/if.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2309 CL=9 LE=0 CX=8 CY=22 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="/usr/include/linux/if_link.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=1 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=552 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2184 CL=94 LE=0 CX=93 CY=30 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="177" EndSeek="261"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=736 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6178 CL=37 LE=0 CX=36 CY=43 WI=5 BI=33 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+</Insert>
+<Copy StartSeek="261" EndSeek="434"/>
+<Insert>VIEW: LN=.10118 CL=36 LE=0 CX=35 CY=19 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="502" EndSeek="578"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9733 CL=18 LE=0 CX=17 CY=23 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_if.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9341 CL=26 LE=0 CX=25 CY=23 WI=5 BI=35 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_netlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=736 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1604 CL=36 LE=0 CX=35 CY=23 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna_evnt_mgr.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2229 CL=50 LE=0 CX=49 CY=24 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="820" EndSeek="1073"/>
+<Insert>VIEW: LN=.15681 CL=33 LE=0 CX=32 CY=18 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netdevice.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.24130 CL=9 LE=0 CX=8 CY=22 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/socket.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4887 CL=9 LE=0 CX=8 CY=23 WI=5 BI=39 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.23230 CL=18 LE=0 CX=17 CY=28 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/lib/nlattr.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4080 CL=1 LE=0 CX=0 CY=15 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/if_link.h"
+</Insert>
+<Copy StartSeek="1220" EndSeek="1393"/>
+<Insert>VIEW: LN=.1741 CL=1 LE=0 CX=0 CY=5 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=14 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netdevice.h"
+VIEW: LN=.24130 CL=9 LE=0 CX=15 CY=22 WI=245 BI=29 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=10 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netlink.h"
+VIEW: LN=.23230 CL=18 LE=0 CX=24 CY=28 WI=235 BI=22 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=13 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/lib/nlattr.c"
+VIEW: LN=.4080 CL=1 LE=0 CX=7 CY=15 WI=237 BI=34 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=3 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/if_link.h"
+VIEW: LN=.2003 CL=9 LE=0 CX=15 CY=32 WI=71 BI=13 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=7 ",,,"
+</Insert>
+<Copy StartSeek="1787" EndSeek="1861"/>
+<Insert>VIEW: LN=.101461 CL=26 LE=0 CX=32 CY=30 WI=225 BI=31 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=6 ",,,"
+</Insert>
+<Copy StartSeek="2104" EndSeek="2135"/>
+<Insert>VIEW: LN=.4300 CL=1 LE=0 CX=7 CY=32 WI=73 BI=9 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+</Insert>
+<Copy StartSeek="2377" EndSeek="2477"/>
+<Insert>VIEW: LN=.2309 CL=9 LE=0 CX=15 CY=22 WI=196 BI=25 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=4 ",,,"
+</Insert>
+<Copy StartSeek="3036" EndSeek="3078"/>
+<Insert>VIEW: LN=.2184 CL=94 LE=0 CX=100 CY=30 WI=75 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4520" EndSeek="4649"/>
+<Insert>VIEW: LN=.6178 CL=37 LE=0 CX=43 CY=43 WI=192 BI=33 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+VIEW: LN=.10118 CL=36 LE=0 CX=42 CY=19 WI=195 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4719" EndSeek="4839"/>
+<Insert>VIEW: LN=.9733 CL=18 LE=0 CX=26 CY=23 WI=116 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5104" EndSeek="5227"/>
+<Insert>VIEW: LN=.9341 CL=26 LE=0 CX=32 CY=23 WI=238 BI=35 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=17 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/socket.h"
+VIEW: LN=.4887 CL=9 LE=0 CX=17 CY=23 WI=251 BI=39 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5297" EndSeek="5425"/>
+<Insert>VIEW: LN=.1604 CL=36 LE=0 CX=44 CY=23 WI=122 BI=36 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+</Insert>
+<Copy StartSeek="6981" EndSeek="7015"/>
+<Insert>VIEW: LN=.2229 CL=50 LE=0 CX=58 CY=24 WI=79 BI=12 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=1 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c"
+VIEW: LN=.29365 CL=1 LE=0 CX=9 CY=23 WI=77 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7083" EndSeek="7095"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/rtnetlink.h
+</Insert>
+<Copy StartSeek="7396" EndSeek="7463"/>
+<Copy StartSeek="7570" EndSeek="7638"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netdevice.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_if.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/socket.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_netlink.c
+</Insert>
+<Copy StartSeek="7638" EndSeek="7726"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="11:50:3000">
+<Copy StartSeek="0" EndSeek="167"/>
+<Insert>CWD: klna
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan_netlink.c"
+</Insert>
+<Copy StartSeek="915" EndSeek="1088"/>
+<Insert>VIEW: LN=.5748 CL=10 LE=0 CX=9 CY=43 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan.c"
+</Insert>
+<Copy StartSeek="1240" EndSeek="1413"/>
+<Insert>VIEW: LN=.9733 CL=18 LE=0 CX=17 CY=23 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c"
+</Insert>
+<Copy StartSeek="1557" EndSeek="1730"/>
+<Insert>VIEW: LN=.8805 CL=34 LE=0 CX=33 CY=10 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_if.c"
+</Insert>
+<Copy StartSeek="2197" EndSeek="2370"/>
+<Insert>VIEW: LN=.7217 CL=39 LE=0 CX=38 CY=18 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_netlink.c"
+</Insert>
+<Copy StartSeek="2519" EndSeek="2692"/>
+<Insert>VIEW: LN=.4300 CL=32 LE=0 CX=31 CY=27 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/dev.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=744 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.119495 CL=11 LE=0 CX=10 CY=42 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2758" EndSeek="2789"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4254 CL=32 LE=0 CX=31 CY=30 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/if.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2309 CL=9 LE=0 CX=8 CY=22 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/if_link.h"
+</Insert>
+<Copy StartSeek="2789" EndSeek="2960"/>
+<Insert>VIEW: LN=.2003 CL=9 LE=0 CX=8 CY=32 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3029" EndSeek="3071"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=1 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2184 CL=94 LE=0 CX=93 CY=30 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3593" EndSeek="3674"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8742 CL=30 LE=0 CX=29 CY=23 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3914" EndSeek="3986"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4295 CL=18 LE=0 CX=17 CY=21 WI=5 BI=23 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna_evnt_mgr.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131176 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2479 CL=29 LE=0 CX=28 CY=17 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="/usr/include/linux/netlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=1 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2817 CL=19 LE=0 CX=18 CY=22 WI=5 BI=38 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=11 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan_netlink.c"
+VIEW: LN=.5748 CL=10 LE=0 CX=18 CY=43 WI=90 BI=13 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+</Insert>
+<Copy StartSeek="4226" EndSeek="4302"/>
+<Insert>VIEW: LN=.9733 CL=18 LE=0 CX=24 CY=23 WI=94 BI=15 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c"
+VIEW: LN=.8805 CL=34 LE=0 CX=42 CY=10 WI=104 BI=19 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=12 ",,,"
+</Insert>
+<Copy StartSeek="4867" EndSeek="4945"/>
+<Insert>VIEW: LN=.7217 CL=39 LE=0 CX=45 CY=18 WI=96 BI=16 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=15 ",,,"
+</Insert>
+<Copy StartSeek="5187" EndSeek="5270"/>
+<Insert>VIEW: LN=.4300 CL=32 LE=0 CX=40 CY=27 WI=100 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6569" EndSeek="6687"/>
+<Insert>VIEW: LN=.119495 CL=11 LE=0 CX=17 CY=42 WI=82 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7143" EndSeek="7218"/>
+<Insert>VIEW: LN=.4254 CL=32 LE=0 CX=38 CY=30 WI=84 BI=10 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/if.h"
+VIEW: LN=.2309 CL=9 LE=0 CX=15 CY=22 WI=86 BI=11 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=3 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/if_link.h"
+VIEW: LN=.2003 CL=9 LE=0 CX=15 CY=32 WI=80 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7288" EndSeek="7374"/>
+<Insert>VIEW: LN=.2184 CL=94 LE=0 CX=100 CY=30 WI=88 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7445" EndSeek="7532"/>
+<Insert>VIEW: LN=.2817 CL=19 LE=0 CX=27 CY=22 WI=258 BI=38 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7602" EndSeek="7728"/>
+<Insert>VIEW: LN=.8742 CL=30 LE=0 CX=38 CY=23 WI=76 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7798" EndSeek="7915"/>
+<Insert>VIEW: LN=.4295 CL=18 LE=0 CX=24 CY=21 WI=78 BI=23 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=5 ",,,"
+</Insert>
+<Copy StartSeek="9203" EndSeek="9237"/>
+<Insert>VIEW: LN=.1073 CL=1 LE=0 CX=9 CY=4 WI=102 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9724" EndSeek="9736"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/pkt_cls.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/pkt_cls.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/sched/cls_route.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan_netlink.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c
+/usr/include/linux/netlink.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/platform/x86/acer-wmi.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netlink.h
+</Insert>
+<Copy StartSeek="10138" EndSeek="10159"/>
+<Copy StartSeek="10320" EndSeek="10387"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="13:22:7000">
+<Copy StartSeek="0" EndSeek="167"/>
+<Insert>CWD: ../quagga-0.99.18
+BUFFER: BN="klna/klna_evnt_mgr.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131688 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2708 CL=25 LE=0 CX=24 CY=24 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/rtnetlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.375 CL=9 LE=0 CX=8 CY=21 WI=5 BI=42 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/if.h"
+</Insert>
+<Copy StartSeek="259" EndSeek="432"/>
+<Insert>VIEW: LN=.2937 CL=1 LE=0 CX=0 CY=21 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1489" EndSeek="1574"/>
+<Copy StartSeek="2213" EndSeek="2386"/>
+<Insert>VIEW: LN=.10288 CL=9 LE=0 CX=8 CY=22 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/route.c"
+</Insert>
+<Copy StartSeek="2489" EndSeek="2662"/>
+<Insert>VIEW: LN=.88473 CL=36 LE=0 CX=35 CY=31 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/if_link.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2105 CL=1 LE=0 CX=0 CY=37 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/dev.c"
+</Insert>
+<Copy StartSeek="2813" EndSeek="2986"/>
+<Insert>VIEW: LN=.101186 CL=40 LE=0 CX=39 CY=18 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3371" EndSeek="3622"/>
+<Insert>VIEW: LN=.1476 CL=1 LE=0 CX=0 CY=5 WI=5 BI=35 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3688" EndSeek="3890"/>
+<Insert>VIEW: LN=.4254 CL=32 LE=0 CX=31 CY=30 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3959" EndSeek="4172"/>
+<Insert>VIEW: LN=.2184 CL=94 LE=0 CX=93 CY=30 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4241" EndSeek="4454"/>
+<Insert>VIEW: LN=.2817 CL=19 LE=0 CX=18 CY=22 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4523" EndSeek="4604"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8742 CL=30 LE=0 CX=29 CY=23 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4843" EndSeek="5086"/>
+<Insert>VIEW: LN=.4295 CL=18 LE=0 CX=17 CY=21 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9733 CL=18 LE=0 CX=17 CY=23 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5155" EndSeek="5238"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7603 CL=17 LE=0 CX=16 CY=22 WI=5 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5477" EndSeek="5728"/>
+<Insert>VIEW: LN=.3356 CL=12 LE=0 CX=11 CY=27 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_netlink.c"
+</Insert>
+<Copy StartSeek="5873" EndSeek="6046"/>
+<Insert>VIEW: LN=.1048 CL=1 LE=0 CX=0 CY=34 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan_netlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5748 CL=10 LE=0 CX=9 CY=43 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7272" EndSeek="7352"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.29597 CL=17 LE=0 CX=16 CY=21 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/if.h"
+VIEW: LN=.2937 CL=1 LE=0 CX=7 CY=21 WI=88 BI=16 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+VIEW: LN=.10288 CL=9 LE=0 CX=15 CY=22 WI=206 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7618" EndSeek="7736"/>
+<Insert>VIEW: LN=.101186 CL=40 LE=0 CX=46 CY=18 WI=84 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7808" EndSeek="7931"/>
+<Insert>VIEW: LN=.1710 CL=22 LE=0 CX=28 CY=28 WI=302 BI=35 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan.c"
+VIEW: LN=.9733 CL=18 LE=0 CX=24 CY=23 WI=76 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8001" EndSeek="8076"/>
+<Insert>VIEW: LN=.4254 CL=32 LE=0 CX=38 CY=30 WI=86 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8147" EndSeek="8233"/>
+<Insert>VIEW: LN=.2184 CL=94 LE=0 CX=100 CY=30 WI=92 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8304" EndSeek="8391"/>
+<Insert>VIEW: LN=.2817 CL=19 LE=0 CX=27 CY=22 WI=94 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8462" EndSeek="8588"/>
+<Insert>VIEW: LN=.8742 CL=30 LE=0 CX=38 CY=23 WI=96 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8659" EndSeek="8776"/>
+<Insert>VIEW: LN=.4295 CL=18 LE=0 CX=24 CY=21 WI=98 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8846" EndSeek="8974"/>
+<Insert>VIEW: LN=.7603 CL=17 LE=0 CX=23 CY=22 WI=200 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9044" EndSeek="9167"/>
+<Insert>VIEW: LN=.3356 CL=12 LE=0 CX=18 CY=27 WI=80 BI=12 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=11 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan_netlink.c"
+VIEW: LN=.5748 CL=10 LE=0 CX=18 CY=43 WI=74 BI=9 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=18 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/route.c"
+VIEW: LN=.88473 CL=36 LE=0 CX=44 CY=31 WI=195 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9237" EndSeek="9364"/>
+<Insert>VIEW: LN=.2105 CL=1 LE=0 CX=7 CY=37 WI=90 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9432" EndSeek="9560"/>
+<Insert>VIEW: LN=.1048 CL=1 LE=0 CX=9 CY=34 WI=82 BI=13 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="klna/klna_evnt_mgr.c"
+VIEW: LN=.2708 CL=25 LE=0 CX=33 CY=24 WI=100 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9628" EndSeek="9780"/>
+<Insert>VIEW: LN=.375 CL=9 LE=0 CX=17 CY=21 WI=304 BI=42 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=1 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c"
+VIEW: LN=.15779 CL=24 LE=0 CX=32 CY=21 WI=78 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="11116" EndSeek="11128"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netlink.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/route.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_netlink.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/slub_def.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/mm/slub.c
+klna/klna_evnt_mgr.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/rtnetlink.h
+</Insert>
+<Copy StartSeek="11285" EndSeek="11352"/>
+<Copy StartSeek="11702" EndSeek="11769"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/04/03" Time="15:43:51000">
+<Copy StartSeek="0" EndSeek="179"/>
+<Insert>BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11610 CL=12 LE=0 CX=11 CY=26 WI=5 BI=38 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/if_link.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2105 CL=1 LE=0 CX=0 CY=37 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_netlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1048 CL=1 LE=0 CX=0 CY=34 WI=5 BI=43 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/rtnetlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.678 CL=1 LE=0 CX=0 CY=7 WI=5 BI=42 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2277" EndSeek="2362"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.375 CL=1 LE=0 CX=0 CY=5 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan_netlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5748 CL=10 LE=0 CX=9 CY=43 WI=5 BI=33 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9733 CL=18 LE=0 CX=17 CY=23 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna_evnt_mgr.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8035 CL=25 LE=0 CX=24 CY=43 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/socket.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4661 CL=1 LE=0 CX=0 CY=25 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/dev.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.101186 CL=40 LE=0 CX=39 CY=18 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/if.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1371 CL=1 LE=0 CX=0 CY=5 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="include/dpa_api.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4254 CL=32 LE=0 CX=31 CY=30 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="/usr/include/linux/if_link.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=1 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2184 CL=94 LE=0 CX=93 CY=30 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="/usr/include/linux/netlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=1 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.2817 CL=19 LE=0 CX=18 CY=22 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8494 CL=1 LE=0 CX=0 CY=5 WI=5 BI=32 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/lib/nlattr.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4295 CL=18 LE=0 CX=17 CY=21 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_private.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7603 CL=17 LE=0 CX=16 CY=22 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_if.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.3356 CL=12 LE=0 CX=11 CY=27 WI=5 BI=37 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/route.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.73196 CL=1 LE=0 CX=0 CY=2 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/fib_trie.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.31860 CL=25 LE=0 CX=24 CY=23 WI=5 BI=35 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/fib_semantics.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.8047 CL=46 LE=0 CX=45 CY=28 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/dpa_klna.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5486 CL=17 LE=0 CX=16 CY=23 WI=5 BI=46 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=22 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/fib_trie.c"
+VIEW: LN=.31860 CL=25 LE=0 CX=33 CY=23 WI=306 BI=35 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c"
+VIEW: LN=.11610 CL=12 LE=0 CX=20 CY=26 WI=75 BI=38 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=21 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/socket.h"
+VIEW: LN=.4661 CL=1 LE=0 CX=7 CY=25 WI=86 BI=36 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=7 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/dev.c"
+VIEW: LN=.101186 CL=40 LE=0 CX=46 CY=18 WI=89 BI=15 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=17 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/if.h"
+VIEW: LN=.1710 CL=22 LE=0 CX=28 CY=28 WI=90 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3962" EndSeek="4006"/>
+<Insert>BUFFER: BN="include/dpa_api.h"
+VIEW: LN=.4254 CL=32 LE=0 CX=38 CY=30 WI=208 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4352" EndSeek="4396"/>
+<Insert>BUFFER: BN="/usr/include/linux/if_link.h"
+VIEW: LN=.2184 CL=94 LE=0 CX=100 CY=30 WI=95 BI=22 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=14 ",,,"
+BUFFER: BN="/usr/include/linux/netlink.h"
+VIEW: LN=.2817 CL=19 LE=0 CX=27 CY=22 WI=106 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4887" EndSeek="4932"/>
+<Insert>BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netlink.h"
+VIEW: LN=.8742 CL=30 LE=0 CX=38 CY=23 WI=203 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5081" EndSeek="5126"/>
+<Insert>BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/lib/nlattr.c"
+VIEW: LN=.4295 CL=18 LE=0 CX=24 CY=21 WI=87 BI=12 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=16 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_private.h"
+VIEW: LN=.7603 CL=17 LE=0 CX=23 CY=22 WI=214 BI=9 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=12 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_if.c"
+VIEW: LN=.3356 CL=12 LE=0 CX=18 CY=27 WI=91 BI=37 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=3 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/if_link.h"
+VIEW: LN=.2105 CL=1 LE=0 CX=7 CY=37 WI=82 BI=14 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=15 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/bridge/br_netlink.c"
+VIEW: LN=.1048 CL=1 LE=0 CX=9 CY=34 WI=83 BI=43 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=20 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/rtnetlink.h"
+VIEW: LN=.375 CL=9 LE=0 CX=15 CY=21 WI=77 BI=42 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+VIEW: LN=.10288 CL=9 LE=0 CX=15 CY=22 WI=94 BI=11 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=11 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan_netlink.c"
+VIEW: LN=.5748 CL=10 LE=0 CX=18 CY=43 WI=196 BI=33 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan.c"
+VIEW: LN=.9733 CL=18 LE=0 CX=24 CY=23 WI=88 BI=13 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="klna/klna_evnt_mgr.c"
+VIEW: LN=.8035 CL=25 LE=0 CX=33 CY=43 WI=79 BI=17 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=18 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/route.c"
+VIEW: LN=.73196 CL=1 LE=0 CX=9 CY=2 WI=93 BI=28 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/fib_semantics.c"
+VIEW: LN=.8047 CL=46 LE=0 CX=54 CY=28 WI=356 BI=34 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=19 ",,,"
+BUFFER: BN="klna/dpa_klna.c"
+VIEW: LN=.7097 CL=1 LE=0 CX=9 CY=34 WI=228 BI=46 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5555" EndSeek="5567"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/if_tun.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/net/pppoe.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/route.c
+</Insert>
+<Copy StartSeek="5777" EndSeek="5848"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/fib_semantics.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/fib_trie.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/8021q/vlan.h
+klna/dpa_klna.c
+</Insert>
+<Copy StartSeek="6118" EndSeek="6185"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/04/15" Time="18:51:24000">
+<Copy StartSeek="0" EndSeek="179"/>
+<Insert>BUFFER: BN="klna/Makefile"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Makefile	HM=0 MF=131680 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.391 CL=22 LE=0 CX=21 CY=12 WI=5 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="818" EndSeek="901"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.28134 CL=37 LE=0 CX=36 CY=22 WI=5 BI=55 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/fs/cifs/connect.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11325 CL=54 LE=0 CX=53 CY=34 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1142" EndSeek="1222"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.20297 CL=25 LE=0 CX=24 CY=40 WI=5 BI=54 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna.c"
+</Insert>
+<Copy StartSeek="1222" EndSeek="1393"/>
+<Insert>VIEW: LN=.793 CL=37 LE=0 CX=36 CY=28 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7372 CL=17 LE=0 CX=16 CY=37 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1112 CL=1 LE=0 CX=0 CY=19 WI=5 BI=43 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12730 CL=1 LE=0 CX=0 CY=5 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/skbuff.c"
+</Insert>
+<Copy StartSeek="1568" EndSeek="1741"/>
+<Insert>VIEW: LN=.12135 CL=17 LE=0 CX=16 CY=29 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/skbuff.h"
+</Insert>
+<Copy StartSeek="1892" EndSeek="2065"/>
+<Insert>VIEW: LN=.12695 CL=1 LE=0 CX=0 CY=5 WI=5 BI=45 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2937" EndSeek="3016"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=736 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5808 CL=20 LE=0 CX=19 CY=24 WI=5 BI=57 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netlink.h"
+VIEW: LN=.1112 CL=1 LE=0 CX=7 CY=19 WI=217 BI=43 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+VIEW: LN=.12182 CL=34 LE=0 CX=40 CY=22 WI=350 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3891" EndSeek="4012"/>
+<Insert>VIEW: LN=.12135 CL=17 LE=0 CX=23 CY=29 WI=361 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4083" EndSeek="4209"/>
+<Insert>VIEW: LN=.10752 CL=9 LE=0 CX=15 CY=22 WI=207 BI=45 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=4 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/datagram.c"
+VIEW: LN=.5808 CL=20 LE=0 CX=26 CY=24 WI=382 BI=57 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="klna/Makefile"
+VIEW: LN=.391 CL=22 LE=0 CX=21 CY=12 WI=274 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4279" EndSeek="4407"/>
+<Insert>VIEW: LN=.28134 CL=37 LE=0 CX=43 CY=22 WI=302 BI=55 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=10 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/fs/cifs/connect.c"
+VIEW: LN=.11325 CL=54 LE=0 CX=60 CY=34 WI=380 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4478" EndSeek="4603"/>
+<Insert>VIEW: LN=.20297 CL=25 LE=0 CX=31 CY=40 WI=299 BI=54 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5369" EndSeek="5438"/>
+<Insert>VIEW: LN=.793 CL=37 LE=0 CX=43 CY=28 WI=80 BI=16 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=2 ",,,"
+BUFFER: BN="klna/klna_nl.c"
+VIEW: LN=.6425 CL=1 LE=0 CX=9 CY=6 WI=69 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6244" EndSeek="6256"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/datagram.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/usb/usbnet.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/rxrpc/ar-connevent.c
+</Insert>
+<Copy StartSeek="6256" EndSeek="6597"/>
+<Copy StartSeek="6820" EndSeek="6887"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/04/15" Time="19:08:15000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>dpa.vpj=20120403080002000
+</Insert>
+<Copy StartSeek="73" EndSeek="6887"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="11:33:39000">
+<Copy StartSeek="0" EndSeek="47"/>
+<Insert>dpa.vpj=20120416083339000
+</Insert>
+<Copy StartSeek="73" EndSeek="6887"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="15:09:53000">
+<Copy StartSeek="0" EndSeek="167"/>
+<Insert>CWD: ../dpa
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/skbuff.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12135 CL=17 LE=0 CX=16 CY=29 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/skbuff.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.10752 CL=9 LE=0 CX=8 CY=22 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/rxrpc/ar-internal.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.28134 CL=37 LE=0 CX=36 CY=22 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/rxrpc/ar-input.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.20297 CL=25 LE=0 CX=24 CY=40 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/netlink.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.919 CL=33 LE=0 CX=32 CY=22 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netlink.h"
+</Insert>
+<Copy StartSeek="1139" EndSeek="1312"/>
+<Insert>VIEW: LN=.4900 CL=1 LE=0 CX=0 CY=21 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/Makefile"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=Makefile	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=0 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.391 CL=22 LE=0 CX=21 CY=12 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1378" EndSeek="1406"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131680 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7802 CL=49 LE=0 CX=48 CY=25 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.793 CL=37 LE=0 CX=36 CY=28 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/datagram.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5808 CL=20 LE=0 CX=19 CY=24 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/fs/cifs/connect.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11325 CL=54 LE=0 CX=53 CY=34 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/kernel/audit.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.25833 CL=57 LE=0 CX=56 CY=22 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1920" EndSeek="1964"/>
+<Insert>BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/skbuff.c"
+VIEW: LN=.12135 CL=17 LE=0 CX=23 CY=29 WI=78 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2441" EndSeek="2485"/>
+<Insert>BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/skbuff.h"
+VIEW: LN=.10752 CL=9 LE=0 CX=15 CY=22 WI=80 BI=18 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=16 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/rxrpc/ar-internal.h"
+VIEW: LN=.28134 CL=37 LE=0 CX=43 CY=22 WI=86 BI=10 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=13 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/rxrpc/ar-input.c"
+VIEW: LN=.20297 CL=25 LE=0 CX=31 CY=40 WI=90 BI=12 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/netlink.h"
+VIEW: LN=.919 CL=33 LE=0 CX=41 CY=22 WI=159 BI=28 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/netlink.h"
+VIEW: LN=.4900 CL=1 LE=0 CX=7 CY=21 WI=74 BI=15 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="klna/Makefile"
+VIEW: LN=.391 CL=22 LE=0 CX=21 CY=12 WI=84 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2586" EndSeek="2658"/>
+<Insert>VIEW: LN=.7802 CL=49 LE=0 CX=57 CY=25 WI=94 BI=14 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=7 ",,,"
+BUFFER: BN="klna/klna.c"
+VIEW: LN=.793 CL=37 LE=0 CX=43 CY=28 WI=92 BI=13 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=4 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/datagram.c"
+VIEW: LN=.5808 CL=20 LE=0 CX=26 CY=24 WI=82 BI=19 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=10 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/fs/cifs/connect.c"
+VIEW: LN=.11325 CL=54 LE=0 CX=60 CY=34 WI=88 BI=11 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=3 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/kernel/audit.c"
+VIEW: LN=.25833 CL=57 LE=0 CX=65 CY=22 WI=145 BI=24 HT=0 HN=0 HF=0 HC=4
+MARK: MT=CHAR BN="/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/netlink.h" SL=.919 SC=9 LL=.919 EC=33
+</Insert>
+<Copy StartSeek="2869" EndSeek="2881"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netlink/af_netlink.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/skbuff.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/sock.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/socket.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/rxrpc/ar-local.c
+</Insert>
+<Copy StartSeek="3396" EndSeek="3411"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/kernel/audit.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/netlink.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netlink/genetlink.c
+</Insert>
+<Copy StartSeek="3426" EndSeek="3493"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="16:38:11000">
+<Copy StartSeek="0" EndSeek="167"/>
+<Insert>CWD: ../kw2/linux-2.6.21.5-lsp-1.1.0
+</Insert>
+<Copy StartSeek="179" EndSeek="255"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4262 CL=49 LE=0 CX=48 CY=23 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="495" EndSeek="567"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.58690 CL=1 LE=0 CX=0 CY=25 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="806" EndSeek="836"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.667 CL=32 LE=0 CX=31 CY=32 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna_kcompat.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.435 CL=1 LE=0 CX=0 CY=16 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1074" EndSeek="1102"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131688 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7237 CL=29 LE=0 CX=28 CY=14 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1342" EndSeek="1370"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131688 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.358 CL=1 LE=0 CX=0 CY=13 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1935" EndSeek="2055"/>
+<Insert>VIEW: LN=.4262 CL=49 LE=0 CX=55 CY=23 WI=272 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2126" EndSeek="2242"/>
+<Insert>VIEW: LN=.58690 CL=1 LE=0 CX=9 CY=25 WI=221 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2312" EndSeek="2386"/>
+<Insert>VIEW: LN=.667 CL=32 LE=0 CX=40 CY=32 WI=188 BI=13 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="klna/klna_kcompat.h"
+VIEW: LN=.435 CL=1 LE=0 CX=9 CY=16 WI=146 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2454" EndSeek="2526"/>
+<Insert>VIEW: LN=.7237 CL=29 LE=0 CX=37 CY=14 WI=76 BI=28 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=1 ",,,"
+</Insert>
+<Copy StartSeek="2641" EndSeek="2669"/>
+<Insert>VIEW: LN=.1943 CL=41 LE=0 CX=49 CY=34 WI=75 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2936" EndSeek="2948"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/kernel.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/sysctl.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/install/headers/usr/src/linux/linux/version.h
+</Insert>
+<Copy StartSeek="2948" EndSeek="3241"/>
+<Copy StartSeek="3446" EndSeek="3513"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/04/16" Time="17:40:23000">
+<Copy StartSeek="0" EndSeek="179"/>
+<Copy StartSeek="507" EndSeek="583"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4262 CL=49 LE=0 CX=48 CY=23 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="823" EndSeek="895"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.58690 CL=1 LE=0 CX=0 CY=25 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1134" EndSeek="1164"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.667 CL=32 LE=0 CX=31 CY=32 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1403" EndSeek="1431"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7235 CL=29 LE=0 CX=28 CY=14 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1671" EndSeek="1699"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1927 CL=41 LE=0 CX=40 CY=34 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1939" EndSeek="2019"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=736 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.62799 CL=11 LE=0 CX=10 CY=23 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2462" EndSeek="2582"/>
+<Insert>VIEW: LN=.4262 CL=49 LE=0 CX=55 CY=23 WI=201 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2652" EndSeek="2768"/>
+<Insert>VIEW: LN=.58690 CL=1 LE=0 CX=9 CY=25 WI=140 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2838" EndSeek="2912"/>
+<Insert>VIEW: LN=.667 CL=32 LE=0 CX=38 CY=32 WI=69 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2982" EndSeek="3054"/>
+<Insert>VIEW: LN=.7235 CL=29 LE=0 CX=35 CY=14 WI=177 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3124" EndSeek="3196"/>
+<Insert>VIEW: LN=.1927 CL=41 LE=0 CX=49 CY=34 WI=101 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3267" EndSeek="3391"/>
+<Insert>VIEW: LN=.62799 CL=11 LE=0 CX=19 CY=23 WI=287 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3461" EndSeek="4038"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/04/17" Time="11:27:55000">
+<Copy StartSeek="0" EndSeek="1066"/>
+<Insert>VIEW: LN=.58690 CL=1 LE=0 CX=0 CY=25 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1134" EndSeek="1335"/>
+<Insert>VIEW: LN=.667 CL=32 LE=0 CX=31 CY=32 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1403" EndSeek="1602"/>
+<Insert>VIEW: LN=.7235 CL=29 LE=0 CX=28 CY=14 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1671" EndSeek="1870"/>
+<Insert>VIEW: LN=.1927 CL=41 LE=0 CX=40 CY=34 WI=5 BI=30 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1939" EndSeek="2019"/>
+<Copy StartSeek="2341" EndSeek="2514"/>
+<Insert>VIEW: LN=.62799 CL=41 LE=0 CX=40 CY=23 WI=5 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2903" EndSeek="3032"/>
+<Insert>VIEW: LN=.12837 CL=19 LE=0 CX=25 CY=37 WI=177 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3103" EndSeek="3409"/>
+<Insert>VIEW: LN=.58690 CL=1 LE=0 CX=9 CY=25 WI=201 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3479" EndSeek="3553"/>
+<Insert>VIEW: LN=.667 CL=32 LE=0 CX=38 CY=32 WI=140 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3623" EndSeek="3695"/>
+<Insert>VIEW: LN=.7235 CL=29 LE=0 CX=35 CY=14 WI=69 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3766" EndSeek="3838"/>
+<Insert>VIEW: LN=.1927 CL=41 LE=0 CX=47 CY=34 WI=191 BI=30 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=9 ",,,"
+</Insert>
+<Copy StartSeek="3952" EndSeek="4032"/>
+<Insert>VIEW: LN=.62380 CL=27 LE=0 CX=33 CY=6 WI=183 BI=9 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4501" EndSeek="4806"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c
+</Insert>
+<Copy StartSeek="4806" EndSeek="4873"/>
+<Copy StartSeek="4940" EndSeek="5078"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/04/17" Time="11:30:14000">
+<Copy StartSeek="0" EndSeek="179"/>
+<Insert>BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+</Insert>
+<Copy StartSeek="265" EndSeek="438"/>
+<Insert>VIEW: LN=.12837 CL=19 LE=0 CX=18 CY=37 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1795" EndSeek="1871"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4262 CL=49 LE=0 CX=48 CY=23 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2111" EndSeek="2183"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.58690 CL=1 LE=0 CX=0 CY=25 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2747" EndSeek="2777"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.667 CL=32 LE=0 CX=31 CY=32 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7235 CL=29 LE=0 CX=28 CY=14 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3016" EndSeek="3044"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.1927 CL=41 LE=0 CX=40 CY=34 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4548" EndSeek="4628"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.62799 CL=19 LE=0 CX=18 CY=23 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4940" EndSeek="5020"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11610 CL=17 LE=0 CX=16 CY=26 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5137" EndSeek="5221"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.0 CL=1 LE=0 CX=0 CY=0 WI=5 BI=30 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=5 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/rtnetlink.h"
+VIEW: LN=.12837 CL=19 LE=0 CX=25 CY=37 WI=11 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5291" EndSeek="5411"/>
+<Insert>VIEW: LN=.4262 CL=49 LE=0 CX=55 CY=23 WI=81 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5481" EndSeek="5597"/>
+<Insert>VIEW: LN=.58690 CL=1 LE=0 CX=9 CY=25 WI=227 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5867" EndSeek="5941"/>
+<Insert>VIEW: LN=.667 CL=32 LE=0 CX=38 CY=32 WI=216 BI=20 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=2 ",,,"
+BUFFER: BN="klna/klna_nl.c"
+VIEW: LN=.7235 CL=29 LE=0 CX=35 CY=14 WI=140 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6009" EndSeek="6081"/>
+<Insert>VIEW: LN=.1927 CL=41 LE=0 CX=47 CY=34 WI=69 BI=21 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/neighbour.c"
+VIEW: LN=.62799 CL=19 LE=0 CX=27 CY=23 WI=191 BI=24 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=4 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c"
+VIEW: LN=.11610 CL=17 LE=0 CX=25 CY=26 WI=183 BI=18 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=10 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netlink/af_netlink.c"
+VIEW: LN=.42788 CL=29 LE=0 CX=37 CY=28 WI=211 BI=30 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7059" EndSeek="7071"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/version.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netfilter/nf_conntrack.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/netfilter/nf_conntrack_ecache.h
+klna/klna_kcompat.h
+klna/klna_nl.c
+klna/klna_nc.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/neighbour.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c
+</Insert>
+<Copy StartSeek="7071" EndSeek="7142"/>
+<Copy StartSeek="7614" EndSeek="7681"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/04/17" Time="15:23:51000">
+<Copy StartSeek="0" EndSeek="179"/>
+<Insert>BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/inetdevice.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.983 CL=34 LE=0 CX=33 CY=23 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/devinet.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4248 CL=48 LE=0 CX=47 CY=23 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="179" EndSeek="259"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.23385 CL=28 LE=0 CX=27 CY=7 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="821" EndSeek="901"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11610 CL=10 LE=0 CX=9 CY=26 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1141" EndSeek="1225"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.42424 CL=1 LE=0 CX=0 CY=13 WI=5 BI=33 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1464" EndSeek="1540"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4262 CL=49 LE=0 CX=48 CY=23 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1780" EndSeek="1852"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.58690 CL=1 LE=0 CX=0 CY=25 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2091" EndSeek="2176"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12182 CL=1 LE=0 CX=0 CY=5 WI=5 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2417" EndSeek="2447"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.475 CL=1 LE=0 CX=0 CY=13 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2684" EndSeek="2712"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6407 CL=34 LE=0 CX=33 CY=23 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2952" EndSeek="2980"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.430 CL=11 LE=0 CX=10 CY=21 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/decnet/dn_neigh.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4337 CL=16 LE=0 CX=15 CY=7 WI=5 BI=31 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/arp.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131688 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.23190 CL=64 LE=0 CX=63 CY=7 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.21.5-lsp-1.1.0/net/core/neighbour.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.62168 CL=21 LE=0 CX=20 CY=9 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3862" EndSeek="3986"/>
+<Insert>VIEW: LN=.34610 CL=36 LE=0 CX=42 CY=31 WI=222 BI=24 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4058" EndSeek="4184"/>
+<Insert>VIEW: LN=.3072 CL=17 LE=0 CX=23 CY=7 WI=144 BI=31 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4254" EndSeek="4378"/>
+<Insert>VIEW: LN=.11610 CL=10 LE=0 CX=18 CY=26 WI=242 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4450" EndSeek="4579"/>
+<Insert>VIEW: LN=.42424 CL=1 LE=0 CX=9 CY=13 WI=177 BI=33 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4648" EndSeek="4768"/>
+<Insert>VIEW: LN=.4262 CL=49 LE=0 CX=55 CY=23 WI=11 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4839" EndSeek="4955"/>
+<Insert>VIEW: LN=.58690 CL=1 LE=0 CX=9 CY=25 WI=81 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5024" EndSeek="5153"/>
+<Insert>VIEW: LN=.12837 CL=19 LE=0 CX=25 CY=37 WI=183 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5225" EndSeek="5299"/>
+<Insert>VIEW: LN=.475 CL=1 LE=0 CX=7 CY=13 WI=245 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5367" EndSeek="5439"/>
+<Insert>VIEW: LN=.6407 CL=34 LE=0 CX=40 CY=23 WI=209 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5510" EndSeek="5582"/>
+<Insert>VIEW: LN=.7638 CL=2 LE=0 CX=8 CY=24 WI=258 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5651" EndSeek="5782"/>
+<Insert>VIEW: LN=.983 CL=34 LE=0 CX=42 CY=23 WI=193 BI=21 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=16 ",,,"
+</Insert>
+<Copy StartSeek="5897" EndSeek="5975"/>
+<Insert>VIEW: LN=.4248 CL=48 LE=0 CX=54 CY=23 WI=290 BI=34 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=12 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/arp.c"
+VIEW: LN=.6202 CL=33 LE=0 CX=41 CY=31 WI=295 BI=22 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=8 ",,,"
+BUFFER: BN="../kw2/linux-2.6.21.5-lsp-1.1.0/net/core/neighbour.c"
+VIEW: LN=.62168 CL=21 LE=0 CX=29 CY=9 WI=251 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6046" EndSeek="6417"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/arp.c
+</Insert>
+<Copy StartSeek="6417" EndSeek="6540"/>
+<Copy StartSeek="6601" EndSeek="6668"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/04/18" Time="10:35:32000">
+<Copy StartSeek="0" EndSeek="179"/>
+<Insert>BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/neighbour.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.34610 CL=36 LE=0 CX=35 CY=31 WI=5 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2138" EndSeek="2219"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.3072 CL=17 LE=0 CX=16 CY=7 WI=5 BI=24 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11610 CL=10 LE=0 CX=9 CY=26 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3372" EndSeek="3456"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.42424 CL=1 LE=0 CX=0 CY=13 WI=5 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3695" EndSeek="3771"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4262 CL=49 LE=0 CX=48 CY=23 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4011" EndSeek="4083"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.58690 CL=1 LE=0 CX=0 CY=25 WI=5 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4322" EndSeek="4407"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12837 CL=19 LE=0 CX=18 CY=37 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna_main.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.475 CL=1 LE=0 CX=0 CY=13 WI=5 BI=31 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna_nc.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.6407 CL=34 LE=0 CX=33 CY=23 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="klna/klna_nl.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.7638 CL=2 LE=0 CX=1 CY=24 WI=5 BI=35 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/inetdevice.h"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=0 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.983 CL=34 LE=0 CX=33 CY=23 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/devinet.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=96 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4248 CL=48 LE=0 CX=47 CY=23 WI=5 BI=33 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=9 ",,,"
+</Insert>
+<Copy StartSeek="4967" EndSeek="5047"/>
+<Insert>VIEW: LN=.34610 CL=36 LE=0 CX=42 CY=31 WI=178 BI=25 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7029" EndSeek="7155"/>
+<Insert>VIEW: LN=.3072 CL=17 LE=0 CX=23 CY=7 WI=144 BI=24 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=4 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/rtnetlink.c"
+VIEW: LN=.11610 CL=10 LE=0 CX=18 CY=26 WI=183 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7760" EndSeek="7889"/>
+<Insert>VIEW: LN=.42424 CL=1 LE=0 CX=9 CY=13 WI=11 BI=32 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7959" EndSeek="8079"/>
+<Insert>VIEW: LN=.4262 CL=49 LE=0 CX=55 CY=23 WI=215 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8150" EndSeek="8266"/>
+<Insert>VIEW: LN=.58690 CL=1 LE=0 CX=9 CY=25 WI=81 BI=28 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8336" EndSeek="8465"/>
+<Insert>VIEW: LN=.12837 CL=19 LE=0 CX=25 CY=37 WI=245 BI=16 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=3 ",,,"
+BUFFER: BN="klna/klna_main.c"
+VIEW: LN=.475 CL=1 LE=0 CX=7 CY=13 WI=258 BI=31 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=1 ",,,"
+BUFFER: BN="klna/klna_nc.c"
+VIEW: LN=.6407 CL=34 LE=0 CX=40 CY=23 WI=251 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8929" EndSeek="9001"/>
+<Insert>VIEW: LN=.7638 CL=2 LE=0 CX=8 CY=24 WI=209 BI=35 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=13 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/inetdevice.h"
+VIEW: LN=.983 CL=34 LE=0 CX=40 CY=23 WI=222 BI=29 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=16 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/devinet.c"
+VIEW: LN=.4248 CL=48 LE=0 CX=54 CY=23 WI=242 BI=33 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9215" EndSeek="9227"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/netlink/af_netlink.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/neighbour.c
+klna/klna_nl.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/decnet/dn_neigh.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/inetdevice.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/devinet.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/net/neighbour.h
+../kw2/linux-2.6.21.5-lsp-1.1.0/net/core/neighbour.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/ipv4/arp.c
+</Insert>
+<Copy StartSeek="9795" EndSeek="9862"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/04/19" Time="11:54:26000">
+<Copy StartSeek="0" EndSeek="505"/>
+<Insert>BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/net/pppoe.c"
+BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.28185 CL=29 LE=0 CX=28 CY=31 WI=5 BI=23 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="505" EndSeek="589"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=744 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9791 CL=48 LE=0 CX=47 CY=17 WI=5 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="829" EndSeek="907"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.33191 CL=1 LE=0 CX=0 CY=33 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1146" EndSeek="1221"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.48842 CL=24 LE=0 CX=23 CY=24 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1462" EndSeek="1569"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12163 CL=2 LE=0 CX=1 CY=22 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1808" EndSeek="2060"/>
+<Insert>VIEW: LN=.3072 CL=17 LE=0 CX=16 CY=7 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2128" EndSeek="2329"/>
+<Insert>VIEW: LN=.475 CL=1 LE=0 CX=0 CY=13 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2395" EndSeek="2481"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.983 CL=34 LE=0 CX=33 CY=23 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2720" EndSeek="2798"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4248 CL=48 LE=0 CX=47 CY=23 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3038" EndSeek="3293"/>
+<Insert>VIEW: LN=.42424 CL=1 LE=0 CX=0 CY=13 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3361" EndSeek="3608"/>
+<Insert>VIEW: LN=.4262 CL=49 LE=0 CX=48 CY=23 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3677" EndSeek="3920"/>
+<Insert>VIEW: LN=.58690 CL=1 LE=0 CX=0 CY=25 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3988" EndSeek="4073"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=104 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12182 CL=1 LE=0 CX=0 CY=5 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4314" EndSeek="4565"/>
+<Insert>VIEW: LN=.11610 CL=10 LE=0 CX=9 CY=26 WI=5 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4634" EndSeek="4885"/>
+<Insert>VIEW: LN=.34610 CL=36 LE=0 CX=35 CY=31 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4955" EndSeek="4983"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4679 CL=55 LE=0 CX=54 CY=26 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5223" EndSeek="5251"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=131688 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4939 CL=27 LE=0 CX=26 CY=29 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5493" EndSeek="5625"/>
+<Insert>VIEW: LN=.883 CL=1 LE=0 CX=7 CY=16 WI=91 BI=20 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 N  WF=0 WT=8 ",,,"
+BUFFER: BN="../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/net/pppoe.c"
+VIEW: LN=.28185 CL=29 LE=0 CX=37 CY=31 WI=80 BI=23 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5693" EndSeek="5822"/>
+<Insert>VIEW: LN=.9791 CL=48 LE=0 CX=54 CY=17 WI=265 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5892" EndSeek="6015"/>
+<Insert>VIEW: LN=.33191 CL=1 LE=0 CX=7 CY=33 WI=88 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6085" EndSeek="6205"/>
+<Insert>VIEW: LN=.48842 CL=24 LE=0 CX=30 CY=24 WI=213 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6277" EndSeek="6429"/>
+<Insert>VIEW: LN=.12163 CL=2 LE=0 CX=8 CY=22 WI=94 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6499" EndSeek="6625"/>
+<Insert>VIEW: LN=.3072 CL=17 LE=0 CX=23 CY=7 WI=151 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6695" EndSeek="6769"/>
+<Insert>VIEW: LN=.475 CL=1 LE=0 CX=7 CY=13 WI=104 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6837" EndSeek="6968"/>
+<Insert>VIEW: LN=.983 CL=34 LE=0 CX=40 CY=23 WI=98 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7038" EndSeek="7161"/>
+<Insert>VIEW: LN=.4248 CL=48 LE=0 CX=54 CY=23 WI=96 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7232" EndSeek="7361"/>
+<Insert>VIEW: LN=.42424 CL=1 LE=0 CX=7 CY=13 WI=119 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7431" EndSeek="7551"/>
+<Insert>VIEW: LN=.4262 CL=49 LE=0 CX=55 CY=23 WI=110 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7622" EndSeek="7738"/>
+<Insert>VIEW: LN=.58690 CL=1 LE=0 CX=7 CY=25 WI=108 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7808" EndSeek="7937"/>
+<Insert>VIEW: LN=.12837 CL=19 LE=0 CX=25 CY=37 WI=106 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8009" EndSeek="8133"/>
+<Insert>VIEW: LN=.11610 CL=10 LE=0 CX=16 CY=26 WI=178 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8204" EndSeek="8328"/>
+<Insert>VIEW: LN=.34610 CL=36 LE=0 CX=42 CY=31 WI=188 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8399" EndSeek="8471"/>
+<Insert>VIEW: LN=.4679 CL=55 LE=0 CX=63 CY=26 WI=100 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8541" EndSeek="8613"/>
+<Insert>VIEW: LN=.4939 CL=27 LE=0 CX=35 CY=29 WI=102 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8680" EndSeek="8692"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/lib/idr.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/net/core/net_namespace.c
+</Insert>
+<Copy StartSeek="8692" EndSeek="8995"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/net/pppoe.c
+</Insert>
+<Copy StartSeek="8995" EndSeek="9067"/>
+<Copy StartSeek="9320" EndSeek="9387"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/04/19" Time="12:22:4000">
+<Copy StartSeek="0" EndSeek="179"/>
+<Copy StartSeek="504" EndSeek="591"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.883 CL=1 LE=0 CX=0 CY=16 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="828" EndSeek="912"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.9791 CL=48 LE=0 CX=47 CY=17 WI=5 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1152" EndSeek="1230"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="1401" EndSeek="1544"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="1715" EndSeek="1892"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="2063" EndSeek="2212"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="2383" EndSeek="2481"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="2652" EndSeek="2804"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="2975" EndSeek="3121"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="3292" EndSeek="3445"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+</Insert>
+<Copy StartSeek="3616" EndSeek="3760"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4262 CL=49 LE=0 CX=48 CY=23 WI=5 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4000" EndSeek="4072"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.58690 CL=1 LE=0 CX=0 CY=25 WI=5 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4311" EndSeek="4396"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.12837 CL=19 LE=0 CX=18 CY=37 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4637" EndSeek="4717"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.11610 CL=10 LE=0 CX=9 CY=26 WI=5 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4957" EndSeek="5037"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.34610 CL=36 LE=0 CX=35 CY=31 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5278" EndSeek="5306"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=8 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4679 CL=55 LE=0 CX=54 CY=26 WI=5 BI=39 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5546" EndSeek="5574"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=616 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.4897 CL=27 LE=0 CX=26 CY=29 WI=5 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6334" EndSeek="6466"/>
+<Insert>VIEW: LN=.883 CL=1 LE=0 CX=7 CY=16 WI=226 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6534" EndSeek="6663"/>
+<Insert>VIEW: LN=.9791 CL=48 LE=0 CX=54 CY=17 WI=91 BI=22 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6734" EndSeek="6857"/>
+<Insert>VIEW: LN=.33191 CL=1 LE=0 CX=7 CY=33 WI=188 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6927" EndSeek="7047"/>
+<Insert>VIEW: LN=.48842 CL=24 LE=0 CX=30 CY=24 WI=151 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7119" EndSeek="7271"/>
+<Insert>VIEW: LN=.12163 CL=2 LE=0 CX=8 CY=22 WI=178 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7341" EndSeek="7467"/>
+<Insert>VIEW: LN=.3072 CL=17 LE=0 CX=23 CY=7 WI=119 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7537" EndSeek="7611"/>
+<Insert>VIEW: LN=.475 CL=1 LE=0 CX=7 CY=13 WI=209 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7678" EndSeek="7809"/>
+<Insert>VIEW: LN=.983 CL=34 LE=0 CX=40 CY=23 WI=110 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7879" EndSeek="8002"/>
+<Insert>VIEW: LN=.4248 CL=48 LE=0 CX=54 CY=23 WI=108 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8073" EndSeek="8202"/>
+<Insert>VIEW: LN=.42424 CL=1 LE=0 CX=7 CY=13 WI=106 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8272" EndSeek="8392"/>
+<Insert>VIEW: LN=.4262 CL=49 LE=0 CX=55 CY=23 WI=104 BI=37 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8463" EndSeek="8579"/>
+<Insert>VIEW: LN=.58690 CL=1 LE=0 CX=7 CY=25 WI=102 BI=36 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8649" EndSeek="8778"/>
+<Insert>VIEW: LN=.12837 CL=19 LE=0 CX=25 CY=37 WI=100 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8850" EndSeek="8974"/>
+<Insert>VIEW: LN=.11610 CL=10 LE=0 CX=16 CY=26 WI=98 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9046" EndSeek="9170"/>
+<Insert>VIEW: LN=.34610 CL=36 LE=0 CX=42 CY=31 WI=96 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9242" EndSeek="9314"/>
+<Insert>VIEW: LN=.4679 CL=55 LE=0 CX=63 CY=26 WI=94 BI=39 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=1 ",,,"
+</Insert>
+<Copy StartSeek="9429" EndSeek="9457"/>
+<Insert>VIEW: LN=.4954 CL=2 LE=0 CX=8 CY=7 WI=67 BI=16 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9719" EndSeek="9731"/>
+<Insert>klna/klna_nc.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/include/linux/gfp.h
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/mm/dma-mapping.c
+../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/arch/arm/include/asm/cacheflush.h
+</Insert>
+<Copy StartSeek="9731" EndSeek="10126"/>
+<Copy StartSeek="10379" EndSeek="10446"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/04/19" Time="16:18:22000">
+<Copy StartSeek="0" EndSeek="264"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.30050 CL=1 LE=0 CX=0 CY=5 WI=5 BI=42 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="503" EndSeek="761"/>
+<Insert>VIEW: LN=.883 CL=1 LE=0 CX=0 CY=16 WI=5 BI=50 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="827" EndSeek="1082"/>
+<Insert>VIEW: LN=.9791 CL=48 LE=0 CX=47 CY=17 WI=5 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1151" EndSeek="1400"/>
+<Insert>VIEW: LN=.33191 CL=1 LE=0 CX=0 CY=33 WI=5 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1468" EndSeek="1714"/>
+<Insert>VIEW: LN=.48842 CL=24 LE=0 CX=23 CY=24 WI=5 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="1784" EndSeek="2062"/>
+<Insert>VIEW: LN=.12163 CL=2 LE=0 CX=1 CY=22 WI=5 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2130" EndSeek="2382"/>
+<Insert>VIEW: LN=.3072 CL=17 LE=0 CX=16 CY=7 WI=5 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2450" EndSeek="2651"/>
+<Insert>VIEW: LN=.475 CL=1 LE=0 CX=0 CY=13 WI=5 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="2717" EndSeek="2974"/>
+<Insert>VIEW: LN=.983 CL=34 LE=0 CX=33 CY=23 WI=5 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3042" EndSeek="3291"/>
+<Insert>VIEW: LN=.4248 CL=48 LE=0 CX=47 CY=23 WI=5 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3360" EndSeek="3615"/>
+<Insert>VIEW: LN=.42424 CL=1 LE=0 CX=0 CY=13 WI=5 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3683" EndSeek="3930"/>
+<Insert>VIEW: LN=.4262 CL=49 LE=0 CX=48 CY=23 WI=5 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="3999" EndSeek="4242"/>
+<Insert>VIEW: LN=.58690 CL=1 LE=0 CX=0 CY=25 WI=5 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4310" EndSeek="4566"/>
+<Insert>VIEW: LN=.12837 CL=19 LE=0 CX=18 CY=37 WI=5 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4636" EndSeek="4887"/>
+<Insert>VIEW: LN=.11610 CL=10 LE=0 CX=9 CY=26 WI=5 BI=39 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="4956" EndSeek="5207"/>
+<Insert>VIEW: LN=.34610 CL=36 LE=0 CX=35 CY=31 WI=5 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5277" EndSeek="5476"/>
+<Insert>VIEW: LN=.4679 CL=55 LE=0 CX=54 CY=26 WI=5 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5545" EndSeek="5573"/>
+<Insert>BI: MA=1 74 1  TABS=1 9  WWS=1 IWT=1 ST=0 IN=2 BW=0 US=32000 RO=0 SE=1 SN=0 BIN=0 MN=C/C++	HM=0 MF=608 TL=0 MLL=0 ASE=0 LNL=6 LCF=6 CAPS=0 E=0 ESBU2=1 CL="" SC="" SCE= SCU=
+VIEW: LN=.5719 CL=10 LE=0 CX=9 CY=43 WI=5 BI=34 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="5812" EndSeek="5889"/>
+<Copy StartSeek="6210" EndSeek="6383"/>
+<Insert>VIEW: LN=.4754 CL=48 LE=0 CX=47 CY=15 WI=5 BI=47 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6453" EndSeek="6583"/>
+<Insert>VIEW: LN=.30050 CL=1 LE=0 CX=7 CY=24 WI=325 BI=42 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6653" EndSeek="6785"/>
+<Insert>VIEW: LN=.883 CL=1 LE=0 CX=7 CY=16 WI=284 BI=50 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="6853" EndSeek="6982"/>
+<Insert>VIEW: LN=.9791 CL=48 LE=0 CX=54 CY=17 WI=297 BI=20 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7053" EndSeek="7176"/>
+<Insert>VIEW: LN=.33191 CL=1 LE=0 CX=7 CY=33 WI=287 BI=29 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7246" EndSeek="7366"/>
+<Insert>VIEW: LN=.48842 CL=24 LE=0 CX=30 CY=24 WI=269 BI=15 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7438" EndSeek="7590"/>
+<Insert>VIEW: LN=.12163 CL=2 LE=0 CX=8 CY=22 WI=146 BI=13 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7660" EndSeek="7786"/>
+<Insert>VIEW: LN=.3072 CL=17 LE=0 CX=23 CY=7 WI=285 BI=19 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7856" EndSeek="7930"/>
+<Insert>VIEW: LN=.475 CL=1 LE=0 CX=7 CY=13 WI=91 BI=21 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="7998" EndSeek="8129"/>
+<Insert>VIEW: LN=.983 CL=34 LE=0 CX=40 CY=23 WI=188 BI=11 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8199" EndSeek="8322"/>
+<Insert>VIEW: LN=.4248 CL=48 LE=0 CX=54 CY=23 WI=151 BI=12 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8392" EndSeek="8521"/>
+<Insert>VIEW: LN=.42424 CL=1 LE=0 CX=7 CY=13 WI=178 BI=14 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8591" EndSeek="8711"/>
+<Insert>VIEW: LN=.4262 CL=49 LE=0 CX=55 CY=23 WI=119 BI=18 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8782" EndSeek="8898"/>
+<Insert>VIEW: LN=.58690 CL=1 LE=0 CX=7 CY=25 WI=209 BI=41 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="8968" EndSeek="9097"/>
+<Insert>VIEW: LN=.12837 CL=19 LE=0 CX=25 CY=37 WI=275 BI=17 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9169" EndSeek="9293"/>
+<Insert>VIEW: LN=.11610 CL=10 LE=0 CX=16 CY=26 WI=202 BI=39 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9365" EndSeek="9489"/>
+<Insert>VIEW: LN=.34610 CL=36 LE=0 CX=42 CY=31 WI=276 BI=27 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9561" EndSeek="9633"/>
+<Insert>VIEW: LN=.4679 CL=55 LE=0 CX=63 CY=26 WI=110 BI=10 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="9704" EndSeek="9776"/>
+<Insert>VIEW: LN=.5719 CL=10 LE=0 CX=18 CY=43 WI=108 BI=34 HT=0 HN=0 HF=0 HC=4
+WINDOW: 0 0 1628 809 0 0 M  WF=0 WT=20 ",,,"
+</Insert>
+<Copy StartSeek="9892" EndSeek="9969"/>
+<Insert>VIEW: LN=.4552 CL=28 LE=0 CX=36 CY=6 WI=99 BI=47 HT=0 HN=0 HF=0 HC=4
+</Insert>
+<Copy StartSeek="10232" EndSeek="10386"/>
+<Insert>../kw2/linux-2.6.32.11-feroceon_3.1.0_kw2_alg/drivers/net/pppoe.c
+</Insert>
+<Copy StartSeek="10386" EndSeek="10826"/>
+<Copy StartSeek="10892" EndSeek="10959"/>
+</Delta>
+</DeltaFile>

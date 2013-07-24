@@ -1,0 +1,760 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="84" Comment="" Date="2012/05/01" Time="08:43:31000" NL="\10" Encoding="text">
+<Insert>/*
+ *	Marvell Kernel Learning Agent
+ * 
+ *      Authors:
+ *	Haim Daniel
+ *
+ *	This program is free software; you can redistribute it and/or
+ *	modify it under the terms of the GNU General Public License
+ *	as published by the Free Software Foundation; either version
+ *	2 of the License, or (at your option) any later version.
+ */
+
+#include &lt;linux/module.h&gt;
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/version.h&gt;
+#include &lt;linux/sched.h&gt;
+#include &lt;linux/file.h&gt;
+#include &lt;linux/if_pppox.h&gt;
+#include &lt;net/sock.h&gt;
+#if LINUX_VERSION_CODE &gt;= KERNEL_VERSION(2,6,24)
+#include &lt;linux/fdtable.h&gt;
+#endif
+
+#undef pr_fmt
+#define pr_fmt(fmt) "klna_pppoe_sock: " fmt
+
+/* taken from exit.c put_files_struct() */
+static void __put_files_struct(struct task_struct *task)
+{
+	struct files_struct *files = task-&gt;files;
+
+	if (files) {
+		spin_unlock_bh(&amp;files-&gt;file_lock);
+	}
+	task_unlock(task);
+}
+
+/* taken from exit.c get_files_struct()
+   NOTE: _don't_ release the task lock, until done with the files struct ! */
+static struct files_struct *__get_files_struct(struct task_struct *task)
+{
+	struct files_struct *files;
+
+	/* we abuse that lock to avoid race of put_files_struct() in exit.c */
+	task_lock(task); 
+	files = task-&gt;files;
+//      if (files)
+//      	atomic_inc(&amp;files-&gt;count);
+	if (files) {
+		spin_lock_bh(&amp;files-&gt;file_lock);
+		/* yes we do need it, since we can't update the refcount here
+		   due to unexported symbols on put_files() flow */
+		if (!atomic_read(&amp;files-&gt;count)) {
+			files = NULL; 
+		}
+	}
+//      task_unlock(task);
+
+	return files;
+}
+
+static struct sock *get_pppox_sock_by_filp(struct file *filp)
+{
+	struct inode *inode = filp-&gt;f_path.dentry-&gt;d_inode;
+	struct sock *sk;
+
+	if (!S_ISSOCK(inode-&gt;i_mode))
+		return NULL;
+
+	sk = SOCKET_I(inode)-&gt;sk;
+	if (sk-&gt;sk_family != AF_PPPOX)
+		return NULL;
+
+	sock_hold(sk);
+
+	return sk;
+}
+
+static void detect_pppox_sock_files(struct files_struct *files, 
+				    struct task_struct *tsk /* just for printout */, 
+				    struct net_device *dev)
+{
+	int i, j;
+	struct fdtable *fdt;
+
+	j = 0;
+
+	spin_lock(&amp;files-&gt;file_lock);
+	fdt = files_fdtable(files);
+	for (;;) {
+		unsigned long set;
+		i = j * __NFDBITS;
+		if (i &gt;= fdt-&gt;max_fds)
+			break;
+		set = fdt-&gt;open_fds-&gt;fds_bits[j++];
+		while (set) {
+			if (set &amp; 1) {
+				struct file *filep = fdt-&gt;fd[i];
+				if (filep) {
+					struct sock *sk = get_pppox_sock_by_filp(filep);
+					if (sk) {
+						struct pppox_sock *po;
+						lock_sock(sk);
+						po = pppox_sk(sk);
+						/* HAIM FIXME : need a way to map between pppoe_dev and event_dev  */
+//      					if (po-&gt;pppoe_dev == dev) {
+							printk(KERN_INFO "(%s:%d) found pppoe sock!\n", __func__, __LINE__);
+							printk(KERN_INFO "Task %s,pid = %d,state = %ld, "
+									 "ch %u, ev_dev %s ev_dev_index %d, "
+									 "pppoe_dev %s index %d\n",
+							       tsk-&gt;comm, tsk-&gt;pid, tsk-&gt;state, ppp_channel_index(&amp;po-&gt;chan),
+							       dev-&gt;name, dev-&gt;ifindex,
+							       po-&gt;pppoe_dev-&gt;name, po-&gt;pppoe_ifindex);
+//      					}
+						release_sock(sk);
+						__sock_put(sk);
+					}
+				}
+			}
+			i++;
+			set &gt;&gt;= 1;
+		}
+	}
+	spin_unlock(&amp;files-&gt;file_lock);
+}
+
+void find_dev_pppoe_socks(struct net_device *dev)
+{
+	struct task_struct *tsk;
+	struct files_struct *files;
+
+	read_lock_bh(&amp;tasklist_lock);
+	for_each_process(tsk) {
+		files = __get_files_struct(tsk);
+		if (files) {
+			detect_pppox_sock_files(files, tsk, dev);
+		}
+		__put_files_struct(tsk);
+	}
+	read_unlock_bh(&amp;tasklist_lock);
+}
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:21:15000">
+<Copy StartSeek="0" EndSeek="2178"/>
+<Insert>static inline void scan_tasks(void)
+</Insert>
+<Copy StartSeek="2200" EndSeek="2475"/>
+<Insert>
+static int __init task_list(void)
+{
+	pr_info("init\n");
+	scan_tasks();
+
+	return 0;
+}
+
+static void __exit task_list_exit(void)
+{
+	pr_info("exit\n");
+}
+
+module_init(task_list)
+module_exit(task_list_exit)
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Haim Daniel &lt;haimd@marvell.com&gt;");
+</Insert>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:28:45000">
+<Copy StartSeek="0" EndSeek="2178"/>
+<Insert>void scan_tasks(void)
+</Insert>
+<Copy StartSeek="2200" EndSeek="2475"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:34:11000">
+<Copy StartSeek="0" EndSeek="2178"/>
+<Insert>void find_pppoe(void)
+</Insert>
+<Copy StartSeek="2206" EndSeek="2481"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:34:47000">
+<Copy StartSeek="0" EndSeek="2178"/>
+<Insert>void find_pppoe_socks(void)
+</Insert>
+<Copy StartSeek="2224" EndSeek="2499"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:47:59000">
+<Copy StartSeek="0" EndSeek="2178"/>
+<Insert>void find_dev_pppoe_socks(struct netdev *dev)
+</Insert>
+<Copy StartSeek="2228" EndSeek="2503"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:48:12000">
+<Copy StartSeek="0" EndSeek="1191"/>
+<Insert>				    struct task_struct *tsk /* just for printout */)
+</Insert>
+<Copy StartSeek="1272" EndSeek="2527"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:50:40000">
+<Copy StartSeek="0" EndSeek="2416"/>
+<Insert>			detect_pppox_sock_files(files, tsk);
+</Insert>
+<Copy StartSeek="2461" EndSeek="2532"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:50:45000">
+<Copy StartSeek="0" EndSeek="1736"/>
+<Insert>						printk(KERN_INFO "(%s:%d) found pppoe sock!\n", __func__, __LINE__);
+						printk(KERN_INFO "Task %s (pid = %d) (state = %ld, flags = %lx), ch %u\n",
+						       tsk-&gt;comm, tsk-&gt;pid,
+						       tsk-&gt;state, tsk-&gt;flags, ppp_channel_index(&amp;po-&gt;chan));
+
+</Insert>
+<Copy StartSeek="2041" EndSeek="2578"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:52:20000">
+<Copy StartSeek="0" EndSeek="1846"/>
+<Insert>							printk(KERN_INFO "Task %s (pid = %d) (state = %ld, flags = %lx), ch %u\n",
+							       tsk-&gt;comm, tsk-&gt;pid,
+							       tsk-&gt;state, tsk-&gt;flags, ppp_channel_index(&amp;po-&gt;chan));
+</Insert>
+<Copy StartSeek="2022" EndSeek="2568"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:53:15000">
+<Copy StartSeek="0" EndSeek="1736"/>
+<Insert>						if (po-&gt;pppoe_dev == dev) {
+</Insert>
+<Copy StartSeek="1777" EndSeek="2029"/>
+<Insert>						}
+</Insert>
+<Copy StartSeek="2044" EndSeek="2582"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:56:23000">
+<Copy StartSeek="0" EndSeek="2003"/>
+<Insert>							       dev-&gt;name);
+</Insert>
+<Copy StartSeek="2044" EndSeek="2597"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:56:45000">
+<Copy StartSeek="0" EndSeek="2003"/>
+<Insert>							       dev-&gt;name, po-&gt;pppoe_dev);
+</Insert>
+<Copy StartSeek="2050" EndSeek="2603"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:56:55000">
+<Copy StartSeek="0" EndSeek="1853"/>
+<Insert>							printk(KERN_INFO "Task %s,pid = %d,state = %ld, ch %u, dev %s\n",
+</Insert>
+<Copy StartSeek="1937" EndSeek="2614"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:57:1000">
+<Copy StartSeek="0" EndSeek="1853"/>
+<Insert>							printk(KERN_INFO "Task %s,pid = %d,state = %ld, ch %u, dev %s, pppoe_dev\n",
+</Insert>
+<Copy StartSeek="1940" EndSeek="2617"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="17:57:4000">
+<Copy StartSeek="0" EndSeek="1853"/>
+<Insert>							printk(KERN_INFO "Task %s,pid = %d,state = %ld, ch %u, dev %s, pppoe_dev %s\n",
+</Insert>
+<Copy StartSeek="1958" EndSeek="2035"/>
+<Insert>							       dev-&gt;name, po-&gt;pppoe_dev-&gt;name);
+</Insert>
+<Copy StartSeek="2135" EndSeek="2688"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:08:16000">
+<Copy StartSeek="0" EndSeek="2074"/>
+<Insert>							       po-&gt;pppoe_dev-&gt;name, po-&gt;pppoe_dev-&gt;if_index);
+</Insert>
+<Copy StartSeek="2129" EndSeek="2682"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:08:27000">
+<Copy StartSeek="0" EndSeek="1853"/>
+<Insert>							printk(KERN_INFO "Task %s,pid = %d,state = %ld, ch %u, dev %s index %d, pppoe_dev %s index %d\n",
+</Insert>
+<Copy StartSeek="1961" EndSeek="2685"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:10:5000">
+<Copy StartSeek="0" EndSeek="1853"/>
+<Insert>							printk(KERN_INFO "Task %s,pid = %d,state = %ld, ch %u, ev_dev %s index %d, pppoe_dev %s index %d\n",
+</Insert>
+<Copy StartSeek="1968" EndSeek="2692"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:10:11000">
+<Copy StartSeek="0" EndSeek="1736"/>
+<Copy StartSeek="1812" EndSeek="2768"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:11:45000">
+<Copy StartSeek="0" EndSeek="2230"/>
+<Insert>
+</Insert>
+<Copy StartSeek="2230" EndSeek="2767"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:18:6000">
+<Copy StartSeek="0" EndSeek="2359"/>
+<Insert>#define pr_debug(fmt,arg...) \
+	if (debug) \
+		printk(KERN_DEBUG fmt,##arg)
+
+
+</Insert>
+<Copy StartSeek="2359" EndSeek="2689"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:18:16000">
+<Copy StartSeek="0" EndSeek="1191"/>
+<Insert>				    struct task_struct *tsk /* just for printout */, struct net_device *dev)
+{
+</Insert>
+<Copy StartSeek="1283" EndSeek="2698"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:18:30000">
+<Copy StartSeek="0" EndSeek="525"/>
+<Insert>#define pr_fmt(fmt)	"task_list: " fmt
+</Insert>
+<Copy StartSeek="564" EndSeek="2699"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:21:13000">
+<Copy StartSeek="0" EndSeek="525"/>
+<Insert>#define pr_fmt(fmt) "pppoe_sock: " fmt
+</Insert>
+<Copy StartSeek="569" EndSeek="2704"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:21:16000">
+<Copy StartSeek="0" EndSeek="1944"/>
+<Insert>							printk(KERN_INFO "Task %s,pid = %d,state = %ld, ch %u, ev_dev %s ev_dev_index %d, pppoe_dev %s index %d\n",
+</Insert>
+<Copy StartSeek="2072" EndSeek="2717"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:21:33000">
+<Copy StartSeek="0" EndSeek="1944"/>
+<Insert>							printk(KERN_INFO "Task %s,pid = %d,state = %ld, "
+									 "ch %u, ev_dev %s ev_dev_index %d, pppoe_dev %s index %d\n",
+</Insert>
+<Copy StartSeek="2059" EndSeek="2704"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:21:37000">
+<Copy StartSeek="0" EndSeek="1944"/>
+<Insert>							printk(KERN_INFO "Task %s,pid = %d,state = %ld, ch %u, ev_dev %s ev_dev_index %d, pppoe_dev %s index %d\n",
+</Insert>
+<Copy StartSeek="2085" EndSeek="2730"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:21:48000">
+<Copy StartSeek="0" EndSeek="510"/>
+<Insert>
+</Insert>
+<Copy StartSeek="594" EndSeek="2813"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:25:55000">
+<Copy StartSeek="0" EndSeek="653"/>
+<Insert>#if LINUX_VERSION_CODE &lt;= KERNEL_VERSION(2,6,24)
+</Insert>
+<Copy StartSeek="1187" EndSeek="1402"/>
+<Insert>#endif
+
+</Insert>
+<Copy StartSeek="1403" EndSeek="3291"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:27:8000">
+<Copy StartSeek="0" EndSeek="1179"/>
+<Insert>#endif
+</Insert>
+<Copy StartSeek="1214" EndSeek="3319"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:27:22000">
+<Copy StartSeek="0" EndSeek="702"/>
+<Copy StartSeek="1297" EndSeek="3914"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/04/29" Time="18:30:0000">
+<Copy StartSeek="0" EndSeek="1233"/>
+<Insert>					cond_resched();
+</Insert>
+<Copy StartSeek="1261" EndSeek="1953"/>
+<Insert>	if (files)
+		atomic_inc(&amp;files-&gt;count);
+</Insert>
+<Copy StartSeek="2008" EndSeek="3935"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="17:40:31000">
+<Copy StartSeek="0" EndSeek="2008"/>
+<Copy StartSeek="2057" EndSeek="3984"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="17:41:51000">
+<Copy StartSeek="0" EndSeek="3761"/>
+<Insert>	
+</Insert>
+<Copy StartSeek="3839" EndSeek="4060"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="17:51:44000">
+<Copy StartSeek="0" EndSeek="3761"/>
+<Insert>	printk(KERN_ERR "(%s:%d) in_softirq %u\n", __func__, __LINE__,in_softirq());
+</Insert>
+<Copy StartSeek="3840" EndSeek="4061"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="17:52:11000">
+<Copy StartSeek="0" EndSeek="1379"/>
+<Insert>	if (atomic_dec_and_test(&amp;files-&gt;count)) {
+		close_files(files);
+		/*
+		 * Free the fd and fdset arrays if we expanded them.
+		 * If the fdtable was embedded, pass files for freeing
+		 * at the end of the RCU grace period. Otherwise,
+		 * you can free files immediately.
+		 */
+		fdt = files_fdtable(files);
+		if (fdt != &amp;files-&gt;fdtab)
+			kmem_cache_free(files_cachep, files);
+		free_fdtable(fdt);
+	}
+}
+</Insert>
+<Copy StartSeek="1414" EndSeek="3694"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="17:56:48000">
+<Copy StartSeek="0" EndSeek="1356"/>
+<Insert>	struct fdtable *fdt;
+
+</Insert>
+<Copy StartSeek="1356" EndSeek="3671"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="17:56:54000">
+<Copy StartSeek="0" EndSeek="1304"/>
+<Copy StartSeek="1340" EndSeek="1427"/>
+<Insert>#endif /* KERNEL_VERSION 2.6.24 */
+
+</Insert>
+<Copy StartSeek="1428" EndSeek="3672"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="17:57:1000">
+<Copy StartSeek="0" EndSeek="1303"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1303" EndSeek="3671"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="17:57:4000">
+<Copy StartSeek="0" EndSeek="1664"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="1690" EndSeek="3694"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:08:50000">
+<Copy StartSeek="0" EndSeek="1664"/>
+<Insert>		files = task-&gt;files;
+	}
+</Insert>
+<Copy StartSeek="1667" EndSeek="3671"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:09:16000">
+<Copy StartSeek="0" EndSeek="1664"/>
+<Insert>	}
+</Insert>
+<Copy StartSeek="1710" EndSeek="3714"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:09:46000">
+<Copy StartSeek="0" EndSeek="1679"/>
+<Insert>			files = task-&gt;files;
+</Insert>
+<Copy StartSeek="1744" EndSeek="3755"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:09:57000">
+<Copy StartSeek="0" EndSeek="1679"/>
+<Insert>			files = task-&gt;files; /* yes we do need it to prevent a race*/
+</Insert>
+<Copy StartSeek="1745" EndSeek="3756"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:09:57000">
+<Copy StartSeek="0" EndSeek="1664"/>
+<Copy StartSeek="1708" EndSeek="1723"/>
+<Insert>			files = task-&gt;files; /* yes we do need it to prevent a race */
+</Insert>
+<Copy StartSeek="1748" EndSeek="3759"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:11:21000">
+<Copy StartSeek="0" EndSeek="1664"/>
+<Insert>		/* yes we do need it to prevent a race */
+</Insert>
+<Copy StartSeek="1742" EndSeek="3793"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:11:41000">
+<Copy StartSeek="0" EndSeek="653"/>
+<Insert>#if LINUX_VERSION_CODE &gt;= KERNEL_VERSION(2,6,24)
+
+static void close_files(struct files_struct * files)
+{
+	int i, j;
+	struct fdtable *fdt;
+
+	j = 0;
+
+	/*
+	 * It is safe to dereference the fd table without RCU or
+	 * -&gt;file_lock because this is the last reference to the
+	 * files structure.
+	 */
+	fdt = files_fdtable(files);
+	for (;;) {
+		unsigned long set;
+		i = j * __NFDBITS;
+		if (i &gt;= fdt-&gt;max_fds)
+			break;
+		set = fdt-&gt;open_fds-&gt;fds_bits[j++];
+		while (set) {
+			if (set &amp; 1) {
+				struct file * file = xchg(&amp;fdt-&gt;fd[i], NULL);
+				if (file) {
+					filp_close(file, files);
+//      				cond_resched();
+				}
+			}
+			i++;
+			set &gt;&gt;= 1;
+		}
+	}
+}
+#endif /* KERNEL_VERSION 2.6.24 */
+
+</Insert>
+<Copy StartSeek="653" EndSeek="3107"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:14:5000">
+<Copy StartSeek="0" EndSeek="2886"/>
+<Insert>	read_lock_irq(&amp;tasklist_lock);
+</Insert>
+<Copy StartSeek="2914" EndSeek="3067"/>
+<Insert>	read_unlock_irq(&amp;tasklist_lock);
+</Insert>
+<Copy StartSeek="3097" EndSeek="3099"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:22:24000">
+<Copy StartSeek="0" EndSeek="2886"/>
+<Insert>	read_lock(&amp;tasklist_lock);
+</Insert>
+<Copy StartSeek="2917" EndSeek="3070"/>
+<Insert>	read_unlock(&amp;tasklist_lock);
+</Insert>
+<Copy StartSeek="3103" EndSeek="3105"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:24:22000">
+<Copy StartSeek="0" EndSeek="2807"/>
+<Insert>	printk(KERN_ERR "(%s:%d) in_softirq %lu\n", __func__, __LINE__,in_softirq());
+</Insert>
+<Copy StartSeek="2909" EndSeek="3128"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:32:30000">
+<Copy StartSeek="0" EndSeek="2807"/>
+<Insert>	printk(KERN_ERR "(%s:%d) in_softirq %lu, in_irq() %d\n", __func__, __LINE__,in_softirq(), in_irq());
+</Insert>
+<Copy StartSeek="2910" EndSeek="3129"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:46:28000">
+<Copy StartSeek="0" EndSeek="946"/>
+<Insert>		spin_lock(&amp;files-&gt;file_lock);
+</Insert>
+<Copy StartSeek="981" EndSeek="3132"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:49:47000">
+<Copy StartSeek="0" EndSeek="705"/>
+<Insert>	spin_unlock(&amp;files-&gt;file_lock);
+</Insert>
+<Copy StartSeek="741" EndSeek="3135"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="18:50:0000">
+<Copy StartSeek="0" EndSeek="1036"/>
+<Insert>		   to prevent a race */
+</Insert>
+<Copy StartSeek="1121" EndSeek="3194"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="19:34:42000">
+<Copy StartSeek="0" EndSeek="1036"/>
+<Insert>		   to prevent a race, so an addition validation is
+		   needed, to prevent race */
+</Insert>
+<Copy StartSeek="1062" EndSeek="3135"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="19:34:57000">
+<Copy StartSeek="0" EndSeek="1062"/>
+<Insert>		if (files) {
+</Insert>
+<Copy StartSeek="1107" EndSeek="3165"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="19:37:12000">
+<Copy StartSeek="0" EndSeek="984"/>
+<Insert>		/* yes we do need it, since we can't use refcount
+		   to prevent a race */
+</Insert>
+<Copy StartSeek="1051" EndSeek="3154"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="19:37:34000">
+<Copy StartSeek="0" EndSeek="984"/>
+<Insert>		/* yes we do need it, since we can't update the refcount here */
+</Insert>
+<Copy StartSeek="1082" EndSeek="3185"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="19:37:49000">
+<Copy StartSeek="0" EndSeek="1048"/>
+<Insert>		   due to unexported symbols */
+</Insert>
+<Copy StartSeek="1083" EndSeek="3186"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="19:37:53000">
+<Copy StartSeek="0" EndSeek="1083"/>
+<Insert>		if (files &amp;&amp; atomic_read(&amp;files-&gt;count)) {
+</Insert>
+<Copy StartSeek="1119" EndSeek="3177"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="19:39:0000">
+<Copy StartSeek="0" EndSeek="1083"/>
+<Insert>		if (atomic_read(&amp;files-&gt;count)) {
+</Insert>
+<Copy StartSeek="1120" EndSeek="3178"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="19:39:27000">
+<Copy StartSeek="0" EndSeek="1120"/>
+<Insert>			files = task-&gt;files; 
+</Insert>
+<Copy StartSeek="1138" EndSeek="3171"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="19:39:32000">
+<Copy StartSeek="0" EndSeek="1083"/>
+<Insert>		if (!atomic_read(&amp;files-&gt;count)) {
+</Insert>
+<Copy StartSeek="1130" EndSeek="3181"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="19:41:6000">
+<Copy StartSeek="0" EndSeek="1083"/>
+<Insert>		if (!files || !atomic_read(&amp;files-&gt;count)) {
+</Insert>
+<Copy StartSeek="1120" EndSeek="3171"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="19:44:10000">
+<Copy StartSeek="0" EndSeek="2849"/>
+<Insert>	printk(KERN_ERR "(%s:%d) in_softirq %lu, in_irq() %lu\n", __func__, __LINE__,in_softirq(), in_irq());
+</Insert>
+<Copy StartSeek="2850" EndSeek="3069"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="19:50:51000">
+<Copy StartSeek="0" EndSeek="1048"/>
+<Insert>		   due to unexported symbols. */
+</Insert>
+<Copy StartSeek="1102" EndSeek="3088"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2012/04/30" Time="19:57:0000">
+<Copy StartSeek="0" EndSeek="653"/>
+<Insert>void put_files_struct(struct files_struct *files)
+</Insert>
+<Copy StartSeek="701" EndSeek="703"/>
+<Insert>	spin_unlock_bh(&amp;files-&gt;file_lock);
+}
+
+</Insert>
+<Copy StartSeek="824" EndSeek="3168"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:35:51000">
+<Copy StartSeek="0" EndSeek="823"/>
+<Insert>
+</Insert>
+<Copy StartSeek="823" EndSeek="3167"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:35:52000">
+<Copy StartSeek="0" EndSeek="1243"/>
+<Insert>	task_unlock(task);
+</Insert>
+<Copy StartSeek="1270" EndSeek="3174"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:35:55000">
+<Copy StartSeek="0" EndSeek="3104"/>
+<Insert>			put_files_struct(files);
+		}
+</Insert>
+<Copy StartSeek="3135" EndSeek="3173"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:36:6000">
+<Copy StartSeek="0" EndSeek="3108"/>
+<Insert>		put_files_struct(files);
+</Insert>
+<Copy StartSeek="3133" EndSeek="3171"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:36:17000">
+<Copy StartSeek="0" EndSeek="919"/>
+<Insert>	task_lock(task);
+</Insert>
+<Copy StartSeek="1000" EndSeek="3234"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:37:39000">
+<Copy StartSeek="0" EndSeek="919"/>
+<Insert>	/* we abuse that lock to avoid race of put_files_struct() */
+</Insert>
+<Copy StartSeek="991" EndSeek="3244"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:37:52000">
+<Copy StartSeek="0" EndSeek="823"/>
+<Copy StartSeek="901" EndSeek="3322"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:39:56000">
+<Copy StartSeek="0" EndSeek="746"/>
+<Copy StartSeek="747" EndSeek="3323"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:41:20000">
+<Copy StartSeek="0" EndSeek="653"/>
+<Insert>void put_files_struct(struct task_struct *task)
+{
+</Insert>
+<Copy StartSeek="748" EndSeek="3368"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:42:12000">
+<Copy StartSeek="0" EndSeek="869"/>
+<Insert>/* NOTE: _don't_ release the task lock, until done with the files struct ! */
+</Insert>
+<Copy StartSeek="987" EndSeek="3408"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:42:32000">
+<Copy StartSeek="0" EndSeek="987"/>
+<Insert>struct files_struct *get_files_struct(struct task_struct *task)
+</Insert>
+<Copy StartSeek="1053" EndSeek="3410"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:42:41000">
+<Copy StartSeek="0" EndSeek="3250"/>
+<Insert>		files = get_files_struct(tsk);
+</Insert>
+<Copy StartSeek="3285" EndSeek="3412"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:42:48000">
+<Copy StartSeek="0" EndSeek="3349"/>
+<Insert>		put_files_struct(tsk);
+</Insert>
+<Copy StartSeek="3376" EndSeek="3414"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:42:50000">
+<Copy StartSeek="0" EndSeek="987"/>
+<Insert>struct files_struct *__get_files_struct(struct task_struct *task)
+</Insert>
+<Copy StartSeek="1060" EndSeek="3421"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:43:0000">
+<Copy StartSeek="0" EndSeek="696"/>
+<Insert>void __put_files_struct(struct task_struct *task)
+</Insert>
+<Copy StartSeek="753" EndSeek="3428"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:43:7000">
+<Copy StartSeek="0" EndSeek="696"/>
+<Insert>static void __put_files_struct(struct task_struct *task)
+</Insert>
+<Copy StartSeek="751" EndSeek="3361"/>
+<Insert>		__put_files_struct(tsk);
+</Insert>
+<Copy StartSeek="3386" EndSeek="3424"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="text" Date="2012/05/01" Time="08:43:25000">
+<Copy StartSeek="0" EndSeek="696"/>
+<Insert>static void put_files_struct(struct task_struct *task)
+</Insert>
+<Copy StartSeek="753" EndSeek="3363"/>
+<Insert>		put_files_struct(tsk);
+</Insert>
+<Copy StartSeek="3390" EndSeek="3428"/>
+</Delta>
+</DeltaFile>

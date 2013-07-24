@@ -1,0 +1,160 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="0" Comment="" Date="2010/04/02" Time="01:59:14000" NL="\10" Encoding="text">
+<Insert>/*
+  This is a maximally equidistributed combined Tausworthe generator
+  based on code from GNU Scientific Library 1.5 (30 Jun 2004)
+
+   x_n = (s1_n ^ s2_n ^ s3_n)
+
+   s1_{n+1} = (((s1_n &amp; 4294967294) &lt;&lt;12) ^ (((s1_n &lt;&lt;13) ^ s1_n) &gt;&gt;19))
+   s2_{n+1} = (((s2_n &amp; 4294967288) &lt;&lt; 4) ^ (((s2_n &lt;&lt; 2) ^ s2_n) &gt;&gt;25))
+   s3_{n+1} = (((s3_n &amp; 4294967280) &lt;&lt;17) ^ (((s3_n &lt;&lt; 3) ^ s3_n) &gt;&gt;11))
+
+   The period of this generator is about 2^88.
+
+   From: P. L'Ecuyer, "Maximally Equidistributed Combined Tausworthe
+   Generators", Mathematics of Computation, 65, 213 (1996), 203--213.
+
+   This is available on the net from L'Ecuyer's home page,
+
+   http://www.iro.umontreal.ca/~lecuyer/myftp/papers/tausme.ps
+   ftp://ftp.iro.umontreal.ca/pub/simulation/lecuyer/papers/tausme.ps
+
+   There is an erratum in the paper "Tables of Maximally
+   Equidistributed Combined LFSR Generators", Mathematics of
+   Computation, 68, 225 (1999), 261--269:
+   http://www.iro.umontreal.ca/~lecuyer/myftp/papers/tausme2.ps
+
+        ... the k_j most significant bits of z_j must be non-
+        zero, for each j. (Note: this restriction also applies to the
+        computer code given in [4], but was mistakenly not mentioned in
+        that paper.)
+
+   This affects the seeding procedure by imposing the requirement
+   s1 &gt; 1, s2 &gt; 7, s3 &gt; 15.
+
+*/
+
+#include &lt;linux/types.h&gt;
+#include &lt;linux/percpu.h&gt;
+#include &lt;linux/module.h&gt;
+#include &lt;linux/jiffies.h&gt;
+#include &lt;linux/random.h&gt;
+
+struct rnd_state {
+	u32 s1, s2, s3;
+};
+
+static DEFINE_PER_CPU(struct rnd_state, net_rand_state);
+
+static u32 __random32(struct rnd_state *state)
+{
+#define TAUSWORTHE(s,a,b,c,d) ((s&amp;c)&lt;&lt;d) ^ (((s &lt;&lt;a) ^ s)&gt;&gt;b)
+
+	state-&gt;s1 = TAUSWORTHE(state-&gt;s1, 13, 19, 4294967294UL, 12);
+	state-&gt;s2 = TAUSWORTHE(state-&gt;s2, 2, 25, 4294967288UL, 4);
+	state-&gt;s3 = TAUSWORTHE(state-&gt;s3, 3, 11, 4294967280UL, 17);
+
+	return (state-&gt;s1 ^ state-&gt;s2 ^ state-&gt;s3);
+}
+
+/*
+ * Handle minimum values for seeds
+ */
+static inline u32 __seed(u32 x, u32 m)
+{
+	return (x &lt; m) ? x + m : x;
+}
+
+/**
+ *	random32 - pseudo random number generator
+ *
+ *	A 32 bit pseudo-random number is generated using a fast
+ *	algorithm suitable for simulation. This algorithm is NOT
+ *	considered safe for cryptographic use.
+ */
+u32 random32(void)
+{
+	unsigned long r;
+	struct rnd_state *state = &amp;get_cpu_var(net_rand_state);
+	r = __random32(state);
+	put_cpu_var(state);
+	return r;
+}
+EXPORT_SYMBOL(random32);
+
+/**
+ *	srandom32 - add entropy to pseudo random number generator
+ *	@seed: seed value
+ *
+ *	Add some additional seeding to the random32() pool.
+ */
+void srandom32(u32 entropy)
+{
+	int i;
+	/*
+	 * No locking on the CPUs, but then somewhat random results are, well,
+	 * expected.
+	 */
+	for_each_possible_cpu (i) {
+		struct rnd_state *state = &amp;per_cpu(net_rand_state, i);
+		state-&gt;s1 = __seed(state-&gt;s1 ^ entropy, 1);
+	}
+}
+EXPORT_SYMBOL(srandom32);
+
+/*
+ *	Generate some initially weak seeding values to allow
+ *	to start the random32() engine.
+ */
+static int __init random32_init(void)
+{
+	int i;
+
+	for_each_possible_cpu(i) {
+		struct rnd_state *state = &amp;per_cpu(net_rand_state,i);
+
+#define LCG(x)	((x) * 69069)	/* super-duper LCG */
+		state-&gt;s1 = __seed(LCG(i + jiffies), 1);
+		state-&gt;s2 = __seed(LCG(state-&gt;s1), 7);
+		state-&gt;s3 = __seed(LCG(state-&gt;s2), 15);
+
+		/* "warm it up" */
+		__random32(state);
+		__random32(state);
+		__random32(state);
+		__random32(state);
+		__random32(state);
+		__random32(state);
+	}
+	return 0;
+}
+core_initcall(random32_init);
+
+/*
+ *	Generate better values after random number generator
+ *	is fully initalized.
+ */
+static int __init random32_reseed(void)
+{
+	int i;
+
+	for_each_possible_cpu(i) {
+		struct rnd_state *state = &amp;per_cpu(net_rand_state,i);
+		u32 seeds[3];
+
+		get_random_bytes(&amp;seeds, sizeof(seeds));
+		state-&gt;s1 = __seed(seeds[0], 1);
+		state-&gt;s2 = __seed(seeds[1], 7);
+		state-&gt;s3 = __seed(seeds[2], 15);
+
+		/* mix it in */
+		__random32(state);
+	}
+	return 0;
+}
+late_initcall(random32_reseed);
+</Insert>
+</MostRecent>
+</DeltaFile>

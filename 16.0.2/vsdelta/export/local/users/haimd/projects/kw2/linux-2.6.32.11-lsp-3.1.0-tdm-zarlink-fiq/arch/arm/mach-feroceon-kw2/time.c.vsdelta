@@ -1,0 +1,274 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="6" Comment="" Date="2012/08/28" Time="10:42:1000" NL="\10" Encoding="text">
+<Insert>/*
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ */
+
+#include &lt;linux/kernel.h&gt;
+#include &lt;linux/clocksource.h&gt;
+#include &lt;linux/clockchips.h&gt;
+#include &lt;linux/interrupt.h&gt;
+#include &lt;linux/irq.h&gt;
+#include &lt;asm/mach/time.h&gt;
+#include "ctrlEnv/mvCtrlEnvLib.h"
+#include "boardEnv/mvBoardEnvLib.h"
+#include "cntmr/mvCntmrRegs.h"
+
+/*
+ * Timer0: clock_event_device, Tick.
+ * Timer1: clocksource, Free running.
+ * WatchDog: Not used.
+ *
+ * Timers are counting down.
+ */
+#define CLOCKEVENT	0
+#define CLOCKSOURCE	1
+
+/*
+ * Timers bits
+ */
+//#define BRIDGE_INT_TIMER(x)	(1 &lt;&lt; ((x) + 1))
+#define BRIDGE_INT_TIMER(x) (1 &lt;&lt; (((x) &lt; 2) ? ((x) + 1) : ((x) + 4)))
+
+#define BRIDGE_INT_TIMER0_MASK     (1 &lt;&lt; 0)
+#define BRIDGE_INT_TIMER1_MASK     (1 &lt;&lt; 1)
+#define BRIDGE_INT_TIMER2_MASK     (1 &lt;&lt; 6)
+#define BRIDGE_INT_TIMER3_MASK     (1 &lt;&lt; 7)
+
+#define TIMER_EN(x)		(1 &lt;&lt; ((x) * 2))
+#define TIMER_RELOAD_EN(x)	(1 &lt;&lt; (((x) * 2) + 1))
+#define BRIDGE_INT_TIMER_WD	(1 &lt;&lt; 3)
+#define TIMER_WD_EN		(1 &lt;&lt; 4)
+#define TIMER_WD_RELOAD_EN	(1 &lt;&lt; 5)
+
+
+static cycle_t kw_clksrc_read(struct clocksource *cs)
+{
+	return (0xffffffff - MV_REG_READ(CNTMR_VAL_REG(CLOCKSOURCE)));
+}
+
+static struct clocksource kw_clksrc = {
+	.name		= "kw_clocksource",
+	.shift		= 20,
+	.rating		= 300,
+	.read		= kw_clksrc_read,
+	.mask		= CLOCKSOURCE_MASK(32),
+	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
+};
+
+static int
+kw_clkevt_next_event(unsigned long delta, struct clock_event_device *dev)
+{
+	unsigned long flags;
+
+	if (delta == 0)
+		return -ETIME;
+
+	local_irq_save(flags);
+
+	/*
+	 * Clear and enable timer interrupt bit
+	 */
+	MV_REG_WRITE(BRIDGE_INT_CAUSE_REG, ~BRIDGE_INT_TIMER(CLOCKEVENT));
+	MV_REG_BIT_SET(BRIDGE_INT_MASK_REG, BRIDGE_INT_TIMER(CLOCKEVENT));
+
+	/*
+	 * Setup new timer value
+	 */
+	MV_REG_WRITE(CNTMR_VAL_REG(CLOCKEVENT), delta);
+
+	/*
+	 * Disable auto reload and kickoff the timer
+	 */
+	MV_REG_BIT_RESET(CNTMR_CTRL_REG, TIMER_RELOAD_EN(CLOCKEVENT));
+	MV_REG_BIT_SET(CNTMR_CTRL_REG, TIMER_EN(CLOCKEVENT));
+
+	local_irq_restore(flags);
+
+	return 0;
+}
+
+static void
+kw_clkevt_mode(enum clock_event_mode mode, struct clock_event_device *dev)
+{
+	unsigned long flags;
+
+	local_irq_save(flags);
+
+	if (mode == CLOCK_EVT_MODE_PERIODIC) {
+		/*
+		 * Setup latch cycles in timer and enable reload interrupt.
+		 */
+		MV_REG_WRITE(CNTMR_RELOAD_REG(CLOCKEVENT), ((mvBoardTclkGet() + HZ/2) / HZ));
+		MV_REG_WRITE(CNTMR_VAL_REG(CLOCKEVENT), ((mvBoardTclkGet() + HZ/2) / HZ));
+		MV_REG_BIT_SET(BRIDGE_INT_MASK_REG, BRIDGE_INT_TIMER(CLOCKEVENT));
+		MV_REG_BIT_SET(CNTMR_CTRL_REG, TIMER_RELOAD_EN(CLOCKEVENT) |
+					  TIMER_EN(CLOCKEVENT));
+	} else {
+		/*
+		 * Disable timer and interrupt
+		 */
+		MV_REG_BIT_RESET(BRIDGE_INT_MASK_REG, BRIDGE_INT_TIMER(CLOCKEVENT));
+		MV_REG_WRITE(BRIDGE_INT_CAUSE_REG, ~BRIDGE_INT_TIMER(CLOCKEVENT));
+		MV_REG_BIT_RESET(CNTMR_CTRL_REG, TIMER_RELOAD_EN(CLOCKEVENT) |
+					  TIMER_EN(CLOCKEVENT));
+	}
+
+	local_irq_restore(flags);
+}
+
+static struct clock_event_device kw_clkevt = {
+	.name		= "kw_tick",
+	.features	= CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
+	.shift		= 32,
+	.rating		= 300,
+	.set_next_event	= kw_clkevt_next_event,
+	.set_mode	= kw_clkevt_mode,
+};
+
+extern void mv_leds_hearbeat(void);
+int (*kw_timer2_handler)(void) = NULL;
+int (*kw_timer3_handler)(void) = NULL;
+static irqreturn_t kw_timer_interrupt(int irq, void *dev_id)
+{
+  unsigned long reg_val;
+  
+  reg_val = MV_REG_READ(BRIDGE_INT_CAUSE_REG);
+  
+	/*
+	 * Clear cause bit and do event
+	 */
+   
+  if (reg_val &amp; BRIDGE_INT_TIMER(CLOCKEVENT)) {
+      reg_val &amp;= ~BRIDGE_INT_TIMER(CLOCKEVENT);
+      MV_REG_WRITE(BRIDGE_INT_CAUSE_REG, reg_val);
+      kw_clkevt.event_handler(&amp;kw_clkevt);
+      mv_leds_hearbeat();
+  }
+  
+  if (reg_val &amp; BRIDGE_INT_TIMER(2)) {
+      reg_val &amp;= ~BRIDGE_INT_TIMER(2);
+      MV_REG_WRITE(BRIDGE_INT_CAUSE_REG, reg_val);
+      if (kw_timer2_handler) {
+          kw_timer2_handler();
+      }  
+  }
+  
+  if (reg_val &amp; BRIDGE_INT_TIMER(3)) {
+      reg_val &amp;= ~BRIDGE_INT_TIMER(3);
+      MV_REG_WRITE(BRIDGE_INT_CAUSE_REG, reg_val);
+      if (kw_timer3_handler) {
+          kw_timer3_handler();
+      }
+  }
+
+	return IRQ_HANDLED;
+}
+
+static struct irqaction kw_timer_irq = {
+	.name		= "kw_tick",
+	.flags		= IRQF_DISABLED | IRQF_TIMER,
+	.handler	= kw_timer_interrupt
+};
+
+static void mv_init_timer(void)
+{
+	/*
+	 * Setup clocksource free running timer (no interrupt on reload)
+	 */
+ 	MV_REG_WRITE(CNTMR_VAL_REG(CLOCKSOURCE), 0xffffffff);
+	MV_REG_WRITE(CNTMR_RELOAD_REG(CLOCKSOURCE), 0xffffffff);
+	MV_REG_BIT_RESET(BRIDGE_INT_MASK_REG, BRIDGE_INT_TIMER(CLOCKSOURCE));
+	MV_REG_BIT_SET(CNTMR_CTRL_REG, TIMER_RELOAD_EN(CLOCKSOURCE) |
+				  TIMER_EN(CLOCKSOURCE));
+
+	kw_clkevt.cpumask = cpumask_of(0);
+
+	/*
+	 * Register clocksource
+	 */
+	kw_clksrc.mult =
+		clocksource_hz2mult(mvBoardTclkGet(), kw_clksrc.shift);
+
+	clocksource_register(&amp;kw_clksrc);
+
+	/*
+	 * Connect and enable tick handler
+	 */
+	setup_irq(BRIDGE_IRQ_NUM, &amp;kw_timer_irq);
+
+	/*
+	 * Register clockevent
+	 */
+	kw_clkevt.mult =
+		div_sc(mvBoardTclkGet(), NSEC_PER_SEC, kw_clkevt.shift);
+	kw_clkevt.max_delta_ns =
+		clockevent_delta2ns(0xfffffffe, &amp;kw_clkevt);
+	kw_clkevt.min_delta_ns =
+		clockevent_delta2ns(1, &amp;kw_clkevt);
+
+	/*
+	 * Setup clockevent timer (interrupt-driven.)
+	 */
+	clockevents_register_device(&amp;kw_clkevt);
+}
+
+struct sys_timer mv_timer = {
+        .init           = mv_init_timer,
+};
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/08/27" Time="18:59:35000">
+<Copy StartSeek="0" EndSeek="3829"/>
+<Copy StartSeek="3897" EndSeek="5964"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/08/28" Time="10:37:28000">
+<Copy StartSeek="0" EndSeek="3829"/>
+<Insert>extern (void *)kw_timer2_handler;
+extern (void *)kw_timer3_handler;
+</Insert>
+<Copy StartSeek="3895" EndSeek="5962"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/08/28" Time="10:39:9000">
+<Copy StartSeek="0" EndSeek="3829"/>
+<Insert>extern (int *)kw_timer2_handler;
+extern (int *)kw_timer3_handler;
+</Insert>
+<Copy StartSeek="3907" EndSeek="5974"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/08/28" Time="10:39:20000">
+<Copy StartSeek="0" EndSeek="3829"/>
+<Insert>extern (int *)kw_timer2_handler(void);
+extern (int *)kw_timer3_handler(void);
+</Insert>
+<Copy StartSeek="3907" EndSeek="5974"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/08/28" Time="10:40:5000">
+<Copy StartSeek="0" EndSeek="3829"/>
+<Insert>extern int (*kw_timer2_handler)(void);
+extern int (*kw_timer3_handler)(void);
+</Insert>
+<Copy StartSeek="3893" EndSeek="5960"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/08/28" Time="10:41:56000">
+<Copy StartSeek="0" EndSeek="3829"/>
+<Insert>int (*kw_timer2_handler)(void);
+int (*kw_timer3_handler)(void);
+</Insert>
+<Copy StartSeek="3907" EndSeek="5974"/>
+</Delta>
+</DeltaFile>

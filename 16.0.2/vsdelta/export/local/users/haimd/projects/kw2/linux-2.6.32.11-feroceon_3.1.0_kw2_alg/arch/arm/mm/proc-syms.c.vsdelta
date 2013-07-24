@@ -1,0 +1,67 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="2" Comment="" Date="2012/08/13" Time="10:45:22000" NL="\10" Encoding="text">
+<Insert>/*
+ *  linux/arch/arm/mm/proc-syms.c
+ *
+ *  Copyright (C) 2000-2002 Russell King
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+#include &lt;linux/module.h&gt;
+#include &lt;linux/mm.h&gt;
+
+#include &lt;asm/cacheflush.h&gt;
+#include &lt;asm/proc-fns.h&gt;
+#include &lt;asm/tlbflush.h&gt;
+#include &lt;asm/page.h&gt;
+
+#ifndef MULTI_CPU
+EXPORT_SYMBOL(cpu_dcache_clean_area);
+EXPORT_SYMBOL(cpu_set_pte_ext);
+#else
+EXPORT_SYMBOL(processor);
+#endif
+
+#ifndef MULTI_CACHE
+EXPORT_SYMBOL(__cpuc_flush_kern_all);
+EXPORT_SYMBOL(__cpuc_flush_user_all);
+EXPORT_SYMBOL(__cpuc_flush_user_range);
+EXPORT_SYMBOL(__cpuc_coherent_kern_range);
+EXPORT_SYMBOL(__cpuc_flush_dcache_page);
+EXPORT_SYMBOL(dmac_inv_range);  /* because of flush_ioremap_region() */
+#else
+EXPORT_SYMBOL(cpu_cache);
+#endif
+
+#ifdef CONFIG_MMU
+#ifndef MULTI_USER
+EXPORT_SYMBOL(__cpu_clear_user_highpage);
+EXPORT_SYMBOL(__cpu_copy_user_highpage);
+#else
+EXPORT_SYMBOL(cpu_user);
+#endif
+#endif
+
+/*
+ * No module should need to touch the TLB (and currently
+ * no modules do.  We export this for "loadkernel" support
+ * (booting a new kernel from within a running kernel.)
+ */
+#ifdef MULTI_TLB
+EXPORT_SYMBOL(cpu_tlb);
+#endif
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2010/04/02" Time="01:59:14000">
+<Copy StartSeek="0" EndSeek="1280"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/08/13" Time="10:44:24000">
+<Copy StartSeek="0" EndSeek="1280"/>
+<Insert>
+EXPORT_SYMBOL(ai_word);
+</Insert>
+</Delta>
+</DeltaFile>

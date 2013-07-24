@@ -1,0 +1,11 @@
+<Currentcommitsets>
+	<TreeNode Cap="decisions_improvement" State="-1" BM1="_diffd.bmp" BM2="_diffd.bmp" Flags="4">
+		<CSData>
+			<Files>
+				<File N="/local/ws.710/xsl/src/kernel/iptables_decisions_mstr/decisions_mstr/ipt_decisions_mstr.c" />
+			</Files>
+		</CSData>
+	</TreeNode>
+</Currentcommitsets>
+<Pastcommitsets>
+</Pastcommitsets>

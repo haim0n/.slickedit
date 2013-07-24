@@ -1,0 +1,1821 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="105" Comment="" Date="2013/06/29" Time="22:37:51000" NL="\10" Encoding="text">
+<Insert>/************************************************************************
+* Copyright (C) 2012, Marvell Technology Group Ltd.
+* All Rights Reserved.
+*
+* This is UNPUBLISHED PROPRIETARY SOURCE CODE of Marvell Technology Group;
+* the contents of this file may not be disclosed to third parties, copied
+* or duplicated in any form, in whole or in part, without the prior
+* written permission of Marvell Technology Group.
+*
+* zte_api_fast.c
+*
+* DESCRIPTION:
+*   ZTE API Fast implementation.
+*
+*******************************************************************************/
+
+#include &lt;dpa.h&gt;
+#include &lt;util/string.h&gt;
+#include &lt;util/byte_order.h&gt;
+#include &lt;util/timer.h&gt;
+#include &lt;log/log.h&gt;
+#include &lt;zte/zte_api_fast.h&gt;
+#include &lt;eth/eth.h&gt;
+#include &lt;dpa_frwd.h&gt;
+#include &lt;dpa_mdf.h&gt;
+#include &lt;dpa_policer.h&gt;
+
+
+#define ZTE_API_FAST_DEBUG
+
+#define ZTE_API_FAST_ERROR(format, args...) DPA_ERROR(format, ##args)
+
+#ifdef ZTE_API_FAST_DEBUG
+  #define ZTE_API_FAST_DBG(format, args...)  DPA_ERROR(format"\n", ##args)
+#else
+  #define ZTE_API_FAST_DBG(format, args...)
+#endif
+
+
+#define ZTE_API_LOCK_OR_RETURN     \
+do {                               \
+  if (zte_api_lock == NULL)        \
+        return ZTE_INTERNAL_ERROR; \
+  dpa_os_lock(zte_api_lock);       \
+} while (0)
+
+#define ZTE_API_UNLOCK         \
+do {                           \
+  dpa_os_unlock(zte_api_lock); \
+} while (0)
+
+/*******************************************************************************
+ * Globals
+ */
+
+/* API protection spinlock */
+static void *zte_api_lock;
+
+/* QoS queue configuration */
+static ZTE_L3_HARDFAST_QOS_QUEUE_CFG zte_qos_queue_cfg[ZTE_QOS_QUEUE_NUM];
+
+/* QoS queue priority configuration */
+static ZTE_L3_HARDFAST_QOS_QUEUE_PRIORITY_CFG zte_qos_queue_pri_cfg[ZTE_QOS_QUEUE_NUM];
+
+/* Egress policer configuration */
+static ZTE_L3_HARDFAST_EGRESS_POLICER_CFG zte_egress_policer_cfg;
+
+/* Ingress rate limit configuration */
+static ZTE_L3_HARDFAST_RCQUEUE_CFG zte_flow_policers[ZTE_INGRESS_FLOW_POLICER_NUM];
+
+/* Ingress policer configuration */
+static ZTE_L3_HARDFAST_INGRESS_POLICER_CFG zte_port_policers[ZTE_LAN_PORT_NUM];
+
+/*******************************************************************************
+* Internal utility routines
+*/
+
+static inline void pri_key_init(ZTE_L3_HARDFAST_TUPLE *zte_tuple,
+    struct dpa_pri_key *key)
+{
+  key-&gt;sip = zte_tuple-&gt;sip.ip;
+  key-&gt;dip = zte_tuple-&gt;dip.ip;
+  key-&gt;protocol = zte_tuple-&gt;protocol;
+  key-&gt;sport = zte_tuple-&gt;sport;
+  key-&gt;dport = zte_tuple-&gt;dport;
+}
+
+
+static inline int zte_api_fast_l3_addr_cmp(ZTE_NETFF_IP *addr1, ZTE_NETFF_IP *addr2)
+{
+  /* FIXME Support IPv4 &amp; IPv6 generically */
+  return (addr1-&gt;ip - addr2-&gt;ip);
+}
+
+
+static inline int zte_api_fast_l3_session_validate(ZTE_L3_HARDFAST_SESSION *session)
+{
+  return 0;
+}
+
+/*******************************************************************************
+* Public ZTE Fast API
+*/
+
+const char* zte_api_fast_l3_get_version(void)
+{
+  return dpa_get_version();
+}
+
+
+int __zte_api_fast_l3_init_lib(void) {
+  if (zte_api_lock != NULL) {
+      ZTE_API_FAST_ERROR("API lock already intitialized");
+      return ZTE_INTERNAL_ERROR;
+  }
+
+  zte_api_lock = dpa_os_lock_create();
+  if (zte_api_lock == NULL) {
+      ZTE_API_FAST_ERROR("Can't create API lock");
+      return ZTE_OUT_OF_MEMORY;
+  }
+
+  return ZTE_OK;
+}
+
+int __zte_api_fast_l3_shutdown_lib(void) {
+  if (zte_api_lock == NULL) {
+      ZTE_API_FAST_ERROR("Can't destroy NULL API lock");
+      return ZTE_INTERNAL_ERROR;
+  }
+
+  dpa_os_lock_delete(zte_api_lock);
+  zte_api_lock = NULL;
+
+  return ZTE_OK;
+}
+
+
+void zte_api_fast_l3_init_policers(void)
+{
+        int i;
+        for (i = 0; i &lt; ZTE_INGRESS_FLOW_POLICER_NUM; i++) {
+                zte_flow_policers[i].rate_limit = 0;
+                zte_flow_policers[i].rcqueue = 0xFE;
+        }
+
+        for (i = 0; i &lt; ZTE_LAN_PORT_NUM; i++) {
+                zte_port_policers[i].id = 0xFFFF;
+                zte_port_policers[i].port = 0xFF;
+        }
+}
+
+int zte_api_fast_l3_init(ZTE_L3_HARDFAST_INIT_CFG *cfg)
+{
+  int err, i;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  /* Core engine */
+  err = dpa_init();
+
+  /* Setting the defaults, however, not enabling until explicit app request
+     to do so. */
+  if (err == ZTE_OK) {
+       /* Qos queue */
+       for (i = 0; i &lt; ZTE_QOS_QUEUE_NUM; i++) {
+            /* Basic */
+            zte_qos_queue_cfg[i].qos_queue = ETH_MAX_RXQ_NUM;
+            zte_qos_queue_cfg[i].length = ZTE_QOS_QUEUE_LEN_DEF;
+            zte_qos_queue_cfg[i].queue = ZTE_QOS_QUEUE_HW_QUEUE_DEF;
+
+            /* Priority mode */
+            zte_qos_queue_pri_cfg[i].qos_queue = i;
+            zte_qos_queue_pri_cfg[i].mode = ZTE_PRIORITY_MODE_DEF;
+            zte_qos_queue_pri_cfg[i].weight = ZTE_PRIORITY_WEIGHT_DEF;
+       }
+
+       /* Egress policer configuration */
+       err = zte_api_fast_l3_set_egress_policer_cfg(&amp;zte_egress_policer_cfg);
+  }
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_port_stat(ZTE_L3_HARDFAST_PORT_CFG *cfg)
+{
+  bool status;
+
+  ZTE_API_LOCK_OR_RETURN;
+  dpa_port_get_status(cfg-&gt;port, &amp;status);
+  ZTE_API_UNLOCK;
+
+  return (int) status;
+}
+
+
+int zte_api_fast_l3_port_add(ZTE_L3_HARDFAST_PORT_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = dpa_port_add(cfg-&gt;port);
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_port_del(unsigned char port)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = DPA_NOT_IMPL; /* FIXME Disabled until fix dpa_port_del(port); */
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_shutdown(void)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = dpa_shutdown();
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_session_add(ZTE_L3_HARDFAST_SESSION *session)
+{
+  struct dpa_flow *dpf = NULL;
+  struct dpa_pri_key key;
+  int err = DPA_FAIL;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      err = DPA_NOT_INIT;
+      goto error;
+  }
+
+  pri_key_init(&amp;session-&gt;tuple, &amp;key);
+
+  if (dpa_frwd_flow_find(&amp;key)) {
+        err = DPA_FLOW_EXISTS;
+        goto error;
+  }
+
+  if (zte_api_fast_l3_session_validate(session)) {
+        err = DPA_INVALID_PARAM;
+        goto error;
+  }
+
+  dpf = dpa_frwd_flow_alloc();
+  if (!dpf) {
+        err = DPA_OUT_OF_MEMORY;
+        goto error;
+  }
+
+  /* Construct DPA flow from ZTE session spec */
+  dpf-&gt;key = key;
+  dpf-&gt;mod.ops = 0;
+
+  dpf-&gt;group_id = session-&gt;rcqueue;
+
+  /* Drop */
+  if (session-&gt;rcqueue == ZTE_ACTION_DROP) {
+      dpf-&gt;state = DPF_DROP;
+      goto success;
+  }
+
+  /* DSCP update */
+  if (session-&gt;dscpremark) {
+        dpf-&gt;mod.ops |= DPA_MDF_IP_V4_DSCP_CNG_BIT;
+        ZTE_API_FAST_DBG("dscp update 0x%x: NOT IMPLEMENTED", session-&gt;dscpvalue);
+        err = ZTE_NOT_IMPL;
+        goto error;
+  }
+
+  /* Routing */
+  if (session-&gt;l3num != 2) {
+        /* MACs */
+        dpa_memcpy(dpf-&gt;mod.l2.dmac, session-&gt;gwmac, sizeof(dpf-&gt;mod.l2.dmac));
+        dpa_memcpy(dpf-&gt;mod.l2.smac, session-&gt;smac, sizeof(dpf-&gt;mod.l2.smac));
+        dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_IP); /* FIXME Now assuming it's IPv4 pkt */
+        dpf-&gt;mod.ops |= DPA_MDF_ETH_CHG;
+        ZTE_API_FAST_DBG("smac, dmac update");
+
+        /* NAT */
+        if (zte_api_fast_l3_addr_cmp(&amp;session-&gt;tuple.sip, &amp;session-&gt;natip)) {
+            /* S-NAT */
+            if (session-&gt;direction == ZTE_DIR_UPLINK) {
+                  dpf-&gt;mod.mod_tuple.sip = session-&gt;natip.ip;
+                  dpf-&gt;mod.mod_tuple.sport = session-&gt;natport;
+                  dpf-&gt;mod.mod_tuple.dip = session-&gt;tuple.dip.ip; /* FIXME */
+                  dpf-&gt;mod.mod_tuple.dport = session-&gt;tuple.dport; /* FIXME */
+                  dpf-&gt;mod.ops |= DPA_MDF_IP_V4_CHG | DPA_MDF_L4_CHG;
+                  ZTE_API_FAST_DBG("snat: sip "DPA_NIPQUAD_FMT", sport %u",
+                        DPA_NIPQUAD(dpf-&gt;mod.mod_tuple.sip), dpa_ntohs(dpf-&gt;mod.mod_tuple.sport));
+            } else /* D-NAT */ {
+                  dpf-&gt;mod.mod_tuple.dip = session-&gt;natip.ip;
+                  dpf-&gt;mod.mod_tuple.dport = session-&gt;natport;
+                  dpf-&gt;mod.mod_tuple.sip = session-&gt;tuple.sip.ip; /* FIXME */
+                  dpf-&gt;mod.mod_tuple.sport = session-&gt;tuple.sport; /* FIXME */
+                  dpf-&gt;mod.ops |= DPA_MDF_IP_V4_CHG | DPA_MDF_L4_CHG;
+                  ZTE_API_FAST_DBG("dnat: dip "DPA_NIPQUAD_FMT", dport %u",
+                        DPA_NIPQUAD(dpf-&gt;mod.mod_tuple.dip), dpa_ntohs(dpf-&gt;mod.mod_tuple.dport));
+            }
+        } else {
+                /* only TTL dec. NAT ops include ttl dec */
+                dpf-&gt;mod.ops |= DPA_MDF_IP_V4_TTL;
+                ZTE_API_FAST_DBG("ttl--");
+        }
+  }
+
+  /* VLAN handling. FIXME Implement double VLAN + PPPoE */
+  switch (session-&gt;l2length) {
+    case 14: /* No VLAN */
+      /* Add PPPoE */
+      if (session-&gt;isppp &amp;&amp; session-&gt;direction == ZTE_DIR_UPLINK &amp;&amp;
+          session-&gt;sessionid != ZTE_NO_PARAM) {
+                  ZTE_API_FAST_DBG("pppoe add sesionid %#x", dpa_ntohs(session-&gt;sessionid));
+                  dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_PPP_SES);
+                  dpf-&gt;mod.l2.pppoe_sid = session-&gt;sessionid;
+                  dpf-&gt;mod.ops |= DPA_MDF_PPPOE_ADD;
+      }
+      /* Add VLAN */
+      if (session-&gt;outervlan != ZTE_NO_PARAM) {
+            dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_8021Q);
+            dpf-&gt;mod.l2.vlan_id = session-&gt;outervlan;
+            dpf-&gt;mod.ops |= DPA_MDF_VLAN_ADD;
+            ZTE_API_FAST_DBG("vlan add: %u", dpa_ntohs(dpf-&gt;mod.l2.vlan_id));
+      }
+      break;
+    case 18: /* Single VLAN tag */
+      /* Delete VLAN */
+      if (session-&gt;outervlan == ZTE_NO_PARAM) {
+            dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_IP);
+            dpf-&gt;mod.ops |= DPA_MDF_VLAN_DEL;
+            ZTE_API_FAST_DBG("vlan del");
+      } else  { /* Change VLAN */
+            dpf-&gt;mod.l2.vlan_id = session-&gt;outervlan;
+            dpf-&gt;mod.ops |= DPA_MDF_VLAN_CHG;
+            dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_8021Q);
+            ZTE_API_FAST_DBG("vlan chg: to %u", dpa_ntohs(session-&gt;outervlan));
+      }
+      break;
+
+    case 22: /* Double VLAN or PPPoE header */
+      if (!session-&gt;isppp || session-&gt;direction == ZTE_DIR_UPLINK) {
+          ZTE_API_FAST_DBG("isppp: %u dir %u,double vlan: NOT IMPLEMENTED",session-&gt;isppp, session-&gt;direction);
+          err = ZTE_NOT_IMPL;
+          goto error;
+      } else {
+          if (session-&gt;sessionid == ZTE_NO_PARAM &amp;&amp; session-&gt;direction == ZTE_DIR_DOWNLINK) {
+                  ZTE_API_FAST_DBG("pppoe del");
+                  dpf-&gt;mod.ops |= DPA_MDF_PPPOE_DEL;
+          } else {
+                  ZTE_API_FAST_DBG("Invalid pppoe params: l2len %u, sid %#x, dir %u",
+                                   session-&gt;l2length, session-&gt;sessionid, session-&gt;direction);
+                  err = DPA_INVALID_PARAM;
+                  goto error;
+          }
+      }
+      break;
+
+    case 26: /* VLAN + PPPoE header */
+      if (session-&gt;sessionid != ZTE_NO_PARAM &amp;&amp;
+          session-&gt;outervlan != ZTE_NO_PARAM) {
+              ZTE_API_FAST_DBG("Invalid params: l2len %u, sid %#x, outervlan %#x",
+                                   session-&gt;l2length, session-&gt;sessionid, session-&gt;outervlan);
+                  err = DPA_INVALID_PARAM;
+                  goto error;
+      }
+      if (session-&gt;outervlan == ZTE_NO_PARAM &amp;&amp;
+          session-&gt;sessionid == ZTE_NO_PARAM &amp;&amp;
+          session-&gt;isppp) {
+              ZTE_API_FAST_DBG("vlan del, pppoe del");
+              /* HAIM FIXME : assuming IPV4 */
+              dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_IP);
+              dpf-&gt;mod.ops |= DPA_MDF_VLAN_DEL;
+              dpf-&gt;mod.ops |= DPA_MDF_PPPOE_DEL;
+      }
+      else if (session-&gt;sessionid == ZTE_NO_PARAM &amp;&amp; session-&gt;isppp) {
+              ZTE_API_FAST_DBG("pppoe del");
+              dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_8021Q);
+              dpf-&gt;mod.ops |= DPA_MDF_PPPOE_DEL;
+      } else if (session-&gt;outervlan == ZTE_NO_PARAM) {
+              ZTE_API_FAST_DBG("vlan del");
+              dpf-&gt;mod.l2.eth_type = dpa_ntohs(DPA_ETH_P_PPP_SES);
+              dpf-&gt;mod.ops |= DPA_MDF_VLAN_DEL;
+      }
+      break;
+
+    default:
+      ZTE_API_FAST_ERROR("Invalid l2length %u:", session-&gt;l2length);
+      err = DPA_INVALID_PARAM;
+      goto error;
+  }
+
+  dpf-&gt;state = DPF_FWD;
+
+success:
+  if (session-&gt;direction == ZTE_DIR_UPLINK){
+          dpf-&gt;mod.tx_port = 2; /* pon port */
+          dpf-&gt;mod.tx_channel = session-&gt;channel; /* gemport, we assume tcont = 0 */
+  } else {
+          dpf-&gt;mod.tx_port = session-&gt;channel;
+  }
+  dpf-&gt;mod.tx_queue = zte_qos_queue_cfg[session-&gt;queue].queue;
+
+  /* save original session data */
+  {
+    ZTE_L3_HARDFAST_SESSION *data = dpa_os_malloc(sizeof(ZTE_L3_HARDFAST_SESSION));
+    dpa_memcpy(data, session, sizeof(ZTE_L3_HARDFAST_SESSION));
+    dpf-&gt;attr = data;
+  }
+
+  /* Add to offload table, effective immediately */
+  dpa_frwd_flow_add(dpf);
+
+  ZTE_API_UNLOCK;
+
+  return DPA_OK;
+
+error:
+  if (dpf) {
+        dpa_frwd_flow_free(dpf);
+  }
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+
+int zte_api_fast_l3_mc_session_set(ZTE_L3_HARDFAST_MC_SESSION *session)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = ZTE_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+
+int zte_api_fast_l3_session_del(ZTE_L3_HARDFAST_TUPLE *tuple)
+{
+  struct dpa_pri_key key;
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      err = DPA_NOT_INIT;
+      goto error;
+  }
+
+  pri_key_init(tuple, &amp;key);
+  err = dpa_frwd_flow_remove(&amp;key);
+
+error:
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+int zte_api_fast_l3_session_use(ZTE_L3_HARDFAST_TUPLE *tuple, unsigned char *status)
+{
+  struct dpa_pri_key key;
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      err = DPA_NOT_INIT;
+      goto error;
+  }
+
+  pri_key_init(tuple, &amp;key);
+  err = dpa_frwd_flow_is_alive(&amp;key);
+
+  ZTE_API_UNLOCK;
+
+error:
+  return err;
+}
+
+
+
+int zte_api_fast_l3_mc_session_use(ZTE_L3_HARDFAST_MC_TUPLE *tuple, unsigned char *status)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = ZTE_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_session_clr(void) {
+  int err = DPA_OK;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      err = DPA_NOT_INIT;
+      goto error;
+  }
+
+  dpa_frwd_clean_all();
+  ZTE_API_UNLOCK;
+
+error:
+  return err;
+}
+
+
+int zte_api_fast_l3_mc_session_clr(void)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = ZTE_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_session_stat(ZTE_L3_HARDFAST_TUPLE *tuple, ZTE_L3_HARDFAST_STAT *stat)
+{
+  struct dpa_pri_key key;
+  dpa_flow_stats_t stats;
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      err = DPA_NOT_INIT;
+      goto error;
+  }
+
+  pri_key_init(tuple, &amp;key);
+
+  /* FIXME 1) Make 64 bit stats 2) Make thread-safe */
+  err = dpa_frwd_flow_get_stats(&amp;key, &amp;stats);
+  if (err == DPA_OK) {
+        stat-&gt;rxpkt = uint64split_to_uint64(stats.rx_pkts);
+        stat-&gt;txpkt = uint64split_to_uint64(stats.tx_pkts);
+        stat-&gt;rxbyte = uint64split_to_uint64(stats.rx_bytes);
+        stat-&gt;txbyte = uint64split_to_uint64(stats.tx_bytes);
+        stat-&gt;rxerror = stats.rx_errors;
+        stat-&gt;txerror = stats.tx_errors;
+  }
+
+  ZTE_API_UNLOCK;
+
+error:
+  return err;
+}
+
+int zte_api_fast_l3_mc_session_stat(ZTE_L3_HARDFAST_MC_TUPLE *tuple, ZTE_L3_HARDFAST_STAT *stat)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = ZTE_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+
+
+int zte_api_fast_l3_set_rx_queue_cfg(ZTE_L3_HARDFAST_RX_QUEUE_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = ZTE_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_rx_queue_cfg(ZTE_L3_HARDFAST_RX_QUEUE_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = ZTE_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_set_ingress_policer_cfg(ZTE_L3_HARDFAST_INGRESS_POLICER_CFG *cfg)
+{
+  int err = DPA_OK;
+  void *policer;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (cfg-&gt;rate_limit == 0) {
+          dpa_policer_port_del(cfg-&gt;port);
+          goto out;
+  }
+
+  policer = dpa_policer_port_get(cfg-&gt;port);
+  if (!policer) {
+          policer = dpa_policer_alloc();
+          if (!policer) {
+                  err = DPA_OUT_OF_RESOURCE;
+                  goto out;
+          }
+          err = dpa_policer_port_add(policer, cfg-&gt;port);
+          if (err != DPA_OK)
+                  goto out;
+  }
+  err = dpa_policer_cfg(policer, cfg-&gt;rate_limit, 0, DPA_CLK_PER_SEC);
+  
+  if (err == DPA_OK) {
+          zte_port_policers[cfg-&gt;port] = *cfg;
+  }
+out:
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_ingress_policer_cfg(ZTE_L3_HARDFAST_INGRESS_POLICER_CFG *cfg)
+{
+  int err = DPA_OK;
+  unsigned char  port = cfg-&gt;port;
+
+
+  ZTE_API_LOCK_OR_RETURN;
+  if (port &gt;= ZTE_LAN_PORT_NUM) {
+          err = DPA_INVALID_PARAM;
+  } else {
+          *cfg = zte_port_policers[port];
+  }
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_set_rcqueue_cfg(ZTE_L3_HARDFAST_RCQUEUE_CFG *cfg)
+{
+  int err = DPA_OK;
+  void *policer;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (cfg-&gt;rate_limit == 0) {
+          dpa_policer_flow_del(cfg-&gt;rcqueue);
+          goto out;
+  }
+
+  policer = dpa_policer_flow_get(cfg-&gt;rcqueue);
+  if (!policer) {
+          policer = dpa_policer_alloc();
+          if (!policer) {
+                  err = DPA_OUT_OF_RESOURCE;
+                  goto out;
+          }
+          err = dpa_policer_flow_add(policer, cfg-&gt;rcqueue);
+          if (err != DPA_OK)
+                  goto out;
+  } 
+  err = dpa_policer_cfg(policer, cfg-&gt;rate_limit, 0, DPA_CLK_PER_SEC);
+
+  if (err == DPA_OK) {
+          zte_flow_policers[cfg-&gt;rcqueue] = *cfg;
+  }
+
+out:
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_rcqueue_cfg(ZTE_L3_HARDFAST_RCQUEUE_CFG *cfg)
+{
+  int err = DPA_OK;
+  unsigned char q = cfg-&gt;rcqueue;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (q &gt;= ZTE_INGRESS_FLOW_POLICER_NUM)
+          err = DPA_INVALID_PARAM;
+  else
+          cfg-&gt;rate_limit = zte_flow_policers[q].rate_limit;
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+
+int zte_api_fast_l3_set_qos_queue_cfg(ZTE_L3_HARDFAST_QOS_QUEUE_CFG *cfg)
+{
+  int err = ZTE_OK;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      ZTE_API_FAST_ERROR("Can't set Qos queue cfg, not initialized.");
+      err = ZTE_NOT_INIT;
+  } else  if (cfg-&gt;qos_queue &gt; ZTE_QOS_QUEUE_NUM - 1 ||
+              cfg-&gt;queue &gt; ETH_MAX_RXQ_NUM - 1 ) {
+      ZTE_API_FAST_ERROR("Can't set Qos queue cfg, params invalid.");
+      err = ZTE_INVALID_PARAM;
+  } else {
+      zte_qos_queue_cfg[cfg-&gt;qos_queue] = *cfg;
+  }
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_qos_queue_cfg(ZTE_L3_HARDFAST_QOS_QUEUE_CFG *cfg)
+{
+  int err = ZTE_OK;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      ZTE_API_FAST_ERROR("Can't set Qos queue cfg, not initialized.");
+      err = ZTE_NOT_INIT;
+  } else  if (cfg-&gt;qos_queue &gt; ZTE_QOS_QUEUE_NUM -1) {
+      ZTE_API_FAST_ERROR("Can't set Qos queue cfg, params invalid.");
+      err = ZTE_INVALID_PARAM;
+  } else {
+      *cfg = zte_qos_queue_cfg[cfg-&gt;qos_queue];
+  }
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+
+int zte_api_fast_l3_set_qos_queue_priority_cfg(ZTE_L3_HARDFAST_QOS_QUEUE_PRIORITY_CFG *cfg)
+{
+  int err = ZTE_OK;
+  uint8_t queue;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      ZTE_API_FAST_ERROR("Can't set Qos queue scheduler cfg, not initialized.");
+      err = ZTE_NOT_INIT;
+  } else  if (cfg-&gt;qos_queue &gt; ZTE_QOS_QUEUE_NUM - 1) {
+      ZTE_API_FAST_ERROR("Can't set Qos queue priority, invalid queue (%d).",
+                         cfg-&gt;qos_queue);
+      err = ZTE_INVALID_PARAM;
+  } else {
+      /* HW queue */
+      queue = zte_qos_queue_cfg[cfg-&gt;qos_queue].queue;
+
+      if (cfg-&gt;mode == ZTE_PRIORITY_MODE_SP) {
+          err = eth_txq_strict_pri_set(ETH_PORT_PON, 0 /* txp */, queue);
+      } else {
+          err = eth_txq_wrr_pri_set(ETH_PORT_PON, 0 /* txp */, queue, cfg-&gt;weight);
+      }
+
+      /* Update only if succeeded */
+      if (err == DPA_OK) {
+          zte_qos_queue_pri_cfg[cfg-&gt;qos_queue] = *cfg;
+      }
+  }
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_qos_queue_priority_cfg(ZTE_L3_HARDFAST_QOS_QUEUE_PRIORITY_CFG *cfg)
+{
+  int err = ZTE_OK;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      ZTE_API_FAST_ERROR("Can't get Qos queue priority, not initialized.");
+      err = ZTE_NOT_INIT;
+  } else  if (cfg-&gt;qos_queue &gt; ZTE_QOS_QUEUE_NUM -1) {
+      ZTE_API_FAST_ERROR("Can't get Qos queue priority, invalid queue (%d).",
+                         cfg-&gt;qos_queue);
+      err = ZTE_INVALID_PARAM;
+  } else {
+      *cfg = zte_qos_queue_pri_cfg[cfg-&gt;qos_queue];
+  }
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+
+/* FIXME How to program no-rate limit */
+int zte_api_fast_l3_set_egress_policer_cfg(ZTE_L3_HARDFAST_EGRESS_POLICER_CFG *cfg)
+{
+  int err = ZTE_OK;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      ZTE_API_FAST_ERROR("Can't set egress policer cfg, not initialized.");
+      err = ZTE_NOT_INIT;
+  } else if (cfg-&gt;rate_limit) { /* 0 - no rate limit */
+      err = eth_egress_rate_set(ETH_PORT_PON, 0 /* txp */, cfg-&gt;rate_limit);
+      if (err == DPA_OK) {
+          err = eth_egress_burst_size_set(ETH_PORT_PON, 0 /* txp */, cfg-&gt;burst_size);
+      }
+  }
+
+  if (err == DPA_OK) {
+      zte_egress_policer_cfg = *cfg;
+  }
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_egress_policer_cfg(ZTE_L3_HARDFAST_EGRESS_POLICER_CFG *cfg)
+{
+  int err = ZTE_OK;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+  if (!dpa_is_init()) {
+      ZTE_API_FAST_ERROR("Can't get egress policer cfg, not initialized.");
+      err = ZTE_NOT_INIT;
+  } else {
+     *cfg = zte_egress_policer_cfg;
+  }
+
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_set_except_path_cfg(ZTE_L3_HARDFAST_EXCEPT_PATH_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = ZTE_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+int zte_api_fast_l3_get_except_path_cfg(ZTE_L3_HARDFAST_EXCEPT_PATH_CFG *cfg)
+{
+  int err;
+
+  ZTE_API_LOCK_OR_RETURN;
+  err = ZTE_NOT_IMPL;
+  ZTE_API_UNLOCK;
+
+  return err;
+}
+
+
+/* Snapshots of session  tables */
+
+#define DPA_SNAPSHOT_MAX_SZ 4096
+static ZTE_L3_HARDFAST_SESSION *dpa_flow_tbl_snapshot;
+static int dpa_flow_tbl_snapshot_size = 0;
+
+
+void zte_api_fast_l3_sessions_snapshot_cb(void *attr)
+{
+ 	if (dpa_flow_tbl_snapshot_size &lt; DPA_SNAPSHOT_MAX_SZ)
+		dpa_memcpy(&amp;dpa_flow_tbl_snapshot[dpa_flow_tbl_snapshot_size++], attr, sizeof(ZTE_L3_HARDFAST_SESSION));
+}
+
+void zte_api_fast_l3_mc_sessions_snapshot_cb(void *attr)
+{
+
+}
+
+/* FIXME Who will free the tbl??? */
+int zte_api_fast_l3_sessions_snapshot(ZTE_L3_HARDFAST_SESSION **tbl)
+{
+  int rc;
+
+  ZTE_API_LOCK_OR_RETURN;
+
+	dpa_flow_tbl_snapshot_size = 0;
+	if (!dpa_flow_tbl_snapshot)
+		dpa_flow_tbl_snapshot = dpa_os_alloc_pages(DPA_SNAPSHOT_MAX_SZ * sizeof(ZTE_L3_HARDFAST_SESSION));
+
+	if (!dpa_flow_tbl_snapshot) {
+		ZTE_API_FAST_ERROR("Sessions table snapshot allocation failed");
+		*tbl = NULL;
+		rc = ZTE_OUT_OF_MEMORY;
+    goto fail;
+	}
+	
+  
+	dpa_frwd_traverse(zte_api_fast_l3_sessions_snapshot_cb);
+	*tbl = dpa_flow_tbl_snapshot;
+  ZTE_API_UNLOCK;
+ 
+	return dpa_flow_tbl_snapshot_size;
+
+fail:
+  ZTE_API_UNLOCK;
+
+  return rc;
+}
+
+
+/* FIXME Who will free the tbl??? */
+int zte_api_fast_l3_mc_sessions_snapshot(ZTE_L3_HARDFAST_MC_SESSION **tbl)
+{
+	return ZTE_NOT_IMPL;
+}
+
+
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="09:20:34000">
+<Copy StartSeek="0" EndSeek="14491"/>
+<Insert>  err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="14501" EndSeek="19269"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:01:17000">
+<Copy StartSeek="0" EndSeek="757"/>
+<Insert>
+</Insert>
+<Copy StartSeek="782" EndSeek="783"/>
+<Copy StartSeek="784" EndSeek="14516"/>
+<Insert>  err = ;
+</Insert>
+<Copy StartSeek="14531" EndSeek="19299"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:02:16000">
+<Copy StartSeek="0" EndSeek="14516"/>
+<Insert>  err = cfg-&gt;;
+</Insert>
+<Copy StartSeek="14526" EndSeek="19294"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:15:32000">
+<Copy StartSeek="0" EndSeek="14516"/>
+<Insert>  err = ;
+</Insert>
+<Copy StartSeek="14662" EndSeek="19430"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:19:24000">
+<Copy StartSeek="0" EndSeek="14612"/>
+<Insert>                         unsigned long timer_res)
+</Insert>
+<Copy StartSeek="14663" EndSeek="19431"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:19:31000">
+<Copy StartSeek="0" EndSeek="14516"/>
+<Insert>  err = dpa_policer_init(unsigned long rate,
+                         unsigned long burst_size,
+                         unsigned long timer_res);
+</Insert>
+<Copy StartSeek="14637" EndSeek="19405"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:20:12000">
+<Copy StartSeek="0" EndSeek="14558"/>
+<Insert>                         cfg-&gt;burst_size,
+</Insert>
+<Copy StartSeek="14600" EndSeek="19405"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:20:24000">
+<Copy StartSeek="0" EndSeek="14558"/>
+<Insert>                         cfg-&gt;rate_limit,
+</Insert>
+<Copy StartSeek="14607" EndSeek="19412"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:22:1000">
+<Copy StartSeek="0" EndSeek="14607"/>
+<Insert>                         timer_res);
+</Insert>
+<Copy StartSeek="14641" EndSeek="19409"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:22:3000">
+<Copy StartSeek="0" EndSeek="14558"/>
+<Insert>                         cfg-&gt;rate_limit/DPA_HZ,
+                         DPA_HZ);
+</Insert>
+<Copy StartSeek="14659" EndSeek="19427"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:22:35000">
+<Copy StartSeek="0" EndSeek="14558"/>
+<Insert>                         cfg-&gt;rate_limit/DPA_CLK_PER_SEC,
+</Insert>
+<Copy StartSeek="14618" EndSeek="19429"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:27:50000">
+<Copy StartSeek="0" EndSeek="14558"/>
+<Insert>                         cfg-&gt;rate_limit / DPA_CLK_PER_SEC,
+</Insert>
+<Copy StartSeek="14586" EndSeek="19397"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:28:8000">
+<Copy StartSeek="0" EndSeek="14516"/>
+<Insert>  err = dpa_policer_init(cfg-&gt;rate_limit,
+                         0,
+                         DPA_CLK_PER_SEC);
+</Insert>
+<Copy StartSeek="14579" EndSeek="19347"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:28:13000">
+<Copy StartSeek="0" EndSeek="14489"/>
+<Insert>
+</Insert>
+<Copy StartSeek="14521" EndSeek="14547"/>
+<Insert>  err = dpa_policer_init(cfg-&gt;rate_limit, 0, DPA_CLK_PER_SEC);
+</Insert>
+<Copy StartSeek="14664" EndSeek="19432"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:46:3000">
+<Copy StartSeek="0" EndSeek="14478"/>
+<Insert>  int err;
+</Insert>
+<Copy StartSeek="14500" EndSeek="14625"/>
+<Insert>  err = dpa_policer_port_add(policer, cfg-&gt;port);
+</Insert>
+<Copy StartSeek="14704" EndSeek="19472"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:46:42000">
+<Copy StartSeek="0" EndSeek="14478"/>
+<Insert>  int err = DPA_FAIL;
+</Insert>
+<Copy StartSeek="14489" EndSeek="14614"/>
+<Insert>  if (policer) {
+</Insert>
+<Copy StartSeek="14629" EndSeek="14687"/>
+<Insert>  }
+</Insert>
+<Copy StartSeek="14731" EndSeek="19499"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:48:18000">
+<Copy StartSeek="0" EndSeek="14731"/>
+<Copy StartSeek="14732" EndSeek="19500"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:48:28000">
+<Copy StartSeek="0" EndSeek="14731"/>
+<Insert>
+</Insert>
+<Copy StartSeek="14731" EndSeek="19499"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="15:48:39000">
+<Copy StartSeek="0" EndSeek="15063"/>
+<Insert>  err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="15250" EndSeek="19664"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:17:4000">
+<Copy StartSeek="0" EndSeek="14489"/>
+<Insert>  struct dpa_policer *policer;
+</Insert>
+<Copy StartSeek="14506" EndSeek="19650"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:21:40000">
+<Copy StartSeek="0" EndSeek="15022"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15040" EndSeek="19667"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:21:49000">
+<Copy StartSeek="0" EndSeek="14533"/>
+<Insert>  policer = dpa_policer_init(cfg-&gt;rate_limit, 0, DPA_CLK_PER_SEC);
+</Insert>
+<Copy StartSeek="14676" EndSeek="19743"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:40:33000">
+<Copy StartSeek="0" EndSeek="14671"/>
+<Insert>  }
+
+</Insert>
+<Copy StartSeek="14845" EndSeek="14962"/>
+<Copy StartSeek="14968" EndSeek="19918"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:42:49000">
+<Copy StartSeek="0" EndSeek="14845"/>
+<Insert>  if (policer)
+</Insert>
+<Copy StartSeek="14846" EndSeek="19904"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:43:47000">
+<Copy StartSeek="0" EndSeek="14578"/>
+<Insert>  if (!policer) {
+</Insert>
+<Copy StartSeek="14683" EndSeek="19991"/>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:46:34000">
+<Copy StartSeek="0" EndSeek="14578"/>
+<Insert>  if (policer) {
+          err = dpa_policer_port_cfg(cfg-&gt;rate_limit, 0, DPA_CLK_PER_SEC);
+  }
+  else {
+</Insert>
+<Copy StartSeek="14596" EndSeek="14782"/>
+<Insert>
+</Insert>
+<Copy StartSeek="14793" EndSeek="14856"/>
+<Copy StartSeek="14932" EndSeek="19990"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:49:7000">
+<Copy StartSeek="0" EndSeek="14782"/>
+<Insert>          
+</Insert>
+<Copy StartSeek="14782" EndSeek="19979"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:49:10000">
+<Copy StartSeek="0" EndSeek="14840"/>
+<Insert>  }
+
+</Insert>
+<Copy StartSeek="14916" EndSeek="20050"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:50:30000">
+<Copy StartSeek="0" EndSeek="14840"/>
+<Insert>          if (err != DPA_OK) {
+</Insert>
+<Copy StartSeek="14869" EndSeek="14897"/>
+<Insert>          }
+  }
+
+</Insert>
+<Copy StartSeek="14902" EndSeek="20036"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:50:33000">
+<Copy StartSeek="0" EndSeek="14897"/>
+<Insert>  }
+
+</Insert>
+<Copy StartSeek="14902" EndSeek="14978"/>
+<Insert>          err = dpa_policer_port_add(policer, cfg-&gt;port);
+  else
+          err = DPA_OUT_OF_RESOURCE;
+
+</Insert>
+<Copy StartSeek="15020" EndSeek="19975"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:51:8000">
+<Copy StartSeek="0" EndSeek="14978"/>
+<Insert>  if (err != DPA_OK)
+          goto out;
+
+</Insert>
+<Copy StartSeek="14978" EndSeek="19933"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:51:18000">
+<Copy StartSeek="0" EndSeek="14978"/>
+<Copy StartSeek="14979" EndSeek="19934"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:51:22000">
+<Copy StartSeek="0" EndSeek="14596"/>
+<Insert>          policer = dpa_policer_init(cfg-&gt;rate_limit, 0, DPA_CLK_PER_SEC);
+</Insert>
+<Copy StartSeek="14672" EndSeek="19935"/>
+</Delta>
+<Delta Version="33" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:53:36000">
+<Copy StartSeek="0" EndSeek="14596"/>
+<Insert>          policer = dpa_policer_alloc(cfg-&gt;rate_limit, 0, DPA_CLK_PER_SEC);
+</Insert>
+<Copy StartSeek="14637" EndSeek="19900"/>
+</Delta>
+<Delta Version="34" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:53:42000">
+<Copy StartSeek="0" EndSeek="15299"/>
+<Insert>  policer = dpa_policer_init(cfg-&gt;rate_limit, 0, DPA_CLK_PER_SEC);
+  if (policer)
+          err = dpa_policer_flow_add(policer, cfg-&gt;rcqueue);
+  else
+          err = DPA_OUT_OF_RESOURCE;
+</Insert>
+<Copy StartSeek="15713" EndSeek="20127"/>
+</Delta>
+<Delta Version="35" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:54:32000">
+<Copy StartSeek="0" EndSeek="15517"/>
+<Insert>          err = dpa_policer_port_add(policer, cfg-&gt;port);
+</Insert>
+<Copy StartSeek="15575" EndSeek="20127"/>
+</Delta>
+<Delta Version="36" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:54:40000">
+<Copy StartSeek="0" EndSeek="15517"/>
+<Insert>          err = dpa_policer_flow_add(policer, cfg-&gt;port);
+</Insert>
+<Copy StartSeek="15567" EndSeek="20119"/>
+</Delta>
+<Delta Version="37" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:54:57000">
+<Copy StartSeek="0" EndSeek="15517"/>
+<Insert>          err = dpa_policer_flow_add(policer,  );
+</Insert>
+<Copy StartSeek="15578" EndSeek="20130"/>
+</Delta>
+<Delta Version="38" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:55:4000">
+<Copy StartSeek="0" EndSeek="15716"/>
+<Copy StartSeek="15722" EndSeek="20136"/>
+</Delta>
+<Delta Version="39" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:56:29000">
+<Copy StartSeek="0" EndSeek="15640"/>
+<Insert>  err = dpa_policer_port_cfg(policer, cfg-&gt;rate_limit, 0, DPA_CLK_PER_SEC);
+</Insert>
+<Copy StartSeek="15716" EndSeek="20136"/>
+</Delta>
+<Delta Version="40" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:56:32000">
+<Copy StartSeek="0" EndSeek="15640"/>
+<Insert>  err = dpa_policer_flow_cfg(policer, cfg-&gt;rate_limit, 0, DPA_CLK_PER_SEC);
+</Insert>
+<Copy StartSeek="15711" EndSeek="20131"/>
+</Delta>
+<Delta Version="41" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:57:17000">
+<Copy StartSeek="0" EndSeek="14868"/>
+<Insert>  err = dpa_policer_port_cfg(policer, cfg-&gt;rate_limit, 0, DPA_CLK_PER_SEC);
+</Insert>
+<Copy StartSeek="14939" EndSeek="20126"/>
+</Delta>
+<Delta Version="42" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:57:21000">
+<Copy StartSeek="0" EndSeek="15108"/>
+<Insert>  err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="15177" EndSeek="20173"/>
+</Delta>
+<Delta Version="43" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:59:6000">
+<Copy StartSeek="0" EndSeek="15108"/>
+<Insert>  //err = DPA_NOT_IMPL;
+  policer = dpa_policer_port_get(cfg-&gt;port);
+</Insert>
+<Copy StartSeek="15130" EndSeek="20126"/>
+</Delta>
+<Delta Version="44" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="16:59:49000">
+<Copy StartSeek="0" EndSeek="1844"/>
+<Copy StartSeek="2023" EndSeek="20305"/>
+</Delta>
+<Delta Version="45" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:01:53000">
+<Copy StartSeek="0" EndSeek="1880"/>
+<Insert>static ZTE_L3_HARDFAST_INGRESS_POLICER_CFG *flow_policers[DPA_FLOW_GRP_POLICERS];
+static struct dpa_policer *port_policer[DPA_PORT_POLICERS];
+</Insert>
+<Copy StartSeek="2021" EndSeek="20304"/>
+</Delta>
+<Delta Version="46" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:02:4000">
+<Copy StartSeek="0" EndSeek="1880"/>
+<Insert>static struct dpa_policer *flow_policers[DPA_FLOW_GRP_POLICERS];
+</Insert>
+<Copy StartSeek="1960" EndSeek="20319"/>
+</Delta>
+<Delta Version="47" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:02:24000">
+<Copy StartSeek="0" EndSeek="1880"/>
+<Insert>static struct ZTE_L3_HARDFAST_RCQUEUE_CFG flow_policers[DPA_FLOW_GRP_POLICERS];
+</Insert>
+<Copy StartSeek="1953" EndSeek="20312"/>
+</Delta>
+<Delta Version="48" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:02:26000">
+<Copy StartSeek="0" EndSeek="1844"/>
+<Insert>/* Ingress policer configuration */
+</Insert>
+<Copy StartSeek="1884" EndSeek="1957"/>
+<Copy StartSeek="1994" EndSeek="20353"/>
+</Delta>
+<Delta Version="49" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:02:45000">
+<Copy StartSeek="0" EndSeek="1884"/>
+<Insert>static ZTE_L3_HARDFAST_RCQUEUE_CFG flow_policers[DPA_FLOW_GRP_POLICERS];
+</Insert>
+<Copy StartSeek="1964" EndSeek="2001"/>
+<Insert>static ZTE_L3_HARDFAST_INGRESS_POLICER_CFG port_policer[DPA_PORT_POLICERS];
+</Insert>
+<Copy StartSeek="2076" EndSeek="20359"/>
+</Delta>
+<Delta Version="50" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:05:13000">
+<Copy StartSeek="0" EndSeek="3508"/>
+<Copy StartSeek="3851" EndSeek="20702"/>
+</Delta>
+<Delta Version="51" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:28:14000">
+<Copy StartSeek="0" EndSeek="3736"/>
+<Insert>/* Ingress policer configuration */
+static ZTE_L3_HARDFAST_INGRESS_POLICER_CFG port_policer[ZTE_LAN_PORT_NUM];
+
+}
+
+</Insert>
+<Copy StartSeek="3888" EndSeek="20739"/>
+</Delta>
+<Delta Version="52" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:29:48000">
+<Copy StartSeek="0" EndSeek="16445"/>
+<Insert>
+</Insert>
+<Copy StartSeek="16465" EndSeek="16491"/>
+<Insert>  err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="16526" EndSeek="20771"/>
+</Delta>
+<Delta Version="53" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:31:28000">
+<Copy StartSeek="0" EndSeek="16445"/>
+<Insert>  unsigned char q;
+</Insert>
+<Copy StartSeek="16479" EndSeek="16507"/>
+<Insert>  cfg-&gt;rcqueue
+</Insert>
+<Copy StartSeek="16510" EndSeek="20774"/>
+</Delta>
+<Delta Version="54" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:31:34000">
+<Copy StartSeek="0" EndSeek="16507"/>
+<Insert>  
+  flow_policers[]
+</Insert>
+<Copy StartSeek="16584" EndSeek="16585"/>
+<Copy StartSeek="16646" EndSeek="20891"/>
+</Delta>
+<Delta Version="55" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:34:40000">
+<Copy StartSeek="0" EndSeek="16434"/>
+<Insert>  int err;
+</Insert>
+<Copy StartSeek="16454" EndSeek="20900"/>
+</Delta>
+<Delta Version="56" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:34:50000">
+<Copy StartSeek="0" EndSeek="16643"/>
+<Insert>          
+
+</Insert>
+<Copy StartSeek="16644" EndSeek="20889"/>
+</Delta>
+<Delta Version="57" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:34:55000">
+<Copy StartSeek="0" EndSeek="16557"/>
+<Insert>          return DPA_INVALID_PARAM;
+</Insert>
+<Copy StartSeek="16592" EndSeek="20888"/>
+</Delta>
+<Delta Version="58" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:35:3000">
+<Copy StartSeek="0" EndSeek="16592"/>
+<Copy StartSeek="16656" EndSeek="16657"/>
+<Insert>  cfg-&gt;rate_limit = flow_policers[q].rate_limit;
+
+</Insert>
+<Copy StartSeek="16657" EndSeek="20902"/>
+</Delta>
+<Delta Version="59" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:35:13000">
+<Copy StartSeek="0" EndSeek="15683"/>
+<Insert>  int err;
+
+</Insert>
+<Copy StartSeek="15812" EndSeek="15838"/>
+<Insert>  err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="15999" EndSeek="16950"/>
+<Copy StartSeek="16951" EndSeek="21159"/>
+</Delta>
+<Delta Version="60" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:37:22000">
+<Copy StartSeek="0" EndSeek="15739"/>
+<Insert>  if (port &gt;= ZTE_LAN_PORT_NUM) {
+          err = DPA_INVALID_PARAM;
+  }
+</Insert>
+<Copy StartSeek="15740" EndSeek="15767"/>
+<Insert>  if (q &gt;= ZTE_INGRESS_FLOW_POLICER_NUM)
+</Insert>
+<Copy StartSeek="15801" EndSeek="15836"/>
+<Insert>  else
+</Insert>
+<Copy StartSeek="15845" EndSeek="21082"/>
+</Delta>
+<Delta Version="61" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:37:40000">
+<Copy StartSeek="0" EndSeek="2001"/>
+<Insert>static ZTE_L3_HARDFAST_INGRESS_POLICER_CFG port_policer[ZTE_LAN_PORT_NUM];
+</Insert>
+<Copy StartSeek="2077" EndSeek="15837"/>
+<Insert>  } else
+          cfg-&gt;rate_limit = flow_policers[q].rate_limit;
+
+  ZTE_API_UNLOCK;
+
+</Insert>
+<Copy StartSeek="15891" EndSeek="21051"/>
+</Delta>
+<Delta Version="62" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:38:52000">
+<Copy StartSeek="0" EndSeek="15553"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15626" EndSeek="21123"/>
+</Delta>
+<Delta Version="63" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:40:8000">
+<Copy StartSeek="0" EndSeek="16540"/>
+<Copy StartSeek="16614" EndSeek="21197"/>
+</Delta>
+<Delta Version="64" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:40:58000">
+<Copy StartSeek="0" EndSeek="3786"/>
+<Insert>                port_policer[i].id = 0xFFFF;
+                port_policer[i].port = 0xFF;
+</Insert>
+<Copy StartSeek="3878" EndSeek="21199"/>
+</Delta>
+<Delta Version="65" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:45:7000">
+<Copy StartSeek="0" EndSeek="642"/>
+<Copy StartSeek="666" EndSeek="21223"/>
+</Delta>
+<Delta Version="66" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="17:48:3000">
+<Copy StartSeek="0" EndSeek="6175"/>
+<Copy StartSeek="6211" EndSeek="21259"/>
+</Delta>
+<Delta Version="67" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="19:04:34000">
+<Copy StartSeek="0" EndSeek="6211"/>
+<Copy StartSeek="6212" EndSeek="21260"/>
+</Delta>
+<Delta Version="68" Comment="" NL="\10" Encoding="text" Date="2013/06/24" Time="19:04:40000">
+<Copy StartSeek="0" EndSeek="4923"/>
+<Insert>	int status;
+</Insert>
+<Copy StartSeek="4938" EndSeek="4939"/>
+<Insert>	ZTE_API_LOCK_OR_RETURN;
+	status = dpa_port_stat(cfg-&gt;port);
+	ZTE_API_UNLOCK;
+</Insert>
+<Copy StartSeek="5026" EndSeek="5027"/>
+<Insert>	return status;
+</Insert>
+<Copy StartSeek="5050" EndSeek="8564"/>
+<Insert>          session-&gt;sessionid != ZTE_NO_PARAM) {
+</Insert>
+<Copy StartSeek="8630" EndSeek="21074"/>
+<Copy StartSeek="21529" EndSeek="21600"/>
+<Insert>	return dpa_frwd_snapshot(tbl);
+}
+
+</Insert>
+<Copy StartSeek="22008" EndSeek="22085"/>
+<Insert>	return dpa_frwd_mc_snapshot(tbl);
+</Insert>
+<Copy StartSeek="22107" EndSeek="22111"/>
+</Delta>
+<Delta Version="69" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:03:24000">
+<Copy StartSeek="0" EndSeek="8514"/>
+<Insert>      if (session-&gt;direction == ZTE_DIR_UPLINK &amp;&amp;
+          session-&gt;sessionid != ZTE_NO_PARAM &amp;&amp; session-&gt;isppp) {
+</Insert>
+<Copy StartSeek="8630" EndSeek="22111"/>
+</Delta>
+<Delta Version="70" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:04:18000">
+<Copy StartSeek="0" EndSeek="8376"/>
+<Insert>  /* VLAN handling FIXME Implement double VLAN + PPPoE */
+</Insert>
+<Copy StartSeek="8435" EndSeek="22112"/>
+</Delta>
+<Delta Version="71" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:04:30000">
+<Copy StartSeek="0" EndSeek="8918"/>
+<Insert>      break;
+</Insert>
+<Copy StartSeek="8918" EndSeek="9236"/>
+<Copy StartSeek="9249" EndSeek="22112"/>
+</Delta>
+<Delta Version="72" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:05:13000">
+<Copy StartSeek="0" EndSeek="2945"/>
+<Insert>int zte_api_fast_l3_init_lib(void) {
+</Insert>
+<Copy StartSeek="2984" EndSeek="3288"/>
+<Insert>int zte_api_fast_l3_shutdown_lib(void) {
+</Insert>
+<Copy StartSeek="3331" EndSeek="6530"/>
+<Insert>        err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="6558" EndSeek="9972"/>
+<Insert>          err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="10002" EndSeek="12606"/>
+<Insert>  err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="12628" EndSeek="13446"/>
+<Insert>  err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="13468" EndSeek="13815"/>
+<Insert>  err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="13837" EndSeek="14705"/>
+<Insert>  err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="14727" EndSeek="14878"/>
+<Insert>  err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="14900" EndSeek="15049"/>
+<Insert>  err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="15071" EndSeek="15943"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15987" EndSeek="16110"/>
+<Copy StartSeek="16137" EndSeek="16301"/>
+<Copy StartSeek="16344" EndSeek="16836"/>
+<Copy StartSeek="16863" EndSeek="17053"/>
+<Insert>
+</Insert>
+<Copy StartSeek="17097" EndSeek="17238"/>
+<Copy StartSeek="17265" EndSeek="21053"/>
+<Insert>  err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="21075" EndSeek="21230"/>
+<Insert>  err = DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="21252" EndSeek="21743"/>
+<Insert>
+</Insert>
+<Copy StartSeek="21780" EndSeek="21851"/>
+<Copy StartSeek="21889" EndSeek="22084"/>
+<Insert>		ZTE_API_FAST_ERROR("Snapshot allocation failed");
+</Insert>
+<Copy StartSeek="22151" EndSeek="22166"/>
+<Insert>		return -1;
+	}
+	
+</Insert>
+<Copy StartSeek="22215" EndSeek="22304"/>
+<Copy StartSeek="22324" EndSeek="22360"/>
+<Insert>}
+
+</Insert>
+<Copy StartSeek="22440" EndSeek="22517"/>
+<Insert>	return DPA_NOT_IMPL;
+</Insert>
+<Copy StartSeek="22539" EndSeek="22543"/>
+</Delta>
+<Delta Version="73" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:31:34000">
+<Copy StartSeek="0" EndSeek="15943"/>
+<Insert>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+  err = ZTE_NOT_IMPL;
+=======
+
+</Insert>
+<Copy StartSeek="15943" EndSeek="16066"/>
+<Insert>&gt;&gt;&gt;&gt;&gt;&gt;&gt; avanta_policer_dev
+</Insert>
+<Copy StartSeek="16066" EndSeek="22472"/>
+</Delta>
+<Delta Version="74" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:31:57000">
+<Copy StartSeek="0" EndSeek="15943"/>
+<Copy StartSeek="15944" EndSeek="22473"/>
+</Delta>
+<Delta Version="75" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:32:4000">
+<Copy StartSeek="0" EndSeek="15943"/>
+<Insert>
+</Insert>
+<Copy StartSeek="15943" EndSeek="16065"/>
+<Insert>
+</Insert>
+<Copy StartSeek="16065" EndSeek="22471"/>
+</Delta>
+<Delta Version="76" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:32:16000">
+<Copy StartSeek="0" EndSeek="16229"/>
+<Insert>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+  err = ZTE_NOT_IMPL;
+=======
+</Insert>
+<Copy StartSeek="16229" EndSeek="16721"/>
+<Insert>&gt;&gt;&gt;&gt;&gt;&gt;&gt; avanta_policer_dev
+</Insert>
+<Copy StartSeek="16721" EndSeek="22401"/>
+</Delta>
+<Delta Version="77" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:32:31000">
+<Copy StartSeek="0" EndSeek="16911"/>
+<Insert>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+  err = ZTE_NOT_IMPL;
+=======
+
+</Insert>
+<Copy StartSeek="16912" EndSeek="17053"/>
+<Insert>&gt;&gt;&gt;&gt;&gt;&gt;&gt; avanta_policer_dev
+</Insert>
+<Copy StartSeek="17053" EndSeek="22331"/>
+</Delta>
+<Delta Version="78" Comment="" NL="\10" Encoding="text" Date="2013/06/25" Time="22:32:53000">
+<Copy StartSeek="0" EndSeek="1868"/>
+<Insert>
+</Insert>
+<Copy StartSeek="1868" EndSeek="1907"/>
+<Insert>static ZTE_L3_HARDFAST_RCQUEUE_CFG flow_policers[ZTE_INGRESS_FLOW_POLICER_NUM];
+</Insert>
+<Copy StartSeek="1991" EndSeek="3659"/>
+<Insert>                flow_policers[i].rate_limit = 0;
+                flow_policers[i].rcqueue = 0xFE;
+</Insert>
+<Copy StartSeek="3765" EndSeek="16676"/>
+<Insert>          flow_policers[cfg-&gt;rcqueue] = *cfg;
+</Insert>
+<Copy StartSeek="16726" EndSeek="17010"/>
+<Insert>          cfg-&gt;rate_limit = flow_policers[q].rate_limit;
+</Insert>
+<Copy StartSeek="17071" EndSeek="22350"/>
+</Delta>
+<Delta Version="79" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="13:35:23000">
+<Copy StartSeek="0" EndSeek="2028"/>
+<Insert>static ZTE_L3_HARDFAST_INGRESS_POLICER_CFG port_policers[ZTE_LAN_PORT_NUM];
+</Insert>
+<Copy StartSeek="2108" EndSeek="3829"/>
+<Insert>                port_policers[i].id = 0xFFFF;
+                port_policers[i].port = 0xFF;
+</Insert>
+<Copy StartSeek="3929" EndSeek="15706"/>
+<Insert>          port_policers[cfg-&gt;port] = *cfg;
+</Insert>
+<Copy StartSeek="15753" EndSeek="16050"/>
+<Insert>          *cfg = port_policers[port];
+</Insert>
+<Copy StartSeek="16092" EndSeek="22370"/>
+</Delta>
+<Delta Version="80" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="13:35:35000">
+<Copy StartSeek="0" EndSeek="16205"/>
+<Insert>  int err;
+</Insert>
+<Copy StartSeek="16225" EndSeek="16269"/>
+<Copy StartSeek="16371" EndSeek="22481"/>
+</Delta>
+<Delta Version="81" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="14:31:35000">
+<Copy StartSeek="0" EndSeek="15274"/>
+<Copy StartSeek="15373" EndSeek="22580"/>
+</Delta>
+<Delta Version="82" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="14:32:26000">
+<Copy StartSeek="0" EndSeek="15219"/>
+<Insert>  int err;
+</Insert>
+<Copy StartSeek="15239" EndSeek="22589"/>
+</Delta>
+<Delta Version="83" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="14:32:34000">
+<Copy StartSeek="0" EndSeek="15712"/>
+<Insert>  } 
+</Insert>
+<Copy StartSeek="15716" EndSeek="22588"/>
+</Delta>
+<Delta Version="84" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="14:47:2000">
+<Copy StartSeek="0" EndSeek="6651"/>
+<Insert>        /* TTL */
+        dpf-&gt;mod.ops |= DPA_MDF_IP_V4_TTL;
+        ZTE_API_FAST_DBG("ttl--");
+
+</Insert>
+<Copy StartSeek="6651" EndSeek="8290"/>
+<Insert>        }
+
+  }
+
+</Insert>
+<Copy StartSeek="8445" EndSeek="22630"/>
+</Delta>
+<Delta Version="85" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="16:14:12000">
+<Copy StartSeek="0" EndSeek="8427"/>
+<Insert>
+</Insert>
+<Copy StartSeek="8437" EndSeek="8438"/>
+<Insert>        }
+</Insert>
+<Copy StartSeek="8442" EndSeek="8443"/>
+<Insert>  }
+
+</Insert>
+<Copy StartSeek="8443" EndSeek="22628"/>
+</Delta>
+<Delta Version="86" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="16:14:14000">
+<Copy StartSeek="0" EndSeek="8437"/>
+<Insert>
+  }
+
+</Insert>
+<Copy StartSeek="8442" EndSeek="22627"/>
+</Delta>
+<Delta Version="87" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="16:14:16000">
+<Copy StartSeek="0" EndSeek="8307"/>
+<Insert>                /* TTL */
+</Insert>
+<Copy StartSeek="8362" EndSeek="22656"/>
+</Delta>
+<Delta Version="88" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="16:14:46000">
+<Copy StartSeek="0" EndSeek="8307"/>
+<Insert>                /* only TTL dec. NAT ops include it */
+</Insert>
+<Copy StartSeek="8363" EndSeek="22657"/>
+</Delta>
+<Delta Version="89" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="16:18:36000">
+<Copy StartSeek="0" EndSeek="8307"/>
+<Insert>                /* only TTL dec. NAT ops include ttl */
+</Insert>
+<Copy StartSeek="8367" EndSeek="22661"/>
+</Delta>
+<Delta Version="90" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="16:18:39000">
+<Copy StartSeek="0" EndSeek="13969"/>
+<Insert>
+</Insert>
+<Copy StartSeek="14027" EndSeek="22718"/>
+</Delta>
+<Delta Version="91" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="19:58:44000">
+<Copy StartSeek="0" EndSeek="13969"/>
+<Insert>static inline void uint64split_to_uint64(uint32_t *val) 
+
+</Insert>
+<Copy StartSeek="14113" EndSeek="22804"/>
+</Delta>
+<Delta Version="92" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:01:19000">
+<Copy StartSeek="0" EndSeek="14031"/>
+<Insert>        uint64_t ret = val[1];
+        ret = ret &lt;&lt; 32;
+        ret += val[0];
+</Insert>
+<Copy StartSeek="14128" EndSeek="22822"/>
+</Delta>
+<Delta Version="93" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:02:32000">
+<Copy StartSeek="0" EndSeek="14031"/>
+<Insert>        uint64_t ret = (uint64_t) val[1];
+        ret = (ret &lt;&lt; 32) + val[0]
+        return ret;
+</Insert>
+<Copy StartSeek="14111" EndSeek="22805"/>
+</Delta>
+<Delta Version="94" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:03:1000">
+<Copy StartSeek="0" EndSeek="14073"/>
+<Insert>        return (tmp &lt;&lt; 32) + val[0];
+</Insert>
+<Copy StartSeek="14112" EndSeek="22807"/>
+</Delta>
+<Delta Version="95" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:03:12000">
+<Copy StartSeek="0" EndSeek="14112"/>
+<Insert>
+}
+
+</Insert>
+<Copy StartSeek="14115" EndSeek="22806"/>
+</Delta>
+<Delta Version="96" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:03:14000">
+<Copy StartSeek="0" EndSeek="14073"/>
+<Copy StartSeek="14074" EndSeek="22807"/>
+</Delta>
+<Delta Version="97" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:03:26000">
+<Copy StartSeek="0" EndSeek="13969"/>
+<Insert>static inline uint64_t uint64split_to_uint64(uint32_t *val)
+{
+        uint64_t tmp = (uint64_t) val[1];
+
+        return ((tmp &lt;&lt; 32) + val[0]);
+}
+
+</Insert>
+<Copy StartSeek="13970" EndSeek="22661"/>
+</Delta>
+<Delta Version="98" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:03:29000">
+<Copy StartSeek="0" EndSeek="14382"/>
+<Insert>        stat-&gt;rxpkt = stats.rx_pkts;
+        stat-&gt;txpkt = stats.tx_pkts;
+        stat-&gt;rxbyte = stats.rx_bytes;
+        stat-&gt;txbyte = stats.tx_bytes;
+</Insert>
+<Copy StartSeek="14626" EndSeek="22753"/>
+</Delta>
+<Delta Version="99" Comment="" NL="\10" Encoding="text" Date="2013/06/26" Time="20:05:17000">
+<Copy StartSeek="0" EndSeek="5340"/>
+<Insert>  err =  dpa_port_del(port);
+</Insert>
+<Copy StartSeek="5413" EndSeek="9782"/>
+<Copy StartSeek="9845" EndSeek="22860"/>
+</Delta>
+<Delta Version="100" Comment="" NL="\10" Encoding="text" Date="2013/06/27" Time="11:40:5000">
+<Copy StartSeek="0" EndSeek="12168"/>
+<Insert>  dpf-&gt;mod.tx_port = session-&gt;channel;
+</Insert>
+<Copy StartSeek="12321" EndSeek="22974"/>
+</Delta>
+<Delta Version="101" Comment="" NL="\10" Encoding="text" Date="2013/06/29" Time="22:28:17000">
+<Copy StartSeek="0" EndSeek="12260"/>
+<Copy StartSeek="12344" EndSeek="12355"/>
+<Insert>          dpf-&gt;mod.tx_port = session-&gt;channel
+</Insert>
+<Copy StartSeek="12402" EndSeek="23059"/>
+</Delta>
+<Delta Version="102" Comment="" NL="\10" Encoding="text" Date="2013/06/29" Time="22:29:8000">
+<Copy StartSeek="0" EndSeek="12343"/>
+<Insert>
+</Insert>
+<Copy StartSeek="12343" EndSeek="23058"/>
+</Delta>
+<Delta Version="103" Comment="" NL="\10" Encoding="text" Date="2013/06/29" Time="22:29:40000">
+<Copy StartSeek="0" EndSeek="12342"/>
+<Insert>
+</Insert>
+<Copy StartSeek="12342" EndSeek="23057"/>
+</Delta>
+<Delta Version="104" Comment="" NL="\10" Encoding="text" Date="2013/06/29" Time="22:29:42000">
+<Copy StartSeek="0" EndSeek="12260"/>
+<Insert>          dpf-&gt;mod.channel = session-&gt;channel; /* gemport, we assume tcont = 0 */
+</Insert>
+<Copy StartSeek="12345" EndSeek="23060"/>
+</Delta>
+</DeltaFile>

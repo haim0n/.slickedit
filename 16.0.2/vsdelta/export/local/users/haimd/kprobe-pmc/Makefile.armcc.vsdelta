@@ -1,0 +1,260 @@
+<!DOCTYPE DeltaFile SYSTEM "http://www.slickedit.com/dtd/vse/vsdelta/9.0/vsdelta.dtd">
+<DeltaFile FormatVersion="9.0.0">
+<MostRecent Version="33" Comment="" Date="2012/01/18" Time="15:44:15000" NL="\10" Encoding="text">
+<Insert>#-Wp,-MD,/export/local/users/haimd/kprobe-pmc/.perf_counters.o.d  -nostdinc -isystem /export/filer/shared/tools/arm-sdk3.3-sft/bin/../lib/gcc/arm-mv5sft-linux-gnueabi/4.3.2/include
+#
+#-Iinclude  -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security
+#-fno-delete-null-pointer-checks -Os -marm -ffunction-sections -fno-omit-frame-pointer -mapcs -mno-sched-prolog -mabi=aapcs-linux -mno-thumb-interwork -D__LINUX_ARM_ARCH__=5 -march=armv5te
+#-mtune=arm9e -msoft-float -Uarm -fno-stack-protector -fno-omit-frame-pointer -fno-optimize-sibling-calls -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow
+# -c -o /export/local/users/haimd/kprobe-pmc/perf_counters.o /export/local/users/haimd/kprobe-pmc/perf_counters.c
+
+CC=armcc
+#EXTRA_CFLAGS=-I.
+EXTRA_CFLAGS+=-DHISTOGRAM_SUPPORT 
+EXTRA_CFLAGS+=-D__KERNEL__ 
+EXTRA_CFLAGS+=-D__LINUX_ARM_ARCH__=5 
+EXTRA_CFLAGS+=-DMODULE 
+#EXTRA_CFLAGS+=-D'KBUILD_STR(s)=#s' -D'KBUILD_BASENAME=KBUILD_STR(perf_counters)' -D'KBUILD_MODNAME=KBUILD_STR(perf_counters)'
+EXTRA_CFLAGS+=-Otime 
+EXTRA_CFLAGS+=--cpu=5TE 
+
+EXTRA_CFLAGS+=-I/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/include
+EXTRA_CFLAGS+=-I/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/arch/arm/include
+EXTRA_CFLAGS+=-I/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/include/linux/autoconf.h
+EXTRA_CFLAGS+=-I/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/arch/arm/mach-feroceon-kw2/include
+EXTRA_CFLAGS+=-I/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/arch/arm/plat-feroceon/include
+
+DEPS = mvCpuCntrs.h perf_counters.h
+OBJ = perf_counters.o
+
+%.o: %.c $(DEPS)
+	$(CC) -c -o $@ $&lt; $(EXTRA_CFLAGS)
+
+all: $(OBJ)
+	$(CC) -o $@ $^ $(EXTRA_CFLAGS)
+
+clean:
+	rm -f *.mod.c *.ko *.o *.s
+</Insert>
+</MostRecent>
+<Delta Version="0" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:11:54000">
+<Copy StartSeek="169" EndSeek="1560"/>
+</Delta>
+<Delta Version="1" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:16:9000">
+<Copy StartSeek="0" EndSeek="126"/>
+<Insert>hellomake: $(OBJ)
+</Insert>
+<Copy StartSeek="138" EndSeek="1554"/>
+</Delta>
+<Delta Version="2" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:16:27000">
+<Copy StartSeek="0" EndSeek="138"/>
+<Insert>	gcc -o $@ $^ $(CFLAGS)
+</Insert>
+<Copy StartSeek="164" EndSeek="1556"/>
+</Delta>
+<Delta Version="3" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:16:42000">
+<Copy StartSeek="0" EndSeek="9"/>
+<Insert>CFLAGS=-I.
+</Insert>
+<Copy StartSeek="26" EndSeek="1562"/>
+</Delta>
+<Delta Version="4" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:17:11000">
+<Copy StartSeek="0" EndSeek="102"/>
+<Insert>	$(CC) -c -o $@ $&lt; $(CFLAGS)
+</Insert>
+<Copy StartSeek="137" EndSeek="150"/>
+<Insert>	$(CC) -o $@ $^ $(CFLAGS)
+</Insert>
+<Copy StartSeek="182" EndSeek="1574"/>
+</Delta>
+<Delta Version="5" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:17:17000">
+<Copy StartSeek="0" EndSeek="26"/>
+<Copy StartSeek="60" EndSeek="217"/>
+<Insert>EXTRA_CFLAGS=-DHISTOGRAM_SUPPORT
+</Insert>
+<Copy StartSeek="218" EndSeek="1576"/>
+</Delta>
+<Delta Version="6" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:17:28000">
+<Copy StartSeek="0" EndSeek="218"/>
+<Insert>CC=armcc
+
+all: perf_counters.o 
+	     $(CC) -o hellomake hellomake.c hellofunc.c -I.
+/export/filer/shared/tools/arm-sdk3.3-sft/bin/arm-mv5sft-linux-gnueabi-gcc -Wp,-MD,/export/local/users/haimd/kprobe-pmc/.perf_counters.o.d  -nostdinc -isystem /export/filer/shared/tools/arm-sdk3.3-sft/bin/../lib/gcc/arm-mv5sft-linux-gnueabi/4.3.2/include -Iinclude  -I/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/arch/arm/include -include include/linux/autoconf.h -D__KERNEL__ -mlittle-endian -Iarch/arm/mach-feroceon-kw2/include -Iarch/arm/plat-feroceon/include -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security -fno-delete-null-pointer-checks -Os -marm -ffunction-sections -fno-omit-frame-pointer -mapcs -mno-sched-prolog -mabi=aapcs-linux -mno-thumb-interwork -D__LINUX_ARM_ARCH__=5 -march=armv5te -mtune=arm9e -msoft-float -Uarm -fno-stack-protector -fno-omit-frame-pointer -fno-optimize-sibling-calls -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -DHISTOGRAM_SUPPORT  -DMODULE -D"KBUILD_STR(s)=#s" -D"KBUILD_BASENAME=KBUILD_STR(perf_counters)"  -D"KBUILD_MODNAME=KBUILD_STR(perf_counters)"  -c -o /export/local/users/haimd/kprobe-pmc/perf_counters.o /export/local/users/haimd/kprobe-pmc/perf_counters.c
+</Insert>
+<Copy StartSeek="1385" EndSeek="1416"/>
+</Delta>
+<Delta Version="7" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:17:50000">
+<Copy StartSeek="0" EndSeek="60"/>
+<Copy StartSeek="264" EndSeek="422"/>
+<Insert>-Wp,-MD,/export/local/users/haimd/kprobe-pmc/.perf_counters.o.d  -nostdinc -isystem /export/filer/shared/tools/arm-sdk3.3-sft/bin/../lib/gcc/arm-mv5sft-linux-gnueabi/4.3.2/include -Iinclude  -I/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/arch/arm/include -include include/linux/autoconf.h -D__KERNEL__ -mlittle-endian -Iarch/arm/mach-feroceon-kw2/include -Iarch/arm/plat-feroceon/include -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security -fno-delete-null-pointer-checks -Os -marm -ffunction-sections -fno-omit-frame-pointer -mapcs -mno-sched-prolog -mabi=aapcs-linux -mno-thumb-interwork -D__LINUX_ARM_ARCH__=5 -march=armv5te -mtune=arm9e -msoft-float -Uarm -fno-stack-protector -fno-omit-frame-pointer -fno-optimize-sibling-calls -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -DHISTOGRAM_SUPPORT  -DMODULE -D"KBUILD_STR(s)=#s" -D"KBUILD_BASENAME=KBUILD_STR(perf_counters)"  -D"KBUILD_MODNAME=KBUILD_STR(perf_counters)"  -c -o /export/local/users/haimd/kprobe-pmc/perf_counters.o /export/local/users/haimd/kprobe-pmc/perf_counters.c
+</Insert>
+<Copy StartSeek="1591" EndSeek="1622"/>
+</Delta>
+<Delta Version="8" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:21:25000">
+<Copy StartSeek="0" EndSeek="60"/>
+<Copy StartSeek="87" EndSeek="291"/>
+<Copy StartSeek="292" EndSeek="632"/>
+<Insert>-Iinclude  -I/export/local/users/haimd/kw2/linux-2.6.32.11-feroceon_3.1.0_kw2/arch/arm/include -include include/linux/autoconf.h -D__KERNEL__ -mlittle-endian -Iarch/arm/mach-feroceon-kw2/include -Iarch/arm/plat-feroceon/include -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security -fno-delete-null-pointer-checks -Os -marm -ffunction-sections -fno-omit-frame-pointer -mapcs -mno-sched-prolog -mabi=aapcs-linux -mno-thumb-interwork -D__LINUX_ARM_ARCH__=5 -march=armv5te -mtune=arm9e -msoft-float -Uarm -fno-stack-protector -fno-omit-frame-pointer -fno-optimize-sibling-calls -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -DHISTOGRAM_SUPPORT  -DMODULE -D"KBUILD_STR(s)=#s" -D"KBUILD_BASENAME=KBUILD_STR(perf_counters)"  -D"KBUILD_MODNAME=KBUILD_STR(perf_counters)"  -c -o /export/local/users/haimd/kprobe-pmc/perf_counters.o /export/local/users/haimd/kprobe-pmc/perf_counters.c
+</Insert>
+<Copy StartSeek="1489" EndSeek="1520"/>
+</Delta>
+<Delta Version="9" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:22:28000">
+<Copy StartSeek="0" EndSeek="87"/>
+<Copy StartSeek="107" EndSeek="1540"/>
+</Delta>
+<Delta Version="10" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:23:30000">
+<Copy StartSeek="0" EndSeek="107"/>
+<Copy StartSeek="131" EndSeek="1564"/>
+</Delta>
+<Delta Version="11" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:24:57000">
+<Copy StartSeek="0" EndSeek="87"/>
+<Copy StartSeek="88" EndSeek="132"/>
+<Copy StartSeek="133" EndSeek="1566"/>
+</Delta>
+<Delta Version="12" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:25:3000">
+<Copy StartSeek="0" EndSeek="337"/>
+<Insert>
+</Insert>
+<Copy StartSeek="454" EndSeek="794"/>
+<Insert>-Iinclude   -mlittle-endian -Iarch/arm/mach-feroceon-kw2/include -Iarch/arm/plat-feroceon/include -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security -fno-delete-null-pointer-checks -Os -marm -ffunction-sections -fno-omit-frame-pointer -mapcs -mno-sched-prolog -mabi=aapcs-linux -mno-thumb-interwork -D__LINUX_ARM_ARCH__=5 -march=armv5te -mtune=arm9e -msoft-float -Uarm -fno-stack-protector -fno-omit-frame-pointer -fno-optimize-sibling-calls -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -DHISTOGRAM_SUPPORT  -DMODULE -D"KBUILD_STR(s)=#s" -D"KBUILD_BASENAME=KBUILD_STR(perf_counters)"  -D"KBUILD_MODNAME=KBUILD_STR(perf_counters)"  -c -o /export/local/users/haimd/kprobe-pmc/perf_counters.o /export/local/users/haimd/kprobe-pmc/perf_counters.c
+</Insert>
+<Copy StartSeek="1634" EndSeek="1665"/>
+</Delta>
+<Delta Version="13" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:25:40000">
+<Copy StartSeek="0" EndSeek="794"/>
+<Insert>-Iinclude  -Iarch/arm/mach-feroceon-kw2/include -Iarch/arm/plat-feroceon/include -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security -fno-delete-null-pointer-checks -Os -marm -ffunction-sections -fno-omit-frame-pointer -mapcs -mno-sched-prolog -mabi=aapcs-linux -mno-thumb-interwork -D__LINUX_ARM_ARCH__=5 -march=armv5te -mtune=arm9e -msoft-float -Uarm -fno-stack-protector -fno-omit-frame-pointer -fno-optimize-sibling-calls -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -DHISTOGRAM_SUPPORT  -DMODULE -D"KBUILD_STR(s)=#s" -D"KBUILD_BASENAME=KBUILD_STR(perf_counters)"  -D"KBUILD_MODNAME=KBUILD_STR(perf_counters)"  -c -o /export/local/users/haimd/kprobe-pmc/perf_counters.o /export/local/users/haimd/kprobe-pmc/perf_counters.c
+</Insert>
+<Copy StartSeek="1597" EndSeek="1628"/>
+</Delta>
+<Delta Version="14" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:25:49000">
+<Copy StartSeek="0" EndSeek="453"/>
+<Insert>
+</Insert>
+<Copy StartSeek="566" EndSeek="906"/>
+<Insert>-Iinclude  -Iarch/arm/plat-feroceon/include -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security -fno-delete-null-pointer-checks -Os -marm -ffunction-sections -fno-omit-frame-pointer -mapcs -mno-sched-prolog -mabi=aapcs-linux -mno-thumb-interwork -D__LINUX_ARM_ARCH__=5 -march=armv5te -mtune=arm9e -msoft-float -Uarm -fno-stack-protector -fno-omit-frame-pointer -fno-optimize-sibling-calls -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -DHISTOGRAM_SUPPORT  -DMODULE -D"KBUILD_STR(s)=#s" -D"KBUILD_BASENAME=KBUILD_STR(perf_counters)"  -D"KBUILD_MODNAME=KBUILD_STR(perf_counters)"  -c -o /export/local/users/haimd/kprobe-pmc/perf_counters.o /export/local/users/haimd/kprobe-pmc/perf_counters.c
+</Insert>
+<Copy StartSeek="1676" EndSeek="1707"/>
+</Delta>
+<Delta Version="15" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:26:14000">
+<Copy StartSeek="0" EndSeek="87"/>
+<Insert>
+</Insert>
+<Copy StartSeek="124" EndSeek="942"/>
+<Insert>-Iinclude  -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security -fno-delete-null-pointer-checks -Os -marm -ffunction-sections -fno-omit-frame-pointer -mapcs -mno-sched-prolog -mabi=aapcs-linux -mno-thumb-interwork -D__LINUX_ARM_ARCH__=5 -march=armv5te -mtune=arm9e -msoft-float -Uarm -fno-stack-protector -fno-omit-frame-pointer -fno-optimize-sibling-calls -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -DHISTOGRAM_SUPPORT  -DMODULE -D"KBUILD_STR(s)=#s" -D"KBUILD_BASENAME=KBUILD_STR(perf_counters)"  -D"KBUILD_MODNAME=KBUILD_STR(perf_counters)"  -c -o /export/local/users/haimd/kprobe-pmc/perf_counters.o /export/local/users/haimd/kprobe-pmc/perf_counters.c
+</Insert>
+<Copy StartSeek="1713" EndSeek="1744"/>
+</Delta>
+<Delta Version="16" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:26:59000">
+<Copy StartSeek="0" EndSeek="124"/>
+<Copy StartSeek="260" EndSeek="1231"/>
+<Insert>-fno-delete-null-pointer-checks -Os -marm -ffunction-sections -fno-omit-frame-pointer -mapcs -mno-sched-prolog -mabi=aapcs-linux -mno-thumb-interwork -D__LINUX_ARM_ARCH__=5 -march=armv5te -mtune=arm9e -msoft-float -Uarm -fno-stack-protector -fno-omit-frame-pointer -fno-optimize-sibling-calls -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow -DHISTOGRAM_SUPPORT  -DMODULE -D"KBUILD_STR(s)=#s" -D"KBUILD_BASENAME=KBUILD_STR(perf_counters)"  -D"KBUILD_MODNAME=KBUILD_STR(perf_counters)"  -c -o /export/local/users/haimd/kprobe-pmc/perf_counters.o /export/local/users/haimd/kprobe-pmc/perf_counters.c
+</Insert>
+<Copy StartSeek="1852" EndSeek="1883"/>
+</Delta>
+<Delta Version="17" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:27:57000">
+<Copy StartSeek="815" EndSeek="1711"/>
+<Insert>-Wp,-MD,/export/local/users/haimd/kprobe-pmc/.perf_counters.o.d  -nostdinc -isystem /export/filer/shared/tools/arm-sdk3.3-sft/bin/../lib/gcc/arm-mv5sft-linux-gnueabi/4.3.2/include 
+
+-Iinclude  -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security 
+-fno-delete-null-pointer-checks -Os -marm -ffunction-sections -fno-omit-frame-pointer -mapcs -mno-sched-prolog -mabi=aapcs-linux -mno-thumb-interwork -D__LINUX_ARM_ARCH__=5 -march=armv5te 
+-mtune=arm9e -msoft-float -Uarm -fno-stack-protector -fno-omit-frame-pointer -fno-optimize-sibling-calls -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow 
+-DHISTOGRAM_SUPPORT  -DMODULE -D"KBUILD_STR(s)=#s" -D"KBUILD_BASENAME=KBUILD_STR(perf_counters)"  -D"KBUILD_MODNAME=KBUILD_STR(perf_counters)"  -c -o /export/local/users/haimd/kprobe-pmc/perf_counters.o /export/local/users/haimd/kprobe-pmc/perf_counters.c
+
+</Insert>
+<Copy StartSeek="1712" EndSeek="1743"/>
+</Delta>
+<Delta Version="18" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:28:27000">
+<Copy StartSeek="0" EndSeek="1589"/>
+<Insert>OBJ = perf_coutners.o
+</Insert>
+<Copy StartSeek="1611" EndSeek="1743"/>
+</Delta>
+<Delta Version="19" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:29:21000">
+<Insert>#-Wp,-MD,/export/local/users/haimd/kprobe-pmc/.perf_counters.o.d  -nostdinc -isystem /export/filer/shared/tools/arm-sdk3.3-sft/bin/../lib/gcc/arm-mv5sft-linux-gnueabi/4.3.2/include
+#
+#-Iinclude  -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration -Wno-format-security
+#-fno-delete-null-pointer-checks -Os -marm -ffunction-sections -fno-omit-frame-pointer -mapcs -mno-sched-prolog -mabi=aapcs-linux -mno-thumb-interwork -D__LINUX_ARM_ARCH__=5 -march=armv5te
+#-mtune=arm9e -msoft-float -Uarm -fno-stack-protector -fno-omit-frame-pointer -fno-optimize-sibling-calls -Wdeclaration-after-statement -Wno-pointer-sign -fno-strict-overflow
+# -c -o /export/local/users/haimd/kprobe-pmc/perf_counters.o /export/local/users/haimd/kprobe-pmc/perf_counters.c
+
+</Insert>
+<Copy StartSeek="0" EndSeek="928"/>
+</Delta>
+<Delta Version="20" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:30:4000">
+<Copy StartSeek="815" EndSeek="1743"/>
+</Delta>
+<Delta Version="21" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:30:14000">
+<Copy StartSeek="0" EndSeek="1710"/>
+<Insert>
+
+</Insert>
+<Copy StartSeek="1710" EndSeek="1741"/>
+</Delta>
+<Delta Version="22" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:31:25000">
+<Copy StartSeek="0" EndSeek="824"/>
+<Insert>EXTRA_CFLAGS=-I.
+</Insert>
+<Copy StartSeek="842" EndSeek="1742"/>
+</Delta>
+<Delta Version="23" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:35:40000">
+<Copy StartSeek="0" EndSeek="1630"/>
+<Insert>	$(CC) -c -o $@ $&lt; $(EXTRA_CFLAGS)
+</Insert>
+<Copy StartSeek="1665" EndSeek="1742"/>
+</Delta>
+<Delta Version="24" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:36:50000">
+<Copy StartSeek="0" EndSeek="1718"/>
+<Insert>	rm -f *.mod.c *.ko *.o
+</Insert>
+</Delta>
+<Delta Version="25" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:37:5000">
+<Copy StartSeek="0" EndSeek="940"/>
+<Insert>EXTRA_CFLAGS+=-DMODULE -D"KBUILD_STR(s)=#s" -D"KBUILD_BASENAME=KBUILD_STR(perf_counters)"  -D"KBUILD_MODNAME=KBUILD_STR(perf_counters)"
+</Insert>
+<Copy StartSeek="1075" EndSeek="1745"/>
+</Delta>
+<Delta Version="26" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:37:55000">
+<Copy StartSeek="0" EndSeek="940"/>
+<Insert>EXTRA_CFLAGS+=-DMODULE -D"KBUILD_STR(s)=#s" -D"KBUILD_BASENAME=KBUILD_STR(perf_counters)" -D"KBUILD_MODNAME=KBUILD_STR(perf_counters)"
+</Insert>
+<Copy StartSeek="1075" EndSeek="1745"/>
+</Delta>
+<Delta Version="27" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:38:56000">
+<Copy StartSeek="0" EndSeek="940"/>
+<Insert>EXTRA_CFLAGS+=-DMODULE -D'KBUILD_STR(s)=#s' -D'KBUILD_BASENAME=KBUILD_STR(perf_counters)' -D'KBUILD_MODNAME=KBUILD_STR(perf_counters)'
+</Insert>
+<Copy StartSeek="1091" EndSeek="1761"/>
+</Delta>
+<Delta Version="28" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:39:57000">
+<Copy StartSeek="0" EndSeek="1091"/>
+<Insert>EXTRA_CFLAGS+=Otime
+</Insert>
+<Copy StartSeek="1112" EndSeek="1762"/>
+</Delta>
+<Delta Version="29" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:40:46000">
+<Copy StartSeek="0" EndSeek="1137"/>
+<Copy StartSeek="1226" EndSeek="1851"/>
+</Delta>
+<Delta Version="30" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:42:7000">
+<Copy StartSeek="0" EndSeek="1735"/>
+<Insert>	$(CC) -S -o $@ $&lt; $(EXTRA_CFLAGS)
+</Insert>
+<Copy StartSeek="1770" EndSeek="1851"/>
+</Delta>
+<Delta Version="31" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:42:40000">
+<Copy StartSeek="0" EndSeek="842"/>
+<Insert>EXTRA_CFLAGS+=-DHISTOGRAM_SUPPORT
+EXTRA_CFLAGS+=-D__KERNEL__
+EXTRA_CFLAGS+=-D__LINUX_ARM_ARCH__=5
+</Insert>
+<Copy StartSeek="943" EndSeek="1854"/>
+</Delta>
+<Delta Version="32" Comment="" NL="\10" Encoding="text" Date="2012/01/18" Time="15:44:12000">
+<Copy StartSeek="0" EndSeek="1094"/>
+<Insert>EXTRA_CFLAGS+=-Otime
+EXTRA_CFLAGS+=--cpu=5TE
+</Insert>
+<Copy StartSeek="1141" EndSeek="1856"/>
+</Delta>
+</DeltaFile>
